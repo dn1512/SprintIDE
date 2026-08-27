@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  
+  <!-- 1. 橡果顶部的短柄 -->
+  <line x1="12" y1="2" x2="12" y2="5" stroke="#743F1A"></line>
+
+  <!-- 2. 橡果的“帽子”（壳斗） -->
+  <!-- 加宽加厚，使用深褐色 #743F1A -->
+  <path d="M4 10 C 4 5, 20 5, 20 10 L 19 11 C 19 7, 5 7, 5 11 Z" fill="#743F1A" stroke="none"></path>
+  <path d="M4 10 C 4 5, 20 5, 20 10" stroke="#743F1A" fill="none"></path>
+  <path d="M5 11 C 5 7, 19 7, 19 11" stroke="#743F1A" fill="none"></path>
+  
+  <!-- 3. 帽子上的纹理细节 -->
+  <!-- 线条宽度调整为 1px，更加纤细精致 -->
+  <path d="M6 8 C 9 9, 15 9, 18 8" stroke="#743F1A" stroke-width="1" fill="none"></path>
+  <path d="M5 10 C 9 11, 15 11, 19 10" stroke="#743F1A" stroke-width="1" fill="none"></path>
+
+  <!-- 4. 橡果的果实主体 -->
+  <!-- 使用经典橡果色 #D38F22 -->
+  <path d="M5 11 C 5 18, 8 22, 12 22 C 16 22, 19 18, 19 11" stroke="#D38F22" fill="none"></path>
+
+</svg>

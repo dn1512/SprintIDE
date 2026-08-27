@@ -1,0 +1,85 @@
+<RCC>
+    <qresource prefix="/icons">
+        <!-- 核心图标 -->
+        <file>icons/app_icon.svg</file>
+        <file>icons/project.svg</file>
+        <file>icons/folder.svg</file>
+        <file>icons/cpp.svg</file>
+        <file>icons/header.svg</file>
+        <file>icons/text.svg</file>
+        <file>icons/file.svg</file>
+        <file>icons/project_file.svg</file>
+        
+        <!-- 文件操作 -->
+        <file>icons/new_file.svg</file>
+        <file>icons/new_folder.svg</file>
+        <file>icons/new_project.svg</file>
+        <file>icons/open_file.svg</file>
+        <file>icons/open_project.svg</file>
+        <file>icons/save_file.svg</file>
+        <file>icons/save_all.svg</file>
+        <file>icons/close_project.svg</file>
+        <file>icons/close_tab.svg</file>
+        <file>icons/reload_from_disk.svg</file>
+        <file>icons/project_structure.svg</file>
+        <file>icons/project_view.svg</file>
+        
+        <!-- 编辑操作 -->
+        <file>icons/undo.svg</file>
+        <file>icons/redo.svg</file>
+        <file>icons/cut.svg</file>
+        <file>icons/copy.svg</file>
+        <file>icons/paste.svg</file>
+        <file>icons/format_code.svg</file>
+        <file>icons/comment_code.svg</file>
+        <file>icons/uncomment_code.svg</file>
+        <file>icons/auto_indent.svg</file>
+        
+        <!-- 导航与搜索 -->
+        <file>icons/search.svg</file>
+        <file>icons/find_in_path.svg</file>
+        <file>icons/replave_in_path.svg</file>
+        <file>icons/goto_class.svg</file>
+        <file>icons/navigate_back.svg</file>
+        <file>icons/navigate_forward.svg</file>
+        <file>icons/recent_files.svg</file>
+        <file>icons/bookmarks.svg</file>
+        
+        <!-- 运行与调试 -->
+        <file>icons/clear.svg</file>
+        <file>icons/run.svg</file>
+        <file>icons/debug.svg</file>
+        <file>icons/stop.svg</file>
+        <file>icons/rerun.svg</file>
+        <file>icons/stop_over.svg</file>
+        <file>icons/step_into.svg</file>
+        <file>icons/step_out.svg</file>
+        <file>icons/toggle_break_point.svg</file>
+        <file>icons/pause.svg</file>
+        <file>icons/build.svg</file>
+        
+        <!-- 版本控制 -->
+        <file>icons/vcs_update.svg</file>
+        <file>icons/vcs_commit.svg</file>
+        <file>icons/vcs_push.svg</file>
+        <file>icons/show_diff.svg</file>
+        <file>icons/roll_back.svg</file>
+        <file>icons/branches.svg</file>
+        <file>icons/merge.svg</file>
+        <file>icons/git_view.svg</file>
+        
+        <!-- 工具窗口与视图 -->
+        <file>icons/terminal.svg</file>
+        <file>icons/run_view.svg</file>
+        <file>icons/services.svg</file>
+        <file>icons/setting.svg</file>
+        <file>icons/structure.svg</file>
+        
+        <!-- 编辑器辅助 -->
+        <file>icons/split_horizontal.svg</file>
+        <file>icons/split_vertical.svg</file>
+        <file>icons/pin_tab.svg</file>
+        <file>icons/toggle_sidebar.svg</file>
+        <file>icons/word_wrap.svg</file>
+    </qresource>
+</RCC>

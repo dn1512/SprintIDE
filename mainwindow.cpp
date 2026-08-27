@@ -1,0 +1,3989 @@
+#include "mainwindow.h"
+
+// 先包含私有类的头文件
+#include "mainwindow_p.h"
+
+// 包含必要的Qt头文件
+#include <QFile>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QMenuBar>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QCloseEvent>
+#include <QTimer>
+#include <QVBoxLayout>
+#include <QMenu>
+#include <QDebug>
+#include <QInputDialog>
+#include <QPushButton>
+#include <QTemporaryFile>
+#include <QStandardItemModel>
+#include <QTreeView>
+#include <QTextEdit>
+#include <QDir>
+#include <QFileInfo>
+#include <QTextStream>
+#include <QIcon>
+#include <QFont>
+#include <QStatusBar>
+#include <QApplication>
+#include <QStandardPaths>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QThread>
+#include <QTime>
+#include <QElapsedTimer>
+#include <QRegularExpression>
+#include <QTextCursor>
+#include <QTextBlock>
+#include <QScrollBar>
+#include <QStack>
+#include <QString>
+#include <QDirIterator>
+#include <QShortcut>
+#include <QListWidgetItem>
+#include <QDialog>
+#include <QtCore/qjsonarray.h>
+
+// 最后包含TextEditor和TabWidget的头文件（它们依赖Qt头文件）
+#include "text_editor.h"
+#include "tab_widget.h"
+#include "theme_manager.h"
+#include "project_creation_dialog.h"
+#include "project_config.h"
+
+// 包含编译系统头文件
+#include "compile_manager.h"
+#include "compile_output_parser.h"
+#include "process_manager.h"
+#include "path_utils.h"
+
+// 包含调试系统头文件
+#include "debug_manager.h"
+#include "debug_panel.h"
+#include "find_dialog.h"
+#include "replace_dialog.h"
+
+//LSP服务
+// #include "lsp/lsp_client.h"
+#include "lsp/lsp_manager.h"
+
+//ai
+#include "ai/ai_action_executor.h"
+#include "ai/ai_integration.h"
+#include "ai/ai_server.h"
+#include "ai/chat_panel.h"
+
+
+using namespace SprintIDE;
+
+namespace SprintIDE {
+SprintIDE::ErrorMarker parseErrorLine(const QString& line)
+{
+    SprintIDE::ErrorMarker marker;
+    marker.line = 0;
+    marker.column = -1;
+
+    // 支持中文和英文的错误/警告标识
+    static QRegularExpression regex(
+        "^(.*?):(\\d+):(\\d+):\\s*(错误|警告|error|warning|fatal error|note):\\s*(.*)$",
+        QRegularExpression::CaseInsensitiveOption
+        );
+
+    QRegularExpressionMatch match = regex.match(line);
+    if (match.hasMatch()) {
+        marker.filePath = match.captured(1).trimmed();
+        marker.line = match.captured(2).toInt();
+        marker.column = match.captured(3).toInt();
+        marker.severity = match.captured(4).trimmed();
+        marker.message = match.captured(5).trimmed();
+    } else {
+        // qDebug() << "parseErrorLine: 无法解析行:" << line;
+    }
+
+    return marker;
+}
+
+// ==================== 构造函数和析构函数 ====================
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+    d(new MainWindowPrivate(this))
+{
+    setWindowIcon(QIcon(":/icons/icons/app_icon.svg"));
+    setWindowTitle("SprintIDE");
+    resize(1600, 1000);
+
+    // 初始化编译管理器
+    m_compileManager = &CompileManager::instance();
+    m_isCompiling = false;
+    connectCompileManagerSignals();
+
+    // 设置深色主题
+    ThemeManager& tm = ThemeManager::instance();
+    tm.setTheme(ThemeManager::ThemeType::Dark);
+
+    setupUI();
+    setupMenuBar();
+    setupToolBar();
+    setupStatusBar();
+    setupDockWidgets();
+    setupConnections();
+    setupDebugPanel();
+    setupTerminalPanel();
+
+    connect(&tm, &ThemeManager::themeChanged,
+            this, &MainWindow::onThemeChanged);
+    applyCurrentTheme();
+
+    // 初始化 LSP 管理器
+    m_lspManager = new LSPManager(this);
+    m_lspManager->initialize();
+
+    connect(m_lspManager, &LSPManager::clientCreated,
+            this, [this](const QString &languageId, const QString &projectRoot) {
+                Q_UNUSED(languageId);
+                Q_UNUSED(projectRoot);
+            });
+    connect(m_lspManager, &LSPManager::clientError,
+            this, [this](const QString &languageId, const QString &error) {
+                d->outputPanel->append(QString("LSP (%1) 错误: %2")
+                                           .arg(languageId).arg(error));
+            });
+
+    connect(d->projectPanel, &ProjectPanel::fileOpenRequested, this, &MainWindow::openFile);
+
+    // 初始化调试管理器
+    m_debugManager = &DebugManager::instance();
+    m_debugManager->initialize();
+
+    // 连接调试管理器信号
+    connect(m_debugManager, &DebugManager::stateChanged,
+            this, &MainWindow::onDebugStateChanged);
+    // ... 其余调试信号连接（保持不变） ...
+
+    // 初始化 AI 模块
+    if (initializeAIIntegration(this, m_aiServer, m_aiExecutor, m_aiChatPanel)) {
+        setupAIMenu(this, m_aiChatPanel);
+        restoreChatPanelState(m_aiChatPanel);
+        if (m_aiChatPanel) {
+            m_aiChatPanel->setVisible(true);
+            m_aiChatPanel->raise();
+        }
+        qDebug() << "AI 模块已集成到 MainWindow";
+    } else {
+        qDebug() << "AI 模块初始化失败（可能是端口被占用）";
+    }
+
+    // 初始化本地历史
+    m_localHistory = new LocalHistory(this);
+    if (!d->currentProjectPath.isEmpty()) {
+        m_localHistory->setProjectRoot(d->currentProjectPath);
+    }
+
+    // 连接项目面板的历史请求信号
+
+    if (d->projectPanel) {
+        connect(d->projectPanel, &ProjectPanel::requestFileHistory,
+                this, &MainWindow::showFileHistoryDialog);
+    }
+}
+
+MainWindow::~MainWindow()
+{
+    // 停止调试
+    if (m_debugManager) {
+        m_debugManager->stopDebugging();
+    }
+
+    // 停止 LSP
+    if (m_lspManager) {
+        m_lspManager->shutdownAll();
+        // 不需要 delete，因为是 Qt 子对象
+    }
+
+    // 停止所有进程（ProcessManager 是单例，但需要清理）
+    // ProcessManager::instance().clearHistory();
+
+    // 清除所有编辑器
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor) {
+            editor->deleteLater();
+        }
+    }
+
+    // 删除私有实现
+    delete d;
+}
+
+// ==================== 主题相关方法 ====================
+
+void MainWindow::onThemeChanged(ThemeManager::ThemeType theme)
+{
+    Q_UNUSED(theme);
+    applyCurrentTheme();
+}
+
+void MainWindow::applyCurrentTheme()
+{
+    ThemeManager& tm = ThemeManager::instance();
+    bool isDark = tm.isDarkTheme();
+
+    // qDebug() << "开始应用主题: " << (isDark ? "深色" : "浅色");
+
+    if (isDark) {
+        QColor mainWindowBackground("#2D2D2D");
+        QColor editorBackground("#1E1E1E");
+        QColor textColor("#E0E0E0");
+        QColor selectionBackground("#3A3D41");
+        QColor alternateBase("#3C3C3C");
+        QColor menuBackground("#3C3C3C");
+        QColor buttonBackground("#4A4A4A");
+
+        QPalette windowPalette = palette();
+        windowPalette.setColor(QPalette::Window, mainWindowBackground);
+        windowPalette.setColor(QPalette::WindowText, textColor);
+        setPalette(windowPalette);
+
+        if (menuBar()) {
+            QPalette menuPalette = menuBar()->palette();
+            menuPalette.setColor(QPalette::Button, menuBackground);
+            menuPalette.setColor(QPalette::ButtonText, textColor);
+            menuBar()->setPalette(menuPalette);
+        }
+
+        for (QToolBar* toolBar : findChildren<QToolBar*>()) {
+            QPalette toolPalette = toolBar->palette();
+            toolPalette.setColor(QPalette::Button, buttonBackground);
+            toolPalette.setColor(QPalette::ButtonText, textColor);
+            toolBar->setPalette(toolPalette);
+        }
+
+        if (statusBar()) {
+            QPalette statusPalette = statusBar()->palette();
+            statusPalette.setColor(QPalette::Window, mainWindowBackground);
+            statusPalette.setColor(QPalette::WindowText, textColor);
+            statusBar()->setPalette(statusPalette);
+        }
+
+        if (d->projectPanel) {
+            QPalette treePalette = d->projectPanel->palette();
+            treePalette.setColor(QPalette::Base, mainWindowBackground);
+            treePalette.setColor(QPalette::Text, textColor);
+            treePalette.setColor(QPalette::Highlight, selectionBackground);
+            treePalette.setColor(QPalette::HighlightedText, textColor);
+            d->projectPanel->setPalette(treePalette);
+        }
+
+        if (d->outputPanel) {
+            QPalette outputPalette = d->outputPanel->palette();
+            outputPalette.setColor(QPalette::Base, editorBackground);
+            outputPalette.setColor(QPalette::Text, QColor("#CCCCCC"));
+            d->outputPanel->setPalette(outputPalette);
+        }
+    } else {
+        QColor mainWindowBackground("#F8F9FA");
+        QColor editorBackground("#FFFFFF");
+        QColor textColor("#333333");
+        QColor selectionBackground("#D3E9F7");
+        QColor alternateBase("#E9ECEF");
+        QColor menuBackground("#FFFFFF");
+        QColor buttonBackground("#E9ECEF");
+
+        QPalette windowPalette = palette();
+        windowPalette.setColor(QPalette::Window, mainWindowBackground);
+        windowPalette.setColor(QPalette::WindowText, textColor);
+        setPalette(windowPalette);
+
+        if (menuBar()) {
+            QPalette menuPalette = menuBar()->palette();
+            menuPalette.setColor(QPalette::Button, menuBackground);
+            menuPalette.setColor(QPalette::ButtonText, textColor);
+            menuBar()->setPalette(menuPalette);
+        }
+
+        for (QToolBar* toolBar : findChildren<QToolBar*>()) {
+            QPalette toolPalette = toolBar->palette();
+            toolPalette.setColor(QPalette::Button, buttonBackground);
+            toolPalette.setColor(QPalette::ButtonText, textColor);
+            toolBar->setPalette(toolPalette);
+        }
+
+        if (statusBar()) {
+            QPalette statusPalette = statusBar()->palette();
+            statusPalette.setColor(QPalette::Window, mainWindowBackground);
+            statusPalette.setColor(QPalette::WindowText, textColor);
+            statusBar()->setPalette(statusPalette);
+        }
+
+        if (d->projectPanel) {
+            QPalette treePalette = d->projectPanel->palette();
+            treePalette.setColor(QPalette::Base, mainWindowBackground);
+            treePalette.setColor(QPalette::Text, textColor);
+            treePalette.setColor(QPalette::Highlight, selectionBackground);
+            treePalette.setColor(QPalette::HighlightedText, textColor);
+            d->projectPanel->setPalette(treePalette);
+        }
+
+        if (d->outputPanel) {
+            QPalette outputPalette = d->outputPanel->palette();
+            outputPalette.setColor(QPalette::Base, editorBackground);
+            outputPalette.setColor(QPalette::Text, textColor);
+            d->outputPanel->setPalette(outputPalette);
+        }
+    }
+
+    applyThemeToTextEditors(isDark);
+    // updateWindowTitle();
+    update();
+    repaint();
+
+    // qDebug() << "主题应用完成";
+}
+
+void MainWindow::applyThemeToDockWidget(QDockWidget* dockWidget, bool isDark)
+{
+    if (!dockWidget) return;
+
+    QString titleStyle;
+    if (isDark) {
+        titleStyle = QString(
+            "QDockWidget {"
+            "  background-color: #2D2D2D;"
+            "  color: #E0E0E0;"
+            "  border: 1px solid #555555;"
+            "}"
+            "QDockWidget::title {"
+            "  background-color: #3C3C3C;"
+            "  color: #E0E0E0;"
+            "  padding: 4px;"
+            "  text-align: left;"
+            "}"
+            "QDockWidget::close-button, QDockWidget::float-button {"
+            "  background-color: #4A4A4A;"
+            "  border: 1px solid #555555;"
+            "}"
+            );
+    } else {
+        titleStyle = QString(
+            "QDockWidget {"
+            "  background-color: #F8F9FA;"
+            "  color: #333333;"
+            "  border: 1px solid #CCCCCC;"
+            "}"
+            "QDockWidget::title {"
+            "  background-color: #E9ECEF;"
+            "  color: #333333;"
+            "  padding: 4px;"
+            "  text-align: left;"
+            "}"
+            "QDockWidget::close-button, QDockWidget::float-button {"
+            "  background-color: #FFFFFF;"
+            "  border: 1px solid #CCCCCC;"
+            "}"
+            );
+    }
+
+    dockWidget->setStyleSheet(titleStyle);
+}
+
+void MainWindow::applyThemeToProjectTree(bool isDark)
+{
+    if (!d->projectPanel) return;
+
+    ThemeManager& tm = ThemeManager::instance();
+    tm.applyThemeToTreeView(d->projectPanel);
+
+    if (d->projectDock) {
+        QString styleSheet = QString(
+                                 "QDockWidget {"
+                                 "  background-color: %1;"
+                                 "  color: %2;"
+                                 "  border: 1px solid %3;"
+                                 "}"
+                                 "QDockWidget::title {"
+                                 "  background-color: %4;"
+                                 "  color: %5;"
+                                 "  padding: 4px;"
+                                 "}"
+                                 ).arg(
+                                     tm.color(ThemeManager::UIElement::MainWindowBackground).name(),
+                                     tm.color(ThemeManager::UIElement::TextColor).name(),
+                                     tm.color(ThemeManager::UIElement::MainWindowBackground).darker(120).name(),
+                                     tm.color(ThemeManager::UIElement::ButtonBackground).name(),
+                                     tm.color(ThemeManager::UIElement::TextColor).name()
+                                     );
+        d->projectDock->setStyleSheet(styleSheet);
+    }
+
+    d->projectPanel->setStyle(QApplication::style());
+}
+
+void MainWindow::applyThemeToAll()
+{
+    ThemeManager& tm = ThemeManager::instance();
+    applyThemeToWidgetRecursive(this, tm.isDarkTheme());
+    applyThemeToTextEditors(tm.isDarkTheme());
+    applyThemeToTabWidget(tm.isDarkTheme());
+}
+
+void MainWindow::applyThemeToWidgetRecursive(QWidget* widget, bool isDark)
+{
+    if (!widget) return;
+
+    if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+        ThemeManager::instance().applyThemeToTextEdit(textEdit);
+    } else if (QPlainTextEdit* plainTextEdit = qobject_cast<QPlainTextEdit*>(widget)) {
+        ThemeManager::instance().applyThemeToPlainTextEdit(plainTextEdit);
+    } else if (QTreeView* treeView = qobject_cast<QTreeView*>(widget)) {
+        ThemeManager::instance().applyThemeToTreeView(treeView);
+    } else {
+        ThemeManager::instance().applyThemeToWidget(widget);
+    }
+
+    for (QObject* child : widget->children()) {
+        if (QWidget* childWidget = qobject_cast<QWidget*>(child)) {
+            applyThemeToWidgetRecursive(childWidget, isDark);
+        }
+    }
+}
+
+void MainWindow::applyThemeToTextEditors(bool isDark)
+{
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor) {
+            editor->applyTheme(isDark ? "dark" : "light");
+        }
+    }
+}
+
+void MainWindow::applyThemeToTabWidget(bool isDark)
+{
+    if (TabWidget* tabWidget = qobject_cast<TabWidget*>(d->editorTabs)) {
+        tabWidget->updateTheme();
+    }
+}
+
+// ==================== UI设置方法 ====================
+
+void MainWindow::setupUI()
+{
+    QWidget *centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
+
+    d->editorTabs = new TabWidget(centralWidget);
+    d->editorTabs->setTabsClosable(true);
+    d->editorTabs->setMovable(true);
+
+    QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(d->editorTabs);
+}
+
+void MainWindow::setupMenuBar()
+{
+    QMenuBar *menuBar = this->menuBar();
+
+    // ==================== 文件菜单 ====================
+    QMenu *fileMenu = menuBar->addMenu("文件(&F)");
+
+    QMenu *newMenu = fileMenu->addMenu(QIcon(":/icons/icons/new_file.svg"), "新建(&N)");
+
+    // 通用新建文件（弹出对话框）
+    QAction *newFileAction = newMenu->addAction(QIcon(":/icons/icons/text.svg"), "文件...");
+    newFileAction->setShortcut(QKeySequence::New);
+    connect(newFileAction, &QAction::triggered, this, &MainWindow::onNewFile);
+
+    newMenu->addSeparator();
+
+    // 快速创建 C++ 文件
+    QAction *newCppAction = newMenu->addAction(QIcon(":/icons/icons/cpp.svg"), "C++ 源文件");
+    connect(newCppAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("main.cpp", "新建 C++ 文件", QString());
+    });
+
+    // 快速创建 C++ 头文件
+    QAction *newHppAction = newMenu->addAction(QIcon(":/icons/icons/header.svg"), "C++ 头文件");
+    connect(newHppAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("main.h", "新建 C++ 头文件", QString());
+    });
+
+    newMenu->addSeparator();
+
+    // 快速创建 Python 文件
+    QAction *newPythonAction = newMenu->addAction("Python 文件");
+    connect(newPythonAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("main.py", "新建 Python 文件", QString());
+    });
+
+    // 快速创建 JavaScript 文件
+    QAction *newJsAction = newMenu->addAction("JavaScript 文件");
+    connect(newJsAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("main.js", "新建 JavaScript 文件", QString());
+    });
+
+    // 快速创建 HTML 文件
+    QAction *newHtmlAction = newMenu->addAction("HTML 文件");
+    connect(newHtmlAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("index.html", "新建 HTML 文件", QString());
+    });
+
+    // 快速创建纯文本文件
+    QAction *newTxtAction = newMenu->addAction("纯文本文件");
+    connect(newTxtAction, &QAction::triggered, this, [this]() {
+        createNewFileWithName("untitled.txt", "新建文本文件", QString());
+    });
+
+    QAction *newProjectAction = newMenu->addAction(QIcon(":/icons/icons/new_project.svg"), "项目");
+    connect(newProjectAction, &QAction::triggered, this, &MainWindow::onNewProject);
+
+    QMenu *openMenu = fileMenu->addMenu(QIcon(":/icons/icons/open_file.svg"), "打开(&O)");
+
+    QAction *openFileAction = openMenu->addAction(QIcon(":/icons/icons/open_file.svg"), "文件");
+    openFileAction->setShortcut(QKeySequence::Open);
+    connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
+
+    QAction *openProjectAction = openMenu->addAction(QIcon(":/icons/icons/open_project.svg"), "项目");
+    openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
+    connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
+
+    fileMenu->addSeparator();
+
+    QAction *saveFileAction = fileMenu->addAction(QIcon(":/icons/icons/save_file.svg"), "保存(&S)");
+    saveFileAction->setShortcut(QKeySequence::Save);
+    connect(saveFileAction, &QAction::triggered, this, &MainWindow::onSaveFile);
+
+    QAction *saveAllAction = fileMenu->addAction(QIcon(":/icons/icons/save_all.svg"), "保存全部(&A)");
+    saveAllAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    connect(saveAllAction, &QAction::triggered, this, [this]() {
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+            if (editor && editor->isModified()) {
+                editor->saveFile();
+            }
+        }
+        d->outputPanel->append("已保存所有文件");
+    });
+
+    QAction *saveAsAction = fileMenu->addAction("另存为(&A)");
+    connect(saveAsAction, &QAction::triggered, this, &MainWindow::onSaveAs);
+
+    fileMenu->addSeparator();
+
+    QAction *closeFileAction = fileMenu->addAction(QIcon(":/icons/icons/close_tab.svg"), "关闭(&C)");
+    closeFileAction->setShortcut(QKeySequence::Close);
+    connect(closeFileAction, &QAction::triggered, this, &MainWindow::onCloseFile);
+
+    QAction *exitAction = fileMenu->addAction("退出(&X)");
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, this, &MainWindow::onExit);
+
+    // ==================== 编辑菜单 ====================
+    QMenu *editMenu = menuBar->addMenu("编辑(&E)");
+
+    QAction *undoAction = editMenu->addAction(QIcon(":/icons/icons/undo.svg"), "撤销(&U)");
+    undoAction->setShortcut(QKeySequence::Undo);
+    connect(undoAction, &QAction::triggered, this, &MainWindow::onUndo);
+
+    QAction *redoAction = editMenu->addAction(QIcon(":/icons/icons/redo.svg"), "重做(&R)");
+    redoAction->setShortcut(QKeySequence::Redo);
+    connect(redoAction, &QAction::triggered, this, &MainWindow::onRedo);
+
+    editMenu->addSeparator();
+
+    QAction *cutAction = editMenu->addAction(QIcon(":/icons/icons/cut.svg"), "剪切(&T)");
+    cutAction->setShortcut(QKeySequence::Cut);
+    connect(cutAction, &QAction::triggered, this, &MainWindow::onCut);
+
+    QAction *copyAction = editMenu->addAction(QIcon(":/icons/icons/copy.svg"), "复制(&C)");
+    copyAction->setShortcut(QKeySequence::Copy);
+    connect(copyAction, &QAction::triggered, this, &MainWindow::onCopy);
+
+    QAction *pasteAction = editMenu->addAction(QIcon(":/icons/icons/paste.svg"), "粘贴(&P)");
+    pasteAction->setShortcut(QKeySequence::Paste);
+    connect(pasteAction, &QAction::triggered, this, &MainWindow::onPaste);
+
+    editMenu->addSeparator();
+
+    QAction *copyLineAction = editMenu->addAction("复制行(&D)");
+    copyLineAction->setShortcut(QKeySequence("Ctrl+D"));
+    connect(copyLineAction, &QAction::triggered, this, [this]() {
+        TextEditor* editor = currentEditor();
+        if (editor) {
+            editor->duplicateLine();
+        }
+    });
+
+    QAction *deleteLineAction = editMenu->addAction("删除行(&Y)");
+    deleteLineAction->setShortcut(QKeySequence("Ctrl+Y"));
+    connect(deleteLineAction, &QAction::triggered, this, [this]() {
+        TextEditor* editor = currentEditor();
+        if (editor) {
+            editor->deleteLine();
+        }
+    });
+
+    editMenu->addSeparator();
+
+    QAction *findAction = editMenu->addAction("查找(&F)");
+    findAction->setShortcut(QKeySequence::Find);
+    connect(findAction, &QAction::triggered, this, &MainWindow::onFind);
+
+    QAction *replaceAction = editMenu->addAction("替换(&R)");
+    replaceAction->setShortcut(QKeySequence("Ctrl+Shift+H"));
+    connect(replaceAction, &QAction::triggered, this, &MainWindow::onReplace);
+
+    QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), "格式化代码(&O)");
+    formatCodeAction->setShortcut(QKeySequence("Ctrl+Alt+L"));
+    connect(formatCodeAction, &QAction::triggered, this, &MainWindow::onFormatCode);
+
+    QAction *commentAction = editMenu->addAction(QIcon(":/icons/icons/comment_code.svg"), "注释(&C)");
+    commentAction->setShortcut(QKeySequence("Ctrl+/"));
+    connect(commentAction, &QAction::triggered, this, &MainWindow::onComment);
+
+    // ==================== 构建菜单 ====================
+    QMenu *buildMenu = menuBar->addMenu("构建(&B)");
+
+    QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译当前文件(&C)");
+    compileFileAction->setShortcut(QKeySequence("Ctrl+B"));
+    connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
+
+    QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译项目(&P)");
+    compileProjectAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
+    connect(compileProjectAction, &QAction::triggered, this, [this]() {
+        d->outputPanel->append("编译项目功能开发中...");
+    });
+
+    QAction *cleanBuildAction = buildMenu->addAction("清理构建(&O)");
+    connect(cleanBuildAction, &QAction::triggered, this, [this]() {
+        d->outputPanel->append("清理构建功能开发中...");
+    });
+
+    QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
+    connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
+
+    // ==================== 调试菜单 ====================
+    QMenu *debugMenu = menuBar->addMenu("调试(&D)");
+
+    m_startDebugAction = debugMenu->addAction(QIcon(":/icons/icons/debug.svg"), "启动调试(&S)");
+    m_startDebugAction->setShortcut(QKeySequence("Ctrl+Shift+D"));
+    connect(m_startDebugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
+
+    m_stopDebugAction = debugMenu->addAction(QIcon(":/icons/icons/stop.svg"),"停止调试(&T)");
+    m_stopDebugAction->setShortcut(QKeySequence("Ctrl+."));
+    m_stopDebugAction->setEnabled(false);
+    connect(m_stopDebugAction, &QAction::triggered, this, &MainWindow::onStopDebug);
+
+    debugMenu->addSeparator();
+
+    m_stepOverAction = debugMenu->addAction(QIcon(":/icons/icons/stop_over.svg"), "步过(&N)");
+    m_stepOverAction->setShortcut(QKeySequence("F10"));
+    m_stepOverAction->setEnabled(false);
+    connect(m_stepOverAction, &QAction::triggered, this, &MainWindow::onStepOver);
+
+    m_stepIntoAction = debugMenu->addAction(QIcon(":/icons/icons/step_into.svg"), "步入(&S)");
+    m_stepIntoAction->setShortcut(QKeySequence("F11"));
+    m_stepIntoAction->setEnabled(false);
+    connect(m_stepIntoAction, &QAction::triggered, this, &MainWindow::onStepInto);
+
+    m_stepOutAction = debugMenu->addAction(QIcon(":/icons/icons/step_out.svg"), "步出(&O)");
+    m_stepOutAction->setShortcut(QKeySequence("Shift+F11"));
+    m_stepOutAction->setEnabled(false);
+    connect(m_stepOutAction, &QAction::triggered, this, &MainWindow::onStepOut);
+
+    debugMenu->addSeparator();
+
+    m_continueAction = debugMenu->addAction(QIcon(":/icons/icons/run.svg"), "继续(&C)");
+    m_continueAction->setShortcut(QKeySequence("F5"));
+    m_continueAction->setEnabled(false);
+    connect(m_continueAction, &QAction::triggered, this, &MainWindow::onContinueDebug);
+
+    debugMenu->addSeparator();
+
+    m_addBreakpointAction = debugMenu->addAction(QIcon(":/icons/icons/toggle_break_point.svg"), "添加断点(&B)");
+    m_addBreakpointAction->setShortcut(QKeySequence("Ctrl+F8"));
+    connect(m_addBreakpointAction, &QAction::triggered, this, &MainWindow::onAddBreakpoint);
+
+    // ==================== 工具菜单 ====================
+    QMenu *toolsMenu = menuBar->addMenu("工具(&T)");
+
+    QMenu *themeMenu = toolsMenu->addMenu(QIcon(":/icons/icons/setting.svg"), "主题设置(&H)");
+
+    QAction *lightThemeAction = themeMenu->addAction("浅色主题(&L)");
+    connect(lightThemeAction, &QAction::triggered, this, &MainWindow::onThemeLight);
+
+    QAction *darkThemeAction = themeMenu->addAction("深色主题(&D)");
+    connect(darkThemeAction, &QAction::triggered, this, &MainWindow::onThemeDark);
+
+    QAction *pluginManagerAction = toolsMenu->addAction(QIcon(":/icons/icons/services.svg"), "插件管理(&P)");
+    connect(pluginManagerAction, &QAction::triggered, this, [this]() {
+        d->outputPanel->append("插件管理功能开发中...");
+    });
+
+    QAction *performanceMonitorAction = toolsMenu->addAction("性能监控(&M)");
+    connect(performanceMonitorAction, &QAction::triggered, this, [this]() {
+        d->outputPanel->append("性能监控功能开发中...");
+    });
+
+    QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/terminal.svg"), "终端(&T)");
+    terminalAction->setShortcut(QKeySequence("Ctrl+`"));  // Cmd+`
+    connect(terminalAction, &QAction::triggered, this, [this]() {
+        if (m_terminalPanel) {
+            m_terminalPanel->setVisible(!m_terminalPanel->isVisible());
+        }
+    });
+
+    // ==================== 帮助菜单 ====================
+    QMenu *helpMenu = menuBar->addMenu("帮助(&H)");
+
+    QAction *quickStartAction = helpMenu->addAction(QIcon(":/icons/icons/run.svg"), "快速指南(&G)");
+    connect(quickStartAction, &QAction::triggered, this, &MainWindow::onQuickStart);
+
+    QAction *documentationAction = helpMenu->addAction(QIcon(":/icons/icons/text.svg"), "文档中心(&D)");
+    connect(documentationAction, &QAction::triggered, this, &MainWindow::onDocumentation);
+
+    QAction *aboutAction = helpMenu->addAction(QIcon(":/icons/icons/app_icon.svg"), "关于(&A)");
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
+}
+
+void MainWindow::setupToolBar()
+{
+    QToolBar *toolBar = addToolBar("主工具栏");
+    toolBar->setMovable(false);
+    toolBar->setIconSize(QSize(20, 20));
+
+    QAction *newAction = toolBar->addAction(QIcon(":/icons/icons/new_file.svg"), "新建");
+    connect(newAction, &QAction::triggered, this, &MainWindow::onNewFile);
+
+    QAction *openAction = toolBar->addAction(QIcon(":/icons/icons/open_file.svg"), "打开");
+    connect(openAction, &QAction::triggered, this, &MainWindow::onOpenFile);
+
+    QAction *saveAction = toolBar->addAction(QIcon(":/icons/icons/save_file.svg"), "保存");
+    connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveFile);
+
+    toolBar->addSeparator();
+
+    QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),"编译");
+    connect(buildAction, &QAction::triggered, this, &MainWindow::onCompile);
+
+    QAction *runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"),"运行");
+    runAction->setShortcut(QKeySequence("Ctrl+R"));
+    connect(runAction, &QAction::triggered, this, &MainWindow::onRun);
+
+    QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),"调试");
+    connect(debugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
+}
+
+void MainWindow::setupStatusBar()
+{
+    QStatusBar *statusBar = this->statusBar();
+
+    // 主状态标签
+    m_statusLabel = new QLabel("就绪", statusBar);
+    statusBar->addWidget(m_statusLabel, 1);  // stretch = 1
+
+    // 分隔线
+    statusBar->addPermanentWidget(new QLabel(" | "));
+
+    // 行号/列号
+    m_cursorPositionLabel = new QLabel("行: 1  列: 1", statusBar);
+    statusBar->addPermanentWidget(m_cursorPositionLabel);
+
+    statusBar->addPermanentWidget(new QLabel(" | "));
+
+    // 编码
+    m_encodingLabel = new QLabel("UTF-8", statusBar);
+    statusBar->addPermanentWidget(m_encodingLabel);
+
+    statusBar->addPermanentWidget(new QLabel(" | "));
+
+    // 语言
+    m_languageLabel = new QLabel("C++", statusBar);
+    statusBar->addPermanentWidget(m_languageLabel);
+
+    statusBar->addPermanentWidget(new QLabel(" | "));
+
+    // 缩进
+    m_indentLabel = new QLabel("空格: 4", statusBar);
+    statusBar->addPermanentWidget(m_indentLabel);
+
+    // 编译进度条（默认隐藏）
+    m_buildProgressBar = new QProgressBar(statusBar);
+    m_buildProgressBar->setMaximumSize(150, 20);
+    m_buildProgressBar->setMinimum(0);
+    m_buildProgressBar->setMaximum(100);
+    m_buildProgressBar->setValue(0);
+    m_buildProgressBar->setVisible(false);
+    statusBar->addPermanentWidget(m_buildProgressBar);
+
+    // 更新光标位置（初始）
+    onTabCurrentChanged(0);
+}
+
+void MainWindow::setupDockWidgets()
+{
+    // ========== 项目面板（左侧） ==========
+    d->projectDock = new QDockWidget("项目面板", this);
+
+    // 创建 ProjectPanel 实例
+    d->projectPanel = new ProjectPanel(d->projectDock);
+    d->projectDock->setWidget(d->projectPanel);
+    addDockWidget(Qt::LeftDockWidgetArea, d->projectDock);
+    d->projectPanel->setShowHiddenFiles(false);
+
+    QColor mainWindowBackground("#2D2D2D");
+    QColor editorBackground("#1E1E1E");
+    QColor textColor("#E0E0E0");
+    QColor selectionBackground("#3A3D41");
+    QColor alternateBase("#3C3C3C");
+
+    QPalette treePalette = d->projectPanel->palette();
+    treePalette.setColor(QPalette::Base, mainWindowBackground);
+    treePalette.setColor(QPalette::Text, textColor);
+    treePalette.setColor(QPalette::Highlight, selectionBackground);
+    treePalette.setColor(QPalette::HighlightedText, textColor);
+    treePalette.setColor(QPalette::Window, mainWindowBackground);
+    treePalette.setColor(QPalette::WindowText, textColor);
+    treePalette.setColor(QPalette::Button, mainWindowBackground.darker(110));
+    treePalette.setColor(QPalette::ButtonText, textColor);
+    treePalette.setColor(QPalette::AlternateBase, alternateBase);
+
+    d->projectPanel->setPalette(treePalette);
+    d->projectPanel->setAutoFillBackground(true);
+
+    QString treeStyleSheet = QString(
+                                 "QTreeView {"
+                                 "  background-color: %1;"
+                                 "  color: %2;"
+                                 "  alternate-background-color: %3;"
+                                 "}"
+                                 "QTreeView::item:selected {"
+                                 "  background-color: %4;"
+                                 "  color: %5;"
+                                 "}"
+                                 "QTreeView::item:hover {"
+                                 "  background-color: %6;"
+                                 "}"
+                                 ).arg(
+                                     mainWindowBackground.name(),
+                                     textColor.name(),
+                                     alternateBase.name(),
+                                     selectionBackground.name(),
+                                     textColor.name(),
+                                     selectionBackground.lighter(120).name()
+                                     );
+
+    d->projectPanel->setStyleSheet(treeStyleSheet);
+    d->projectPanel->setAlternatingRowColors(true);
+
+    QString dockStyle = QString(
+                            "QDockWidget {"
+                            "  background-color: %1;"
+                            "  color: %2;"
+                            "  border: 1px solid #555555;"
+                            "}"
+                            "QDockWidget::title {"
+                            "  background-color: %3;"
+                            "  color: %2;"
+                            "  padding: 4px;"
+                            "  text-align: left;"
+                            "}"
+                            "QDockWidget::close-button, QDockWidget::float-button {"
+                            "  background-color: %4;"
+                            "  border: 1px solid #555555;"
+                            "}"
+                            ).arg(
+                                mainWindowBackground.name(),
+                                textColor.name(),
+                                alternateBase.name(),
+                                mainWindowBackground.lighter(110).name()
+                                );
+
+    d->projectDock->setStyleSheet(dockStyle);
+
+    QStandardItemModel *model = new QStandardItemModel(this);
+    QStandardItem *rootItem = new QStandardItem("项目");
+    rootItem->setForeground(QBrush(textColor));
+    model->appendRow(rootItem);
+    // d->projectPanel->setModel(model);
+
+    d->projectDock->setWidget(d->projectPanel);
+    addDockWidget(Qt::LeftDockWidgetArea, d->projectDock);
+
+    // ========== 底部面板 ==========
+    m_bottomDockWidget = new QDockWidget("面板", this);
+    m_bottomDockWidget->setObjectName("BottomPanel");
+    m_bottomDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
+    m_bottomDockWidget->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
+    // 确保没有最大尺寸限制
+    // m_bottomDockWidget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    // m_bottomDockWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // ========== 调试输出 ==========
+    qDebug() << "BottomDockWidget floating:" << m_bottomDockWidget->isFloating();
+    qDebug() << "BottomDockWidget features:" << m_bottomDockWidget->features();
+
+    m_bottomTabWidget = new QTabWidget(m_bottomDockWidget);
+    m_bottomTabWidget->setTabPosition(QTabWidget::South);
+    m_bottomTabWidget->setDocumentMode(true);
+    m_bottomTabWidget->setTabsClosable(false);
+    // 确保 TabWidget 填满 DockWidget
+    m_bottomTabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    // ========== 输出面板（第一个标签） ==========
+    d->outputPanel = new QTextEdit(this);
+    d->outputPanel->setReadOnly(true);
+    d->outputPanel->setFont(QFont("Consolas", 9));
+    // ========== 确保支持键盘选择（从而支持 Ctrl+C 复制） ==========
+    d->outputPanel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    // 确保可以接收焦点
+    d->outputPanel->setFocusPolicy(Qt::StrongFocus);
+    d->outputPanel->setStyleSheet(
+        "QTextEdit {"
+        "  background-color: #1E1E1E;"
+        "  color: #CCCCCC;"
+        "  border: none;"
+        "  font-family: 'Monaco', 'Consolas', monospace;"
+        "  font-size: 10pt;"
+        "}"
+        );
+    // ========== 使用 QShortcut 绑定复制快捷键 ==========
+    QShortcut* copyShortcut = new QShortcut(QKeySequence::Copy, this);
+    connect(copyShortcut, &QShortcut::activated, this, [this]() {
+        if (d->outputPanel && d->outputPanel->textCursor().hasSelection()) {
+            d->outputPanel->copy();
+        }
+    });
+
+    QPalette outputPalette = d->outputPanel->palette();
+    outputPalette.setColor(QPalette::Base, QColor("#1E1E1E"));
+    outputPalette.setColor(QPalette::Text, QColor("#CCCCCC"));
+    d->outputPanel->setPalette(outputPalette);
+
+    d->outputPanel->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(d->outputPanel, &QTextEdit::customContextMenuRequested,
+            this, [this](const QPoint& pos) {
+                QMenu* menu = new QMenu(this);
+
+                // 复制（如果选中了文本才启用）
+                QAction* copyAction = new QAction("复制", this);
+                copyAction->setShortcut(QKeySequence::Copy);
+                copyAction->setEnabled(d->outputPanel->textCursor().hasSelection());
+                connect(copyAction, &QAction::triggered, d->outputPanel, &QTextEdit::copy);
+                menu->addAction(copyAction);
+
+                menu->addSeparator();
+
+                // 清空
+                QAction* clearAction = new QAction("清空", this);
+                connect(clearAction, &QAction::triggered, d->outputPanel, &QTextEdit::clear);
+                menu->addAction(clearAction);
+
+                menu->addSeparator();
+
+                // 全选
+                QAction* selectAllAction = new QAction("全选", this);
+                selectAllAction->setShortcut(QKeySequence::SelectAll);
+                connect(selectAllAction, &QAction::triggered, d->outputPanel, &QTextEdit::selectAll);
+                menu->addAction(selectAllAction);
+
+                menu->exec(d->outputPanel->viewport()->mapToGlobal(pos));
+                delete menu;
+            });
+
+    m_bottomTabWidget->addTab(d->outputPanel, QIcon(":/icons/run_view.svg"), "输出");
+
+    m_bottomDockWidget->setWidget(m_bottomTabWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, m_bottomDockWidget);
+
+    // 设置初始高度
+    m_bottomDockWidget->resize(width(), 200);
+    m_bottomDockWidget->setVisible(true);
+
+    // 确保不浮动
+    m_bottomDockWidget->setFloating(false);
+    // 重置几何位置
+    m_bottomDockWidget->setGeometry(0, height() - 200, width(), 200);
+    // 确保停靠
+    m_bottomDockWidget->show();
+
+    // 连接项目面板的删除请求
+    connect(d->projectPanel, &ProjectPanel::deleteRequested,
+            this, [this](const QStringList& filePaths) {
+                // 第一步：尝试关闭所有打开的文件
+                bool canDelete = true;
+                for (const QString& path : filePaths) {
+                    if (!closeEditorForFile(path)) {
+                        canDelete = false; // 用户取消关闭，中止删除
+                        break;
+                    }
+                }
+
+                if (!canDelete) {
+                    d->outputPanel->append("删除操作已取消");
+                    return;
+                }
+
+                // 第二步：执行实际删除
+                for (const QString& path : filePaths) {
+                    // deleteFile 内部仍有确认对话框，保留双重确认
+                    d->projectPanel->deleteFile(path, true);
+                    updateWindowTitle();
+                }
+            });
+}
+
+void MainWindow::setupConnections()
+{
+    connect(d->editorTabs, &TabWidget::tabCloseRequested,
+            this, &MainWindow::onTabCloseRequested);
+    connect(d->editorTabs, &TabWidget::currentChanged,
+            this, &MainWindow::onTabCurrentChanged);
+}
+
+// ========== 调试面板设置 ==========
+
+void MainWindow::setupDebugPanel()
+{
+    m_debugPanel = new DebugPanel(this);
+    int index = m_bottomTabWidget->addTab(m_debugPanel, QIcon(":/icons/debug.svg"), "调试");
+    m_bottomTabWidget->setTabVisible(index, false);
+
+    // 连接调试面板信号到 MainWindow 的槽函数
+    connect(m_debugPanel, &DebugPanel::continueRequested,
+            this, &MainWindow::onContinueDebug);
+    connect(m_debugPanel, &DebugPanel::stepOverRequested,
+            this, &MainWindow::onStepOver);
+    connect(m_debugPanel, &DebugPanel::stepIntoRequested,
+            this, &MainWindow::onStepInto);
+    connect(m_debugPanel, &DebugPanel::stepOutRequested,
+            this, &MainWindow::onStepOut);
+    connect(m_debugPanel, &DebugPanel::stopRequested,
+            this, &MainWindow::onStopDebug);
+
+    // 连接调试面板到调试管理器
+    m_debugPanel->connectToDebugManager(m_debugManager);
+}
+
+void MainWindow::setupTerminalPanel()
+{
+    m_terminalPanel = new TerminalPanel(this);
+    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/terminal.svg"), "终端");
+
+    if (!d->currentProjectPath.isEmpty()) {
+        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
+    }
+}
+
+void MainWindow::applyTheme()
+{
+    // 主题应用留空，后续实现
+}
+
+// ==================== 窗口事件处理 ====================
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (!confirmUnsavedChanges()) {
+        event->ignore();
+        return;
+    }
+
+    if (m_isCompiling) {
+        int reply = QMessageBox::question(this, "正在编译",
+                                          "当前正在编译，是否停止编译并退出？",
+                                          QMessageBox::Yes | QMessageBox::No,
+                                          QMessageBox::No);
+
+        if (reply == QMessageBox::Yes) {
+            stopCompile();
+        } else {
+            event->ignore();
+            return;
+        }
+    }
+
+    // 保存 AI 面板状态
+    if (m_aiChatPanel) {
+        saveChatPanelState(m_aiChatPanel);
+    }
+
+    event->accept();
+}
+
+bool MainWindow::confirmUnsavedChanges()
+{
+    bool hasUnsaved = false;
+
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && editor->isModified()) {
+            hasUnsaved = true;
+            break;
+        }
+    }
+
+    if (hasUnsaved) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("未保存的更改");
+        msgBox.setText("有未保存的更改，是否保存？");
+        msgBox.setStandardButtons(QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+        msgBox.setDefaultButton(QMessageBox::SaveAll);
+
+        int ret = msgBox.exec();
+
+        if (ret == QMessageBox::SaveAll) {
+            for (int i = 0; i < d->editorTabs->count(); ++i) {
+                TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+                if (editor && editor->isModified()) {
+                    editor->saveFile();
+                }
+            }
+            return true;
+        } else if (ret == QMessageBox::Discard) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+void MainWindow::updateStatusBarPosition(TextEditor* editor)
+{
+    if (!editor) return;
+    m_cursorPositionLabel->setText(
+        QString("行: %1  列: %2")
+            .arg(editor->currentLine())
+            .arg(editor->currentColumn())
+        );
+}
+
+void MainWindow::updateWindowTitle()
+{
+    QString title = "SprintIDE";
+
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        QString fileName = editor->fileName();
+        if (!fileName.isEmpty()) {
+            title += " - " + fileName;
+        }
+    }
+
+    // 遍历所有标签页检查是否有未保存
+    bool hasUnsaved = false;
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (ed && ed->isModified()) {
+            hasUnsaved = true;
+            break;
+        }
+    }
+
+    if (hasUnsaved) {
+        title += " *";
+    }
+
+    setWindowTitle(title);
+}
+
+void MainWindow::saveWindowState()
+{
+    // 窗口状态保存留空，后续实现
+}
+
+// ==================== 项目操作 ====================
+
+void MainWindow::openProject(const QString &path)
+{
+    d->currentProjectPath = path;
+    d->hasUnsavedChanges = false;
+    d->outputPanel->append(QString("项目已打开: %1").arg(path));
+
+    // ========== 生成 compile_commands.json ==========
+    generateCompileCommands(path);
+
+    if (m_terminalPanel) {
+        m_terminalPanel->setWorkingDirectory(path);
+    }
+
+    // ========== 更新本地历史项目根目录（新增） ==========
+    if (m_localHistory) {
+        m_localHistory->setProjectRoot(path);
+    }
+    qDebug() << "MainWindow::openProject called, path:" << path;
+    // 通知项目面板打开项目
+    if (d->projectPanel) {
+        // 加载项目配置（如果有）
+        ProjectConfig config;
+        QString configFile = path + "/.lightcppproj";
+        QStringList errors;
+        bool hasConfig = config.loadFromFile(configFile, errors);
+        qDebug() << "Calling d->projectPanel->openProject with config=" << hasConfig;
+        bool ok = d->projectPanel->openProject(path, hasConfig ? &config : nullptr);
+        qDebug() << "openProject result:" << ok;
+    } else {
+        qDebug() << "d->projectPanel is NULL!";
+    }
+}
+
+void MainWindow::closeProject()
+{
+    d->currentProjectPath.clear();
+    // updateWindowTitle();
+}
+
+void MainWindow::openFile(const QString &path)
+{
+    // ============================================================
+    // 1. 检查文件是否已打开（避免重复打开）
+    // ============================================================
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && editor->filePath() == path) {
+            d->editorTabs->setCurrentIndex(i);
+            return;
+        }
+    }
+
+    // ============================================================
+    // 2. 创建编辑器并加载文件
+    // ============================================================
+    TextEditor* editor = new TextEditor(this);
+
+    // 传递本地历史管理器
+    if (m_localHistory) {
+        editor->setLocalHistory(m_localHistory);
+    }
+
+    if (!editor->loadFile(path)) {
+        delete editor;
+        QMessageBox::warning(this, "打开错误",
+                             QString("无法打开文件:\n%1").arg(path));
+        return;
+    }
+
+    int index = d->editorTabs->addTab(editor, editor->fileName());
+    d->editorTabs->setCurrentIndex(index);
+    d->outputPanel->append(QString("已打开: %1").arg(path));
+
+    // ============================================================
+    // 3. 连接编辑器信号
+    // ============================================================
+    connect(editor, &TextEditor::modificationChanged,
+            this, &MainWindow::onEditorModificationChanged);
+    connect(editor, &TextEditor::cursorPositionChanged,
+            this, &MainWindow::onEditorCursorPositionChanged);
+    connect(editor, &TextEditor::fileLoaded,
+            this, &MainWindow::onFileLoaded);
+    connect(editor, &TextEditor::fileSaved,
+            this, &MainWindow::onFileSaved);
+    connect(editor->document(), &QTextDocument::contentsChanged,
+            this, [this, editor]() {
+                onEditorTextChanged(editor);
+            });
+    connect(editor, &TextEditor::breakpointToggled,
+            this, &MainWindow::onBreakpointToggled);
+
+    // ============================================================
+    // 4. 应用主题
+    // ============================================================
+    bool isDark = ThemeManager::instance().isDarkTheme();
+    editor->applyTheme(isDark ? "dark" : "light");
+
+    // ============================================================
+    // 5. 更新状态栏语言
+    // ============================================================
+    QFileInfo info(path);
+    QString ext = info.suffix().toLower();
+    if (ext == "cpp" || ext == "cxx" || ext == "cc" || ext == "c") {
+        m_languageLabel->setText("C++");
+    } else if (ext == "h" || ext == "hpp") {
+        m_languageLabel->setText("C++ Header");
+    } else if (ext == "py") {
+        m_languageLabel->setText("Python");
+    } else if (ext == "js" || ext == "ts") {
+        m_languageLabel->setText("JavaScript");
+    } else if (ext == "go") {
+        m_languageLabel->setText("Go");
+    } else if (ext == "rs") {
+        m_languageLabel->setText("Rust");
+    } else if (ext == "java") {
+        m_languageLabel->setText("Java");
+    } else if (ext == "cs") {
+        m_languageLabel->setText("C#");
+    } else if (ext == "php") {
+        m_languageLabel->setText("PHP");
+    } else if (ext == "html" || ext == "htm") {
+        m_languageLabel->setText("HTML");
+    } else if (ext == "css") {
+        m_languageLabel->setText("CSS");
+    } else if (ext == "json") {
+        m_languageLabel->setText("JSON");
+    } else if (ext == "xml") {
+        m_languageLabel->setText("XML");
+    } else if (ext == "md") {
+        m_languageLabel->setText("Markdown");
+    } else if (ext == "sh" || ext == "bash") {
+        m_languageLabel->setText("Shell");
+    } else {
+        m_languageLabel->setText("Unknown");
+    }
+
+    // ============================================================
+    // 6. ========== LSP 集成 ==========
+    // ============================================================
+    if (m_lspManager) {
+        // 确定项目根目录（优先使用打开的项目路径）
+        QString projectPath = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(path).absolutePath() :
+                                  d->currentProjectPath;
+
+        // 获取对应语言的 LSP 客户端
+        LSPClient *client = m_lspManager->getClientForFile(path, projectPath);
+
+        if (client) {
+            // ---- 连接诊断信号（如果尚未连接） ----
+            // 使用静态集合跟踪已连接的客户端，避免重复连接
+            static QSet<LSPClient*> connectedClients;
+            if (!connectedClients.contains(client)) {
+                connect(client, &LSPClient::diagnosticsReceived,
+                        this, &MainWindow::onLSPDiagnostics);
+                connectedClients.insert(client);
+                qDebug() << "LSP: diagnostics signal connected for client";
+            }
+
+            // ---- 6b. 打开文档 ----
+            if (client->isReady()) {
+                 client->openDocument(path, editor->toPlainText());
+            } else {
+                // 使用一个一次性连接，确保只执行一次
+                QMetaObject::Connection *conn = new QMetaObject::Connection;
+                *conn = connect(client, &LSPClient::serverReady, this,
+                                [this, client, path, editor, conn]() {
+                                    if (client && client->isReady()) {
+                                        QString content = editor->toPlainText();
+                                        client->openDocument(path, content);
+                                        qDebug() << "LSP: openDocument (delayed) for" << path;
+                                    }
+                                    // 断开连接并释放内存
+                                    disconnect(*conn);
+                                    delete conn;
+                                });
+            }
+        }
+    }
+}
+
+void MainWindow::openFiles(const QStringList &paths)
+{
+    for (const QString &path : paths) {
+        openFile(path);
+    }
+}
+
+void MainWindow::closeFile(const QString &path)
+{
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && editor->filePath() == path) {
+            closeEditorTab(i);
+            break;
+        }
+    }
+}
+
+TextEditor* MainWindow::currentEditor() const
+{
+    return qobject_cast<TextEditor*>(d->editorTabs->currentWidget());
+}
+
+// ==================== 标签页管理 ====================
+
+void MainWindow::createNewEditorTab(const QString& title)
+{
+    TextEditor* editor = new TextEditor(this);
+    // 传递本地历史管理器
+    if (m_localHistory) {
+        editor->setLocalHistory(m_localHistory);
+    }
+
+    int index = d->editorTabs->addTab(editor, title);
+    d->editorTabs->setCurrentIndex(index);
+
+    connect(editor, &TextEditor::modificationChanged,
+            this, &MainWindow::onEditorModificationChanged);
+    connect(editor, &TextEditor::cursorPositionChanged,
+            this, &MainWindow::onEditorCursorPositionChanged);
+    connect(editor, &TextEditor::fileLoaded,
+            this, &MainWindow::onFileLoaded);
+    connect(editor, &TextEditor::fileSaved,
+            this, &MainWindow::onFileSaved);
+    connect(editor->document(), &QTextDocument::contentsChanged, this, [this, editor]() {
+        onEditorTextChanged(editor);  // 直接传入 editor
+    });
+    connect(editor, &TextEditor::breakpointToggled, this, &MainWindow::onBreakpointToggled);
+    // qDebug() << "breakpointToggled signal connected for editor:" << editor;
+    bool isDark = ThemeManager::instance().isDarkTheme();
+    editor->applyTheme(isDark ? "dark" : "light");
+}
+
+bool MainWindow::closeEditorTab(int index)
+{
+    TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(index));
+    if (!editor) return true; // 无效标签，视为已关闭
+
+    if (editor->isModified()) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("未保存的更改");
+        msgBox.setText(QString("文件 '%1' 有未保存的更改。\n是否保存更改？")
+                           .arg(editor->fileName()));
+        msgBox.setIcon(QMessageBox::Question);
+        QPushButton *saveButton = msgBox.addButton("保存(&S)", QMessageBox::AcceptRole);
+        QPushButton *discardButton = msgBox.addButton("不保存(&D)", QMessageBox::RejectRole);
+        QPushButton *cancelButton = msgBox.addButton("取消(&C)", QMessageBox::NoRole);
+        msgBox.setDefaultButton(saveButton);
+        msgBox.exec();
+
+        QAbstractButton* clicked = msgBox.clickedButton();
+        if (clicked == saveButton) {
+            if (!editor->saveFile()) {
+                return false; // 保存失败，视为取消
+            }
+            d->editorTabs->removeTab(index);
+            return true;
+        } else if (clicked == discardButton) {
+            d->editorTabs->removeTab(index);
+            return true;
+        } else { // 取消
+            return false;
+        }
+    } else {
+        d->editorTabs->removeTab(index);
+        return true;
+    }
+}
+
+bool MainWindow::closeEditorForFile(const QString& filePath)
+{
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && editor->filePath() == filePath) {
+            return closeEditorTab(i); // 返回是否成功关闭
+        }
+    }
+    return true; // 编辑器未打开，视为可删除
+}
+
+void MainWindow::updateTabTitle(int index, const QString& title)
+{
+    if (index >= 0 && index < d->editorTabs->count()) {
+        d->editorTabs->setTabText(index, title);
+        // updateWindowTitle();
+    }
+}
+
+// ==================== 标签页信号处理 ====================
+
+void MainWindow::onTabCloseRequested(int index)
+{
+    closeEditorTab(index);
+}
+
+void MainWindow::onTabCurrentChanged(int index)
+{
+    if (index >= 0) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(index));
+        if (editor) {
+            updateStatusBarPosition(editor);
+
+            // updateWindowTitle();
+
+            if (!editor->filePath().isEmpty()) {
+                m_statusLabel->setText(QString("正在编辑: %1").arg(editor->fileName()));
+            }
+        }
+    } else {
+        m_cursorPositionLabel->setText("行: -  列: -");
+        m_statusLabel->setText("就绪");
+    }
+}
+
+void MainWindow::onTabContextMenuRequested(int index, const QPoint &pos)
+{
+    Q_UNUSED(index);
+    Q_UNUSED(pos);
+}
+
+// ==================== 编辑器信号处理 ====================
+
+void MainWindow::onEditorModificationChanged(bool modified)
+{
+    Q_UNUSED(modified);
+    updateWindowTitle();
+}
+
+void MainWindow::onEditorCursorPositionChanged(int line, int column)
+{
+    if (m_cursorPositionLabel) {
+        m_cursorPositionLabel->setText(QString("行: %1  列: %2").arg(line).arg(column));
+    }
+}
+
+void MainWindow::onFileLoaded(const QString &filePath)
+{
+    d->outputPanel->append(QString("已加载文件: %1").arg(filePath));
+    m_statusLabel->setText(QString("已加载: %1").arg(QFileInfo(filePath).fileName()));
+}
+
+void MainWindow::onFileSaved(const QString &filePath)
+{
+    // qDebug() << "onFileSaved called, filePath:" << filePath;
+    // qDebug() << "m_statusLabel:" << m_statusLabel;
+
+    // d->outputPanel->append(QString("已保存文件: %1").arg(filePath));
+
+    TextEditor* editor = qobject_cast<TextEditor*>(sender());
+    if (editor) {
+        int index = d->editorTabs->indexOf(editor);
+        if (index >= 0) {
+            d->editorTabs->setTabText(index, editor->fileName());
+        }
+    }
+
+    if (m_lspManager && !filePath.isEmpty()) {
+        LSPClient *client = m_lspManager->getClientForFile(filePath, d->currentProjectPath);
+        if (client && client->isReady()) {
+            client->saveDocument(filePath);
+        }
+    }
+
+    // qDebug() << "Before setText";
+    if (m_statusLabel) {
+        m_statusLabel->setText("文件已保存");
+    }
+    // qDebug() << "After setText";
+
+    updateWindowTitle();
+
+    // LSP 保存通知
+    if (m_lspManager && !filePath.isEmpty()) {
+        QString projectPath = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(filePath).absolutePath() :
+                                  d->currentProjectPath;
+        LSPClient *client = m_lspManager->getClientForFile(filePath, projectPath);
+        if (client && client->isReady()) {
+            client->saveDocument(filePath);
+        }
+    }
+}
+
+void MainWindow::onEditorTextChanged(TextEditor* editor)
+{
+
+    if (!editor) return;
+    // 获取发出信号的 QTextDocument
+    QTextDocument* doc = qobject_cast<QTextDocument*>(sender());
+    if (!doc) return;
+
+    d->hasUnsavedChanges = true;
+    updateWindowTitle();
+
+    // LSP 实时更新
+    if (m_lspManager && !editor->filePath().isEmpty()) {
+        QString projectPath = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(editor->filePath()).absolutePath() :
+                                  d->currentProjectPath;
+        LSPClient *client = m_lspManager->getClientForFile(editor->filePath(), projectPath);
+        if (client && client->isReady()) {
+            client->changeDocument(editor->filePath(), editor->toPlainText());
+        }
+    }
+}
+
+void MainWindow::onBreakpointToggled(const QString& filePath, int line)
+{
+    // qDebug() << "onBreakpointToggled called: file=" << filePath << "line=" << line;
+    if (m_debugManager) {
+        m_debugManager->toggleBreakpoint(filePath, line);
+
+        // 更新当前编辑器的断点显示
+        TextEditor* editor = currentEditor();
+        if (editor && editor->filePath() == filePath) {
+            bool hasBreakpoint = m_debugManager->hasBreakpoint(filePath, line);
+            editor->setBreakpoint(line, hasBreakpoint);
+        }
+    }
+}
+
+// ==================== 项目面板信号处理 ====================
+
+void MainWindow::onProjectItemDoubleClicked(const QModelIndex &index)
+{
+    Q_UNUSED(index);
+    d->outputPanel->append("项目面板开发中...");
+}
+
+// ==================== 编译系统 ====================
+
+void MainWindow::connectCompileManagerSignals()
+{
+    if (!m_compileManager) {
+        qWarning() << "编译管理器未初始化";
+        return;
+    }
+
+    connect(m_compileManager, &CompileManager::compileStarted,
+            this, &MainWindow::onCompileStarted);
+    connect(m_compileManager, &CompileManager::compileProgress,
+            this, &MainWindow::onCompileProgress);
+    connect(m_compileManager, &CompileManager::compileOutput,
+            this, &MainWindow::onCompileOutput);
+    connect(m_compileManager, &CompileManager::compileFinished,
+            this, &MainWindow::onCompileFinished);
+    connect(m_compileManager, &CompileManager::compileError,
+            this, &MainWindow::onCompileError);
+    connect(m_compileManager, &CompileManager::compilersDetected,
+            this, &MainWindow::onCompilersDetected);
+}
+
+void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFile)
+{
+    m_currentCompileTaskId = taskId;
+    m_isCompiling = true;
+    m_compileTimer.start();
+    m_compilerOutputCache[taskId] = QString();
+
+    // 切换到输出标签
+    switchToOutputTab();
+
+    d->outputPanel->clear();
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+    QString htmlMessage = QString("<span style='color:#3399FF;'>[%1] 开始编译: %2</span>")
+                              .arg(timeStr)
+                              .arg(sourceFile);
+    d->outputPanel->append(htmlMessage);
+
+    m_statusLabel->setText(QString("正在编译 %1...").arg(QFileInfo(sourceFile).fileName()));
+
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor) {
+            editor->clearAllMarkers();
+        }
+    }
+
+    // 显示进度条
+    m_buildProgressBar->setVisible(true);
+    m_buildProgressBar->setValue(0);
+    // qDebug() << "编译开始，任务ID:" << taskId << "源文件:" << sourceFile;
+}
+
+void MainWindow::onCompileProgress(const QString& taskId, int progress, const QString& currentFile)
+{
+    if (taskId != m_currentCompileTaskId) {
+        return;
+    }
+
+    QString progressStr;
+    if (!currentFile.isEmpty()) {
+        progressStr = QString("正在编译... %1% - %2").arg(progress).arg(currentFile);
+    } else {
+        progressStr = QString("正在编译... %1%").arg(progress);
+    }
+    m_statusLabel->setText(progressStr);
+
+    if (progress % 25 == 0) {
+        QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+        QString htmlMessage = QString("<span style='color:#9966FF;'>[%1] 编译进度: %2%</span>")
+                                  .arg(timeStr)
+                                  .arg(progress);
+        d->outputPanel->append(htmlMessage);
+    }
+    m_buildProgressBar->setValue(progress);
+}
+
+void MainWindow::onCompileOutput(const QString& taskId, const QString& output, bool isError)
+{
+    if (taskId != m_currentCompileTaskId) {
+        return;
+    }
+
+    // 定义错误/警告/注意的正则表达式（不区分大小写）
+    static QRegularExpression errorWarningRegex(
+        "^(error|warning|note|fatal error):",
+        QRegularExpression::CaseInsensitiveOption
+        );
+
+    QStringList lines = output.split('\n');
+    for (const QString& line : lines) {
+        QString trimmed = line.trimmed();
+        if (trimmed.isEmpty()) {
+            continue;
+        }
+
+        // 只保留以 error/warning/note/fatal error 开头的行
+        QRegularExpressionMatch match = errorWarningRegex.match(trimmed);
+        if (match.hasMatch()) {
+            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+            QString severity = match.captured(1).toLower();
+            QString color = (severity == "error" || severity == "fatal error") ? "#FF3333" : "#FF9900";
+            QString htmlMessage = QString("<span style='color:%1;'>[%2] %3</span>")
+                                      .arg(color)
+                                      .arg(timeStr)
+                                      .arg(line.toHtmlEscaped());
+            d->outputPanel->append(htmlMessage);
+        }
+        // 如果 isError 为 true，可能是编译管理器标记的错误，也显示
+        else if (isError) {
+            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+            d->outputPanel->append(QString("<span style='color:#FF3333;'>[%1] %2</span>")
+                                       .arg(timeStr)
+                                       .arg(line.toHtmlEscaped()));
+        }
+    }
+}
+
+void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& result)
+{
+    if (taskId != m_currentCompileTaskId) {
+        return;
+    }
+
+    m_isCompiling = false;
+    qint64 elapsedMs = m_compileTimer.elapsed();
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+
+    if (result.success) {
+        QString htmlMessage = QString("<span style='color:#33CC33;'>[%1] 编译成功! 耗时: %2ms</span>")
+                                  .arg(timeStr)
+                                  .arg(elapsedMs);
+        d->outputPanel->append(htmlMessage);
+
+        if (!result.executablePath.isEmpty()) {
+            d->outputPanel->append(QString("<span style='color:#33CC33;'>可执行文件: %1</span>")
+                                       .arg(result.executablePath));
+        }
+
+        m_statusLabel->setText("编译成功");
+        // askRunProgram(result.executablePath);
+        if (m_compileForDebug) {
+            m_compileForDebug = false;
+            d->outputPanel->append("编译成功，正在启动调试...");
+
+            // 同步断点到调试器
+            syncBreakpointsToDebugger();
+
+            // 启动调试
+            startDebugging();
+        }
+
+    } else {
+        QString htmlMessage = QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
+                                  .arg(timeStr)
+                                  .arg(elapsedMs);
+        d->outputPanel->append(htmlMessage);
+
+        m_statusLabel->setText("编译失败");
+
+        int errorCount = result.errors.size();
+        int warningCount = result.warnings.size();
+
+        if (errorCount > 0 || warningCount > 0) {
+            QString statsMessage = QString("<span style='color:#FF3333;'>错误: %1, 警告: %2</span>")
+                                       .arg(errorCount)
+                                       .arg(warningCount);
+            d->outputPanel->append(statsMessage);
+        }
+
+        if (!result.errors.isEmpty()) {
+            d->outputPanel->append("<span style='color:#FF3333;font-weight:bold;'>错误列表:</span>");
+            for (int i = 0; i < qMin(5, result.errors.size()); i++) {
+                d->outputPanel->append(QString("<span style='color:#FF3333;'>  %1. %2</span>")
+                                           .arg(i + 1)
+                                           .arg(result.errors[i].toHtmlEscaped()));
+            }
+            if (result.errors.size() > 5) {
+                d->outputPanel->append(QString("<span style='color:#FF9900;'>... 还有 %1 个错误未显示</span>")
+                                           .arg(result.errors.size() - 5));
+            }
+        }
+        if (m_compileForDebug) {
+            m_compileForDebug = false;
+            d->outputPanel->append("编译失败，无法启动调试。请修复错误后重试。");
+        }
+    }
+
+    // ========== 显示错误/警告标记 ==========
+    if (!result.success) {
+        // 清除所有编辑器的旧标记
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+            if (editor) {
+                editor->clearAllMarkers();
+            }
+        }
+
+        // 收集每个文件的错误和警告
+        QMap<QString, QList<SprintIDE::ErrorMarker>> fileErrors;
+        QMap<QString, QList<SprintIDE::ErrorMarker>> fileWarnings;
+
+        for (const QString& errorLine : result.errors) {
+            ErrorMarker marker = parseErrorLine(errorLine);
+            if (marker.line > 0) {
+                // 查找对应的编辑器
+                for (int i = 0; i < d->editorTabs->count(); ++i) {
+                    TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+                    if (!editor) continue;
+                    if (QFileInfo(editor->filePath()).fileName() == QFileInfo(marker.filePath).fileName()) {
+                        editor->setErrorMarker(marker.filePath, marker.line, marker.column, marker.message);
+                        editor->viewport()->update();
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (const QString& warningLine : result.warnings) {
+            ErrorMarker marker = parseErrorLine(warningLine);
+            if (marker.line > 0) {
+                for (int i = 0; i < d->editorTabs->count(); ++i) {
+                    TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+                    if (!editor) continue;
+                    if (QFileInfo(editor->filePath()).fileName() == QFileInfo(marker.filePath).fileName()) {
+                        editor->setWarningMarker(marker.filePath, marker.line, marker.column, marker.message);
+                        editor->viewport()->update();
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 将标记添加到对应的编辑器
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+            if (!editor) continue;
+
+            QString filePath = editor->filePath();
+            if (fileErrors.contains(filePath)) {
+                for (const SprintIDE::ErrorMarker& marker : fileErrors[filePath]) {
+                    editor->setErrorMarker(marker.filePath, marker.line, marker.column, marker.message);
+                }
+            }
+            if (fileWarnings.contains(filePath)) {
+                for (const SprintIDE::ErrorMarker& marker : fileWarnings[filePath]) {
+                    editor->setWarningMarker(marker.filePath, marker.line, marker.column, marker.message);
+                }
+            }
+        }
+    }
+
+    m_currentCompileTaskId.clear();
+    // 隐藏进度条
+    m_buildProgressBar->setVisible(false);
+    m_buildProgressBar->setValue(0);
+}
+
+void MainWindow::onCompileError(const QString& taskId, const QString& errorMessage)
+{
+    if (taskId != m_currentCompileTaskId) {
+        return;
+    }
+
+    m_isCompiling = false;
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+    QString htmlMessage = QString("<span style='color:#FF3333;font-weight:bold;'>[%1] 编译错误: %2</span>")
+                              .arg(timeStr)
+                              .arg(errorMessage.toHtmlEscaped());
+    d->outputPanel->append(htmlMessage);
+
+    m_statusLabel->setText("编译错误");
+
+    m_currentCompileTaskId.clear();
+}
+
+void MainWindow::onCompilersDetected(const QStringList& compilers)
+{
+    if (compilers.isEmpty()) {
+        return;
+    }
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+    d->outputPanel->append(QString("<span style='color:#3399FF;'>[%1] 检测到的编译器:</span>").arg(timeStr));
+
+    for (const QString& compiler : compilers) {
+        QString info = m_compileManager->getCompilerInfo(compiler);
+        d->outputPanel->append(QString("<span style='color:#CCCCCC;'>  - %1: %2</span>")
+                                   .arg(compiler)
+                                   .arg(info.toHtmlEscaped()));
+    }
+}
+
+// ==================== 程序运行 ====================
+
+void MainWindow::askRunProgram(const QString& executablePath)
+{
+    if (executablePath.isEmpty()) {
+        return;
+    }
+
+    runProgram(executablePath, false);
+}
+
+void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
+{
+    if (!QFile::exists(executablePath)) {
+        QMessageBox::warning(this, "运行错误",
+                             QString("可执行文件不存在:\n%1").arg(executablePath));
+        return;
+    }
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+    d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 正在运行程序...</span>").arg(timeStr));
+
+    if (inTerminal) {
+        QString program;
+        QStringList arguments;
+
+#ifdef Q_OS_WIN
+        program = "cmd.exe";
+        arguments << "/c" << "start" << "cmd" << "/c" << executablePath + " & pause";
+#elif defined(Q_OS_MAC)
+        program = "osascript";
+        arguments << "-e" << QString("tell application \"Terminal\" to do script \"%1\"").arg(executablePath);
+#else
+        program = "xterm";
+        arguments << "-e" << executablePath + "; echo '程序执行完毕，按任意键退出...'; read -n1";
+#endif
+
+        QProcess::startDetached(program, arguments);
+
+    } else {
+        QProcess* process = new QProcess(this);
+        process->setProgram(executablePath);
+        process->setWorkingDirectory(QFileInfo(executablePath).path());
+
+        connect(process, &QProcess::readyReadStandardOutput, [=]() {
+            QString output = QString::fromLocal8Bit(process->readAllStandardOutput());
+            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+            d->outputPanel->append(QString("<span style='color:#CCCCCC;'>[%1] 程序输出: %2</span>")
+                                       .arg(timeStr)
+                                       .arg(output.toHtmlEscaped()));
+        });
+
+        connect(process, &QProcess::readyReadStandardError, [=]() {
+            QString error = QString::fromLocal8Bit(process->readAllStandardError());
+            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+            d->outputPanel->append(QString("<span style='color:#FF9900;'>[%1] 程序错误: %2</span>")
+                                       .arg(timeStr)
+                                       .arg(error.toHtmlEscaped()));
+        });
+
+        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                [=](int exitCode, QProcess::ExitStatus exitStatus) {
+                    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+                    QString message;
+
+                    if (exitStatus == QProcess::NormalExit) {
+                        message = QString("<span style='color:#33CC33;'>[%1] 程序执行完毕，退出码: %2</span>")
+                                      .arg(timeStr)
+                                      .arg(exitCode);
+                    } else {
+                        message = QString("<span style='color:#FF3333;'>[%1] 程序异常退出</span>").arg(timeStr);
+                    }
+
+                    d->outputPanel->append(message);
+                    m_statusLabel->setText("程序执行完成");
+
+                    process->deleteLater();
+                });
+
+        process->start();
+
+        if (!process->waitForStarted(3000)) {
+            QMessageBox::warning(this, "运行错误", "无法启动程序");
+            process->deleteLater();
+        } else {
+            m_statusLabel->setText("程序运行中...");
+        }
+    }
+}
+
+void MainWindow::syncBreakpointsToDebugger()
+{
+    if (!m_debugManager) return;
+
+    // 获取所有打开的文件及其断点
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (!editor) continue;
+
+        QString filePath = editor->filePath();
+        if (filePath.isEmpty()) continue;
+
+        // 获取编辑器中的所有断点（需要 TextEditor 提供接口）
+        // 这里简化处理：通过 DebugManager 的断点列表同步
+        // 因为断点已经在 toggleBreakpoint 时添加到了 DebugManager
+        // 所以只需要确保 DebugManager 中的断点有效
+    }
+
+    // 实际上，断点已经在 toggleBreakpoint 时添加到 DebugManager 了
+    // 编译后重新加载可执行文件时，需要重新同步断点到调试器
+    // 这会在 DebugManager::startDebugging 中调用 syncBreakpoints 完成
+
+    // qDebug() << "断点已同步到调试器";
+}
+
+
+void MainWindow::onLSPDiagnostics(const QString& filePath, const QList<LSPDiagnostic>& diagnostics)
+{
+    qDebug() << "MainWindow: onLSPDiagnostics called, file:" << filePath << "count:" << diagnostics.size();
+    // 查找对应的编辑器
+    TextEditor* editor = findEditorByFilePath(filePath);
+    if (!editor) return;
+
+    // 清除旧的 LSP 标记（不删除编译标记）
+    editor->clearAllMarkers();
+    // 需要 TextEditor 支持区分标记类型
+    for (const LSPDiagnostic& diag : diagnostics) {
+        if (diag.severity == "error") {
+            editor->setErrorMarker(filePath, diag.line, diag.column, diag.message);
+        } else if (diag.severity == "warning") {
+            editor->setWarningMarker(filePath, diag.line, diag.column, diag.message);
+        }
+    }
+}
+
+// ========== 生成 compile_commands.json ==========
+void MainWindow::generateCompileCommands(const QString& projectPath)
+{
+    QDir projectDir(projectPath);
+    QString jsonPath = projectDir.filePath("compile_commands.json");
+
+    // 如果已存在，跳过
+    if (QFile::exists(jsonPath)) {
+        d->outputPanel->append("compile_commands.json 已存在");
+        return;
+    }
+
+    // 查找所有 .cpp 文件（递归）
+    QStringList cppFiles;
+    QDirIterator it(projectPath, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString file = it.next();
+        if (file.endsWith(".cpp") || file.endsWith(".cxx") || file.endsWith(".cc") || file.endsWith(".c")) {
+            cppFiles.append(file);
+        }
+    }
+
+    if (cppFiles.isEmpty()) {
+        d->outputPanel->append("未找到 C++ 源文件，跳过生成 compile_commands.json");
+        return;
+    }
+
+    QJsonArray entries;
+    for (const QString& file : cppFiles) {
+        // 计算相对于项目根目录的路径（用于文件字段）
+        QString relativeFile = QDir(projectPath).relativeFilePath(file);
+
+        // 获取包含目录（可扩展为从项目配置读取）
+        QString includes = "-I" + projectDir.filePath("include") + " -I" + projectDir.filePath(".");
+
+        // 构建编译命令（简单版本）
+        QString command = QString("clang++ -c -std=c++17 -g %1 %2 -o %3.o")
+                              .arg(relativeFile)
+                              .arg(includes)
+                              .arg(relativeFile.left(relativeFile.lastIndexOf('.')));
+
+        QJsonObject entry;
+        entry["directory"] = projectPath;
+        entry["file"] = relativeFile;
+        entry["command"] = command;
+        entries.append(entry);
+    }
+
+    QJsonDocument doc(entries);
+    QFile jsonFile(jsonPath);
+    if (jsonFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        jsonFile.write(doc.toJson());
+        jsonFile.close();
+        d->outputPanel->append(QString("已生成 compile_commands.json，包含 %1 个文件").arg(entries.size()));
+    } else {
+        d->outputPanel->append("生成 compile_commands.json 失败");
+    }
+}
+
+// 辅助方法
+TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
+{
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && editor->filePath() == filePath) {
+            return editor;
+        }
+    }
+    return nullptr;
+}
+// ==================== 调试菜单槽函数 ====================
+
+void MainWindow::onStartDebug()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个文件再开始调试。");
+        return;
+    }
+
+    // 检查是否在编译中
+    if (m_isCompiling) {
+        QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再调试。");
+        return;
+    }
+
+    // 检查是否已经在调试中
+    if (m_isDebugging) {
+        QMessageBox::information(this, "提示", "当前正在调试中，请先停止调试。");
+        return;
+    }
+
+    QString sourceFile = editor->filePath();
+    if (sourceFile.isEmpty()) {
+        QMessageBox::warning(this, "错误", "请先保存文件再开始调试。");
+        return;
+    }
+
+    // 确保文件已保存
+    if (editor->isModified()) {
+        d->outputPanel->append("文件已修改，正在保存...");
+        if (!editor->saveFile()) {
+            QMessageBox::warning(this, "错误", "无法保存文件，调试中止。");
+            return;
+        }
+        // 更新源文件路径（保存后可能变化）
+        sourceFile = editor->filePath();
+    }
+
+    // 查找可执行文件
+    QString executablePath = findExecutableForSource(sourceFile);
+
+    // ========== 核心修改：检查是否需要重新编译 ==========
+    if (needsRecompile(sourceFile, executablePath)) {
+        d->outputPanel->append("检测到代码已修改或可执行文件不存在，正在重新编译...");
+        m_compileForDebug = true;
+
+        // 清除旧的断点（避免行号不匹配）
+        // 但用户可能希望保留断点，这里保留断点，编译后同步
+        // 编译
+        onCompile();
+        // 编译完成后会通过编译完成信号触发调试
+        // 但我们不能在这里等待，需要异步处理
+        // 使用 QTimer 或信号槽
+        return;  // 返回，等待编译完成信号
+    }
+
+    // 同步断点并启动调试
+    syncBreakpointsToDebugger();
+    // 可执行文件存在且是最新的，直接启动调试
+    startDebugging();
+}
+
+void MainWindow::onStopDebug()
+{
+    if (m_isDebugging) {
+        m_debugManager->stopDebugging();
+    }
+}
+
+void MainWindow::onStepOver()
+{
+    if (m_isDebugging) {
+        m_debugManager->stepOver();
+    }
+}
+
+void MainWindow::onStepInto()
+{
+    if (m_isDebugging) {
+        m_debugManager->stepInto();
+    }
+}
+
+void MainWindow::onStepOut()
+{
+    if (m_isDebugging) {
+        m_debugManager->stepOut();
+    }
+}
+
+void MainWindow::onOutputPanelContextMenu(const QPoint& pos)
+{
+    QMenu* menu = new QMenu(this);
+
+    // 复制（如果选中了文本才启用）
+    QAction* copyAction = new QAction("复制", this);
+    copyAction->setShortcut(QKeySequence::Copy);
+    copyAction->setEnabled(d->outputPanel->textCursor().hasSelection());
+    connect(copyAction, &QAction::triggered, d->outputPanel, &QTextEdit::copy);
+    menu->addAction(copyAction);
+
+    menu->addSeparator();
+
+    // 清空
+    QAction* clearAction = new QAction("清空", this);
+    connect(clearAction, &QAction::triggered, this, &MainWindow::clearOutputPanel);
+    menu->addAction(clearAction);
+
+    // 全选
+    menu->addSeparator();
+    QAction* selectAllAction = new QAction("全选", this);
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    connect(selectAllAction, &QAction::triggered, d->outputPanel, &QTextEdit::selectAll);
+    menu->addAction(selectAllAction);
+
+    menu->exec(d->outputPanel->viewport()->mapToGlobal(pos));
+    delete menu;
+}
+
+void MainWindow::clearOutputPanel()
+{
+    d->outputPanel->clear();
+}
+
+void MainWindow::onContinueDebug()
+{
+    if (m_isDebugging) {
+        m_debugManager->continueExecution();
+    }
+}
+
+void MainWindow::onAddBreakpoint()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        return;
+    }
+
+    QString filePath = editor->filePath();
+    if (filePath.isEmpty()) {
+        d->outputPanel->append("请先保存文件后再添加断点");
+        return;
+    }
+
+    int line = editor->currentLine();
+    m_debugManager->toggleBreakpoint(filePath, line);
+}
+
+// ==================== 调试信号处理 ====================
+
+void MainWindow::onDebugStateChanged(DebugState state)
+{
+    switch (state) {
+    case DebugState::Stopped:
+        m_isDebugging = false;
+        if (m_statusLabel) {
+            m_statusLabel->setText("调试已停止");
+        }
+        if (m_bottomTabWidget) {
+            int debugIndex = m_bottomTabWidget->indexOf(m_debugPanel);
+            if (debugIndex >= 0) {
+                m_bottomTabWidget->setTabVisible(debugIndex, false);
+            }
+        }
+        switchToOutputTab();
+        break;
+    case DebugState::Starting:
+        m_isDebugging = true;
+        if (m_statusLabel) {
+            m_statusLabel->setText("正在启动调试...");
+        }
+        if (m_bottomTabWidget) {
+            int debugIndex = m_bottomTabWidget->indexOf(m_debugPanel);
+            if (debugIndex >= 0) {
+                m_bottomTabWidget->setTabVisible(debugIndex, true);
+                m_bottomTabWidget->setCurrentIndex(debugIndex);
+            }
+        }
+        break;
+    case DebugState::Running:
+        m_isDebugging = true;
+        if (m_statusLabel) {
+            m_statusLabel->setText("调试运行中");
+        }
+        break;
+    case DebugState::Paused:
+        m_isDebugging = true;
+        if (m_statusLabel) {
+            m_statusLabel->setText("调试暂停（断点命中）");
+        }
+        switchToDebugTab();
+        break;
+    case DebugState::Stepping:
+        if (m_statusLabel) {
+            m_statusLabel->setText("单步执行中...");
+        }
+        break;
+    case DebugState::Finished:
+        m_isDebugging = false;
+        if (m_statusLabel) {
+            m_statusLabel->setText("程序执行完成");
+        }
+        // 清除高亮
+        if (TextEditor* editor = currentEditor()) {
+            editor->clearCurrentDebugLine();
+        }
+        updateDebugActions();
+        break;
+    case DebugState::Error:
+        m_isDebugging = false;
+        if (m_statusLabel) {
+            m_statusLabel->setText("调试错误");
+        }
+        if (TextEditor* editor = currentEditor()) {
+            editor->clearCurrentDebugLine();
+        }
+        break;
+    }
+
+    updateDebugActions();
+}
+
+void MainWindow::onBreakpointHit(const QString& filePath, int lineNumber)
+{
+    // qDebug() << "=== onBreakpointHit called ===";
+    // qDebug() << "filePath:" << filePath << "lineNumber:" << lineNumber;
+
+    QString absoluteFilePath = resolveDebuggerPath(filePath);
+
+    // d->outputPanel->append(QString("断点命中: %1:%2")
+    //                            .arg(absoluteFilePath)
+    //                            .arg(lineNumber));
+
+    openFile(absoluteFilePath);
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->gotoLine(lineNumber);
+        editor->setCurrentDebugLine(lineNumber);
+        editor->setFocus();
+    }
+
+    updateDebugPanels();
+}
+
+void MainWindow::onProgramStopped(const QString& filePath, int lineNumber, const QString& reason)
+{
+    // qDebug() << "=== onProgramStopped called ===";
+    // qDebug() << "filePath:" << filePath << "lineNumber:" << lineNumber << "reason:" << reason;
+
+    QString absoluteFilePath = resolveDebuggerPath(filePath);
+
+    // d->outputPanel->append(QString("程序停止: %1 (%2:%3)")
+    //                            .arg(reason)
+    //                            .arg(absoluteFilePath)
+    //                            .arg(lineNumber));
+
+    if (!absoluteFilePath.isEmpty() && QFile::exists(absoluteFilePath)) {
+        openFile(absoluteFilePath);
+        TextEditor* editor = currentEditor();
+        if (editor && lineNumber > 0) {
+            editor->gotoLine(lineNumber);
+            editor->setCurrentDebugLine(lineNumber);
+            editor->setFocus();
+        }
+    }
+
+    updateDebugPanels();
+}
+
+void MainWindow::onProgramExited(int exitCode)
+{
+    d->outputPanel->append(QString("程序退出，退出码: %1").arg(exitCode));
+    m_isDebugging = false;
+
+    // 清除高亮
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->clearCurrentDebugLine();
+    }
+
+    updateDebugActions();
+}
+
+void MainWindow::onDebugError(const QString& error)
+{
+    d->outputPanel->append(QString("调试错误: %1").arg(error));
+    m_isDebugging = false;
+    updateDebugActions();
+}
+
+// ==================== 调试控制方法 ====================
+
+bool MainWindow::startDebugging()
+{
+    // qDebug() << "=== startDebugging called ===";
+
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        d->outputPanel->append("请先打开一个文件再开始调试");
+        return false;
+    }
+
+    QString sourceFile = editor->filePath();
+    if (sourceFile.isEmpty()) {
+        d->outputPanel->append("请先保存文件再开始调试");
+        return false;
+    }
+    // qDebug() << "Source file:" << sourceFile;
+
+    if (editor->isModified()) {
+        d->outputPanel->append("文件已修改，正在编译...");
+        onCompile();
+    }
+
+    QString executablePath = findExecutableForSource(sourceFile);
+    // qDebug() << "Executable path:" << executablePath;
+
+    if (executablePath.isEmpty()) {
+        d->outputPanel->append("未找到可执行文件，请等待编译");
+        onCompile();
+        // return false;
+    }
+
+    QFileInfo exeInfo(executablePath);
+    if (!exeInfo.exists()) {
+        d->outputPanel->append("可执行文件不存在: " + executablePath);
+        return false;
+    }
+    if (!exeInfo.isExecutable()) {
+        d->outputPanel->append("文件不可执行: " + executablePath);
+        return false;
+    }
+
+    QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
+    // qDebug() << "Current breakpoints count:" << breakpoints.size();
+    // for (const Breakpoint& bp : breakpoints) {
+        // qDebug() << "  -" << bp.filePath << ":" << bp.lineNumber;
+    // }
+
+    DebugConfig config;
+    config.executablePath = executablePath;
+    config.workingDirectory = QFileInfo(executablePath).absolutePath();
+    config.stopOnEntry = true;
+
+    // qDebug() << "Starting debugger with executable:" << config.executablePath;
+
+    bool success = m_debugManager->startDebugging(config);
+    if (success) {
+        m_isDebugging = true;
+        d->outputPanel->append("调试已启动");
+        updateDebugActions();
+    } else {
+        d->outputPanel->append("启动调试失败");
+    }
+
+    return success;
+}
+
+void MainWindow::stopDebugging()
+{
+    if (m_debugManager && m_isDebugging) {
+        m_debugManager->stopDebugging();
+    }
+}
+
+// ==================== 检查编译文件与当前代码是否相符 ====================
+bool MainWindow::isSourceNewerThanExecutable(const QString& sourceFile, const QString& executablePath)
+{
+    QFileInfo sourceInfo(sourceFile);
+    QFileInfo exeInfo(executablePath);
+
+    if (!sourceInfo.exists()) {
+        qWarning() << "源文件不存在:" << sourceFile;
+        return false;
+    }
+
+    if (!exeInfo.exists()) {
+        // 可执行文件不存在，需要编译
+        return true;
+    }
+
+    // 比较最后修改时间
+    return sourceInfo.lastModified() > exeInfo.lastModified();
+}
+
+bool MainWindow::needsRecompile(const QString& sourceFile, const QString& executablePath)
+{
+    // 可执行文件不存在，需要编译
+    if (executablePath.isEmpty() || !QFile::exists(executablePath)) {
+        return true;
+    }
+
+    // 源文件比可执行文件新，需要重新编译
+    if (isSourceNewerThanExecutable(sourceFile, executablePath)) {
+        return true;
+    }
+
+    return false;
+}
+
+// ==================== 调试辅助方法 ====================
+
+void MainWindow::updateDebugActions()
+{
+    bool isDebugging = m_isDebugging;
+
+    // 更新菜单动作
+    if (m_startDebugAction) {
+        m_startDebugAction->setEnabled(!isDebugging);
+    }
+    if (m_stopDebugAction) {
+        m_stopDebugAction->setEnabled(isDebugging);
+    }
+    if (m_stepOverAction) {
+        m_stepOverAction->setEnabled(isDebugging);
+    }
+    if (m_stepIntoAction) {
+        m_stepIntoAction->setEnabled(isDebugging);
+    }
+    if (m_stepOutAction) {
+        m_stepOutAction->setEnabled(isDebugging);
+    }
+    if (m_continueAction) {
+        m_continueAction->setEnabled(isDebugging);
+    }
+
+    // 更新调试面板状态
+    if (m_debugPanel) {
+        m_debugPanel->setDebuggingState(isDebugging);
+    }
+}
+
+void MainWindow::updateDebugPanels()
+{
+    if (!m_debugPanel) return;
+
+    // 更新调用栈和变量
+    if (!m_callStack.isEmpty()) {
+        m_debugPanel->updateCallStack(m_callStack);
+    }
+    if (!m_localVariables.isEmpty()) {
+        m_debugPanel->updateVariables(m_localVariables);
+    }
+
+    // 同时输出到输出面板（方便查看）
+    if (!m_callStack.isEmpty()) {
+        d->outputPanel->append("=== 调用栈 ===");
+        for (const StackFrame& frame : m_callStack) {
+            d->outputPanel->append(QString("  #%1 %2 at %3:%4")
+                                       .arg(frame.level)
+                                       .arg(frame.functionName)
+                                       .arg(frame.filePath)
+                                       .arg(frame.lineNumber));
+        }
+    }
+
+    if (!m_localVariables.isEmpty()) {
+        d->outputPanel->append("=== 局部变量 ===");
+        for (const DebugVariable& var : m_localVariables) {
+            d->outputPanel->append(QString("  %1 (%2) = %3")
+                                       .arg(var.name)
+                                       .arg(var.type)
+                                       .arg(var.value));
+        }
+    }
+}
+
+void MainWindow::switchToDebugTab()
+{
+    if (m_bottomTabWidget && m_debugPanel) {
+        int debugIndex = m_bottomTabWidget->indexOf(m_debugPanel);
+        if (debugIndex >= 0) {
+            m_bottomTabWidget->setCurrentIndex(debugIndex);
+        }
+    }
+}
+
+void MainWindow::switchToOutputTab()
+{
+    if (m_bottomTabWidget && d->outputPanel) {
+        int index = m_bottomTabWidget->indexOf(d->outputPanel);
+        if (index >= 0) {
+            m_bottomTabWidget->setCurrentIndex(index);
+        }
+    }
+}
+
+void MainWindow::switchToTerminalTab()
+{
+    if (m_bottomTabWidget && m_terminalPanel) {
+        int terminalIndex = m_bottomTabWidget->indexOf(m_terminalPanel);
+        if (terminalIndex >= 0) {
+            m_bottomTabWidget->setCurrentIndex(terminalIndex);
+        }
+    }
+}
+
+void MainWindow::showFileHistoryDialog(const QString &filePath)
+{
+    if (!m_localHistory || filePath.isEmpty()) {
+        return;
+    }
+
+    // 获取历史版本列表
+    QList<HistoryVersion> versions = m_localHistory->getVersions(filePath);
+    if (versions.isEmpty()) {
+        QMessageBox::information(this, "本地历史",
+                                 "该文件没有历史记录。\n"
+                                 "保存文件时会自动创建历史版本。");
+        return;
+    }
+
+    // 创建对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle(QString("本地历史 - %1").arg(QFileInfo(filePath).fileName()));
+    dialog.setMinimumSize(600, 400);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+    // 说明标签
+    QLabel *infoLabel = new QLabel(
+        QString("文件: %1\n共 %2 个历史版本，双击恢复")
+            .arg(filePath)
+            .arg(versions.size())
+        );
+    infoLabel->setWordWrap(true);
+    layout->addWidget(infoLabel);
+
+    // 版本列表
+    QListWidget *listWidget = new QListWidget(&dialog);
+    listWidget->setAlternatingRowColors(true);
+
+    // 按版本号从高到低显示（最新的在前）
+    for (int i = versions.size() - 1; i >= 0; --i) {
+        const HistoryVersion &v = versions[i];
+        QString displayText = QString("v%1  %2  %3  %4")
+                                  .arg(v.version)
+                                  .arg(v.displayTime())
+                                  .arg(v.displaySize())
+                                  .arg(v.comment);
+        QListWidgetItem *item = new QListWidgetItem(displayText, listWidget);
+        item->setData(Qt::UserRole, v.version);
+    }
+
+    layout->addWidget(listWidget);
+
+    // 按钮区域
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    QPushButton *restoreButton = new QPushButton("恢复到选中版本", &dialog);
+    QPushButton *closeButton = new QPushButton("关闭", &dialog);
+    buttonLayout->addWidget(restoreButton);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(closeButton);
+    layout->addLayout(buttonLayout);
+
+    // 连接信号
+    connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+
+    connect(restoreButton, &QPushButton::clicked, this, [&]() {
+        QListWidgetItem *item = listWidget->currentItem();
+        if (!item) {
+            QMessageBox::information(&dialog, "提示", "请先选择一个版本");
+            return;
+        }
+
+        int version = item->data(Qt::UserRole).toInt();
+        QString content = m_localHistory->restoreVersion(filePath, version);
+        if (content.isNull()) {
+            QMessageBox::warning(&dialog, "恢复失败", "无法读取版本内容");
+            return;
+        }
+
+        // 找到对应的编辑器并恢复内容
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            TextEditor *editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+            if (editor && editor->filePath() == filePath) {
+                editor->setPlainText(content);
+                editor->document()->setModified(true);
+                QMessageBox::information(&dialog, "恢复成功",
+                                         QString("已恢复到版本 %1").arg(version));
+                dialog.accept();
+                return;
+            }
+        }
+
+        // 如果文件未打开，直接写入文件
+        QFile file(filePath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream stream(&file);
+            stream << content;
+            file.close();
+            openFile(filePath);
+            QMessageBox::information(&dialog, "恢复成功",
+                                     QString("已恢复到版本 %1").arg(version));
+            dialog.accept();
+        } else {
+            QMessageBox::warning(&dialog, "恢复失败", "无法写入文件");
+        }
+    });
+
+    // 双击列表项恢复
+    connect(listWidget, &QListWidget::itemDoubleClicked, this, [&](QListWidgetItem *item) {
+        restoreButton->click();
+    });
+
+    dialog.exec();
+}
+
+// mainwindow.cpp - 实现
+QString MainWindow::resolveDebuggerPath(const QString& filePath)
+{
+    if (filePath.isEmpty()) {
+        return filePath;
+    }
+
+    // 如果是绝对路径，直接返回
+    if (QFileInfo(filePath).isAbsolute() && QFile::exists(filePath)) {
+        return filePath;
+    }
+
+    // 尝试从项目路径解析
+    if (!d->currentProjectPath.isEmpty()) {
+        QStringList possiblePaths = {
+            d->currentProjectPath + "/src/" + filePath,
+            d->currentProjectPath + "/" + filePath,
+            d->currentProjectPath + "/../" + filePath
+        };
+        if (filePath.contains("src/") || filePath.startsWith("src/")) {
+            possiblePaths.prepend(d->currentProjectPath + "/" + filePath);
+        }
+        for (const QString& path : possiblePaths) {
+            if (QFile::exists(path)) {
+                return path;
+            }
+        }
+    }
+
+    // 检查当前编辑器
+    TextEditor* editor = currentEditor();
+    if (editor && !editor->filePath().isEmpty()) {
+        QString currentFile = editor->filePath();
+        if (QFileInfo(currentFile).fileName() == QFileInfo(filePath).fileName()) {
+            return currentFile;
+        }
+    }
+
+    // 返回原路径（尝试打开时也会失败，但至少不会崩溃）
+    return filePath;
+}
+
+// ==================== 菜单槽函数实现 ====================
+
+void MainWindow::onNewFile()
+{
+    // 1. 获取目标目录（优先使用项目面板中选中的目录）
+    QString targetDir;
+    if (d->projectPanel) {
+        QString selectedPath = d->projectPanel->selectedFilePath();
+        if (!selectedPath.isEmpty()) {
+            QFileInfo info(selectedPath);
+            if (info.isDir()) {
+                targetDir = selectedPath;          // 选中文件夹
+            } else {
+                targetDir = info.absolutePath();   // 选中文件，取其父目录
+            }
+        }
+    }
+
+    // 2. 如果项目面板没有选中项，回退到项目根目录或当前目录
+    if (targetDir.isEmpty()) {
+        if (!d->currentProjectPath.isEmpty()) {
+            targetDir = d->currentProjectPath;
+        } else {
+            targetDir = QDir::currentPath();
+        }
+    }
+
+    // 3. 调用现有的创建函数，传入目标目录
+    //    createNewFileWithName 会弹出输入框让用户输入文件名
+    //    默认文件名 "main.cpp"，标题 "新建文件"
+    createNewFileWithName("new_file.cpp", "新建文件", targetDir);
+}
+
+void MainWindow::onOpenFile()
+{
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "打开文件",
+        "",
+        "C++ 文件 (*.cpp *.h *.hpp *.c *.cc);;所有文件 (*.*)"
+        );
+
+    if (!fileName.isEmpty()) {
+        openFile(fileName);
+    }
+}
+
+void MainWindow::onSaveFile()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        if (editor->saveFile()) {
+            // d->outputPanel->append(QString("已保存: %1").arg(editor->filePath()));
+        } else {
+            QMessageBox::warning(this, "保存错误", "无法保存文件。");
+        }
+    } else {
+        QMessageBox::information(this, "提示", "没有打开的文件可以保存。");
+    }
+}
+
+void MainWindow::onSaveAs()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        QString fileName = QFileDialog::getSaveFileName(
+            this,
+            "另存为",
+            editor->filePath().isEmpty() ? "" : editor->filePath(),
+            "C++ 文件 (*.cpp *.h *.hpp);;所有文件 (*.*)"
+            );
+
+        if (!fileName.isEmpty()) {
+            if (editor->saveAs(fileName)) {
+                d->outputPanel->append(QString("已另存为: %1").arg(fileName));
+                updateTabTitle(d->editorTabs->currentIndex(), editor->fileName());
+            }
+        }
+    } else {
+        QMessageBox::information(this, "提示", "没有打开的文件可以另存。");
+    }
+}
+
+void MainWindow::onCloseFile()
+{
+    int index = d->editorTabs->currentIndex();
+    if (index >= 0) {
+        closeEditorTab(index);
+    }
+}
+
+void MainWindow::onExit()
+{
+    close();
+}
+
+void MainWindow::onUndo()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->undo();
+    }
+}
+
+void MainWindow::onRedo()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->redo();
+    }
+}
+
+void MainWindow::onCut()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->cut();
+    }
+}
+
+void MainWindow::onCopy()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->copy();
+    }
+}
+
+void MainWindow::onPaste()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->paste();
+    }
+}
+
+
+
+// ==================== 查找/替换槽函数 ====================
+// 取消使用FindDialog查找/替换，使用TextEdit中的内联查找和替换
+// void MainWindow::onFind()
+// {
+//     TextEditor* editor = currentEditor();
+//     if (!editor) {
+//         QMessageBox::information(this, "提示", "请先打开一个文件进行查找。");
+//         return;
+//     }
+
+//     if (!m_findDialog) {
+//         m_findDialog = new FindDialog(editor, this);  // editor 是 TextEditor*，可转换为 QPlainTextEdit*
+//         connect(m_findDialog, &FindDialog::findNext,
+//                 this, &MainWindow::onFindNext);
+//         connect(m_findDialog, &FindDialog::findPrevious,
+//                 this, &MainWindow::onFindPrevious);
+//     }
+
+//     // 如果有选中的文本，自动填入查找框
+//     if (editor->textCursor().hasSelection()) {
+//         QString selected = editor->textCursor().selectedText();
+//         QLineEdit* findEdit = m_findDialog->findChild<QLineEdit*>();
+//         if (findEdit) {
+//             findEdit->setText(selected);
+//         }
+//     }
+
+//     m_findDialog->show();
+//     m_findDialog->raise();
+//     m_findDialog->activateWindow();
+// }
+
+// void MainWindow::onReplace()
+// {
+//     TextEditor* editor = currentEditor();
+//     if (!editor) {
+//         QMessageBox::information(this, "提示", "请先打开一个文件进行替换。");
+//         return;
+//     }
+
+//     if (!m_replaceDialog) {
+//         m_replaceDialog = new ReplaceDialog(editor, this);
+//         connect(m_replaceDialog, &ReplaceDialog::findNext,
+//                 this, &MainWindow::onFindNext);
+//         connect(m_replaceDialog, &ReplaceDialog::replaceCurrent,
+//                 this, &MainWindow::onReplaceCurrent);
+//         connect(m_replaceDialog, &ReplaceDialog::replaceAll,
+//                 this, &MainWindow::onReplaceAll);
+//     }
+
+//     // 如果有选中的文本，自动填入查找框
+//     if (editor->textCursor().hasSelection()) {
+//         QString selected = editor->textCursor().selectedText();
+//         QLineEdit* findEdit = m_replaceDialog->findChild<QLineEdit*>();
+//         if (findEdit) {
+//             findEdit->setText(selected);
+//         }
+//     }
+
+//     m_replaceDialog->show();
+//     m_replaceDialog->raise();
+//     m_replaceDialog->activateWindow();
+// }
+
+// ========== 查找 ==========
+void MainWindow::onFind()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个文件进行查找。");
+        return;
+    }
+
+    // 使用内联查找栏
+    editor->showFindBar();
+}
+
+// ========== 替换 ==========
+void MainWindow::onReplace()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个文件进行替换。");
+        return;
+    }
+
+    // 使用内联查找栏 + 自动展开替换模式
+    editor->showFindBarWithReplace();
+}
+
+void MainWindow::onFindNext(const QString& text, bool caseSensitive, bool wholeWord)
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    QTextDocument* doc = editor->document();
+    QTextCursor cursor = editor->textCursor();
+
+    QTextDocument::FindFlags flags;
+    if (caseSensitive) flags |= QTextDocument::FindCaseSensitively;
+    if (wholeWord) flags |= QTextDocument::FindWholeWords;
+
+    QTextCursor found = doc->find(text, cursor, flags);
+    if (found.isNull()) {
+        // 从头开始找
+        cursor.movePosition(QTextCursor::Start);
+        found = doc->find(text, cursor, flags);
+        if (found.isNull()) {
+            m_statusLabel->setText("未找到 \"" + text + "\"");
+            return;
+        }
+    }
+
+    editor->setTextCursor(found);
+    m_lastFindCursor = found;
+    m_statusLabel->setText("找到 \"" + text + "\"");
+}
+
+void MainWindow::onFindPrevious(const QString& text, bool caseSensitive, bool wholeWord)
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    QTextDocument* doc = editor->document();
+    QTextCursor cursor = editor->textCursor();
+
+    QTextDocument::FindFlags flags;
+    flags |= QTextDocument::FindBackward;
+    if (caseSensitive) flags |= QTextDocument::FindCaseSensitively;
+    if (wholeWord) flags |= QTextDocument::FindWholeWords;
+
+    QTextCursor found = doc->find(text, cursor, flags);
+    if (found.isNull()) {
+        cursor.movePosition(QTextCursor::End);
+        found = doc->find(text, cursor, flags);
+        if (found.isNull()) {
+            m_statusLabel->setText("未找到 \"" + text + "\"");
+            return;
+        }
+    }
+
+    editor->setTextCursor(found);
+    m_lastFindCursor = found;
+    m_statusLabel->setText("找到 \"" + text + "\"");
+}
+
+void MainWindow::onReplaceCurrent(const QString& findText, const QString& replaceText,
+                                  bool caseSensitive, bool wholeWord)
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    QTextCursor cursor = editor->textCursor();
+
+    if (cursor.hasSelection()) {
+        QString selected = cursor.selectedText();
+        if (selected == findText ||
+            (caseSensitive ? selected == findText : selected.toLower() == findText.toLower())) {
+            cursor.insertText(replaceText);
+            cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, replaceText.length());
+            editor->setTextCursor(cursor);
+        }
+    }
+
+    // 自动查找下一个
+    onFindNext(findText, caseSensitive, wholeWord);
+}
+
+void MainWindow::onReplaceAll(const QString& findText, const QString& replaceText,
+                              bool caseSensitive, bool wholeWord)
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    QTextDocument* doc = editor->document();
+    QTextCursor cursor(doc);
+
+    QTextDocument::FindFlags flags;
+    if (caseSensitive) flags |= QTextDocument::FindCaseSensitively;
+    if (wholeWord) flags |= QTextDocument::FindWholeWords;
+
+    int count = 0;
+    cursor.movePosition(QTextCursor::Start);
+
+    while (true) {
+        QTextCursor found = doc->find(findText, cursor, flags);
+        if (found.isNull()) break;
+        found.insertText(replaceText);
+        count++;
+        cursor = found;
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, replaceText.length());
+    }
+
+    m_statusLabel->setText(QString("替换完成，共替换 %1 处").arg(count));
+    d->outputPanel->append(QString("替换完成，共替换 %1 处").arg(count));
+}
+
+void MainWindow::onComment()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        editor->commentSelection();
+    }
+}
+
+void MainWindow::onGotoLine()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        bool ok;
+        int line = QInputDialog::getInt(
+            this,
+            "跳转到行",
+            "请输入行号:", 1, 1, editor->lineCount(), 1, &ok
+            );
+
+        if (ok) {
+            editor->gotoLine(line);
+        }
+    } else {
+        QMessageBox::information(this, "提示", "请先打开一个文件进行跳转。");
+    }
+}
+
+void MainWindow::onFormatCode()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个文件进行格式化。");
+        return;
+    }
+
+    QString sourceCode = editor->toPlainText();
+    if (sourceCode.isEmpty()) {
+        d->outputPanel->append("代码为空，无需格式化。");
+        return;
+    }
+
+    QTemporaryFile tempFile;
+    tempFile.setAutoRemove(false);
+    if (!tempFile.open()) {
+        QMessageBox::warning(this, "错误", "无法创建临时文件。");
+        return;
+    }
+
+    QString tempFileName = tempFile.fileName();
+    QTextStream out(&tempFile);
+    out << sourceCode;
+    tempFile.close();
+
+    QString clangFormatPath = findClangFormat();
+    if (clangFormatPath.isEmpty()) {
+        QMessageBox::warning(this, "错误", "未找到Clang Format工具，请确保已安装。");
+        QFile::remove(tempFileName);
+        return;
+    }
+
+    QStringList args;
+    args << "-style=Google" << tempFileName;
+
+    QProcess process;
+    process.setProgram(clangFormatPath);
+    process.setArguments(args);
+
+    process.start();
+    if (!process.waitForFinished(5000)) {
+        QMessageBox::warning(this, "错误", "Clang Format执行超时。");
+        QFile::remove(tempFileName);
+        return;
+    }
+
+    QString formattedCode = QString::fromLocal8Bit(process.readAllStandardOutput());
+    QString errorOutput = QString::fromLocal8Bit(process.readAllStandardError());
+
+    QFile::remove(tempFileName);
+
+    if (!errorOutput.isEmpty()) {
+        d->outputPanel->append(QString("Clang Format错误: %1").arg(errorOutput));
+        return;
+    }
+
+    if (!formattedCode.isEmpty()) {
+        editor->setPlainText(formattedCode);
+        d->outputPanel->append("代码格式化完成。");
+    } else {
+        d->outputPanel->append("格式化后代码为空，可能是输入代码有问题。");
+    }
+}
+
+void MainWindow::loadProjectFiles(const QString& projectPath)
+{
+    qDebug() << "MainWindow::loadProjectFiles called with path:" << projectPath;
+    QDir projectDir(projectPath);
+    if (!projectDir.exists()) {
+        QMessageBox::warning(this, "错误", "项目路径不存在");
+        return;
+    }
+
+    QStringList filters;
+    filters << "*.cpp" << "*.h" << "*.hpp" << "*.c";
+    projectDir.setNameFilters(filters);
+    QStringList sourceFiles = projectDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+
+    QStack<QString> directories;
+    directories.push(projectPath);
+
+    while (!directories.empty()) {
+        QString currentDir = directories.pop();
+        QDir dir(currentDir);
+
+        QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& subdir : subdirs) {
+            directories.push(dir.absoluteFilePath(subdir));
+        }
+
+        dir.setNameFilters(filters);
+        QStringList files = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+        for (const QString& file : files) {
+            sourceFiles.append(dir.absoluteFilePath(file));
+        }
+    }
+
+    for (const QString& fileName : sourceFiles) {
+        QString filePath = projectDir.absoluteFilePath(fileName);
+        openFile(filePath);
+    }
+
+    if (m_terminalPanel) {
+        m_terminalPanel->setWorkingDirectory(projectPath);
+    }
+
+    d->projectPanel->openProject(projectPath);
+    generateCompileCommands(projectPath);
+}
+
+void MainWindow::onNewProject()
+{
+    ProjectCreationDialog dialog(this);
+
+    QString defaultPath;
+    if (!d->currentProjectPath.isEmpty()) {
+        QFileInfo projectInfo(d->currentProjectPath);
+        defaultPath = projectInfo.dir().absolutePath();
+    } else {
+        defaultPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    }
+
+    dialog.setDefaultProjectPath(defaultPath);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        ProjectCreationResult result = dialog.getResult();
+
+        if (result.success) {
+            qDebug() << "onNewProject: calling openProject with:" << result.projectPath;
+            d->currentProjectPath = result.projectPath;
+            openProject(result.projectPath);
+
+            ProjectConfig projectConfig = dialog.getProjectConfig();
+
+            d->outputPanel->append("==========================================");
+            d->outputPanel->append("项目创建成功！");
+            d->outputPanel->append(QString("项目名称: %1").arg(result.displayName));
+            d->outputPanel->append(QString("项目类型: %1").arg(getProjectTypeString(result.projectType)));
+            d->outputPanel->append(QString("项目路径: %1").arg(result.projectPath));
+            d->outputPanel->append("==========================================");
+
+            m_statusLabel->setText(QString("已创建项目: %1").arg(result.displayName));
+
+            if (!result.createdFiles.isEmpty()) {
+                QString firstCppFile;
+                for (const QString& file : result.createdFiles) {
+                    if (file.endsWith(".cpp", Qt::CaseInsensitive)) {
+                        firstCppFile = file;
+                        break;
+                    }
+                }
+
+                if (!firstCppFile.isEmpty()) {
+                    openFile(firstCppFile);
+                }
+            }
+
+            d->projectPanel->openProject(result.projectPath);
+
+            if (m_terminalPanel) {
+                m_terminalPanel->setWorkingDirectory(result.projectPath);
+            }
+
+        } else {
+            QMessageBox::critical(this, "项目创建失败",
+                                  QString("无法创建项目:\n%1").arg(result.errorMessage));
+        }
+    }
+
+
+}
+
+QString MainWindow::getProjectTypeString(ProjectType type) const
+{
+    switch (type) {
+    case ProjectType::ConsoleApp:
+        return "控制台应用程序";
+    case ProjectType::SimpleGame:
+        return "简单游戏";
+    case ProjectType::GuiApp:
+        return "图形界面程序";
+    case ProjectType::EmptyProject:
+        return "空白项目";
+    default:
+        return "未知类型";
+    }
+}
+
+void MainWindow::onOpenProject()
+{
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "打开项目",
+        "",
+        "SprintIDE 项目文件 (*.lightcppproj);;所有文件 (*.*)"
+        );
+
+    if (!fileName.isEmpty()) {
+        qDebug() << "onOpenProject: calling openProject with:" << fileName;
+        openProject(fileName);
+    }
+}
+
+void MainWindow::onCloseProject()
+{
+    closeProject();
+}
+
+void MainWindow::onBuildProject()
+{
+    // 检查项目面板是否已初始化
+    if (!d->projectPanel) {
+        d->outputPanel->append("项目面板未初始化");
+        return;
+    }
+
+    // 检查是否有打开的项目
+    if (d->currentProjectPath.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先打开一个项目。");
+        return;
+    }
+
+    // 加载项目配置
+    ProjectConfig projectConfig;
+    QString configFile = d->currentProjectPath + "/.lightcppproj";
+    QStringList errors;
+    if (!projectConfig.loadFromFile(configFile, errors)) {
+        QString errorMessage = QString("无法加载项目配置文件:\n%1\n\n错误详情:\n%2")
+                                   .arg(configFile)
+                                   .arg(errors.join("\n"));
+        QMessageBox::warning(this, "项目错误", errorMessage);
+        return;
+    }
+
+    // 4. 启动编译
+    QString taskId = m_compileManager->compileProject(projectConfig);
+
+    if (taskId.isEmpty()) {
+        QMessageBox::warning(this, "编译错误", "无法启动项目编译任务。");
+        return;
+    }
+
+    d->outputPanel->append("开始编译项目: " + projectConfig.projectName());
+}
+
+void MainWindow::onCleanBuild()
+{
+    if (d->currentProjectPath.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先打开一个项目。");
+        return;
+    }
+
+    int reply = QMessageBox::question(this, "清理构建",
+                                      "确定要清理编译产物吗？\n这将删除所有生成的文件。",
+                                      QMessageBox::Yes | QMessageBox::No,
+                                      QMessageBox::No);
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    // 读取项目配置，获取输出目录
+    ProjectConfig projectConfig;
+    QString configFile = d->currentProjectPath + "/.lightcppproj";
+    QStringList errors;
+    QString outputDir = "bin";  // 默认
+
+    if (projectConfig.loadFromFile(configFile, errors)) {
+        outputDir = projectConfig.outputPath();
+    } else {
+        d->outputPanel->append("无法加载项目配置，使用默认输出目录: bin");
+    }
+
+    bool success = m_compileManager->cleanBuild(d->currentProjectPath, outputDir);
+
+    if (success) {
+        d->outputPanel->append("清理构建完成");
+        m_statusLabel->setText("清理构建完成");
+    } else {
+        d->outputPanel->append("清理构建失败或无文件可清理");
+    }
+}
+
+void MainWindow::onCompile()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个C++文件进行编译。");
+        return;
+    }
+
+    QString sourceFile = editor->filePath();
+    if (sourceFile.isEmpty()) {
+        if (editor->isModified()) {
+            if (!editor->saveFile()) {
+                QMessageBox::warning(this, "文件未保存", "请先保存文件再进行编译。");
+                return;
+            }
+            sourceFile = editor->filePath();
+        }
+
+        if (sourceFile.isEmpty()) {
+            onSaveAs();
+            sourceFile = editor->filePath();
+
+            if (sourceFile.isEmpty()) {
+                QMessageBox::warning(this, "编译错误", "请先保存文件再进行编译。");
+                return;
+            }
+        }
+    }
+
+    QFileInfo fileInfo(sourceFile);
+    QString suffix = fileInfo.suffix().toLower();
+    if (suffix != "cpp" && suffix != "cxx" && suffix != "cc" && suffix != "c") {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this, "确认编译",
+            QString("文件 '%1' 不是标准的C++源文件(.cpp/.cxx/.cc/.c)。\n是否继续编译？")
+                .arg(fileInfo.fileName()),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    if (editor->isModified()) {
+        if (!editor->saveFile()) {
+            QMessageBox::warning(this, "保存错误", "无法保存文件，编译中止。");
+            return;
+        }
+    }
+
+    m_currentCompileTaskId = m_compileManager->compileSingleFile(sourceFile);
+
+    if (m_currentCompileTaskId.isEmpty()) {
+        QMessageBox::warning(this, "编译错误", "无法启动编译任务。");
+    }
+}
+
+void MainWindow::onRun()
+{
+    TextEditor* editor = currentEditor();
+    if (!editor) {
+        QMessageBox::information(this, "提示", "请先打开一个C++文件进行运行。");
+        return;
+    }
+
+    QString sourceFile = editor->filePath();
+    if (sourceFile.isEmpty()) {
+        QMessageBox::warning(this, "运行错误", "请先保存文件再进行运行。");
+        return;
+    }
+
+    if (m_isCompiling) {
+        QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再运行。");
+        return;
+    }
+
+    QString executablePath = findExecutableForSource(sourceFile);
+
+    if (executablePath.isEmpty() || !QFile::exists(executablePath)) {
+        int reply = QMessageBox::question(this, "编译并运行",
+                                          "文件尚未编译，是否现在编译并运行?",
+                                          QMessageBox::Yes | QMessageBox::No);
+
+        if (reply == QMessageBox::Yes) {
+            onCompile();
+            return;
+        } else {
+            return;
+        }
+    } else {
+        // askRunProgram(executablePath);
+        runProgram(executablePath, false);
+    }
+}
+
+QString MainWindow::findExecutableForSource(const QString& sourceFile)
+{
+    QFileInfo sourceInfo(sourceFile);
+    QString baseName = sourceInfo.completeBaseName();
+    QString sourceDir = sourceInfo.absolutePath();
+
+    QStringList possibleDirs = {
+        sourceDir + "/bin",
+        sourceDir + "/build",
+        sourceDir,
+        QDir::currentPath() + "/bin",
+        QDir::currentPath()
+    };
+
+    QStringList possibleNames;
+#ifdef Q_OS_WIN
+    possibleNames << baseName + ".exe" << "a.exe";
+#else
+    possibleNames << baseName << "a.out" << "a";
+#endif
+
+    for (const QString& dir : possibleDirs) {
+        QDir searchDir(dir);
+        if (searchDir.exists()) {
+            for (const QString& name : possibleNames) {
+                QString filePath = searchDir.absoluteFilePath(name);
+                if (QFile::exists(filePath)) {
+                    QFileInfo exeInfo(filePath);
+                    if (exeInfo.isExecutable() ||
+                        (name.endsWith(".exe") && exeInfo.isFile())) {
+                        return filePath;
+                    }
+                }
+            }
+        }
+    }
+
+    return QString();
+}
+
+QString MainWindow::findClangFormat()
+{
+    QStringList possibleNames = {"clang-format", "clang-format.exe", "clang-format-17", "clang-format-16", "clang-format-15", "clang-format-14", "clang-format-13", "clang-format-12", "clang-format-11", "clang-format-10"};
+
+    QStringList possiblePaths = {
+        "",
+        "/usr/bin",
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+        "C:/Program Files/LLVM/bin",
+        "C:/Program Files (x86)/LLVM/bin",
+        "C:/MinGW/bin",
+        "C:/MinGW64/bin",
+        "C:/cygwin64/bin"
+    };
+
+    for (const QString& path : possiblePaths) {
+        for (const QString& name : possibleNames) {
+            QString fullPath;
+            if (path.isEmpty()) {
+                fullPath = name;
+            } else {
+                fullPath = path + "/" + name;
+            }
+
+            if (QFile::exists(fullPath) && QFileInfo(fullPath).isExecutable()) {
+                return fullPath;
+            }
+        }
+    }
+
+    QString pathEnv = qgetenv("PATH");
+    QStringList pathEntries = pathEnv.split(QDir::listSeparator());
+    for (const QString& path : pathEntries) {
+        for (const QString& name : possibleNames) {
+            QString fullPath = path + "/" + name;
+            if (QFile::exists(fullPath) && QFileInfo(fullPath).isExecutable()) {
+                return fullPath;
+            }
+        }
+    }
+
+    return QString();
+}
+
+QString MainWindow::findDebugger()
+{
+    QStringList possibleNames = {"gdb", "lldb", "gdb.exe", "lldb.exe"};
+
+    QStringList possiblePaths = {
+        "",
+        "/usr/bin",
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+        "C:/MinGW/bin",
+        "C:/Program Files/LLVM/bin"
+    };
+
+    for (const QString& path : possiblePaths) {
+        for (const QString& name : possibleNames) {
+            QString fullPath;
+            if (path.isEmpty()) {
+                fullPath = name;
+            } else {
+                fullPath = path + "/" + name;
+            }
+
+            if (QFile::exists(fullPath) && QFileInfo(fullPath).isExecutable()) {
+                return fullPath;
+            }
+        }
+    }
+
+    return QString();
+}
+
+void MainWindow::onCompileSettings()
+{
+    if (!m_compileManager) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle("编译配置");
+    dialog.setMinimumSize(500, 400);
+
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+    QGroupBox* compilerGroup = new QGroupBox("编译器设置", &dialog);
+    QFormLayout* compilerLayout = new QFormLayout(compilerGroup);
+
+    QComboBox* compilerTypeCombo = new QComboBox(&dialog);
+    compilerTypeCombo->addItem("自动检测", static_cast<int>(CompilerType::AutoDetect));
+    compilerTypeCombo->addItem("GCC", static_cast<int>(CompilerType::GCC));
+    compilerTypeCombo->addItem("Clang", static_cast<int>(CompilerType::Clang));
+    compilerTypeCombo->addItem("MSVC", static_cast<int>(CompilerType::MSVC));
+    compilerTypeCombo->addItem("MinGW", static_cast<int>(CompilerType::MinGW));
+
+    QLineEdit* compilerPathEdit = new QLineEdit(&dialog);
+    QPushButton* browseButton = new QPushButton("浏览...", &dialog);
+
+    QHBoxLayout* pathLayout = new QHBoxLayout();
+    pathLayout->addWidget(compilerPathEdit);
+    pathLayout->addWidget(browseButton);
+
+    compilerLayout->addRow("编译器类型:", compilerTypeCombo);
+    compilerLayout->addRow("编译器路径:", pathLayout);
+
+    QGroupBox* standardGroup = new QGroupBox("C++标准", &dialog);
+    QVBoxLayout* standardLayout = new QVBoxLayout(standardGroup);
+
+    QComboBox* cppStandardCombo = new QComboBox(&dialog);
+    cppStandardCombo->addItems({"C++11", "C++14", "C++17", "C++20", "C++23"});
+    cppStandardCombo->setCurrentText("C++17");
+
+    standardLayout->addWidget(cppStandardCombo);
+
+    QGroupBox* optimizationGroup = new QGroupBox("优化选项", &dialog);
+    QVBoxLayout* optimizationLayout = new QVBoxLayout(optimizationGroup);
+
+    QCheckBox* debugInfoCheck = new QCheckBox("包含调试信息 (-g)", &dialog);
+    debugInfoCheck->setChecked(true);
+
+    QCheckBox* warningsCheck = new QCheckBox("启用所有警告 (-Wall -Wextra)", &dialog);
+    warningsCheck->setChecked(true);
+
+    QCheckBox* warningsAsErrorsCheck = new QCheckBox("将警告视为错误 (-Werror)", &dialog);
+
+    optimizationLayout->addWidget(debugInfoCheck);
+    optimizationLayout->addWidget(warningsCheck);
+    optimizationLayout->addWidget(warningsAsErrorsCheck);
+
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                                           QDialogButtonBox::Cancel,
+                                                       Qt::Horizontal, &dialog);
+
+    layout->addWidget(compilerGroup);
+    layout->addWidget(standardGroup);
+    layout->addWidget(optimizationGroup);
+    layout->addWidget(buttonBox);
+
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(browseButton, &QPushButton::clicked, [=, this]() {
+        QString path = QFileDialog::getOpenFileName(this, "选择编译器");
+        if (!path.isEmpty()) {
+            compilerPathEdit->setText(path);
+        }
+    });
+
+    if (dialog.exec() == QDialog::Accepted) {
+        CompilerType selectedType = static_cast<CompilerType>(
+            compilerTypeCombo->currentData().toInt());
+        QString compilerPath = compilerPathEdit->text();
+
+        bool success = m_compileManager->setDefaultCompiler(selectedType, compilerPath);
+
+        QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+        if (success) {
+            d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 编译配置已更新</span>").arg(timeStr));
+            m_statusLabel->setText("编译配置已保存");
+        } else {
+            d->outputPanel->append(QString("<span style='color:#FF3333;'>[%1] 编译配置更新失败</span>").arg(timeStr));
+        }
+    }
+}
+
+void MainWindow::onZoomIn()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        QFont font = editor->font();
+        int newSize = font.pointSize() + 1;
+        if (newSize <= 24) {
+            font.setPointSize(newSize);
+            editor->setEditorFont(font);
+        }
+    }
+}
+
+void MainWindow::onZoomOut()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        QFont font = editor->font();
+        int newSize = font.pointSize() - 1;
+        if (newSize >= 8) {
+            font.setPointSize(newSize);
+            editor->setEditorFont(font);
+        }
+    }
+}
+
+void MainWindow::onZoomReset()
+{
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        QFont font("Consolas", 12);
+        editor->setEditorFont(font);
+    }
+}
+
+void MainWindow::onSettings()
+{
+    d->outputPanel->append("打开设置对话框...");
+}
+
+void MainWindow::onQuickStart()
+{
+    QMessageBox::information(this, "快速开始指南",
+                             "SprintIDE 快速开始：\n"
+                             "1. 新建或打开C++文件\n"
+                             "2. 编写代码\n"
+                             "3. 保存文件\n"
+                             "4. 编译运行");
+}
+
+void MainWindow::onDocumentation()
+{
+    d->outputPanel->append("打开使用文档...");
+}
+
+void MainWindow::onAbout()
+{
+    QMessageBox::about(this, "关于 SprintIDE",
+                       "SprintIDE v1.0.0\n"
+                       "轻量级 C++ 集成开发环境\n"
+                       "刘腾骏胡乱做的");
+}
+
+void MainWindow::onThemeDark()
+{
+    ThemeManager::instance().setTheme(ThemeManager::ThemeType::Dark);
+    applyCurrentTheme();
+
+    d->outputPanel->append("已切换到深色主题");
+    m_statusLabel->setText("主题已切换为深色");
+}
+
+void MainWindow::onThemeLight()
+{
+    ThemeManager::instance().setTheme(ThemeManager::ThemeType::Light);
+    applyCurrentTheme();
+
+    d->outputPanel->append("已切换到浅色主题");
+    m_statusLabel->setText("主题已切换为浅色");
+}
+
+void MainWindow::onCustomTheme()
+{
+    d->outputPanel->append("打开自定义主题...");
+}
+
+void MainWindow::createNewFileWithName(const QString &defaultName,
+                                       const QString &title,
+                                       const QString &customDir)
+{
+    // ============================================================
+    // 1. 弹出输入对话框，让用户输入文件名
+    // ============================================================
+    bool ok;
+    QString fileName = QInputDialog::getText(
+        this,
+        title,
+        "请输入文件名（含扩展名）:\n"
+        "例如: main.cpp, test.py, app.js, index.html",
+        QLineEdit::Normal,
+        defaultName,
+        &ok
+        );
+
+    if (!ok || fileName.isEmpty()) {
+        return;  // 用户取消或未输入
+    }
+
+    // ============================================================
+    // 2. 确定保存路径
+    // ============================================================
+    QString savePath;
+
+    if (!customDir.isEmpty()) {
+        // 优先使用自定义目录
+        savePath = customDir;
+    } else if (!d->currentProjectPath.isEmpty()) {
+        // 如果有打开的项目，优先保存到项目 src 目录
+        QDir projectDir(d->currentProjectPath);
+        if (projectDir.exists("src")) {
+            savePath = projectDir.absoluteFilePath("src");
+        } else {
+            savePath = d->currentProjectPath;
+        }
+    } else {
+        // 没有项目，保存在当前工作目录
+        savePath = QDir::currentPath();
+    }
+
+    // 确保目录存在
+    QDir dir(savePath);
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            QMessageBox::warning(this, "创建失败",
+                                 QString("无法创建目录:\n%1").arg(savePath));
+            return;
+        }
+    }
+
+    QString fullPath = QDir(savePath).absoluteFilePath(fileName);
+
+    // ============================================================
+    // 3. 检查文件是否已存在
+    // ============================================================
+    if (QFile::exists(fullPath)) {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            "文件已存在",
+            QString("文件 '%1' 已存在，是否打开它？").arg(fileName),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes
+            );
+
+        if (reply == QMessageBox::Yes) {
+            openFile(fullPath);
+        }
+        return;
+    }
+
+    // ============================================================
+    // 4. 创建空文件
+    // ============================================================
+    QFile file(fullPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "创建失败",
+                             QString("无法创建文件:\n%1\n错误: %2")
+                                 .arg(fullPath).arg(file.errorString()));
+        return;
+    }
+    file.close();
+
+    // ============================================================
+    // 5. 打开文件（自动应用语言高亮）
+    // ============================================================
+    openFile(fullPath);
+
+    // ============================================================
+    // 6. 更新界面状态
+    // ============================================================
+    d->outputPanel->append(QString("已创建文件: %1").arg(fullPath));
+    m_statusLabel->setText(QString("已创建: %1").arg(fileName));
+
+    // 获取当前编辑器，更新状态栏语言信息
+    TextEditor* editor = currentEditor();
+    if (editor) {
+        LanguageInfo langInfo = LanguageDetector::instance().detectLanguage(fullPath);
+        if (m_languageLabel) {
+            m_languageLabel->setText(langInfo.name);
+        }
+    }
+
+    // 刷新项目面板（如果有）
+    if (d->projectPanel && !d->currentProjectPath.isEmpty()) {
+        // 简单刷新：重新加载项目树
+        d->projectPanel->openProject(d->currentProjectPath);
+    }
+}
+
+// ==================== 状态查询方法 ====================
+
+bool MainWindow::hasUnsavedChanges() const
+{
+    return d->hasUnsavedChanges;
+}
+
+QString MainWindow::currentFilePath() const
+{
+    return d->currentFilePath;
+}
+
+QString MainWindow::projectPath() const
+{
+    return d->currentProjectPath;
+}
+
+bool MainWindow::isCompiling() const
+{
+    return m_isCompiling;
+}
+
+void MainWindow::stopCompile()
+{
+    if (!m_currentCompileTaskId.isEmpty()) {
+        bool stopped = m_compileManager->cancelCompile(m_currentCompileTaskId);
+
+        QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+        if (stopped) {
+            d->outputPanel->append(QString("<span style='color:#FF9900;'>[%1] 编译已取消</span>").arg(timeStr));
+            m_statusLabel->setText("编译已取消");
+        }
+
+        m_isCompiling = false;
+        m_currentCompileTaskId.clear();
+    }
+}
+
+bool MainWindow::compileProject(const QString& projectPath, const QString& projectName)
+{
+    Q_UNUSED(projectPath);
+    Q_UNUSED(projectName);
+    return false;
+}
+
+bool MainWindow::runProject(const QString& projectPath, const QString& projectName)
+{
+    Q_UNUSED(projectPath);
+    Q_UNUSED(projectName);
+    return false;
+}
+
+} // namespace SprintIDE

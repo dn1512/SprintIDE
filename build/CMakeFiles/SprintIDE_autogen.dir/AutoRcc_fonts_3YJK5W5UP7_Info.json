@@ -1,0 +1,23 @@
+{
+	"BUILD_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen",
+	"CMAKE_BINARY_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build",
+	"CMAKE_CURRENT_BINARY_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE",
+	"CMAKE_SOURCE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE",
+	"INCLUDE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/include",
+	"INPUTS" : 
+	[
+		"/Users/liutengjun/code/QtCode/SprintIDE/resources/fonts/JetBrainsMono-Bold.ttf",
+		"/Users/liutengjun/code/QtCode/SprintIDE/resources/fonts/JetBrainsMono-Regular.ttf"
+	],
+	"LOCK_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutoRcc_fonts_3YJK5W5UP7_Lock.lock",
+	"MULTI_CONFIG" : false,
+	"OPTIONS" : [ "-name", "fonts" ],
+	"OUTPUT_CHECKSUM" : "3YJK5W5UP7",
+	"OUTPUT_NAME" : "qrc_fonts.cpp",
+	"RCC_EXECUTABLE" : "/Users/liutengjun/Qt6.10/6.10.1/macos/libexec/rcc",
+	"RCC_LIST_OPTIONS" : [ "--list" ],
+	"SETTINGS_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutoRcc_fonts_3YJK5W5UP7_Used.txt",
+	"SOURCE" : "/Users/liutengjun/code/QtCode/SprintIDE/resources/fonts.qrc",
+	"VERBOSITY" : 0
+}

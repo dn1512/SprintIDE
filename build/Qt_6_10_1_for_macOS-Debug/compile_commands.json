@@ -1,0 +1,218 @@
+[
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/SprintIDE_autogen/mocs_compilation.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/mocs_compilation.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/mocs_compilation.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/SprintIDE_autogen/mocs_compilation.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/main.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/main.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/main.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/main.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/application.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/application.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/application.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/application.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/config_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/config_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/config_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/config_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/theme_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/theme_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/theme_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/theme_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/font_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/font_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/font_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/font_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/mainwindow.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/mainwindow.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/mainwindow.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/mainwindow.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/editor_widget.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/editor_widget.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/editor_widget.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/editor_widget.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/tab_widget.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/tab_widget.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/tab_widget.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/tab_widget.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/text_editor.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/text_editor.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/text_editor.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/text_editor.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/syntax_highlighter.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/syntax_highlighter.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/project_config.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/project_config.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/project_config.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/project_config.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/project_creation_dialog.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/project_creation_dialog.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/project_panel.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/project_panel.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/project_panel.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/project_panel.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/project_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/project_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/project_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/project_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/project_selection_dialog.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/project_selection_dialog.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/find_dialog.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/find_dialog.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/find_dialog.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/find_dialog.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/replace_dialog.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/replace_dialog.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/process_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/process_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/process_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/process_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/path_utils.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/path_utils.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/path_utils.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/path_utils.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/compile_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/compile_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/compile_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/compile_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/compile_output_parser.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/compile_output_parser.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/compile_output_parser.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/compile_output_parser.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/debug_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/debug_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/debug_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/debug_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/debug_panel.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/debug_panel.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/debug_panel.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/debug_panel.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/lsp/lsp_client.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/lsp/lsp_client.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/terminal/terminal_panel.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/terminal/terminal_panel.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/ai/ai_action_executor.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/ai/ai_action_executor.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/ai/chat_panel.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/ai/chat_panel.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/ai/ai_integration.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/ai/ai_integration.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/language/language_detector.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/language/language_detector.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/language/language_highlighter.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/language/language_highlighter.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/lsp/lsp_manager.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_manager.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_manager.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/lsp/lsp_manager.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/history/local_history.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/history/local_history.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/history/local_history.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o"
+},
+{
+  "directory": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug",
+  "command": "/usr/bin/clang++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_WIDGETS_LIB -I/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/include -I/Users/liutengjun/code/QtCode/SprintIDE -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers -iframework /Users/liutengjun/Qt6.10/6.10.1/macos/lib -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/mkspecs/macx-clang -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/include -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers -isystem /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers -DQT_QML_DEBUG -g -std=c++17 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics -o CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o -c /Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp",
+  "file": "/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp",
+  "output": "CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o"
+}
+]
