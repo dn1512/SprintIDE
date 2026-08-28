@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_server.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_action_executor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobjectdefs.h \
@@ -1049,7 +1049,7 @@ CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QList \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qprocess.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qiodevice.h \
@@ -1058,7 +1058,7 @@ CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/q20iterator.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QScopedPointer \
-  /Users/liutengjun/code/QtCode/SprintIDE/compile_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QThread \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qthread.h \
@@ -1081,18 +1081,23 @@ CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDeadlineTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QElapsedTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qelapsedtimer.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
-  /Users/liutengjun/code/QtCode/SprintIDE/process_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtimer.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qbasictimer.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qeventloop.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcessEnvironment \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_integration.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSettings \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsettings.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMenu \
@@ -1133,7 +1138,7 @@ CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qcursor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qbitmap.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_server.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers/QTcpServer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers/qtcpserver.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers/qtnetworkglobal.h \
@@ -1146,7 +1151,7 @@ CMakeFiles/SprintIDE.dir/ai/ai_server.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QJsonDocument \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qpointer.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDockWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdockwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTextEdit \

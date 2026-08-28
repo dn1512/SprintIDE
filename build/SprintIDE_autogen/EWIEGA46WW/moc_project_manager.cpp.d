@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_project_manager.cpp: /Users/liutengjun/code/QtCode/SprintIDE/project_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_project_manager.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \

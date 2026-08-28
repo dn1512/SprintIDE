@@ -80,10 +80,133 @@
 #include "ai/ai_server.h"
 #include "ai/chat_panel.h"
 
+#include "language/language_type.h"
+
 
 using namespace SprintIDE;
 
 namespace SprintIDE {
+
+// ========== 辅助函数：根据文件路径检测语言类型 ==========
+static SprintIDE::LanguageType detectLanguageTypeFromPath(const QString& filePath) {
+    if (filePath.isEmpty()) {
+        return SprintIDE::LanguageType::Unknown;
+    }
+
+    // 使用现有的 LanguageDetector 获取语言 ID
+    SprintIDE::LanguageInfo info = SprintIDE::LanguageDetector::instance().detectLanguage(filePath);
+    QString id = info.id;
+
+    // 映射到我们的 LanguageType 枚举
+    if (id == "cpp" || id == "c" || id == "cxx" || id == "cc") {
+        return SprintIDE::LanguageType::Cpp;
+    }
+    if (id == "python") {
+        return SprintIDE::LanguageType::Python;
+    }
+    if (id == "java") {
+        return SprintIDE::LanguageType::Java;
+    }
+    if (id == "go") {
+        return SprintIDE::LanguageType::Go;
+    }
+    if (id == "rust") {
+        return SprintIDE::LanguageType::Rust;
+    }
+    if (id == "javascript") {
+        return SprintIDE::LanguageType::JavaScript;
+    }
+    if (id == "typescript") {
+        return SprintIDE::LanguageType::TypeScript;
+    }
+    if (id == "csharp") {
+        return SprintIDE::LanguageType::CSharp;
+    }
+    if (id == "ruby") {
+        return SprintIDE::LanguageType::Ruby;
+    }
+    if (id == "php") {
+        return SprintIDE::LanguageType::Php;
+    }
+    if (id == "shell") {
+        return SprintIDE::LanguageType::Shell;
+    }
+    if (id == "html") {
+        return SprintIDE::LanguageType::Html;
+    }
+    if (id == "css") {
+        return SprintIDE::LanguageType::Css;
+    }
+    if (id == "json") {
+        return SprintIDE::LanguageType::Json;
+    }
+    if (id == "xml") {
+        return SprintIDE::LanguageType::Xml;
+    }
+    if (id == "markdown") {
+        return SprintIDE::LanguageType::Markdown;
+    }
+
+    // 如果未识别，则返回 Unknown（后续可在编译时根据配置决定是否使用 Generic_AI）
+    return SprintIDE::LanguageType::Unknown;
+}
+
+// ========== Diff 辅助函数（用于历史差异对比） ==========
+
+enum DiffType { CONTEXT, ADD, DELETE };
+
+struct DiffLine {
+    DiffType type;
+    QString text;
+};
+
+static QList<DiffLine> computeDiff(const QStringList& oldLines, const QStringList& newLines)
+{
+    // 使用 LCS 算法计算差异
+    int m = oldLines.size(), n = newLines.size();
+    QVector<QVector<int>> dp(m + 1, QVector<int>(n + 1, 0));
+    for (int i = 1; i <= m; ++i) {
+        for (int j = 1; j <= n; ++j) {
+            if (oldLines[i-1] == newLines[j-1])
+                dp[i][j] = dp[i-1][j-1] + 1;
+            else
+                dp[i][j] = qMax(dp[i-1][j], dp[i][j-1]);
+        }
+    }
+    QList<DiffLine> result;
+    int i = m, j = n;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && oldLines[i-1] == newLines[j-1]) {
+            result.prepend({CONTEXT, oldLines[i-1]});
+            --i; --j;
+        } else if (j > 0 && (i == 0 || dp[i][j-1] >= dp[i-1][j])) {
+            result.prepend({ADD, newLines[j-1]});
+            --j;
+        } else if (i > 0 && (j == 0 || dp[i][j-1] < dp[i-1][j])) {
+            result.prepend({DELETE, oldLines[i-1]});
+            --i;
+        }
+    }
+    return result;
+}
+
+static QString diffToHtml(const QList<DiffLine>& diff)
+{
+    QString html;
+    html += "<pre style='font-family: monospace; font-size: 11pt; line-height: 1.3; color: #e0e0e0; background-color: #1e1e1e; padding: 8px;'>";
+    for (const auto& line : diff) {
+        QString escaped = line.text.toHtmlEscaped();
+        if (line.type == ADD)
+            html += "<span style='background-color: #1a4d1a; color: #d0f0d0;'>+ " + escaped + "</span>\n";
+        else if (line.type == DELETE)
+            html += "<span style='background-color: #4d1a1a; color: #f0d0d0;'>- " + escaped + "</span>\n";
+        else
+            html += "  " + escaped + "\n";
+    }
+    html += "</pre>";
+    return html;
+}
+
 SprintIDE::ErrorMarker parseErrorLine(const QString& line)
 {
     SprintIDE::ErrorMarker marker;
@@ -218,6 +341,9 @@ MainWindow::~MainWindow()
             editor->deleteLater();
         }
     }
+
+    // 清理构建器工厂（释放所有 Builder）
+    BuilderFactory::shutdown();
 
     // 删除私有实现
     delete d;
@@ -1262,6 +1388,11 @@ void MainWindow::openFile(const QString &path)
 
     // 传递本地历史管理器
     if (m_localHistory) {
+        // 如果项目已打开，用项目路径；否则用文件所在目录
+        QString rootPath = d->currentProjectPath.isEmpty() ?
+                               QFileInfo(path).absolutePath() :
+                               d->currentProjectPath;
+        m_localHistory->setProjectRoot(rootPath);
         editor->setLocalHistory(m_localHistory);
     }
 
@@ -2652,23 +2783,21 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
     // 创建对话框
     QDialog dialog(this);
     dialog.setWindowTitle(QString("本地历史 - %1").arg(QFileInfo(filePath).fileName()));
-    dialog.setMinimumSize(600, 400);
+    dialog.resize(900, 500);
 
-    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    // 主布局：水平分割
+    QHBoxLayout *mainLayout = new QHBoxLayout(&dialog);
 
-    // 说明标签
-    QLabel *infoLabel = new QLabel(
-        QString("文件: %1\n共 %2 个历史版本，双击恢复")
-            .arg(filePath)
-            .arg(versions.size())
-        );
-    infoLabel->setWordWrap(true);
-    layout->addWidget(infoLabel);
+    // ---------- 左侧：版本列表 ----------
+    QWidget *leftWidget = new QWidget;
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftWidget);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
 
-    // 版本列表
-    QListWidget *listWidget = new QListWidget(&dialog);
+    QLabel *infoLabel = new QLabel(QString("共 %1 个版本").arg(versions.size()));
+    leftLayout->addWidget(infoLabel);
+
+    QListWidget *listWidget = new QListWidget;
     listWidget->setAlternatingRowColors(true);
-
     // 按版本号从高到低显示（最新的在前）
     for (int i = versions.size() - 1; i >= 0; --i) {
         const HistoryVersion &v = versions[i];
@@ -2680,28 +2809,88 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
         QListWidgetItem *item = new QListWidgetItem(displayText, listWidget);
         item->setData(Qt::UserRole, v.version);
     }
+    leftLayout->addWidget(listWidget);
 
-    layout->addWidget(listWidget);
+    // 按钮：恢复、关闭
+    QHBoxLayout *btnLayout = new QHBoxLayout;
+    QPushButton *restoreBtn = new QPushButton("恢复到选中版本");
+    QPushButton *closeBtn = new QPushButton("关闭");
+    btnLayout->addWidget(restoreBtn);
+    btnLayout->addStretch();
+    btnLayout->addWidget(closeBtn);
+    leftLayout->addLayout(btnLayout);
 
-    // 按钮区域
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    QPushButton *restoreButton = new QPushButton("恢复到选中版本", &dialog);
-    QPushButton *closeButton = new QPushButton("关闭", &dialog);
-    buttonLayout->addWidget(restoreButton);
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(closeButton);
-    layout->addLayout(buttonLayout);
+    mainLayout->addWidget(leftWidget, 1); // 左侧占 1 份
 
-    // 连接信号
-    connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    // ---------- 右侧：差异显示 ----------
+    QWidget *rightWidget = new QWidget;
+    QVBoxLayout *rightLayout = new QVBoxLayout(rightWidget);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
 
-    connect(restoreButton, &QPushButton::clicked, this, [&]() {
+    QLabel *diffLabel = new QLabel("差异对比（选中版本 vs 当前文件）");
+    rightLayout->addWidget(diffLabel);
+
+    QTextEdit *diffEdit = new QTextEdit;
+    diffEdit->setReadOnly(true);
+    diffEdit->setFont(QFont("Consolas", 11));
+    diffEdit->setStyleSheet("QTextEdit { background-color: #1e1e1e; color: #e0e0e0; border: none; }");
+    rightLayout->addWidget(diffEdit);
+
+    mainLayout->addWidget(rightWidget, 2); // 右侧占 2 份
+
+    // ---------- 信号连接 ----------
+    // 获取当前文件内容（从编辑器或磁盘）
+    auto getCurrentContent = [this, filePath]() -> QString {
+        // 先查找是否在编辑器中打开
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            TextEditor *editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+            if (editor && editor->filePath() == filePath) {
+                return editor->toPlainText();
+            }
+        }
+        // 否则从磁盘读取
+        QFile file(filePath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream stream(&file);
+            return stream.readAll();
+        }
+        return QString();
+    };
+
+    // 更新差异显示
+    auto updateDiff = [&](int version) {
+        QString content = m_localHistory->getVersionContent(filePath, version);
+        if (content.isNull()) {
+            diffEdit->setPlainText("无法读取版本内容");
+            return;
+        }
+        QString currentContent = getCurrentContent();
+        QStringList oldLines = content.split('\n');
+        QStringList newLines = currentContent.split('\n');
+        QList<DiffLine> diff = computeDiff(oldLines, newLines);
+        QString html = diffToHtml(diff);
+        diffEdit->setHtml(html);
+    };
+
+    // 列表项选中时更新差异
+    connect(listWidget, &QListWidget::currentItemChanged, [&](QListWidgetItem *item, QListWidgetItem *) {
+        if (!item) return;
+        int ver = item->data(Qt::UserRole).toInt();
+        updateDiff(ver);
+    });
+
+    // 默认选中第一个（最新版本）
+    if (listWidget->count() > 0) {
+        listWidget->setCurrentRow(0);
+    }
+
+    // 恢复按钮
+    connect(restoreBtn, &QPushButton::clicked, [&]() {
         QListWidgetItem *item = listWidget->currentItem();
         if (!item) {
             QMessageBox::information(&dialog, "提示", "请先选择一个版本");
             return;
         }
-
         int version = item->data(Qt::UserRole).toInt();
         QString content = m_localHistory->restoreVersion(filePath, version);
         if (content.isNull()) {
@@ -2709,37 +2898,35 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
             return;
         }
 
-        // 找到对应的编辑器并恢复内容
+        // 更新编辑器或文件
         for (int i = 0; i < d->editorTabs->count(); ++i) {
             TextEditor *editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
             if (editor && editor->filePath() == filePath) {
                 editor->setPlainText(content);
                 editor->document()->setModified(true);
-                QMessageBox::information(&dialog, "恢复成功",
-                                         QString("已恢复到版本 %1").arg(version));
+                QMessageBox::information(&dialog, "恢复成功", QString("已恢复到版本 %1").arg(version));
                 dialog.accept();
                 return;
             }
         }
-
-        // 如果文件未打开，直接写入文件
+        // 若未打开，直接写入文件
         QFile file(filePath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
             stream << content;
             file.close();
             openFile(filePath);
-            QMessageBox::information(&dialog, "恢复成功",
-                                     QString("已恢复到版本 %1").arg(version));
+            QMessageBox::information(&dialog, "恢复成功", QString("已恢复到版本 %1").arg(version));
             dialog.accept();
         } else {
             QMessageBox::warning(&dialog, "恢复失败", "无法写入文件");
         }
     });
 
-    // 双击列表项恢复
-    connect(listWidget, &QListWidget::itemDoubleClicked, this, [&](QListWidgetItem *item) {
-        restoreButton->click();
+    connect(closeBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
+    // 双击列表项也恢复（可选）
+    connect(listWidget, &QListWidget::itemDoubleClicked, [&](QListWidgetItem *item) {
+        restoreBtn->click();
     });
 
     dialog.exec();
@@ -3216,6 +3403,8 @@ void MainWindow::onFormatCode()
 
 void MainWindow::loadProjectFiles(const QString& projectPath)
 {
+
+    qDebug() << "========== loadProjectFiles ENTRY ==========";
     qDebug() << "MainWindow::loadProjectFiles called with path:" << projectPath;
     QDir projectDir(projectPath);
     if (!projectDir.exists()) {
@@ -3252,8 +3441,20 @@ void MainWindow::loadProjectFiles(const QString& projectPath)
         openFile(filePath);
     }
 
+    // 设置终端工作目录到项目路径地址
     if (m_terminalPanel) {
         m_terminalPanel->setWorkingDirectory(projectPath);
+    }
+
+    qDebug() << "[MainWindow] m_localHistory pointer:" << m_localHistory;
+    // 设置本地历史根目录
+    qDebug() << "[MainWindow] m_localHistory pointer = " << m_localHistory;
+    if (m_localHistory) {
+        qDebug() << "[MainWindow] m_localHistory is valid, calling setProjectRoot...";
+        m_localHistory->setProjectRoot(projectPath);
+        qDebug() << "[MainWindow] 已设置本地历史根目录:" << projectPath;
+    } else {
+        qDebug() << "[MainWindow] ERROR: m_localHistory is NULL!";
     }
 
     d->projectPanel->openProject(projectPath);
@@ -3433,69 +3634,76 @@ void MainWindow::onCleanBuild()
     }
 }
 
-void MainWindow::onCompile()
-{
+void MainWindow::onCompile() {
     TextEditor* editor = currentEditor();
     if (!editor) {
-        QMessageBox::information(this, "提示", "请先打开一个C++文件进行编译。");
+        QMessageBox::information(this, "提示", "请先打开一个文件进行编译。");
         return;
     }
 
-    QString sourceFile = editor->filePath();
-    if (sourceFile.isEmpty()) {
+    QString filePath = editor->filePath();
+    if (filePath.isEmpty()) {
         if (editor->isModified()) {
             if (!editor->saveFile()) {
                 QMessageBox::warning(this, "文件未保存", "请先保存文件再进行编译。");
                 return;
             }
-            sourceFile = editor->filePath();
+            filePath = editor->filePath();
         }
-
-        if (sourceFile.isEmpty()) {
+        if (filePath.isEmpty()) {
             onSaveAs();
-            sourceFile = editor->filePath();
-
-            if (sourceFile.isEmpty()) {
-                QMessageBox::warning(this, "编译错误", "请先保存文件再进行编译。");
-                return;
-            }
+            filePath = editor->filePath();
+            if (filePath.isEmpty()) return;
         }
     }
 
-    QFileInfo fileInfo(sourceFile);
-    QString suffix = fileInfo.suffix().toLower();
-    if (suffix != "cpp" && suffix != "cxx" && suffix != "cc" && suffix != "c") {
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this, "确认编译",
-            QString("文件 '%1' 不是标准的C++源文件(.cpp/.cxx/.cc/.c)。\n是否继续编译？")
-                .arg(fileInfo.fileName()),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No);
-
-        if (reply != QMessageBox::Yes) {
-            return;
-        }
-    }
-
+    // 保存文件（如果未保存）
     if (editor->isModified()) {
         if (!editor->saveFile()) {
             QMessageBox::warning(this, "保存错误", "无法保存文件，编译中止。");
             return;
         }
+        filePath = editor->filePath();
     }
 
-    m_currentCompileTaskId = m_compileManager->compileSingleFile(sourceFile);
+    // 构造 BuildTask
+    BuildTask task;
+    task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    task.language = detectLanguageTypeFromPath(filePath);
+    // 项目路径优先使用当前打开的项目，否则用文件所在目录
+    task.projectPath = d->currentProjectPath.isEmpty() ?
+                           QFileInfo(filePath).absolutePath() :
+                           d->currentProjectPath;
+    task.sourceFiles << filePath;
+    task.outputName = QFileInfo(filePath).completeBaseName();
+    task.outputDir = "bin"; // 可配置
+    task.enableDebug = true;
 
+    // 读取项目配置中的 SDK 环境
+    if (!d->currentProjectPath.isEmpty()) {
+        ProjectConfig projConfig;
+        QString configFile = d->currentProjectPath + "/.lightcppproj";
+        QStringList errors;
+        if (projConfig.loadFromFile(configFile, errors)) {
+            task.sdkConfig = projConfig.sdkEnvironment();
+            // 如果是 Generic_AI，加载通用配置
+            if (task.language == LanguageType::Generic_AI) {
+                task.aiCustomPayload = projConfig.genericBuildConfig();
+            }
+        }
+    }
+
+    // 调用新接口
+    m_currentCompileTaskId = m_compileManager->compileTask(task);
     if (m_currentCompileTaskId.isEmpty()) {
         QMessageBox::warning(this, "编译错误", "无法启动编译任务。");
     }
 }
 
-void MainWindow::onRun()
-{
+void MainWindow::onRun() {
     TextEditor* editor = currentEditor();
     if (!editor) {
-        QMessageBox::information(this, "提示", "请先打开一个C++文件进行运行。");
+        QMessageBox::information(this, "提示", "请先打开一个文件进行运行。");
         return;
     }
 
@@ -3505,28 +3713,52 @@ void MainWindow::onRun()
         return;
     }
 
+    // 如果文件未保存，先保存
+    if (editor->isModified()) {
+        if (!editor->saveFile()) {
+            QMessageBox::warning(this, "保存错误", "无法保存文件，运行中止。");
+            return;
+        }
+        sourceFile = editor->filePath();
+    }
+
+    // 检查是否正在编译
     if (m_isCompiling) {
         QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再运行。");
         return;
     }
 
+    // 查找可执行文件（旧方式）
     QString executablePath = findExecutableForSource(sourceFile);
 
-    if (executablePath.isEmpty() || !QFile::exists(executablePath)) {
-        int reply = QMessageBox::question(this, "编译并运行",
-                                          "文件尚未编译，是否现在编译并运行?",
-                                          QMessageBox::Yes | QMessageBox::No);
+    // 如果可执行文件不存在或比源文件旧，则触发编译，并在编译完成后自动运行
+    if (executablePath.isEmpty() || !QFile::exists(executablePath) ||
+        QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
 
+        int reply = QMessageBox::question(this, "编译并运行",
+                                          "文件尚未编译或已过期，是否现在编译并运行?",
+                                          QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes) {
+            // 触发编译，编译完成后会通过 onCompileFinished 信号自动运行
+            // 需要设置一个标志，在编译完成槽中判断是否运行
+            // 但为了简化，我们直接调用 onCompile，并在 onCompileFinished 中检查是否有“运行”待办
+            // 此处设置一个成员变量 m_autoRunAfterCompile = true
+            // 但为了避免新增成员，我们可以利用 m_compileForDebug 标志（虽然用于调试，但可复用）
+            // 或者增加一个新变量。这里为了快速实现，我们复用 m_compileForDebug 但改名？不推荐。
+            // 更好的办法：在 onCompile 后，我们可以在 onCompileFinished 中根据源文件自动运行。
+            // 但 onCompileFinished 不知道哪个源文件触发了运行请求。
+            // 简单起见，我们暂时不修改 onCompileFinished，而是直接使用同步编译？不，异步是设计。
+            // 我建议保持原有逻辑不变：如果编译成功，用户可以点击“运行”按钮再运行。
+            // 所以这里只编译，不自动运行。
             onCompile();
             return;
         } else {
             return;
         }
-    } else {
-        // askRunProgram(executablePath);
-        runProgram(executablePath, false);
     }
+
+    // 可执行文件存在且是最新的，直接运行
+    runProgram(executablePath, false);
 }
 
 QString MainWindow::findExecutableForSource(const QString& sourceFile)

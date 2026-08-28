@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/AQUW3KFNJO/moc_chat_panel.cpp: /Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/AQUW3KFNJO/moc_chat_panel.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \

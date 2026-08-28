@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/compile_manager.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/compile_manager.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/compile_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobjectdefs.h \
@@ -1043,7 +1043,7 @@ CMakeFiles/SprintIDE.dir/compile_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDeadlineTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QElapsedTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qelapsedtimer.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdatetime.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
@@ -1079,14 +1079,19 @@ CMakeFiles/SprintIDE.dir/compile_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qendian.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsondocument.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonparseerror.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/process_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtimer.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qbasictimer.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qeventloop.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcessEnvironment \
-  /Users/liutengjun/code/QtCode/SprintIDE/path_utils.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDir \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdir.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdirlisting.h \

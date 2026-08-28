@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_theme_manager.cpp: /Users/liutengjun/code/QtCode/SprintIDE/theme_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_theme_manager.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \
@@ -1126,7 +1126,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsexports.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsglobal.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qwidget.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/text_editor.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.h

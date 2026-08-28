@@ -16,6 +16,8 @@
 #include <QSettings>
 #include <QDirIterator>
 
+#include "language/language_type.h"
+
 namespace SprintIDE {
 
 // ==================== Private 类定义 ====================
@@ -100,6 +102,9 @@ bool CompileManager::initialize()
 {
     qDebug() << "初始化编译管理器";
 
+    // 初始化构建器工厂
+    BuilderFactory::initializeDefaults();
+
     // 初始化进程管理器
     d->processManager->clearHistory();
 
@@ -130,56 +135,17 @@ bool CompileManager::initialize()
 
 QString CompileManager::compileSingleFile(const QString& sourceFile,
                                           const QString& outputName,
-                                          CompileMode compileMode)
-{
-    qDebug() << "开始编译单个文件:" << sourceFile;
-
-    // 验证源文件
-    if (!PathUtils::isValidFilePath(sourceFile, true)) {
-        QString error = QString("源文件无效或不存在: %1").arg(sourceFile);
-        qWarning() << error;
-        emit compileError("", error);
-        return QString();
-    }
-
-    // 创建编译任务
-    CompileTask task;
-    task.taskId = QString("single_%1_%2").arg(
-        QFileInfo(sourceFile).fileName(),
-        QString::number(QDateTime::currentMSecsSinceEpoch()));
-    task.sourceFiles = QStringList(sourceFile);
-    task.outputName = outputName.isEmpty() ?
-                          PathUtils::fileNameWithoutExtension(sourceFile) : outputName;
+                                          CompileMode compileMode) {
+    BuildTask task;
+    task.language = LanguageType::Cpp; // 固定为 C++，但也可检测
+    task.projectPath = QFileInfo(sourceFile).absolutePath();
+    task.sourceFiles << sourceFile;
+    task.outputName = outputName.isEmpty() ? QFileInfo(sourceFile).completeBaseName() : outputName;
     task.outputDir = "bin";
-    task.targetType = TargetType::Executable;
-    task.compileMode = compileMode;
-    task.compilerType = d->defaultCompilerType;
-    task.compilerPath = d->defaultCompilerPath;
-    task.cppStandard = "c++17";
-    task.enableDebugInfo = (compileMode == CompileMode::Debug);
-    task.enableWarnings = true;
-    task.treatWarningsAsErrors = false;
-    task.optimizeForSpeed = (compileMode == CompileMode::Release);
-    task.optimizeForSize = false;
-    task.verboseOutput = true;
-
-    // 添加默认包含路径
-    task.includePaths << ".";
-    task.includePaths << "include";
-
-    // 验证编译任务
-    QStringList errors;
-    if (!validateCompileTask(task, errors)) {
-        QString errorMsg = QString("编译任务验证失败:\n%1").arg(errors.join("\n"));
-        qWarning() << errorMsg;
-        emit compileError(task.taskId, errorMsg);
-        return QString();
-    }
-
-    // 执行编译任务
-    executeCompileTask(task);
-
-    return task.taskId;
+    task.enableDebug = (compileMode == CompileMode::Debug);
+    // 从设置读取 SDK 配置（可从 ProjectConfig 读取）
+    // 此处简单处理，不填充 SDK
+    return compileTask(task);
 }
 
 QString CompileManager::compileProject(const ProjectConfig& projectConfig,
@@ -856,6 +822,29 @@ CompileResult CompileManager::parseCompilerOutput(const QString& output, const Q
     return result;
 }
 
+
+QString CompileManager::compileTask(const BuildTask& task) {
+    BuildTask mutableTask = task;
+    if (mutableTask.taskId.isEmpty()) {
+        // 生成唯一 ID
+        mutableTask.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    }
+    return executeBuildTask(mutableTask);
+}
+
+void CompileManager::setProjectSdk(const QString& projectPath, const QVariantMap& sdkEnv) {
+    // 加载项目配置，更新 SDK 环境并保存
+    ProjectConfig config;
+    QString configFile = projectPath + "/.lightcppproj";
+    QStringList errors;
+    if (config.loadFromFile(configFile, errors)) {
+        config.setSdkEnvironment(sdkEnv);
+        config.saveToFile(configFile, errors);
+    } else {
+        qWarning() << "Failed to load project config for SDK update:" << errors.join(", ");
+    }
+}
+
 // ==================== 私有方法实现 ====================
 
 void CompileManager::executeCompileTask(const CompileTask& task)
@@ -1183,6 +1172,58 @@ void CompileManager::saveCompileConfig()
 
     d->settings->sync();
     qDebug() << "保存编译配置完成";
+}
+
+QString CompileManager::executeBuildTask(const BuildTask& task) {
+    // 1. 获取对应的 Builder
+    IBuilder* builder = BuilderFactory::createBuilder(task.language);
+    if (!builder) {
+        QString err = QString("No builder available for language: %1").arg(languageTypeToString(task.language));
+        emit compileError(task.taskId, err);
+        // 构造一个失败结果
+        CompileResult oldResult;
+        oldResult.success = false;
+        oldResult.errorMessage = err;
+        emit compileFinished(task.taskId, oldResult);
+        return task.taskId;
+    }
+
+    // 2. 执行构建
+    BuildResult result;
+    bool started = builder->build(task, result);
+    if (!started) {
+        // 启动失败（如命令不可用）
+        CompileResult oldResult;
+        oldResult.success = false;
+        oldResult.errorMessage = result.errorMessage;
+        oldResult.output = result.fullOutput;
+        oldResult.errors = result.errorLines;
+        oldResult.warnings = result.warningLines;
+        emit compileError(task.taskId, result.errorMessage);
+        emit compileFinished(task.taskId, oldResult);
+        return task.taskId;
+    }
+
+    // 3. 转换为旧的 CompileResult 以兼容现有信号槽
+    CompileResult oldResult;
+    oldResult.success = result.success;
+    oldResult.exitCode = result.exitCode;
+    oldResult.output = result.fullOutput;
+    oldResult.executablePath = result.executablePath;
+    oldResult.errors = result.errorLines;
+    oldResult.warnings = result.warningLines;
+    oldResult.compileTime = result.elapsedMs;
+    oldResult.errorMessage = result.errorMessage;
+    // 注入 builder 名称到额外信息（可忽略）
+    // oldResult.extraInfo = result.builderName;
+
+    // 4. 发射信号（保持与原有 MainWindow 的槽连接）
+    emit compileFinished(task.taskId, oldResult);
+    if (!result.success) {
+        emit compileError(task.taskId, result.errorMessage.isEmpty() ? "Build failed" : result.errorMessage);
+    }
+
+    return task.taskId;
 }
 
 // ==================== 私有槽函数 ====================

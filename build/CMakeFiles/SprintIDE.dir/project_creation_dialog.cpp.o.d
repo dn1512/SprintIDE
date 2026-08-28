@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/project_creation_dialog.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1078,7 +1078,7 @@ CMakeFiles/SprintIDE.dir/project_creation_dialog.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdatetime.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qlocale.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
@@ -1092,7 +1092,7 @@ CMakeFiles/SprintIDE.dir/project_creation_dialog.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/quuid.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsondocument.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonparseerror.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/include/ui_project_creation_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/include/ui_project_creation_dialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QAbstractButton \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractbutton.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QApplication \

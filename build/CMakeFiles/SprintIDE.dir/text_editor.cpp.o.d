@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/text_editor.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/text_editor.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/text_editor.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QPlainTextEdit \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qplaintextedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1165,7 +1165,7 @@ CMakeFiles/SprintIDE.dir/text_editor.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QTextCharFormat \
@@ -1175,13 +1175,13 @@ CMakeFiles/SprintIDE.dir/text_editor.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QColor \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QMap \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdatetime.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/font_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QFontDatabase \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QPainter \

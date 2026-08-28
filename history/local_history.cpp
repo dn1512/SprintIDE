@@ -54,11 +54,23 @@ LocalHistory::~LocalHistory()
 
 void LocalHistory::setProjectRoot(const QString &projectPath)
 {
+    qDebug() << "[LocalHistory] setProjectRoot called with path:" << projectPath;
     if (projectPath.isEmpty()) {
+        qWarning() << "[LocalHistory] setProjectRoot: empty path, ignored";
         return;
     }
 
-    m_projectRoot = projectPath;
+    // 如果根目录与当前不同，必须清空旧数据并重新加载
+    if (m_projectRoot != projectPath) {
+        qDebug() << "[LocalHistory] 检测到根目录变化，清空旧元数据并重新加载";
+        m_metadata.clear();
+        m_metadataLoaded = false;
+        m_projectRoot = projectPath;
+    } else {
+        // 路径相同，无需重复加载
+        qDebug() << "[LocalHistory] 根目录未变化，跳过加载";
+        return;
+    }
 
     // 创建历史目录
     QDir historyDir(getHistoryDir(""));
@@ -83,7 +95,10 @@ void LocalHistory::setProjectRoot(const QString &projectPath)
 int LocalHistory::saveVersion(const QString &filePath, const QString &content,
                               const QString &comment)
 {
+    qDebug() << "[LocalHistory] saveVersion called, isEnabled=" << isEnabled()
+    << " file=" << filePath;
     if (!isEnabled() || filePath.isEmpty()) {
+        qDebug() << "[LocalHistory] saveVersion skipped (not enabled or empty path)";
         return -1;
     }
 
@@ -122,6 +137,16 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
 
     // 保存版本文件
     QString versionFilePath = getVersionFilePath(filePath, newVersion);
+
+    // 创建父目录
+    QDir dir(QFileInfo(versionFilePath).absoluteDir());
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qWarning() << "[LocalHistory] 无法创建版本文件目录:" << dir.absolutePath();
+            return -1;
+        }
+    }
+
     QFile versionFile(versionFilePath);
     if (!versionFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "[LocalHistory] 无法保存版本文件:" << versionFilePath;
@@ -154,6 +179,9 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
 
 QList<HistoryVersion> LocalHistory::getVersions(const QString &filePath) const
 {
+    qDebug() << "[LocalHistory] saveVersion: enabled=" << isEnabled()
+    << " root=" << m_projectRoot
+    << " file=" << filePath;
     return m_metadata.value(filePath);
 }
 
@@ -360,10 +388,13 @@ QString LocalHistory::getMetadataPath() const
 void LocalHistory::loadMetadata()
 {
     if (m_metadataLoaded) {
+        qDebug() << "[LocalHistory] 元数据已加载，跳过";
         return;
     }
 
     QString metadataPath = getMetadataPath();
+    qDebug() << "[LocalHistory] 尝试加载元数据文件:" << metadataPath;
+
     QFile file(metadataPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "[LocalHistory] 无历史元数据文件，将创建新文件";

@@ -275,6 +275,11 @@ private:
 
     void showFileHistoryDialog(const QString &filePath);
 
+    /**
+     * @brief 根据文件路径检测语言类型
+     */
+    // LanguageType detectLanguageTypeFromPath(const QString& filePath);
+
 private:
     MainWindowPrivate *d;
     // 底部面板相关

@@ -212,6 +212,26 @@ public:
      */
     static QStringList detectAvailableCompilers();
 
+    /**
+     * @brief 获取 SDK 环境变量
+     */
+    QVariantMap sdkEnvironment() const { return m_sdkEnv; }
+
+    /**
+     * @brief 设置 SDK 环境变量
+     */
+    void setSdkEnvironment(const QVariantMap& env) { m_sdkEnv = env; m_modifiedDate = QDateTime::currentDateTime(); }
+
+    /**
+     * @brief 获取 AI 通用构建配置
+     */
+    QVariantMap genericBuildConfig() const { return m_genericConfig; }
+
+    /**
+     * @brief 设置 AI 通用构建配置
+     */
+    void setGenericBuildConfig(const QVariantMap& config) { m_genericConfig = config; m_modifiedDate = QDateTime::currentDateTime(); }
+
     // ==================== 属性访问器 ====================
 
     // ----- 基本信息 -----
@@ -358,6 +378,9 @@ private:
 
     // ----- 扩展配置 -----
     QVariantMap m_extraConfig;  ///< 扩展配置（未来兼容性）
+
+    QVariantMap m_sdkEnv;           ///< SDK 环境变量（如 JAVA_HOME）
+    QVariantMap m_genericConfig;    ///< AI 通用构建配置
 };
 
 } // namespace SprintIDE

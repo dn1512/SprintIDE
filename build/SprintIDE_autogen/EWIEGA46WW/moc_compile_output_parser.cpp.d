@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_compile_output_parser.cpp: /Users/liutengjun/code/QtCode/SprintIDE/compile_output_parser.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_compile_output_parser.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_output_parser.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \

@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/tab_widget.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/tab_widget.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1114,8 +1114,8 @@ CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qinputmethod.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qlocale.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qguiapplication_platform.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/theme_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/text_editor.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QPlainTextEdit \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qplaintextedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtextedit.h \
@@ -1172,7 +1172,7 @@ CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlabel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qpicture.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QTextCharFormat \
@@ -1182,9 +1182,9 @@ CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QColor \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QMap \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdatetime.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
@@ -1209,7 +1209,7 @@ CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qpainter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStyleOptionTab \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/include/tab_widget.moc \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/include/tab_widget.moc \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtmochelpers.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtmocconstants.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/q20algorithm.h

@@ -35,7 +35,7 @@ set(__QT_DEPLOY_SYSTEM_NAME "Darwin")
 set(__QT_DEPLOY_SHARED_LIBRARY_SUFFIX ".dylib")
 set(__QT_DEPLOY_IS_SHARED_LIBS_BUILD "ON")
 set(__QT_DEPLOY_TOOL "/Users/liutengjun/Qt6.10/6.10.1/macos/bin/macdeployqt")
-set(__QT_DEPLOY_IMPL_DIR "/Users/liutengjun/code/QtCode/SprintIDE/build/.qt")
+set(__QT_DEPLOY_IMPL_DIR "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/.qt")
 set(__QT_DEPLOY_VERBOSE "")
 set(__QT_CMAKE_EXPORT_NAMESPACE "Qt6")
 set(__QT_LIBINFIX "")
@@ -60,7 +60,7 @@ set(__QT_DEPLOY_QT_DEBUG_POSTFIX "")
 
 # Define the CMake commands to be made available during deployment.
 set(__qt_deploy_support_files
-    "/Users/liutengjun/code/QtCode/SprintIDE/build/.qt/QtDeployTargets.cmake"
+    "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/.qt/QtDeployTargets.cmake"
     "/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6Core/Qt6CoreDeploySupport.cmake"
 )
 foreach(__qt_deploy_support_file IN LISTS __qt_deploy_support_files)

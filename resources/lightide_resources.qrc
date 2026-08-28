@@ -2,6 +2,8 @@
     <qresource prefix="/icons">
         <!-- 核心图标 -->
         <file>icons/app_icon.svg</file>
+        <file>icons/app_logo.ico</file>
+        <file>icons/logo.ico</file>
         <file>icons/project.svg</file>
         <file>icons/folder.svg</file>
         <file>icons/cpp.svg</file>

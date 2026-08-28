@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/font_manager.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/font_manager.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/font_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QFontDatabase \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qfontdatabase.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtguiglobal.h \

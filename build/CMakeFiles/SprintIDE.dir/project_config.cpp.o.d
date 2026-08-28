@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/project_config.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qstring.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qchar.h \

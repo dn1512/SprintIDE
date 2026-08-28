@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_mainwindow.cpp: /Users/liutengjun/code/QtCode/SprintIDE/mainwindow.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_mainwindow.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/mainwindow.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \
@@ -1196,24 +1196,29 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsexports.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsglobal.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qwidget.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/compile_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_panel.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/find_dialog.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/process_manager.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/tab_widget.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/text_editor.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/theme_manager.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_action_executor.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_integration.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_server.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/find_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h

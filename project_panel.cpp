@@ -168,9 +168,9 @@ bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* 
                     if (proxyRoot.isValid()) {
                         setRootIndex(proxyRoot);
                         expand(proxyRoot);
-                        qDebug() << "Row count after load:" << model()->rowCount(proxyRoot);
+                        // qDebug() << "Row count after load:" << model()->rowCount(proxyRoot);
                     } else {
-                        qWarning() << "proxyRoot invalid after load";
+                        // qWarning() << "proxyRoot invalid after load";
                     }
                     // 断开连接，避免重复触发
                     disconnect(m_fileModel, &QFileSystemModel::directoryLoaded, this, nullptr);
@@ -198,7 +198,7 @@ void ProjectPanel::closeProject()
     // 发射项目关闭信号
     emit projectClosed();
 
-    qDebug() << "项目已关闭";
+    // qDebug() << "项目已关闭";
 }
 
 QString ProjectPanel::currentProjectPath() const
@@ -304,7 +304,7 @@ void ProjectPanel::locateFile(const QString& filePath)
 
 bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName, bool isDirectory)
 {
-    qDebug() << "addNewFile: 父目录=" << parentDir << "文件名=" << fileName;
+    // qDebug() << "addNewFile: 父目录=" << parentDir << "文件名=" << fileName;
     if (parentDir.isEmpty() || fileName.isEmpty()) {
         return false;
     }
@@ -327,7 +327,7 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
             return false;
         }
 
-        qDebug() << "目录已创建:" << fullPath;
+        // qDebug() << "目录已创建:" << fullPath;
     } else {
         // 创建文件
         QFile file(fullPath);
@@ -338,7 +338,7 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
         }
         file.close();
 
-        qDebug() << "文件已创建:" << fullPath;
+        // qDebug() << "文件已创建:" << fullPath;
     }
 
     // 刷新父目录
@@ -403,7 +403,7 @@ bool ProjectPanel::renameFile(const QString& oldPath, const QString& newName)
     // 刷新父目录
     m_fileModel->setRootPath(parentDir.absolutePath());
 
-    qDebug() << "文件已重命名:" << oldPath << "->" << newPath;
+    // qDebug() << "文件已重命名:" << oldPath << "->" << newPath;
 
     // 发射文件重命名信号
     emit fileRenamed(oldPath, newPath);
@@ -449,7 +449,7 @@ bool ProjectPanel::deleteFile(const QString& filePath, bool moveToTrash)
         setCurrentIndex(QModelIndex());
         viewport()->update();
 
-        qDebug() << "文件已删除:" << filePath;
+        // qDebug() << "文件已删除:" << filePath;
         emit fileDeleted(filePath);
     } else {
         QMessageBox::critical(this, "删除失败", "无法删除: " + displayName);
@@ -582,7 +582,7 @@ void ProjectPanel::copyFilePath()
     QString filePath = selectedFilePath();
     if (!filePath.isEmpty()) {
         QApplication::clipboard()->setText(filePath);
-        qDebug() << "文件路径已复制到剪贴板:" << filePath;
+        // qDebug() << "文件路径已复制到剪贴板:" << filePath;
     }
 }
 
@@ -816,7 +816,7 @@ void ProjectPanel::onFileRenamed(const QString &path, const QString &oldName, co
 
 void ProjectPanel::onWatchedDirectoryChanged(const QString &path)
 {
-    qDebug() << "监控的目录发生变化:" << path;
+    // qDebug() << "监控的目录发生变化:" << path;
 
     // 只刷新发生变化的目录
     QModelIndex index = m_fileModel->index(path);
@@ -831,7 +831,7 @@ void ProjectPanel::onWatchedDirectoryChanged(const QString &path)
 
 void ProjectPanel::onWatchedFileChanged(const QString &path)
 {
-    qDebug() << "监控的文件发生变化:" << path;
+    // qDebug() << "监控的文件发生变化:" << path;
 
     // 文件变化时，更新其父目录
     QFileInfo info(path);
@@ -893,7 +893,7 @@ void ProjectPanel::setupUI()
             this, &ProjectPanel::onSelectionChanged);
     connect(selectionModel(), &QItemSelectionModel::currentChanged,
             this, [this](const QModelIndex &current, const QModelIndex &previous) {
-                qDebug() << "currentChanged: " << getFilePath(current);
+                // qDebug() << "currentChanged: " << getFilePath(current);
             });
 
     // 文件系统模型信号
@@ -981,7 +981,7 @@ QString ProjectPanel::getFilePath(const QModelIndex &index) const
     }
     QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
     if (!sourceIndex.isValid()) {
-        qDebug() << "mapToSource failed for index:" << index;
+        // qDebug() << "mapToSource failed for index:" << index;
         return QString();
     }
     return m_fileModel->filePath(sourceIndex);

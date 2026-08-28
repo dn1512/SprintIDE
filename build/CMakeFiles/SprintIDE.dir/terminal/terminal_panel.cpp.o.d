@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/terminal/terminal_panel.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDockWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdockwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \

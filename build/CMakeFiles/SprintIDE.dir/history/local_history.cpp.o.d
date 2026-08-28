@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/history/local_history.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobjectdefs.h \

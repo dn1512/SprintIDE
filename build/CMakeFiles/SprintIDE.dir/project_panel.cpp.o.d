@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/project_panel.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_panel.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1158,7 +1158,7 @@ CMakeFiles/SprintIDE.dir/project_panel.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSortFilterProxyModel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsortfilterproxymodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractproxymodel.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/project_config.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
@@ -1207,4 +1207,4 @@ CMakeFiles/SprintIDE.dir/project_panel.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qheaderview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSettings \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsettings.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/include/project_panel.moc
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/include/project_panel.moc

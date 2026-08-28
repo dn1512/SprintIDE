@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/lsp/lsp_client.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobjectdefs.h \

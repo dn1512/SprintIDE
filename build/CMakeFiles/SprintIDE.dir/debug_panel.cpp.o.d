@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/debug_panel.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_panel.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDockWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdockwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1112,7 +1112,7 @@ CMakeFiles/SprintIDE.dir/debug_panel.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QWidget \
-  /Users/liutengjun/code/QtCode/SprintIDE/debug_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qprocess.h \

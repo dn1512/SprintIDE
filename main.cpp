@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("sprintide.org");
 
     // 设置应用程序图标
-    app.setWindowIcon(QIcon(":/icons/icons/app_icon.svg"));
+    app.setWindowIcon(QIcon(":/icons/icons/app_logo.ico"));
 
     // 设置应用程序字体 - 优先使用适合儿童的中文字体
     QFont font;

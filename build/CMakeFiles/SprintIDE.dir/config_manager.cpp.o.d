@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/config_manager.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/config_manager.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/config_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/config_manager.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/config_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qobjectdefs.h \

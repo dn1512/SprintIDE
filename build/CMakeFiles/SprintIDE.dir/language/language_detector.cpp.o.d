@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/language/language_detector.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qstring.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qchar.h \

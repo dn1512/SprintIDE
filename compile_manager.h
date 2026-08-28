@@ -11,6 +11,10 @@
 
 #include "project_config.h"
 #include "process_manager.h"
+#include "builder/build_task.h"
+#include "builder/build_result.h"
+#include "builder/builder_factory.h"
+
 
 namespace SprintIDE {
 
@@ -270,6 +274,20 @@ public:
      */
     static CompileResult parseCompilerOutput(const QString& output, const QString& baseDir = QString());
 
+    /**
+     * @brief 执行通用构建任务（新接口）
+     * @param task 构建任务
+     * @return 任务ID（用于跟踪）
+     */
+    QString compileTask(const BuildTask& task);
+
+    /**
+     * @brief 设置项目 SDK 环境（供 AI 调用）
+     * @param projectPath 项目路径
+     * @param sdkEnv 环境变量键值对
+     */
+    void setProjectSdk(const QString& projectPath, const QVariantMap& sdkEnv);
+
 signals:
     /**
      * @brief 编译开始信号
@@ -406,6 +424,16 @@ private:
      * 将编译器设置保存到配置文件
      */
     void saveCompileConfig();
+
+    /**
+     * @brief 执行构建任务内部实现
+     */
+    QString executeBuildTask(const BuildTask& task);
+
+    /**
+     * @brief 将旧的 CompileResult 转换为 BuildResult（用于兼容）
+     */
+    BuildResult convertOldResultToNew(const CompileResult& oldResult) const;
 
     class Private;
     QScopedPointer<Private> d;

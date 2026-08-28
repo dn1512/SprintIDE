@@ -1,4 +1,4 @@
-# Install script for directory: /Users/liutengjun/code/QtCode/SprintIDE
+# Install script for directory: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -38,7 +38,7 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE DIRECTORY FILES "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE.app" USE_SOURCE_PERMISSIONS)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE DIRECTORY FILES "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE.app" USE_SOURCE_PERMISSIONS)
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/SprintIDE.app/Contents/MacOS/SprintIDE" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/SprintIDE.app/Contents/MacOS/SprintIDE")
     execute_process(COMMAND /usr/bin/install_name_tool
@@ -55,5 +55,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/liutengjun/code/QtCode/SprintIDE/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

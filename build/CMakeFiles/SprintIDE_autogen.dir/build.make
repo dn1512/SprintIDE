@@ -53,10 +53,10 @@ RM = /Applications/CMake.app/Contents/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/liutengjun/code/QtCode/SprintIDE
+CMAKE_SOURCE_DIR = /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/liutengjun/code/QtCode/SprintIDE/build
+CMAKE_BINARY_DIR = /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build
 
 # Utility rule file for SprintIDE_autogen.
 
@@ -67,8 +67,8 @@ include CMakeFiles/SprintIDE_autogen.dir/compiler_depend.make
 include CMakeFiles/SprintIDE_autogen.dir/progress.make
 
 CMakeFiles/SprintIDE_autogen:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC and UIC for target SprintIDE"
-	/Applications/CMake.app/Contents/bin/cmake -E cmake_autogen /Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutogenInfo.json ""
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC and UIC for target SprintIDE"
+	/Applications/CMake.app/Contents/bin/cmake -E cmake_autogen /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutogenInfo.json ""
 
 SprintIDE_autogen: CMakeFiles/SprintIDE_autogen
 SprintIDE_autogen: CMakeFiles/SprintIDE_autogen.dir/build.make
@@ -83,6 +83,6 @@ CMakeFiles/SprintIDE_autogen.dir/clean:
 .PHONY : CMakeFiles/SprintIDE_autogen.dir/clean
 
 CMakeFiles/SprintIDE_autogen.dir/depend:
-	cd /Users/liutengjun/code/QtCode/SprintIDE/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/liutengjun/code/QtCode/SprintIDE /Users/liutengjun/code/QtCode/SprintIDE /Users/liutengjun/code/QtCode/SprintIDE/build /Users/liutengjun/code/QtCode/SprintIDE/build /Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/DependInfo.cmake --color=$(COLOR)
+	cd /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/SprintIDE_autogen.dir/depend
 

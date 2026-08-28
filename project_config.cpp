@@ -337,6 +337,19 @@ bool ProjectConfig::fromJson(const QJsonObject& json, QStringList& errors)
         m_extraConfig[key] = extraObj.value(key).toVariant();
     }
 
+    QJsonObject sdkObj = upgradedJson.value("sdk_env").toObject();
+    m_sdkEnv.clear();
+    for (auto it = sdkObj.begin(); it != sdkObj.end(); ++it) {
+        m_sdkEnv[it.key()] = it.value().toVariant();
+    }
+
+    // 新增：通用配置
+    QJsonObject genericObj = upgradedJson.value("generic_config").toObject();
+    m_genericConfig.clear();
+    for (auto it = genericObj.begin(); it != genericObj.end(); ++it) {
+        m_genericConfig[it.key()] = it.value().toVariant();
+    }
+
     // 验证加载的配置
     return validate(errors);
 }
@@ -430,6 +443,20 @@ QJsonObject ProjectConfig::toJson() const
         extraObj[it.key()] = QJsonValue::fromVariant(it.value());
     }
     json["extra_config"] = extraObj;
+
+    // SDK 环境
+    QJsonObject sdkObj;
+    for (auto it = m_sdkEnv.begin(); it != m_sdkEnv.end(); ++it) {
+        sdkObj[it.key()] = QJsonValue::fromVariant(it.value());
+    }
+    json["sdk_env"] = sdkObj;
+
+    // 通用配置
+    QJsonObject genericObj;
+    for (auto it = m_genericConfig.begin(); it != m_genericConfig.end(); ++it) {
+        genericObj[it.key()] = QJsonValue::fromVariant(it.value());
+    }
+    json["generic_config"] = genericObj;
 
     return json;
 }

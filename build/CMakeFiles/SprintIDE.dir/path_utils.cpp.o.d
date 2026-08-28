@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/path_utils.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/path_utils.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/path_utils.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qstring.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qchar.h \

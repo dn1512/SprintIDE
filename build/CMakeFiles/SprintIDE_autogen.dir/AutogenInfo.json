@@ -1,15 +1,15 @@
 {
-	"BUILD_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen",
-	"CMAKE_BINARY_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build",
-	"CMAKE_CURRENT_BINARY_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build",
-	"CMAKE_CURRENT_SOURCE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE",
+	"BUILD_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen",
+	"CMAKE_BINARY_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build",
+	"CMAKE_CURRENT_BINARY_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE",
 	"CMAKE_EXECUTABLE" : "/Applications/CMake.app/Contents/bin/cmake",
 	"CMAKE_LIST_FILES" : 
 	[
-		"/Users/liutengjun/code/QtCode/SprintIDE/CMakeLists.txt",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/CMakeLists.txt",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeDetermineSystem.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeSystem.cmake.in",
-		"/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/3.23.1/CMakeSystem.cmake",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/3.23.1/CMakeSystem.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeUnixFindMake.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/Platform/Darwin-Initialize.cmake",
@@ -98,7 +98,7 @@
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeFindBinUtils.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeCXXCompiler.cmake.in",
-		"/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/3.23.1/CMakeCXXCompiler.cmake",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/3.23.1/CMakeCXXCompiler.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeGenericSystem.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake",
@@ -126,7 +126,7 @@
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeDetermineCompileFeatures.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/Internal/FeatureTesting.cmake",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeCXXCompiler.cmake.in",
-		"/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/3.23.1/CMakeCXXCompiler.cmake",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/3.23.1/CMakeCXXCompiler.cmake",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6/Qt6ConfigVersion.cmake",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6/Qt6ConfigVersionImpl.cmake",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6/Qt6Config.cmake",
@@ -479,216 +479,288 @@
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6Network/Qt6QTlsBackendOpenSSLPluginTargets-relwithdebinfo.cmake",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6Network/Qt6QTlsBackendOpenSSLPluginAdditionalTargetInfo.cmake",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/cmake/Qt6Network/Qt6NetworkVersionlessAliasTargets.cmake",
-		"/Users/liutengjun/code/QtCode/SprintIDE/resources/lightide_resources.qrc",
-		"/Users/liutengjun/code/QtCode/SprintIDE/resources/fonts.qrc"
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/resources/lightide_resources.qrc",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/resources/fonts.qrc"
 	],
-	"CMAKE_SOURCE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE",
+	"CMAKE_SOURCE_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE",
 	"DEP_FILE" : "",
 	"DEP_FILE_RULE_NAME" : "",
 	"HEADERS" : 
 	[
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_action_executor.h",
 			"MU",
 			"AQUW3KFNJO/moc_ai_action_executor.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_integration.h",
 			"MU",
 			"AQUW3KFNJO/moc_ai_integration.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_server.h",
 			"MU",
 			"AQUW3KFNJO/moc_ai_server.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.h",
 			"MU",
 			"AQUW3KFNJO/moc_chat_panel.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/application.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/application.h",
 			"MU",
 			"EWIEGA46WW/moc_application.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/compile_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_build_result.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_build_task.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_builder_factory.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/cpp_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_cpp_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/generic_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_generic_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/go_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_go_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_ibuilder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_java_gradle_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/node_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_node_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/python_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_python_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/rust_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_rust_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_compile_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/compile_output_parser.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_output_parser.h",
 			"MU",
 			"EWIEGA46WW/moc_compile_output_parser.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/config_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/config_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_config_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/debug_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_debug_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/debug_panel.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h",
 			"MU",
 			"EWIEGA46WW/moc_debug_panel.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/editor_widget.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/editor_widget.h",
 			"MU",
 			"EWIEGA46WW/moc_editor_widget.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/find_dialog.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/find_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_find_dialog.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/font_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_font_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/history/local_history.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h",
 			"MU",
 			"ZGCQNSLDUB/moc_local_history.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h",
 			"MU",
 			"W6ZIZK5JGA/moc_language_detector.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h",
 			"MU",
 			"W6ZIZK5JGA/moc_language_highlighter.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h",
+			"MU",
+			"W6ZIZK5JGA/moc_language_type.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h",
 			"MU",
 			"E23QILUPB6/moc_lsp_client.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_manager.h",
 			"MU",
 			"E23QILUPB6/moc_lsp_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/mainwindow.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/mainwindow.h",
 			"MU",
 			"EWIEGA46WW/moc_mainwindow.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/mainwindow_p.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/mainwindow_p.h",
 			"MU",
 			"EWIEGA46WW/moc_mainwindow_p.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/path_utils.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.h",
 			"MU",
 			"EWIEGA46WW/moc_path_utils.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/process_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_process_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_config.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h",
 			"MU",
 			"EWIEGA46WW/moc_project_config.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_project_creation_dialog.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_project_manager.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_panel.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.h",
 			"MU",
 			"EWIEGA46WW/moc_project_panel.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_selection_dialog.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_project_selection_dialog.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_replace_dialog.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.h",
 			"MU",
 			"EWIEGA46WW/moc_syntax_highlighter.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/tab_widget.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h",
 			"MU",
 			"EWIEGA46WW/moc_tab_widget.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h",
 			"MU",
 			"SYOE7MTGTH/moc_terminal_panel.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/text_editor.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.h",
 			"MU",
 			"EWIEGA46WW/moc_text_editor.cpp",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/theme_manager.h",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_theme_manager.cpp",
 			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
-	"INCLUDE_DIR" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/include",
-	"MOC_COMPILATION_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/mocs_compilation.cpp",
+	"INCLUDE_DIR" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/include",
+	"MOC_COMPILATION_FILE" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/mocs_compilation.cpp",
 	"MOC_DEFINITIONS" : 
 	[
 		"QT_CORE_LIB",
@@ -706,7 +778,7 @@
 	],
 	"MOC_INCLUDES" : 
 	[
-		"/Users/liutengjun/code/QtCode/SprintIDE",
+		"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework",
 		"/Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers",
@@ -741,149 +813,221 @@
 		"-c",
 		"/Applications/CMake.app/Contents/share/cmake-3.23/Modules/CMakeCXXCompilerABI.cpp"
 	],
-	"MOC_PREDEFS_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h",
+	"MOC_PREDEFS_FILE" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h",
 	"MOC_RELAXED_MODE" : false,
 	"MOC_SKIP" : [],
 	"MULTI_CONFIG" : false,
 	"PARALLEL" : 4,
-	"PARSE_CACHE_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/ParseCache.txt",
+	"PARSE_CACHE_FILE" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "/Users/liutengjun/Qt6.10/6.10.1/macos/libexec/moc",
 	"QT_UIC_EXECUTABLE" : "/Users/liutengjun/Qt6.10/6.10.1/macos/libexec/uic",
 	"QT_VERSION_MAJOR" : 6,
 	"QT_VERSION_MINOR" : 10,
-	"SETTINGS_FILE" : "/Users/liutengjun/code/QtCode/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutogenUsed.txt",
+	"SETTINGS_FILE" : "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_action_executor.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_action_executor.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_integration.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_integration.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/ai_server.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_server.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/ai/chat_panel.cpp",
-			"MU",
-			null
-		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/application.cpp", "MU", null ],
-		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/compile_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/compile_output_parser.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/application.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/config_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/debug_manager.cpp",
-			"MU",
-			null
-		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/debug_panel.cpp", "MU", null ],
-		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/editor_widget.cpp",
-			"MU",
-			null
-		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/find_dialog.cpp", "MU", null ],
-		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/font_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/cpp_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/history/local_history.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/generic_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/go_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_client.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/node_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/lsp/lsp_manager.cpp",
-			"MU",
-			null
-		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/main.cpp", "MU", null ],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/mainwindow.cpp", "MU", null ],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/path_utils.cpp", "MU", null ],
-		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/process_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/python_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_config.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/rust_builder.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_creation_dialog.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_output_parser.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_panel.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/config_manager.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/project_selection_dialog.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.cpp",
 			"MU",
 			null
 		],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/editor_widget.cpp",
 			"MU",
 			null
 		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/tab_widget.cpp", "MU", null ],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/terminal/terminal_panel.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/find_dialog.cpp",
 			"MU",
 			null
 		],
-		[ "/Users/liutengjun/code/QtCode/SprintIDE/text_editor.cpp", "MU", null ],
 		[
-			"/Users/liutengjun/code/QtCode/SprintIDE/theme_manager.cpp",
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/main.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/mainwindow.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.cpp",
 			"MU",
 			null
 		]

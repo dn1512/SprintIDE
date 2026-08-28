@@ -921,17 +921,36 @@ void TextEditor::commentSelection()
     cursor.setPosition(end);
     QTextBlock endBlock = cursor.block();
 
+    // 如果光标在行首且选中跨多行，可能包含换行符，但 block 判断已覆盖
     if (cursor.positionInBlock() == 0 && endBlock != startBlock) {
         endBlock = endBlock.previous();
     }
 
+    // ========== 检查是否所有行都已注释 ==========
+    bool allCommented = true;
+    QTextBlock block = startBlock;
+    while (block.isValid() && block.blockNumber() <= endBlock.blockNumber()) {
+        QString text = block.text().trimmed();  // 去除前导空格，检测注释符
+        if (!text.startsWith("//")) {
+            allCommented = false;
+            break;
+        }
+        block = block.next();
+    }
+
+    if (allCommented) {
+        // 如果全部已注释，则取消注释
+        uncommentSelection();
+        return;
+    }
+
+    // ========== 添加注释（原有逻辑） ==========
     cursor.beginEditBlock();
 
-    QTextBlock block = startBlock;
+    block = startBlock;
     while (block.isValid() && block.blockNumber() <= endBlock.blockNumber()) {
         cursor.setPosition(block.position());
         cursor.insertText("// ");
-
         block = block.next();
     }
 

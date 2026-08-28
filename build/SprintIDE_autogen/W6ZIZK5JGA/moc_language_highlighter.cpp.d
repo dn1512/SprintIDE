@@ -1,5 +1,5 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/W6ZIZK5JGA/moc_language_highlighter.cpp: /Users/liutengjun/code/QtCode/SprintIDE/language/language_highlighter.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
+/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/W6ZIZK5JGA/moc_language_highlighter.cpp: /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/moc_predefs.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/Availability.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternal.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/AvailabilityInternalLegacy.h \
@@ -1038,4 +1038,4 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qvector2d.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qvectornd.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qwindowdefs.h \
-  /Users/liutengjun/code/QtCode/SprintIDE/language/language_detector.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h

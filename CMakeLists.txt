@@ -157,6 +157,7 @@ set(ALL_SOURCES
     ${AI_SOURCES}
     ${LANGUAGE_SOURCES}
     ${HISTORY_SOURCES}
+    ${BUILDER_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -172,6 +173,7 @@ set(ALL_HEADERS
     ${AI_HEADERS}
     ${LANGUAGE_HEADERS}
     ${HISTORY_HEADERS}
+    ${BUILDER_HEADERS}
 )
 
 set(ALL_FORMS
@@ -221,6 +223,7 @@ set(LANGUAGE_SOURCES
 set(LANGUAGE_HEADERS
     src/language/language_detector.h
     src/language/language_highlighter.h
+    src/language/language_type.h
 )
 
 set(HISTORY_HEADERS
@@ -229,6 +232,31 @@ set(HISTORY_HEADERS
 
 set(HISTORY_SOURCES
     src/history/local_history.cpp
+)
+
+set(BUILDER_SOURCES
+    src/build/build_task.h
+    src/build/build_result.h
+    src/build/ibuilder.h
+    src/build/cpp_builder.cpp
+    src/build/python_builder.cpp
+    src/build/java_gradle_builder.cpp
+    src/build/go_builder.cpp
+    src/build/rust_builder.cpp
+    src/build/node_builder.cpp
+    src/build/generic_builder.cpp
+    src/build/builder_factory.cpp
+)
+
+set(BUILDER_HEADERS
+    src/build/cpp_builder.h
+    src/build/python_builder.h
+    src/build/java_gradle_builder.h
+    src/build/go_builder.h
+    src/build/rust_builder.h
+    src/build/node_builder.h
+    src/build/generic_builder.h
+    src/build/builder_factory.h
 )
 
 # 创建可执行文件
@@ -272,6 +300,26 @@ add_executable(${PROJECT_NAME}
     lsp/lsp_manager.cpp
     history/local_history.h
     history/local_history.cpp
+    language/language_type.h
+    builder/build_task.h
+    builder/build_result.h
+    builder/ibuilder.h
+    builder/cpp_builder.h
+    builder/cpp_builder.cpp
+    builder/python_builder.h
+    builder/python_builder.cpp
+    builder/generic_builder.h
+    builder/generic_builder.cpp
+    builder/builder_factory.h
+    builder/builder_factory.cpp
+    builder/java_gradle_builder.h
+    builder/java_gradle_builder.cpp
+    builder/go_builder.h
+    builder/go_builder.cpp
+    builder/rust_builder.h
+    builder/rust_builder.cpp
+    builder/node_builder.h
+    builder/node_builder.cpp
 )
 
 

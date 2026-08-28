@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/syntax_highlighter.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/syntax_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtguiglobal.h \

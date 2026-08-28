@@ -1,6 +1,6 @@
 CMakeFiles/SprintIDE.dir/replace_dialog.cpp.o: \
-  /Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.cpp \
-  /Users/liutengjun/code/QtCode/SprintIDE/replace_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
