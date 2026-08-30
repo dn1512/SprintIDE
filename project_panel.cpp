@@ -45,7 +45,7 @@ static const QStringList SUPPORTED_EXTENSIONS = {
     // 其他文本文件
     "txt", "md", "json", "xml", "html", "css", "js",
     // 配置文件
-    "ini", "cfg", "conf", "pro", "pri",
+    "ini", "cfg", "conf", "pro", "pri", "yml",
     // 项目文件
     "lightcppproj", "cmake", "makefile"
 };
@@ -80,11 +80,10 @@ static const QMap<QString, QString> FILE_ICON_MAP = {
 
 ProjectPanel::ProjectPanel(QWidget *parent)
     : QTreeView(parent)
+    , m_fileWatcher(new QFileSystemWatcher(this))
     , m_fileModel(new QFileSystemModel(this))
     , m_contextMenu(new QMenu(this))
     , m_projectConfig(nullptr)
-    , m_showHiddenFiles(false)
-    , m_fileWatcher(new QFileSystemWatcher(this))
 {
     // 设置模型
     setModel(m_fileModel);
@@ -98,15 +97,13 @@ ProjectPanel::ProjectPanel(QWidget *parent)
     // 创建上下文菜单
     createContextMenu();
 
-    // 设置默认排除目录
+    // 设置默认排除目录（仅用于记录，实际过滤由文件模型处理）
     m_excludeDirs = DEFAULT_EXCLUDE_DIRS;
 
-    // 设置默认文件过滤器
-    QStringList filters;
-    for (const QString& ext : SUPPORTED_EXTENSIONS) {
-        filters << "*." + ext;
-    }
-    // setFileFilters(filters);
+    // ========== 移除文件扩展名过滤器 ==========
+    // 让项目面板显示所有文件（隐藏文件除外，可通过 setFilter 控制）
+    m_fileModel->setNameFilters(QStringList());
+    m_fileModel->setNameFilterDisables(false);
 
     // 隐藏列（只显示文件名）
     setHeaderHidden(true);
@@ -123,10 +120,10 @@ ProjectPanel::ProjectPanel(QWidget *parent)
     // 设置选择模式
     setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-    // 设置编辑触发方式
+    // 设置编辑触发方式：只允许 F2 键触发重命名
     setEditTriggers(QAbstractItemView::EditKeyPressed);
 
-    // 设置文件系统监视器
+    // 连接文件系统监视器
     connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged,
             this, &ProjectPanel::onWatchedDirectoryChanged);
     connect(m_fileWatcher, &QFileSystemWatcher::fileChanged,
@@ -213,29 +210,8 @@ const ProjectConfig* ProjectPanel::projectConfig() const
 
 void ProjectPanel::setFileFilters(const QStringList& filters)
 {
-    m_fileFilters = filters;
-
-    // 构建包含和排除的过滤器
-    QStringList nameFilters;
-
-    // 添加包含的文件扩展名
-    // for (const QString& filter : filters) {
-    //     nameFilters << filter;
-    // }
-
-    // if (!nameFilters.isEmpty()) {
-    //     m_fileModel->setNameFilters(nameFilters);
-    //     m_fileModel->setNameFilterDisables(false);  // 隐藏不匹配的项
-    // } else {
-    //     m_fileModel->setNameFilters(QStringList());
-    //     m_fileModel->setNameFilterDisables(false);
-    // }
-
-    // 设置名称过滤器
-    if (!filters.isEmpty()) {
-        m_fileModel->setNameFilters(filters);
-        m_fileModel->setNameFilterDisables(false);
-    }
+    m_fileModel->setNameFilters(filters);
+    m_fileModel->setNameFilterDisables(false);
 }
 
 QString ProjectPanel::selectedFilePath() const
@@ -851,21 +827,13 @@ void ProjectPanel::setupUI()
     // 设置过滤器：显示所有条目（文件、目录，不含 . 和 ..）
     m_fileModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Files | QDir::Dirs);
 
-    // 设置名称过滤器（只显示源文件和常见配置文件，不匹配的隐藏）
-    // m_fileModel->setNameFilters(QStringList()
-    //                             << "*.cpp" << "*.c" << "*.cc" << "*.cxx"
-    //                             << "*.h" << "*.hpp" << "*.hh" << "*.hxx"
-    //                             << "*.txt" << "*.md" << "*.json" << "*.xml"
-    //                             << "*.py" << "*.js" << "*.html" << "*.css"
-    //                             << "*.go" << "*.rs" << "*.java" << "*.cs" << "*.php"
-    //                             << "*.cmake" << "*.make" << "*.lightcppproj");
-    // m_fileModel->setNameFilterDisables(false);  // 隐藏不匹配的文件
-
     // 创建代理模型并设置排除目录
     auto* proxy = new ExcludeDirProxyModel(this);
+    // qDebug() << "Proxy model filters:" << proxy->filterRegExp().pattern();
     proxy->setSourceModel(m_fileModel);
     // 使用默认排除目录列表（含 .dSYM、bin 等）
     proxy->setExcludeDirs(DEFAULT_EXCLUDE_DIRS);
+    proxy->setAllowedExtensions(SUPPORTED_EXTENSIONS);
     m_proxyModel = proxy;
 
     // 将代理模型设置为视图模型
@@ -876,9 +844,21 @@ void ProjectPanel::setupUI()
     setIndentation(20);
     setSortingEnabled(true);
     setHeaderHidden(true);
+    setAlternatingRowColors(false);
+
     for (int i = 1; i < m_fileModel->columnCount(); ++i) {
         hideColumn(i);
     }
+
+    // ========== 配置水平滚动条和列宽 ==========
+    // 让第一列（文件名）宽度自适应内容
+    header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    // 禁止最后一列拉伸（避免填满视口，从而出现滚动条）
+    header()->setStretchLastSection(false);
+    // 显式设置水平滚动条按需显示（默认就是，但明确一下）
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    // 禁止文件名换行（可选）
+    setWordWrap(false);
 
     // 拖放支持
     setDragEnabled(true);
@@ -985,6 +965,16 @@ QString ProjectPanel::getFilePath(const QModelIndex &index) const
         return QString();
     }
     return m_fileModel->filePath(sourceIndex);
+}
+
+QModelIndex ProjectPanel::findIndexByPath(const QString &path) const
+{
+    if (path.isEmpty() || !m_fileModel) return QModelIndex();
+
+    QModelIndex sourceIndex = m_fileModel->index(path);
+    if (!sourceIndex.isValid()) return QModelIndex();
+
+    return m_proxyModel->mapFromSource(sourceIndex);
 }
 
 bool ProjectPanel::isDirectory(const QModelIndex &index) const

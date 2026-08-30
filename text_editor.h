@@ -20,9 +20,11 @@
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QString>
+#include <QListWidget>
 
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
+#include "lsp/lsp_client.h"
 
 
 namespace SprintIDE {
@@ -166,7 +168,17 @@ public:
      * @brief 重新计算所有行的折叠状态（在文件加载或编辑后调用）
      */
     void updateFolding();
+    /**
+     * @brief 触发代码补全（手动或自动）
+     */
+    void triggerCompletion();
 
+    /**
+     * @brief 更新补全列表
+     */
+    void updateCompletionItems(const QList<LSPCompletionItem>& items);
+
+    void highlightLine(int line);
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -182,6 +194,10 @@ signals:
     void findBarVisibilityChanged(bool visible);
     void replaceCompleted(int count);
 
+    void completionRequested(const QString& filePath, int line, int column);
+
+    void definitionRequested(const QString& filePath, int line, int column);
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -190,6 +206,8 @@ protected:
     void paintEvent(QPaintEvent *event) override;  // 自定义绘制
     bool event(QEvent *event) override;                    //
     bool viewportEvent(QEvent *event) override;            //
+
+    void focusOutEvent(QFocusEvent* event) override;
 
 private slots:
     void updateLineNumberAreaWidth();
@@ -211,6 +229,10 @@ private slots:
     void onToggleWholeWord(bool checked);
     void onToggleReplaceMode();
     void onCloseFindBar();
+
+    // ========== 代码补全 ==========
+    void onCompletionItemClicked(QListWidgetItem* item);
+    void onCompletionItemDoubleClicked(QListWidgetItem* item);
 
 private:
     void initEditor();
@@ -286,6 +308,22 @@ private:
     // ========== 绘制相关方法 ==========
     void drawBreakpointMarkers(QPainter *painter, const QRect &rect);
     void drawCurrentLineMarker(QPainter *painter, const QRect &rect);
+    /**
+     * @brief 判断当前光标位置是否应该触发补全
+     */
+    bool shouldTriggerCompletion(const QString& text, int cursorPos) const;
+
+    /**
+     * @brief 从补全列表中插入选中的项
+     */
+    void insertCompletion(const QString& insertText);
+
+    // 补全相关成员
+    QList<LSPCompletionItem> m_completionItems;
+    QListWidget* m_completionPopup;      // 补全下拉列表
+    bool m_completionActive = false;
+    QString m_completionTriggerText;     // 触发补全的前缀（例如 "System." 中的 "System."）
+
 
     // 菜单动作
     QAction *m_undoAction;

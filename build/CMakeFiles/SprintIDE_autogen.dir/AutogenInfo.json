@@ -560,9 +560,21 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_java_builder.cpp",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.h",
 			"MU",
 			"YWVJ7LBD7Z/moc_java_gradle_builder.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_maven_builder.h",
+			"MU",
+			"YWVJ7LBD7Z/moc_java_maven_builder.cpp",
 			null
 		],
 		[
@@ -728,6 +740,12 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/settings_dialog.h",
+			"MU",
+			"EWIEGA46WW/moc_settings_dialog.cpp",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.h",
 			"MU",
 			"EWIEGA46WW/moc_syntax_highlighter.cpp",
@@ -872,7 +890,17 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_builder.cpp",
+			"MU",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_maven_builder.cpp",
 			"MU",
 			null
 		],
@@ -1003,6 +1031,11 @@
 		],
 		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/settings_dialog.cpp",
 			"MU",
 			null
 		],

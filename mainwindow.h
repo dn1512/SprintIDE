@@ -50,7 +50,6 @@ public:
 
     bool compileProject(const QString& projectPath, const QString& projectName);
     bool runProject(const QString& projectPath, const QString& projectName);
-    void loadProjectFiles(const QString& projectPath);
     void onNewProject();
 
     void openProject(const QString &path);
@@ -202,6 +201,7 @@ private:
     void setupConnections();
     void setupDebugPanel(); 
     void setupTerminalPanel();
+    void loadAllProjectFiles(const QString& projectPath);
 
     void applyTheme();
 
@@ -279,6 +279,17 @@ private:
      * @brief 根据文件路径检测语言类型
      */
     // LanguageType detectLanguageTypeFromPath(const QString& filePath);
+    /**
+     * @brief 检查并生成 Maven 项目的 Eclipse 元数据文件
+     * @param projectPath 项目根目录
+     * @return true 表示成功或已存在，false 表示失败或用户取消
+     */
+    bool ensureEclipseProjectFiles(const QString& projectPath);
+
+    void saveSession();
+    void restoreSession();
+    void saveExpandedPaths(QJsonArray &paths, const QModelIndex &parent);
+    void restoreExpandedPaths(const QJsonArray &paths);
 
 private:
     MainWindowPrivate *d;

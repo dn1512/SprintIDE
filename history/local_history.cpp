@@ -340,7 +340,7 @@ void LocalHistory::setMaxVersions(int count)
 QString LocalHistory::getHistoryDir(const QString &filePath) const
 {
     if (filePath.isEmpty()) {
-        return QDir(m_projectRoot).absoluteFilePath(".sprintide/history");
+        return QDir(m_projectRoot).absoluteFilePath(".SprintIDE/history");
     }
 
     // 使用文件名的哈希作为子目录名（避免特殊字符问题）
@@ -350,7 +350,7 @@ QString LocalHistory::getHistoryDir(const QString &filePath) const
     safeName = safeName.isEmpty() ? "unknown" : safeName;
 
     return QDir(m_projectRoot).absoluteFilePath(
-        QString(".sprintide/history/%1").arg(safeName));
+        QString(".SprintIDE/history/%1").arg(safeName));
 }
 
 QString LocalHistory::getVersionFilePath(const QString &filePath, int version) const
@@ -382,7 +382,7 @@ QString LocalHistory::getVersionFilePath(const QString &filePath, int version) c
 
 QString LocalHistory::getMetadataPath() const
 {
-    return QDir(m_projectRoot).absoluteFilePath(".sprintide/history/versions.json");
+    return QDir(m_projectRoot).absoluteFilePath(".SprintIDE/history/versions.json");
 }
 
 void LocalHistory::loadMetadata()

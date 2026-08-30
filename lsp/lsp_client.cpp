@@ -5,6 +5,9 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QStandardPaths>
+
+#include "utils/java_utils.h"
 
 namespace SprintIDE {
 
@@ -19,6 +22,9 @@ LSPClient::LSPClient(QObject* parent)
     m_reparseTimer = new QTimer(this);
     m_reparseTimer->setSingleShot(true);
     m_reparseTimer->setInterval(200);
+    m_initTimer = new QTimer(this);
+    m_initTimer->setSingleShot(true);
+    connect(m_initTimer, &QTimer::timeout, this, &LSPClient::onInitializeTimeout);
     connect(m_reparseTimer, &QTimer::timeout, this, &LSPClient::onReparseTimer);
 }
 
@@ -38,44 +44,59 @@ bool LSPClient::startServer(const QString& serverPath)
         m_serverPath = serverPath;
     }
 
-    // 检查 clangd 是否存在
-    QFileInfo clangdInfo(m_serverPath);
-    if (!clangdInfo.exists() && m_serverPath == "clangd") {
-        // 尝试常见路径
-        QStringList possiblePaths = {
-            "/usr/bin/clangd",
-            "/usr/local/bin/clangd",
-            "/opt/homebrew/bin/clangd",
-            "/Library/Developer/CommandLineTools/usr/bin/clangd"
-        };
-        for (const QString& path : possiblePaths) {
-            if (QFile::exists(path)) {
-                m_serverPath = path;
-                break;
+    bool isJdtls = m_serverPath.contains("jdtls", Qt::CaseInsensitive) ||
+                   m_serverPath.contains("jdtls_wrapper", Qt::CaseInsensitive);
+
+    // ----- 1. 检查可执行文件 -----
+    QString executable = m_serverPath;
+    if (!QFile::exists(executable)) {
+        // 尝试从 PATH 查找（仅当不是绝对路径时）
+        if (!QFileInfo(executable).isAbsolute()) {
+            QString found = QStandardPaths::findExecutable(executable);
+            if (!found.isEmpty()) {
+                executable = found;
             }
+        }
+        if (!QFile::exists(executable)) {
+            emit serverError("可执行文件不存在: " + m_serverPath);
+            return false;
         }
     }
 
-    if (!QFile::exists(m_serverPath)) {
-        qDebug() << "LSP: clangd not found at" << m_serverPath;
-        emit serverError("clangd not found. Please install clangd.");
-        return false;
-    }
-    qDebug() << "LSP: clangd found at" << m_serverPath;
+    // ----- 2. 构建启动参数 -----
+    QStringList args;
+    if (isJdtls) {
+        // 从 m_serverPath 中提取项目根目录（即 wrapper 所在目录的上一级？）
+        // 更可靠：从 m_projectRoot 获取项目根目录（已在 LSPManager 中设置）
+        QDir projectDir(m_projectRoot);
+        QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
 
+        // 配置目录
+        QString configDir = jdtlsBase + "/config";
+        if (!JavaUtils::createMinimalConfig(configDir)) {
+            emit serverError("无法创建 config.ini");
+            return false;
+        }
+
+        // 工作区目录（每个项目独立）
+        QString workspaceRoot = QDir::homePath() + "/.SprintIDE/workspaces";
+        QDir().mkpath(workspaceRoot);
+        QString workspaceDir = workspaceRoot + "/" + QString::number(qHash(m_projectRoot));
+        QDir().mkpath(workspaceDir);
+
+        args << "-configuration" << configDir;
+        args << "-data" << workspaceDir;
+        args << "-consoleLog";
+    } else {
+        // clangd 参数不变
+        args << "--background-index";
+        if (m_enableClangTidy) args << "--clang-tidy";
+        if (!m_projectRoot.isEmpty()) args << "--compile-commands-dir=" + m_projectRoot;
+    }
+
+    // ----- 3. 启动进程 -----
     m_process = new QProcess(this);
-
-    QStringList args = {"--background-index", "--clang-tidy"};
-
-    if (m_enableClangTidy) {
-        args << "--clang-tidy";
-    }
-    if (!m_projectRoot.isEmpty()) {
-        args << "--compile-commands-dir=" + m_projectRoot;
-        qDebug() << "LSP: using compile_commands_dir:" << m_projectRoot;
-    }
-
-    m_process->setProgram(m_serverPath);
+    m_process->setProgram(executable);
     m_process->setArguments(args);
     m_process->setProcessChannelMode(QProcess::SeparateChannels);
 
@@ -87,17 +108,65 @@ bool LSPClient::startServer(const QString& serverPath)
             this, &LSPClient::onServerFinished);
 
     m_process->start();
-
     if (!m_process->waitForStarted(3000)) {
-        emit serverError("Failed to start clangd");
+        emit serverError("Failed to start LSP server (process not started)");
         return false;
     }
 
-    // 发送 initialize 请求
+    // ----- 4. 构造 initialize 请求（与之前相同，包含 Maven/Gradle 配置） -----
     QJsonObject initParams;
     initParams["processId"] = QCoreApplication::applicationPid();
     initParams["rootUri"] = uriFromPath(m_projectRoot.isEmpty() ? QDir::currentPath() : m_projectRoot);
 
+    QJsonArray workspaceFolders;
+    QJsonObject folder;
+    folder["uri"] = uriFromPath(m_projectRoot);
+    folder["name"] = QFileInfo(m_projectRoot).fileName();
+    workspaceFolders.append(folder);
+    initParams["workspaceFolders"] = workspaceFolders;
+
+    QString rootUri = uriFromPath(m_projectRoot.isEmpty() ? QDir::currentPath() : m_projectRoot);
+    initParams["rootUri"] = rootUri;
+    qDebug() << "LSP: initialize rootUri = " << rootUri;
+
+    // ---- initializationOptions（仅 JDTLS） ----
+    QJsonObject initializationOptions;
+    if (isJdtls) {
+        // Maven 配置
+        QJsonObject mavenOffline;
+        mavenOffline["enabled"] = false;
+        QJsonObject maven;
+        maven["enabled"] = true;
+        maven["offline"] = mavenOffline;
+        maven["downloadSources"] = true;
+        maven["downloadJavadoc"] = true;
+
+        // Gradle 配置
+        QJsonObject gradle;
+        gradle["enabled"] = true;
+        QJsonObject wrapper;
+        wrapper["enabled"] = true;
+        gradle["wrapper"] = wrapper;
+
+        QJsonObject importObj;
+        importObj["maven"] = maven;
+        importObj["gradle"] = gradle;
+
+        QJsonObject config;
+        config["updateBuildConfiguration"] = "automatic";
+
+        QJsonObject javaSettings;
+        javaSettings["autobuild"] = "on";
+        javaSettings["import"] = importObj;
+        javaSettings["configuration"] = config;
+
+        QJsonObject settings;
+        settings["java"] = javaSettings;
+        initializationOptions["settings"] = settings;
+    }
+    initParams["initializationOptions"] = initializationOptions;
+
+    // ---- capabilities ----
     QJsonObject capabilities;
     QJsonObject textDocument;
     textDocument["synchronization"] = QJsonObject{{"didSave", true}};
@@ -107,13 +176,13 @@ bool LSPClient::startServer(const QString& serverPath)
     textDocument["publishDiagnostics"] = QJsonObject{};
     capabilities["textDocument"] = textDocument;
 
-    // workspace
     QJsonObject workspace;
     workspace["didChangeWatchedFiles"] = QJsonObject{{"dynamicRegistration", true}};
+    workspace["configuration"] = true;
     capabilities["workspace"] = workspace;
-
     initParams["capabilities"] = capabilities;
 
+    // ---- 发送请求 ----
     QJsonObject request;
     request["jsonrpc"] = "2.0";
     request["id"] = m_messageId++;
@@ -123,7 +192,8 @@ bool LSPClient::startServer(const QString& serverPath)
     m_pendingRequests[request["id"].toInt()] = "initialize";
     sendMessage(request);
 
-    qDebug() << "LSP: process started, waiting for initialize response";
+    m_initTimer->start(30000); // 30 秒超时
+
     return true;
 }
 
@@ -158,6 +228,61 @@ bool LSPClient::isReady() const
 bool LSPClient::isServerRunning() const
 {
     return m_process && m_process->state() == QProcess::Running;
+}
+
+void LSPClient::requestDefinition(const QString& filePath, int line, int column)
+{
+    if (!isReady()) return;
+
+    QJsonObject params;
+    QJsonObject textDocument;
+    textDocument["uri"] = uriFromPath(filePath);
+    params["textDocument"] = textDocument;
+
+    QJsonObject position;
+    position["line"] = line;
+    position["character"] = column;
+    params["position"] = position;
+
+    QJsonObject request;
+    request["jsonrpc"] = "2.0";
+    request["id"] = m_messageId++;
+    request["method"] = "textDocument/definition";
+    request["params"] = params;
+
+    m_pendingRequests[request["id"].toInt()] = "definition";
+    sendMessage(request);
+}
+
+void LSPClient::handleDefinitionResponse(const QJsonObject& response)
+{
+    QJsonValue result = response["result"];
+    if (result.isNull()) return;
+
+    // 解析位置
+    QString targetFile;
+    int line = 0, column = 0;
+    if (result.isObject()) {
+        QJsonObject loc = result.toObject();
+        targetFile = pathFromUri(loc["uri"].toString());
+        QJsonObject range = loc["range"].toObject();
+        QJsonObject start = range["start"].toObject();
+        line = start["line"].toInt() + 1;
+        column = start["character"].toInt() + 1;
+    } else if (result.isArray()) {
+        QJsonArray arr = result.toArray();
+        if (!arr.isEmpty()) {
+            QJsonObject loc = arr.first().toObject();
+            targetFile = pathFromUri(loc["uri"].toString());
+            QJsonObject range = loc["range"].toObject();
+            QJsonObject start = range["start"].toObject();
+            line = start["line"].toInt() + 1;
+            column = start["character"].toInt() + 1;
+        }
+    }
+    if (!targetFile.isEmpty()) {
+        emit definitionReceived(targetFile, line, column);
+    }
 }
 
 // ========== 文档管理 ==========
@@ -235,6 +360,14 @@ void LSPClient::onReparseTimer()
     sendMessage(notification);
 }
 
+void LSPClient::onInitializeTimeout()
+{
+    if (!m_initialized) {
+        emit serverError("JDTLS 初始化超时，请检查 Java 环境或日志文件。");
+        // 可选：重启服务器
+    }
+}
+
 void LSPClient::closeDocument(const QString& filePath)
 {
     if (!isReady()) return;
@@ -287,37 +420,62 @@ void LSPClient::sendMessage(const QJsonObject& message)
 void LSPClient::onServerReadyRead()
 {
     m_buffer += m_process->readAllStandardOutput();
-    qDebug() << "LSP: received data, buffer size:" << m_buffer.size();
+
+    // ---- 调试：打印原始数据 ----
+    qDebug() << "LSP raw data (first 200 chars):" << m_buffer.left(200);
 
     while (true) {
-        int headerEnd = m_buffer.indexOf("\r\n\r\n");
-        if (headerEnd == -1) {
-            qDebug() << "LSP: no complete message yet";
-            break;
+        // 如果缓冲区不以 "Content-Length:" 开头，说明有非 LSP 输出，丢弃该行
+        if (!m_buffer.startsWith("Content-Length:")) {
+            int newline = m_buffer.indexOf('\n');
+            if (newline == -1) {
+                // 没有换行，但可能是后续消息的一部分？暂时保留，但为避免死循环，若超长则丢弃
+                if (m_buffer.size() > 4096) {
+                    qWarning() << "LSP: discarding large non-header buffer";
+                    m_buffer.clear();
+                }
+                break;
+            }
+            QByteArray line = m_buffer.left(newline + 1);
+            qDebug() << "LSP: skipping non-LSP line:" << line.trimmed();
+            m_buffer.remove(0, newline + 1);
+            continue; // 继续检查头部
         }
 
+        // 正常解析头部
+        int headerEnd = m_buffer.indexOf("\r\n\r\n");
+        if (headerEnd == -1) {
+            break; // 头部不完整，等待更多数据
+        }
+
+        // 解析 Content-Length
         QByteArray headerData = m_buffer.left(headerEnd);
         int contentLength = 0;
         QRegularExpression regex("Content-Length:\\s*(\\d+)");
         QRegularExpressionMatch match = regex.match(headerData);
         if (match.hasMatch()) {
             contentLength = match.captured(1).toInt();
+        } else {
+            // 没有 Content-Length，丢弃这条消息
+            m_buffer.remove(0, headerEnd + 4);
+            continue;
         }
 
         int messageStart = headerEnd + 4;
         if (m_buffer.size() < messageStart + contentLength) {
-            qDebug() << "LSP: incomplete message, need" << contentLength << "bytes";
-            break;
+            break; // 消息体不完整
         }
 
+        // 提取消息体
         QByteArray messageData = m_buffer.mid(messageStart, contentLength);
         m_buffer.remove(0, messageStart + contentLength);
 
+        // 解析 JSON
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson(messageData, &error);
         if (error.error != QJsonParseError::NoError) {
-            qDebug() << "LSP: JSON parse error:" << error.errorString();
-            qDebug() << "LSP: raw data:" << messageData;
+            qWarning() << "LSP: JSON parse error:" << error.errorString();
+            qWarning() << "LSP: raw message data:" << messageData;
             continue;
         }
 
@@ -337,7 +495,7 @@ void LSPClient::onServerErrorRead()
     QByteArray data = m_process->readAllStandardError();
     QString error = QString::fromUtf8(data);
     if (!error.isEmpty()) {
-        qDebug() << "LSP: stderr raw data:" << error;
+        qDebug() << "LSP stderr:" << error;  // 完整输出（调试用）
 
         QStringList lines = error.split('\n');
         for (const QString& line : lines) {
@@ -345,13 +503,12 @@ void LSPClient::onServerErrorRead()
             if (trimmed.isEmpty()) continue;
 
             // ========== 过滤 clangd 的正常 INFO 日志 ==========
-            // 格式: I[04:25:33.195] <-- initialize(1)
             if (trimmed.startsWith("I[")) {
                 qDebug() << "clangd INFO:" << trimmed;
                 continue;
             }
 
-            // 过滤常见的正常信息
+            // 过滤 clangd 常见的正常输出
             if (trimmed.contains("Loaded compilation database") ||
                 trimmed.contains("ASTWorker building file") ||
                 trimmed.contains("Indexing c++17 standard library") ||
@@ -359,7 +516,7 @@ void LSPClient::onServerErrorRead()
                 trimmed.contains("Indexed c++17 standard library") ||
                 trimmed.contains("Enqueueing") ||
                 trimmed.contains("File version went from") ||
-                trimmed.contains("-->" + trimmed.contains("textDocument"))) {
+                (trimmed.contains("-->") && trimmed.contains("textDocument"))) {
                 qDebug() << "clangd:" << trimmed;
                 continue;
             }
@@ -370,15 +527,46 @@ void LSPClient::onServerErrorRead()
                 continue;
             }
 
-            // 只有错误才发送给用户
+            // ========== 过滤 JDTLS 的正常启动信息 ==========
+            if (trimmed.contains("org.apache.aries.spifly.BaseActivator") ||
+                trimmed.contains("Registered provider") ||
+                trimmed.contains("logback.classic") ||
+                trimmed.contains("SLF4JServiceProvider") ||
+                trimmed.contains("!SESSION") ||
+                trimmed.contains("!ENTRY") ||
+                trimmed.contains("!MESSAGE") ||
+                trimmed.contains("!SUBENTRY") ||
+                trimmed.contains("!STACK") ||
+                trimmed.contains("java.version") ||
+                trimmed.contains("java.vendor") ||
+                trimmed.contains("BootLoader constants") ||
+                trimmed.contains("Command-line arguments")) {
+                qDebug() << "JDTLS info:" << trimmed;
+                continue;
+            }
+
+            // 过滤 JDTLS 恢复/状态信息
+            if (trimmed.contains("Workspace restored") ||
+                trimmed.contains("exited with unsaved changes") ||
+                trimmed.contains("refreshing workspace") ||
+                trimmed.contains("ProjectStatus") ||
+                trimmed.contains("ServiceReady") ||
+                trimmed.contains("Starting Java Language Server") ||
+                trimmed.contains("class org.eclipse.jdt.ls.core.internal.JavaLanguageServerPlugin is started")) {
+                qDebug() << "JDTLS info:" << trimmed;
+                continue;
+            }
+
+            // 只有真正的错误才发送给用户
             if (trimmed.startsWith("E[") ||
                 trimmed.contains("error:") ||
                 trimmed.contains("fatal error:") ||
-                trimmed.contains("failed")) {
-                emit serverError("clangd: " + trimmed);
+                trimmed.contains("failed") ||
+                trimmed.contains("Exception") ||
+                trimmed.contains("Error")) {
+                emit serverError("JDTLS: " + trimmed);
             } else {
-                // 其他信息只调试输出
-                qDebug() << "clangd:" << trimmed;
+                qDebug() << "JDTLS:" << trimmed;
             }
         }
     }
@@ -398,6 +586,7 @@ void LSPClient::handleResponse(const QJsonObject& response)
     QString method = m_pendingRequests.value(id, "");
 
     if (method == "initialize") {
+        m_initTimer->stop();
         // 初始化成功，发送 initialized 通知
         QJsonObject notification;
         notification["jsonrpc"] = "2.0";
@@ -408,6 +597,8 @@ void LSPClient::handleResponse(const QJsonObject& response)
         m_initialized = true;
         emit serverReady();
         emit serverStarted();
+    } else if (method == "completion") {
+        handleCompletionResponse(response);
     }
 
     m_pendingRequests.remove(id);
@@ -498,5 +689,134 @@ void LSPClient::enableClangTidy(bool enable)
 {
     m_enableClangTidy = enable;
 }
+
+// ========== 代码补全实现 ==========
+
+void LSPClient::requestCompletion(const QString& filePath, int line, int column)
+{
+    if (!isReady()) {
+        qDebug() << "LSP: completion skipped, not ready";
+        return;
+    }
+
+    QString uri = uriFromPath(filePath);
+
+    QJsonObject params;
+    QJsonObject textDocument;
+    textDocument["uri"] = uri;
+    params["textDocument"] = textDocument;
+
+    QJsonObject position;
+    position["line"] = line;
+    position["character"] = column;
+    params["position"] = position;
+
+    // 可选：上下文（当前触发的字符）
+    // params["context"] = QJsonObject{{"triggerKind", 1}}; // 1 = Invoked
+
+    QJsonObject request;
+    request["jsonrpc"] = "2.0";
+    request["id"] = m_messageId++;
+    request["method"] = "textDocument/completion";
+    request["params"] = params;
+
+    // 保存当前请求的文件路径，响应回来时使用
+    m_completionFilePath = filePath;
+    m_completionRequestId = request["id"].toInt();
+    m_pendingRequests[m_completionRequestId] = "completion";
+
+    sendMessage(request);
+    qDebug() << "LSP: completion requested for" << filePath << "at" << line << ":" << column;
+}
+
+void LSPClient::handleCompletionResponse(const QJsonObject& response)
+{
+    QList<LSPCompletionItem> items;
+    QString filePath = m_completionFilePath;
+
+    // 解析响应
+    QJsonValue result = response["result"];
+    if (result.isNull() || !result.isObject()) {
+        // 可能没有补全结果
+        emit completionReceived(filePath, items);
+        return;
+    }
+
+    QJsonObject resultObj = result.toObject();
+    QJsonValue itemsVal = resultObj["items"];
+    if (!itemsVal.isArray()) {
+        // 可能是直接返回的数组
+        itemsVal = result;
+    }
+
+    if (itemsVal.isArray()) {
+        QJsonArray arr = itemsVal.toArray();
+        for (const QJsonValue& val : arr) {
+            QJsonObject obj = val.toObject();
+            LSPCompletionItem item;
+            item.label = obj["label"].toString();
+            item.kindCode = obj["kind"].toInt(0);
+            item.kind = completionKindToString(item.kindCode);
+
+            // 插入文本：优先使用 insertText，否则使用 label
+            if (obj.contains("insertText")) {
+                item.insertText = obj["insertText"].toString();
+            } else {
+                item.insertText = item.label;
+            }
+
+            // 详细信息（可选）
+            if (obj.contains("detail")) {
+                item.detail = obj["detail"].toString();
+            } else if (obj.contains("documentation")) {
+                QJsonValue doc = obj["documentation"];
+                if (doc.isString()) {
+                    item.detail = doc.toString();
+                } else if (doc.isObject()) {
+                    item.detail = doc.toObject()["value"].toString();
+                }
+            }
+
+            items.append(item);
+        }
+    }
+
+    qDebug() << "LSP: completion received" << items.size() << "items for" << filePath;
+    emit completionReceived(filePath, items);
+}
+
+QString LSPClient::completionKindToString(int kind) const
+{
+    switch (kind) {
+    case 1: return "text";
+    case 2: return "method";
+    case 3: return "function";
+    case 4: return "constructor";
+    case 5: return "field";
+    case 6: return "variable";
+    case 7: return "class";
+    case 8: return "interface";
+    case 9: return "module";
+    case 10: return "property";
+    case 11: return "unit";
+    case 12: return "value";
+    case 13: return "enum";
+    case 14: return "keyword";
+    case 15: return "snippet";
+    case 16: return "color";
+    case 17: return "file";
+    case 18: return "reference";
+    case 19: return "folder";
+    case 20: return "enummember";
+    case 21: return "constant";
+    case 22: return "struct";
+    case 23: return "event";
+    case 24: return "operator";
+    case 25: return "typeparameter";
+    default: return "";
+    }
+}
+
+
 
 } // namespace SprintIDE

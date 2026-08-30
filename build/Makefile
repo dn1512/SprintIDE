@@ -475,6 +475,30 @@ builder/go_builder.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/go_builder.cpp.s
 .PHONY : builder/go_builder.cpp.s
 
+builder/java_builder.o: builder/java_builder.cpp.o
+.PHONY : builder/java_builder.o
+
+# target to build an object file
+builder/java_builder.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.o
+.PHONY : builder/java_builder.cpp.o
+
+builder/java_builder.i: builder/java_builder.cpp.i
+.PHONY : builder/java_builder.i
+
+# target to preprocess a source file
+builder/java_builder.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.i
+.PHONY : builder/java_builder.cpp.i
+
+builder/java_builder.s: builder/java_builder.cpp.s
+.PHONY : builder/java_builder.s
+
+# target to generate assembly for a file
+builder/java_builder.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.s
+.PHONY : builder/java_builder.cpp.s
+
 builder/java_gradle_builder.o: builder/java_gradle_builder.cpp.o
 .PHONY : builder/java_gradle_builder.o
 
@@ -498,6 +522,30 @@ builder/java_gradle_builder.s: builder/java_gradle_builder.cpp.s
 builder/java_gradle_builder.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_gradle_builder.cpp.s
 .PHONY : builder/java_gradle_builder.cpp.s
+
+builder/java_maven_builder.o: builder/java_maven_builder.cpp.o
+.PHONY : builder/java_maven_builder.o
+
+# target to build an object file
+builder/java_maven_builder.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_maven_builder.cpp.o
+.PHONY : builder/java_maven_builder.cpp.o
+
+builder/java_maven_builder.i: builder/java_maven_builder.cpp.i
+.PHONY : builder/java_maven_builder.i
+
+# target to preprocess a source file
+builder/java_maven_builder.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_maven_builder.cpp.i
+.PHONY : builder/java_maven_builder.cpp.i
+
+builder/java_maven_builder.s: builder/java_maven_builder.cpp.s
+.PHONY : builder/java_maven_builder.s
+
+# target to generate assembly for a file
+builder/java_maven_builder.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/builder/java_maven_builder.cpp.s
+.PHONY : builder/java_maven_builder.cpp.s
 
 builder/node_builder.o: builder/node_builder.cpp.o
 .PHONY : builder/node_builder.o
@@ -1123,6 +1171,30 @@ replace_dialog.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/replace_dialog.cpp.s
 .PHONY : replace_dialog.cpp.s
 
+settings_dialog.o: settings_dialog.cpp.o
+.PHONY : settings_dialog.o
+
+# target to build an object file
+settings_dialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o
+.PHONY : settings_dialog.cpp.o
+
+settings_dialog.i: settings_dialog.cpp.i
+.PHONY : settings_dialog.i
+
+# target to preprocess a source file
+settings_dialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/settings_dialog.cpp.i
+.PHONY : settings_dialog.cpp.i
+
+settings_dialog.s: settings_dialog.cpp.s
+.PHONY : settings_dialog.s
+
+# target to generate assembly for a file
+settings_dialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/settings_dialog.cpp.s
+.PHONY : settings_dialog.cpp.s
+
 syntax_highlighter.o: syntax_highlighter.cpp.o
 .PHONY : syntax_highlighter.o
 
@@ -1293,9 +1365,15 @@ help:
 	@echo "... builder/go_builder.o"
 	@echo "... builder/go_builder.i"
 	@echo "... builder/go_builder.s"
+	@echo "... builder/java_builder.o"
+	@echo "... builder/java_builder.i"
+	@echo "... builder/java_builder.s"
 	@echo "... builder/java_gradle_builder.o"
 	@echo "... builder/java_gradle_builder.i"
 	@echo "... builder/java_gradle_builder.s"
+	@echo "... builder/java_maven_builder.o"
+	@echo "... builder/java_maven_builder.i"
+	@echo "... builder/java_maven_builder.s"
 	@echo "... builder/node_builder.o"
 	@echo "... builder/node_builder.i"
 	@echo "... builder/node_builder.s"
@@ -1374,6 +1452,9 @@ help:
 	@echo "... replace_dialog.o"
 	@echo "... replace_dialog.i"
 	@echo "... replace_dialog.s"
+	@echo "... settings_dialog.o"
+	@echo "... settings_dialog.i"
+	@echo "... settings_dialog.s"
 	@echo "... syntax_highlighter.o"
 	@echo "... syntax_highlighter.i"
 	@echo "... syntax_highlighter.s"

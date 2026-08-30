@@ -34,6 +34,14 @@ public:
         invalidateFilter();
     }
 
+    // 新增：设置允许的文件扩展名白名单（小写，不带点）
+    // 空列表表示允许所有文件
+    void setAllowedExtensions(const QStringList& exts)
+    {
+        m_allowedExtensions = exts;
+        invalidateFilter();
+    }
+
 protected:
     bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override
     {
@@ -57,8 +65,8 @@ protected:
             // 文件：只显示白名单扩展名
             QString ext = info.suffix().toLower();
             static const QStringList allowedExts = {
-                "cpp", "c", "cc", "cxx", "h", "hpp", "hh", "hxx",
-                "txt", "md", "json", "xml", "py", "js", "html", "css",
+                "cpp", "c", "cc", "cxx", "h", "hpp", "hh", "hxx", "yml", "ini",
+                "txt", "md", "json", "xml", "py", "js", "html", "css", "lock", "toml",
                 "go", "rs", "java", "cs", "php", "cmake", "make", "lightcppproj"
             };
             return allowedExts.contains(ext);
@@ -67,6 +75,7 @@ protected:
 
 private:
     QStringList m_excludeDirs;
+    QStringList m_allowedExtensions;
 };
 
 /**
@@ -110,6 +119,8 @@ public:
     void setExcludeDirs(const QStringList& excludeDirs);
     QIcon getFileIcon(const QString& filePath) const;
 
+    QString getFilePath(const QModelIndex &index) const;
+    QModelIndex findIndexByPath(const QString &path) const;
 public slots:
     void newFile();
     void newDirectory();
@@ -165,7 +176,6 @@ private:
     void createContextMenu();
     void updateContextMenu();
 
-    QString getFilePath(const QModelIndex &index) const;
     bool isDirectory(const QModelIndex &index) const;
     bool isFile(const QModelIndex &index) const;
     QString selectedParentDir() const;

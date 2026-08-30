@@ -51,31 +51,10 @@ void ProjectSelectionDialog::onProjectItemDoubleClicked(QListWidgetItem* item)
 
 void ProjectSelectionDialog::onOpenExistingProject()
 {
-    // 使用QFileDialog选择项目文件或目录
-    QString filePath = QFileDialog::getExistingDirectory(this, "选择项目目录");
-    if (!filePath.isEmpty()) {
-        // 检查是否是项目目录（包含.lightcppproj文件）
-        QDir projectDir(filePath);
-        QStringList filters;
-        filters << "*.lightcppproj";
-        projectDir.setNameFilters(filters);
-        QStringList projectFiles = projectDir.entryList();
-
-        if (!projectFiles.isEmpty()) {
-            // 找到项目配置文件
-            m_selectedProjectPath = projectDir.absoluteFilePath(projectFiles.first());
-            accept();
-        } else {
-            // 目录中没有项目配置文件，提示用户创建
-            int ret = QMessageBox::question(this, "创建项目",
-                                            "该目录中未找到项目配置文件，是否要创建新项目？",
-                                            QMessageBox::Yes | QMessageBox::No);
-            if (ret == QMessageBox::Yes) {
-                // 进入创建新项目流程
-                m_createNewProject = true;
-                accept();
-            }
-        }
+    QString dirPath = QFileDialog::getExistingDirectory(this, "选择项目目录");
+    if (!dirPath.isEmpty()) {
+        m_selectedProjectPath = dirPath;   // 存储文件夹路径
+        accept();
     }
 }
 

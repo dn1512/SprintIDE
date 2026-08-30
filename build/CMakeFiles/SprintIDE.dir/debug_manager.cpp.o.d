@@ -1173,18 +1173,43 @@ CMakeFiles/SprintIDE.dir/debug_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgridlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractitemmodel.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qitemselectionmodel.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyleoption.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qvalidator.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qregularexpression.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyle.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabbar.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qrubberband.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QTextCharFormat \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QRegularExpression \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qregularexpression.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVector \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QColor \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QJsonObject \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonobject.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonvalue.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcborvalue.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcborcommon.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/quuid.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsondocument.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonparseerror.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QElapsedTimer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qelapsedtimer.h \

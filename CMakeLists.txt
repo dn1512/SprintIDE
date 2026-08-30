@@ -158,6 +158,7 @@ set(ALL_SOURCES
     ${LANGUAGE_SOURCES}
     ${HISTORY_SOURCES}
     ${BUILDER_SOURCES}
+    ${UTILS_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -174,6 +175,7 @@ set(ALL_HEADERS
     ${LANGUAGE_HEADERS}
     ${HISTORY_HEADERS}
     ${BUILDER_HEADERS}
+    ${UTILS_HEADERS}
 )
 
 set(ALL_FORMS
@@ -235,9 +237,6 @@ set(HISTORY_SOURCES
 )
 
 set(BUILDER_SOURCES
-    src/build/build_task.h
-    src/build/build_result.h
-    src/build/ibuilder.h
     src/build/cpp_builder.cpp
     src/build/python_builder.cpp
     src/build/java_gradle_builder.cpp
@@ -246,9 +245,13 @@ set(BUILDER_SOURCES
     src/build/node_builder.cpp
     src/build/generic_builder.cpp
     src/build/builder_factory.cpp
+    builder/java_maven_builder.cpp
 )
 
 set(BUILDER_HEADERS
+    src/build/build_task.h
+    src/build/build_result.h
+    src/build/ibuilder.h
     src/build/cpp_builder.h
     src/build/python_builder.h
     src/build/java_gradle_builder.h
@@ -257,6 +260,15 @@ set(BUILDER_HEADERS
     src/build/node_builder.h
     src/build/generic_builder.h
     src/build/builder_factory.h
+    builder/java_maven_builder.h
+)
+
+set(UTILS_SOURCES
+    src/utils/java_util.cpp
+)
+
+set(UTILS_HEADERS
+    src/utils/java_util.h
 )
 
 # 创建可执行文件
@@ -320,6 +332,14 @@ add_executable(${PROJECT_NAME}
     builder/rust_builder.cpp
     builder/node_builder.h
     builder/node_builder.cpp
+    settings_dialog.h
+    settings_dialog.cpp
+    builder/java_maven_builder.h
+    builder/java_maven_builder.cpp
+    builder/java_builder.h
+    builder/java_builder.cpp
+    utils/java_utils.h
+    utils/java_utils.cpp
 )
 
 

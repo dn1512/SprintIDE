@@ -58,6 +58,8 @@ template <> constexpr inline auto SprintIDE::TextEditor::qt_create_metaobjectdat
         "visible",
         "replaceCompleted",
         "count",
+        "completionRequested",
+        "definitionRequested",
         "updateLineNumberAreaWidth",
         "highlightCurrentLine",
         "updateLineNumberArea",
@@ -79,7 +81,11 @@ template <> constexpr inline auto SprintIDE::TextEditor::qt_create_metaobjectdat
         "checked",
         "onToggleWholeWord",
         "onToggleReplaceMode",
-        "onCloseFindBar"
+        "onCloseFindBar",
+        "onCompletionItemClicked",
+        "QListWidgetItem*",
+        "item",
+        "onCompletionItemDoubleClicked"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -119,50 +125,66 @@ template <> constexpr inline auto SprintIDE::TextEditor::qt_create_metaobjectdat
         QtMocHelpers::SignalData<void(int)>(17, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Int, 18 },
         }}),
+        // Signal 'completionRequested'
+        QtMocHelpers::SignalData<void(const QString &, int, int)>(19, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 8 }, { QMetaType::Int, 5 }, { QMetaType::Int, 6 },
+        }}),
+        // Signal 'definitionRequested'
+        QtMocHelpers::SignalData<void(const QString &, int, int)>(20, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 8 }, { QMetaType::Int, 5 }, { QMetaType::Int, 6 },
+        }}),
         // Slot 'updateLineNumberAreaWidth'
-        QtMocHelpers::SlotData<void()>(19, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(21, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'highlightCurrentLine'
-        QtMocHelpers::SlotData<void()>(20, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(22, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'updateLineNumberArea'
-        QtMocHelpers::SlotData<void(const QRect &, int)>(21, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { 0x80000000 | 22, 23 }, { QMetaType::Int, 24 },
+        QtMocHelpers::SlotData<void(const QRect &, int)>(23, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 24, 25 }, { QMetaType::Int, 26 },
         }}),
         // Slot 'onCursorPositionChanged'
-        QtMocHelpers::SlotData<void()>(25, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onTextChanged'
-        QtMocHelpers::SlotData<void()>(26, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onGotoLineAction'
         QtMocHelpers::SlotData<void()>(27, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onErrorMarkerTimer'
+        // Slot 'onTextChanged'
         QtMocHelpers::SlotData<void()>(28, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onGotoLineAction'
+        QtMocHelpers::SlotData<void()>(29, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onErrorMarkerTimer'
+        QtMocHelpers::SlotData<void()>(30, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onFindTextChanged'
-        QtMocHelpers::SlotData<void(const QString &)>(29, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 30 },
+        QtMocHelpers::SlotData<void(const QString &)>(31, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 32 },
         }}),
         // Slot 'onFindNextClicked'
-        QtMocHelpers::SlotData<void()>(31, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(33, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onFindPreviousClicked'
-        QtMocHelpers::SlotData<void()>(32, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(34, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onReplaceTextChanged'
-        QtMocHelpers::SlotData<void(const QString &)>(33, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 30 },
+        QtMocHelpers::SlotData<void(const QString &)>(35, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 32 },
         }}),
         // Slot 'onReplaceClicked'
-        QtMocHelpers::SlotData<void()>(34, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(36, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onReplaceAllClicked'
-        QtMocHelpers::SlotData<void()>(35, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(37, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onToggleCaseSensitive'
-        QtMocHelpers::SlotData<void(bool)>(36, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Bool, 37 },
+        QtMocHelpers::SlotData<void(bool)>(38, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Bool, 39 },
         }}),
         // Slot 'onToggleWholeWord'
-        QtMocHelpers::SlotData<void(bool)>(38, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Bool, 37 },
+        QtMocHelpers::SlotData<void(bool)>(40, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Bool, 39 },
         }}),
         // Slot 'onToggleReplaceMode'
-        QtMocHelpers::SlotData<void()>(39, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(41, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onCloseFindBar'
-        QtMocHelpers::SlotData<void()>(40, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(42, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onCompletionItemClicked'
+        QtMocHelpers::SlotData<void(QListWidgetItem *)>(43, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 44, 45 },
+        }}),
+        // Slot 'onCompletionItemDoubleClicked'
+        QtMocHelpers::SlotData<void(QListWidgetItem *)>(46, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 44, 45 },
+        }}),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -197,23 +219,27 @@ void SprintIDE::TextEditor::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 8: _t->formatRequested(); break;
         case 9: _t->findBarVisibilityChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
         case 10: _t->replaceCompleted((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 11: _t->updateLineNumberAreaWidth(); break;
-        case 12: _t->highlightCurrentLine(); break;
-        case 13: _t->updateLineNumberArea((*reinterpret_cast<std::add_pointer_t<QRect>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
-        case 14: _t->onCursorPositionChanged(); break;
-        case 15: _t->onTextChanged(); break;
-        case 16: _t->onGotoLineAction(); break;
-        case 17: _t->onErrorMarkerTimer(); break;
-        case 18: _t->onFindTextChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 19: _t->onFindNextClicked(); break;
-        case 20: _t->onFindPreviousClicked(); break;
-        case 21: _t->onReplaceTextChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 22: _t->onReplaceClicked(); break;
-        case 23: _t->onReplaceAllClicked(); break;
-        case 24: _t->onToggleCaseSensitive((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 25: _t->onToggleWholeWord((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 26: _t->onToggleReplaceMode(); break;
-        case 27: _t->onCloseFindBar(); break;
+        case 11: _t->completionRequested((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3]))); break;
+        case 12: _t->definitionRequested((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3]))); break;
+        case 13: _t->updateLineNumberAreaWidth(); break;
+        case 14: _t->highlightCurrentLine(); break;
+        case 15: _t->updateLineNumberArea((*reinterpret_cast<std::add_pointer_t<QRect>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
+        case 16: _t->onCursorPositionChanged(); break;
+        case 17: _t->onTextChanged(); break;
+        case 18: _t->onGotoLineAction(); break;
+        case 19: _t->onErrorMarkerTimer(); break;
+        case 20: _t->onFindTextChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 21: _t->onFindNextClicked(); break;
+        case 22: _t->onFindPreviousClicked(); break;
+        case 23: _t->onReplaceTextChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 24: _t->onReplaceClicked(); break;
+        case 25: _t->onReplaceAllClicked(); break;
+        case 26: _t->onToggleCaseSensitive((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 27: _t->onToggleWholeWord((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 28: _t->onToggleReplaceMode(); break;
+        case 29: _t->onCloseFindBar(); break;
+        case 30: _t->onCompletionItemClicked((*reinterpret_cast<std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
+        case 31: _t->onCompletionItemDoubleClicked((*reinterpret_cast<std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
         default: ;
         }
     }
@@ -240,6 +266,10 @@ void SprintIDE::TextEditor::qt_static_metacall(QObject *_o, QMetaObject::Call _c
             return;
         if (QtMocHelpers::indexOfMethod<void (TextEditor::*)(int )>(_a, &TextEditor::replaceCompleted, 10))
             return;
+        if (QtMocHelpers::indexOfMethod<void (TextEditor::*)(const QString & , int , int )>(_a, &TextEditor::completionRequested, 11))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (TextEditor::*)(const QString & , int , int )>(_a, &TextEditor::definitionRequested, 12))
+            return;
     }
 }
 
@@ -262,14 +292,14 @@ int SprintIDE::TextEditor::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 28)
+        if (_id < 32)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 28;
+        _id -= 32;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 28)
+        if (_id < 32)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 28;
+        _id -= 32;
     }
     return _id;
 }
@@ -338,6 +368,18 @@ void SprintIDE::TextEditor::findBarVisibilityChanged(bool _t1)
 void SprintIDE::TextEditor::replaceCompleted(int _t1)
 {
     QMetaObject::activate<void>(this, &staticMetaObject, 10, nullptr, _t1);
+}
+
+// SIGNAL 11
+void SprintIDE::TextEditor::completionRequested(const QString & _t1, int _t2, int _t3)
+{
+    QMetaObject::activate<void>(this, &staticMetaObject, 11, nullptr, _t1, _t2, _t3);
+}
+
+// SIGNAL 12
+void SprintIDE::TextEditor::definitionRequested(const QString & _t1, int _t2, int _t3)
+{
+    QMetaObject::activate<void>(this, &staticMetaObject, 12, nullptr, _t1, _t2, _t3);
 }
 namespace {
 struct qt_meta_tag_ZN9SprintIDE14LineNumberAreaE_t {};

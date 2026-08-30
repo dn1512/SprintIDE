@@ -28,6 +28,7 @@
 #include <QHelpEvent>
 #include <QPainterPath>
 #include <QLabel>
+#include <QRect>
 #include <QHBoxLayout>
 
 namespace SprintIDE {
@@ -263,6 +264,16 @@ TextEditor::TextEditor(QWidget *parent)
     // 启用鼠标追踪（用于悬停提示）
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
+
+    //代码补全
+    m_completionPopup = new QListWidget(this);
+    m_completionPopup->setWindowFlags(Qt::Popup);
+    m_completionPopup->setFocusPolicy(Qt::NoFocus);
+    m_completionPopup->setSelectionMode(QAbstractItemView::SingleSelection);
+    connect(m_completionPopup, &QListWidget::itemClicked,
+            this, &TextEditor::onCompletionItemClicked);
+    connect(m_completionPopup, &QListWidget::itemDoubleClicked,
+            this, &TextEditor::onCompletionItemDoubleClicked);
 
     setupFindBar();
 }
@@ -1418,6 +1429,24 @@ void TextEditor::onCloseFindBar()
     hideFindBar();
 }
 
+void TextEditor::onCompletionItemClicked(QListWidgetItem* item)
+{
+    if (!item) return;
+    QString insertText = item->data(Qt::UserRole).toString();
+    if (insertText.isEmpty()) {
+        insertText = item->text();
+    }
+    insertCompletion(insertText);
+    m_completionPopup->hide();
+    m_completionActive = false;
+}
+
+void TextEditor::onCompletionItemDoubleClicked(QListWidgetItem* item)
+{
+    // 与单击行为相同，或者可以不做特殊处理
+    onCompletionItemClicked(item);
+}
+
 void TextEditor::onToggleCaseSensitive(bool checked)
 {
     QString text = m_findLineEdit->text();
@@ -1436,28 +1465,42 @@ void TextEditor::onToggleWholeWord(bool checked)
 
 // ========== 鼠标事件 ==========
 
-void TextEditor::mousePressEvent(QMouseEvent *event)
+void TextEditor::mousePressEvent(QMouseEvent* event)
 {
-    // int lineAreaWidth = lineNumberAreaWidth();
-    // int clickAreaWidth = 22;  // 左侧断点点击区宽度
+    // 处理 Ctrl+左键（macOS 上为 Cmd+左键）
+    if (event->button() == Qt::LeftButton &&
+        (event->modifiers() & Qt::ControlModifier)) {
 
-    // // 只有点击在行号区域内，才处理断点
-    // if (m_showLineNumbers && event->x() < lineAreaWidth) {
-    //     // 点击在左侧断点点击区（前 22px）
-    //     if (event->x() < clickAreaWidth) {
-    //         QTextCursor cursor = cursorForPosition(event->pos());
-    //         int line = cursor.blockNumber() + 1;
-    //         if (line >= 1 && line <= lineCount()) {
-    //             emit breakpointToggled(filePath(), line);
-    //         }
-    //         return;
-    //     } else {
-    //         // 点击在行号数字区域，不触发断点
-    //         return;
-    //     }
-    // }
+        // 获取光标位置
+        QTextCursor cursor = cursorForPosition(event->pos());
+        int pos = cursor.position();
+        QString text = toPlainText();
 
-    // 点击在代码区域，正常处理
+        // 提取标识符（字母、数字、下划线）
+        int start = pos;
+        while (start > 0 && (text[start-1].isLetterOrNumber() || text[start-1] == '_')) {
+            start--;
+        }
+        int end = pos;
+        while (end < text.length() && (text[end].isLetterOrNumber() || text[end] == '_')) {
+            end++;
+        }
+
+        if (end > start) {
+            // 有有效的标识符，发送请求
+            int line = cursor.blockNumber();          // 0-based
+            int column = cursor.positionInBlock();    // 0-based
+            emit definitionRequested(m_filePath, line, column);
+            // 显示一个小反馈（可选）
+            setCursor(Qt::PointingHandCursor);
+        } else {
+            // 没有标识符，按普通点击处理
+            QPlainTextEdit::mousePressEvent(event);
+        }
+        return;
+    }
+
+    // 其他情况调用基类
     QPlainTextEdit::mousePressEvent(event);
 }
 
@@ -1492,6 +1535,18 @@ bool TextEditor::viewportEvent(QEvent *event)
         return true;
     }
     return QPlainTextEdit::viewportEvent(event);
+}
+
+void TextEditor::focusOutEvent(QFocusEvent* event)
+{
+    // 如果补全弹窗正在显示，关闭它
+    if (m_completionActive && m_completionPopup) {
+        m_completionPopup->hide();
+        m_completionActive = false;
+    }
+
+    // 调用基类处理
+    QPlainTextEdit::focusOutEvent(event);
 }
 
 QString TextEditor::getMarkerTooltip(const QPoint& pos) const
@@ -1875,11 +1930,52 @@ int TextEditor::lineCount() const
 
 void TextEditor::keyPressEvent(QKeyEvent *event)
 {
+    // ========== 第一步：补全弹窗的键盘导航（优先级最高） ==========
+    if (m_completionActive) {
+        if (event->key() == Qt::Key_Escape) {
+            m_completionPopup->hide();
+            m_completionActive = false;
+            return;
+        }
+        if (event->key() == Qt::Key_Down) {
+            int row = m_completionPopup->currentRow();
+            if (row < m_completionPopup->count() - 1) {
+                m_completionPopup->setCurrentRow(row + 1);
+            }
+            return;
+        } else if (event->key() == Qt::Key_Up) {
+            int row = m_completionPopup->currentRow();
+            if (row > 0) {
+                m_completionPopup->setCurrentRow(row - 1);
+            }
+            return;
+        } else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+            if (m_completionPopup->currentItem()) {
+                insertCompletion(m_completionPopup->currentItem()->data(Qt::UserRole).toString());
+                m_completionPopup->hide();
+                m_completionActive = false;
+                return;
+            }
+        } else if (event->key() == Qt::Key_Escape) {
+            m_completionPopup->hide();
+            m_completionActive = false;
+            return;
+        }
+        // 如果按下其他键，隐藏补全（但不要在这里 return，继续处理按键）
+        // 但注意：如果我们继续处理按键，补全弹窗会消失，然后文本插入，我们会再次触发补全
+        // 所以我们允许它继续往下走
+    }
+
+    // ========== 第二步：处理特殊键（自动括号、缩进等） ==========
+    // 这些逻辑必须在补全检查之前执行，因为补全检查依赖已插入的文本
+
+    // 处理 Escape 关闭查找栏
     if (event->key() == Qt::Key_Escape && m_findBarVisible) {
         hideFindBar();
         return;
     }
 
+    // 处理 F3 查找下一个/上一个
     if (event->key() == Qt::Key_F3) {
         if (m_findBarVisible && !m_matchCursors.isEmpty()) {
             if (event->modifiers() & Qt::ShiftModifier) {
@@ -1891,12 +1987,13 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         }
     }
 
+    // 处理 Ctrl+F 查找
     if (event->key() == Qt::Key_F && (event->modifiers() & Qt::ControlModifier)) {
         showFindBar();
         return;
     }
 
-    // 处理Tab键
+    // 处理 Tab 键（插入空格或制表符）
     if (event->key() == Qt::Key_Tab && !event->modifiers()) {
         if (m_useSpacesForTab) {
             QTextCursor cursor = textCursor();
@@ -1904,25 +2001,25 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         } else {
             QPlainTextEdit::keyPressEvent(event);
         }
+        // 注意：Tab 键不触发补全，直接返回
         return;
     }
 
-    // 处理回车键 - 自动缩进
+    // 处理回车键（自动缩进）
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
         QPlainTextEdit::keyPressEvent(event);
         autoIndent();
+        // 回车键不触发补全，直接返回
         return;
     }
 
-    // 处理左大括号 - 按照您的要求：下两行，光标在左大括号下一行且有缩进
+    // 处理左大括号（自动补右大括号 + 换行缩进）
     if (event->text() == "{") {
         QTextCursor cursor = textCursor();
 
         // 获取当前行的缩进
         QTextBlock currentBlock = cursor.block();
         QString currentLine = currentBlock.text();
-
-        // 计算当前缩进
         QString indentStr;
         for (int i = 0; i < currentLine.length(); ++i) {
             if (currentLine[i] == ' ' || currentLine[i] == '\t') {
@@ -1932,7 +2029,6 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
             }
         }
 
-        // 计算内层缩进
         QString innerIndent = indentStr;
         if (m_useSpacesForTab) {
             innerIndent += QString(m_tabWidth, ' ');
@@ -1940,45 +2036,189 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
             innerIndent += "\t";
         }
 
-        // 插入左大括号
         cursor.insertText("{");
-
-        // 第一行：左大括号下一行（空行，只有缩进）
-        // cursor.insertText("\n" + indentStr);
-
-        // 第二行：左大括号下两行（内层缩进，光标位置）
         cursor.insertText("\n" + innerIndent);
-
-        // 第三行：右大括号（与左大括号对齐）
         cursor.insertText("\n" + indentStr + "}");
 
-        // 将光标移动到左大括号下一行（有缩进的位置）
-        cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, indentStr.length() + 1); // 移动到 } 前
-        // cursor.movePosition(QTextCursor::Up, QTextCursor::MoveAnchor, 1); // 移动到空行
-        cursor.movePosition(QTextCursor::Up, QTextCursor::MoveAnchor, 1); // 移动到内层缩进行
+        cursor.movePosition(QTextCursor::Up, QTextCursor::MoveAnchor, 1);
         cursor.movePosition(QTextCursor::StartOfLine);
         cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, innerIndent.length());
-
         setTextCursor(cursor);
+        // 大括号不触发补全，直接返回
         return;
     }
 
-    // 处理其他括号 - 简单成对插入
+    // 处理普通括号/引号成对插入
     if (event->text() == "(" || event->text() == "[" || event->text() == "\"" || event->text() == "'") {
         QTextCursor cursor = textCursor();
         QString pairChar;
-
         if (event->text() == "(") pairChar = ")";
         else if (event->text() == "[") pairChar = "]";
-        else pairChar = event->text();  // 引号自己配对
+        else pairChar = event->text();
 
         cursor.insertText(event->text() + pairChar);
         cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
         setTextCursor(cursor);
+        // 括号不触发补全，直接返回
         return;
     }
 
+    // ========== 第三步：处理普通文本输入 ==========
+    // 先让基类处理文本插入
     QPlainTextEdit::keyPressEvent(event);
+
+    // ========== 第四步：检查是否需要触发补全 ==========
+    // 只有在输入了普通字符（非特殊键）并且补全弹窗未激活时才检查
+    if (!event->text().isEmpty() && !m_completionActive) {
+        QTextCursor cursor = textCursor();
+        int pos = cursor.position();
+        QString text = toPlainText();
+
+        // 检查是否应该触发补全（输入了 . 或 -> 或 ::）
+        if (shouldTriggerCompletion(text, pos)) {
+            triggerCompletion();
+        }
+    }
+}
+
+bool TextEditor::shouldTriggerCompletion(const QString& text, int cursorPos) const
+{
+    if (cursorPos <= 0) return false;
+
+    // 检查光标前的字符
+    QChar ch = text.at(cursorPos - 1);
+
+    // 单字符触发：.
+    if (ch == '.') {
+        return true;
+    }
+
+    // 双字符触发：-> 或 ::
+    if (cursorPos >= 2) {
+        QString prev2 = text.mid(cursorPos - 2, 2);
+        if (prev2 == "->" || prev2 == "::") {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void TextEditor::triggerCompletion()
+{
+    if (m_completionActive) {
+        // 已经激活，可能需要更新前缀，但为简单，直接返回
+        return;
+    }
+    // 获取当前光标位置（行、列）
+    QTextCursor cursor = textCursor();
+    int line = cursor.blockNumber();        // 0-based
+    int column = cursor.positionInBlock();  // 0-based
+
+    QString filePath = m_filePath;
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    // 获取 LSP 客户端
+    // 需要从 MainWindow 或全局获取 LSPManager
+    // 假设我们有一个静态方法或通过信号槽传递
+    // 这里我们通过信号请求 MainWindow 去获取补全
+    // 或者我们直接持有 LSPManager 指针？在 TextEditor 中不宜直接依赖 LSPManager
+    // 更好的方式：TextEditor 发出信号，MainWindow 接收并调用 LSP 客户端
+    // 但为简单，我们通过全局单例或信号槽
+
+    // 让我们通过信号来请求补全
+    emit completionRequested(filePath, line, column);
+}
+
+void TextEditor::updateCompletionItems(const QList<LSPCompletionItem>& items)
+{
+    m_completionItems = items;
+    if (items.isEmpty()) {
+        // 补全项为空，隐藏弹窗
+        if (m_completionPopup) {
+            m_completionPopup->hide();
+        }
+        m_completionActive = false;
+        return;
+    }
+
+    // 清空并填充弹窗
+    m_completionPopup->clear();
+    for (const LSPCompletionItem& item : items) {
+        QString displayText = item.label;
+        if (!item.detail.isEmpty()) {
+            displayText += "  " + item.detail;
+        }
+        QListWidgetItem* listItem = new QListWidgetItem(displayText);
+        listItem->setData(Qt::UserRole, item.insertText);
+        m_completionPopup->addItem(listItem);
+    }
+
+    // 定位并显示弹窗
+    QRect rect = cursorRect();
+    QPoint globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+    int height = qMin(200, m_completionPopup->count() * 25);
+    m_completionPopup->setGeometry(globalPos.x(), globalPos.y(), 300, height);
+    m_completionPopup->setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
+    m_completionPopup->setFocusPolicy(Qt::NoFocus);
+    m_completionPopup->setAttribute(Qt::WA_ShowWithoutActivating);
+    m_completionPopup->show();
+    m_completionActive = true;
+    m_completionPopup->setCurrentRow(0);
+}
+
+void TextEditor::highlightLine(int line)
+{
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::Start);
+    cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, line - 1);
+    cursor.movePosition(QTextCursor::StartOfLine);
+    cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    // 设置高亮格式（自定义或使用临时格式）
+    QTextEdit::ExtraSelection selection;
+    selection.format.setBackground(Qt::yellow);
+    selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+    selection.cursor = cursor;
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    extraSelections.append(selection);
+    setExtraSelections(extraSelections);
+    // 设置滚动到该行
+    ensureCursorVisible();
+}
+
+void TextEditor::insertCompletion(const QString& insertText)
+{
+    QTextCursor cursor = textCursor();
+    cursor.beginEditBlock();
+
+    // 获取当前行文本和光标位置
+    QString lineText = cursor.block().text();
+    int posInBlock = cursor.positionInBlock();
+
+    // 获取触发前缀（可能包含 . 或 -> 或 ::）
+    QString prefix = lineText.left(posInBlock);
+
+    m_completionPopup->hide();
+    m_completionActive = false;
+
+    // 删除触发字符（如果有）
+    if (prefix.endsWith('.')) {
+        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
+        cursor.removeSelectedText();
+    } else if (prefix.endsWith("->")) {
+        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 2);
+        cursor.removeSelectedText();
+    } else if (prefix.endsWith("::")) {
+        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 2);
+        cursor.removeSelectedText();
+    }
+
+    // 插入补全文本
+    cursor.insertText(insertText);
+    cursor.endEditBlock();
+    setTextCursor(cursor);
 }
 
 void TextEditor::resizeEvent(QResizeEvent *event)

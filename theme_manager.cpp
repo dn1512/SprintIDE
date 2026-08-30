@@ -362,7 +362,7 @@ void ThemeManager::applyThemeToTreeView(QTreeView* treeView)
         palette.setColor(QPalette::AlternateBase, alternateColor);
 
         // 设置行交替颜色
-        treeView->setAlternatingRowColors(true);
+        treeView->setAlternatingRowColors(false);
     } else {
         // 浅色主题
         QColor bgColor = QColor(240, 240, 240);
@@ -381,36 +381,37 @@ void ThemeManager::applyThemeToTreeView(QTreeView* treeView)
         palette.setColor(QPalette::AlternateBase, alternateColor);
 
         // 设置行交替颜色
-        treeView->setAlternatingRowColors(true);
+        treeView->setAlternatingRowColors(false);
     }
 
     treeView->setPalette(palette);
     treeView->setAutoFillBackground(true);
+
+    QColor hoverColor = isDarkTheme() ? QColor("#4A6A8A") : QColor(0, 0, 0, 20);
 
     // 设置样式表以确保颜色生效
     QString styleSheet = QString(
                              "QTreeView {"
                              "  background-color: %1;"
                              "  color: %2;"
-                             "  alternate-background-color: %3;"
                              "}"
                              "QTreeView::item:selected {"
-                             "  background-color: %4;"
-                             "  color: %5;"
+                             "  background-color: %3;"
+                             "  color: %4;"
                              "}"
                              "QTreeView::item:hover {"
-                             "  background-color: %6;"
+                             "  background-color: %5;"
                              "}"
                              ).arg(
                                  palette.base().color().name(),
                                  palette.text().color().name(),
-                                 palette.alternateBase().color().name(),
                                  palette.highlight().color().name(),
                                  palette.highlightedText().color().name(),
-                                 palette.highlight().color().lighter(120).name()
+                                 hoverColor.name()
                                  );
 
     treeView->setStyleSheet(styleSheet);
+    treeView->setSelectionBehavior(QAbstractItemView::SelectRows);
 }
 
 bool ThemeManager::isDarkTheme() const

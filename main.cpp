@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
         if (projectManager->hasOpenProject()) {
             QString projectName = projectManager->currentProjectName();
             mainWindow.setWindowTitle(QString("SprintIDE - %1").arg(projectName));
-            mainWindow.loadProjectFiles(projectManager->currentProjectPath());
+            mainWindow.openProject(projectManager->currentProjectPath());
         } else if (projectPath == "create_new") {
             mainWindow.onNewProject();
         }

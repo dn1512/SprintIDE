@@ -7,6 +7,8 @@
 #include <QProcessEnvironment>
 #include <QStandardPaths>
 
+#include "utils/java_utils.h"
+
 namespace SprintIDE {
 
 // ============================================================
@@ -166,6 +168,25 @@ void LSPManager::buildDefaultConfigs()
     qDebug() << "[LSP Manager] 已加载" << m_configs.size() << "个 LSP 服务器配置";
 }
 
+
+/**
+ * @brief 向上查找项目根目录（包含 pom.xml 或 build.gradle 的目录）
+ */
+static QString findProjectRoot(const QString& startPath)
+{
+    QDir dir(startPath);
+    while (!dir.isRoot()) {
+        if (dir.exists("pom.xml") || dir.exists("build.gradle") ||
+            dir.exists("settings.gradle") || dir.exists(".git") ||
+            dir.exists(".lightcppproj")) {
+            return dir.absolutePath();
+        }
+        dir.cdUp();
+    }
+    // 没找到，返回原始路径
+    return startPath;
+}
+
 // ============================================================
 // 查找 LSP 服务器可执行文件
 // ============================================================
@@ -212,6 +233,24 @@ QString LSPManager::findServerExecutable(const QString &command) const
             }
         }
     }
+
+#ifdef Q_OS_UNIX
+    // 检查 ~/.local/bin
+    QString home = QDir::homePath();
+    QString localBin = home + "/.local/bin";
+    QDir dir(localBin);
+    if (dir.exists()) {
+        for (const QString &suffix : exeSuffixes) {
+            QString candidate = dir.absoluteFilePath(command + suffix);
+            if (QFile::exists(candidate)) {
+                fullPath = candidate;
+                m_serverCache[command] = fullPath;
+                qDebug() << "[LSP Manager] 在 ~/.local/bin 找到服务器:" << command << "->" << fullPath;
+                return fullPath;
+            }
+        }
+    }
+#endif
 
     // 3. 检查常见安装路径
     QStringList commonPaths;
@@ -308,6 +347,32 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
         return nullptr;
     }
 
+    // ---- 如果是 JDTLS，确保 wrapper 存在 ----
+    if (config.command == "jdtls") {
+        QString root = projectRoot;
+        if (root.isEmpty()) root = QFileInfo(filePath).absolutePath();
+        QString wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.sh";
+#ifdef Q_OS_WIN
+        wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.bat";
+#endif
+
+        if (!QFile::exists(wrapperPath)) {
+            // 获取 JavaInfo
+            JavaInfo javaInfo;
+            // 先尝试从配置读取（已在 detectJava 内部处理）
+            javaInfo = JavaUtils::detectJava();
+            if (!javaInfo.isValid()) {
+                emit clientError(lang.id, "未找到 Java 17+，请安装 Java 21 并在设置中配置 JAVA_HOME。");
+                return nullptr;
+            }
+            if (!JavaUtils::ensureJdtlsWrapper(root, javaInfo, wrapperPath)) {
+                emit clientError(lang.id, "无法生成 JDTLS 启动脚本");
+                return nullptr;
+            }
+        }
+        config.command = wrapperPath;
+    }
+
     // 3. 查找服务器可执行文件
     QString serverPath = findServerExecutable(config.command);
     if (serverPath.isEmpty()) {
@@ -320,22 +385,10 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
     // 4. 获取项目根目录（如果未指定，尝试从文件路径推断）
     QString root = projectRoot;
     if (root.isEmpty()) {
-        // 简单推断：取文件所在目录
-        QFileInfo info(filePath);
-        root = info.absolutePath();
-        // 尝试向上查找项目根目录（查找 .git 或配置文件）
-        QDir dir(root);
-        while (true) {
-            if (dir.exists(".git") || dir.exists(".lightcppproj")) {
-                root = dir.absolutePath();
-                break;
-            }
-            if (dir.isRoot()) {
-                break;
-            }
-            dir.cdUp();
-        }
+        root = QFileInfo(filePath).absolutePath();
     }
+    // 向上查找项目配置文件
+    root = findProjectRoot(root);
 
     // 5. 生成缓存键
     QString key = makeClientKey(root, lang.id);

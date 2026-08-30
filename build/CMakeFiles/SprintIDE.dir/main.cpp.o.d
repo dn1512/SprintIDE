@@ -1176,12 +1176,26 @@ CMakeFiles/SprintIDE.dir/main.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgridlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qitemselectionmodel.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyleoption.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qvalidator.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qregularexpression.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyle.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabbar.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qrubberband.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QTextCharFormat \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QRegularExpression \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qregularexpression.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVector \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QColor \
@@ -1192,32 +1206,9 @@ CMakeFiles/SprintIDE.dir/main.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdatetime.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabbar.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStackedWidget \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstackedwidget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QMouseEvent \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemview.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qitemselectionmodel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyleoption.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qvalidator.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qslider.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractslider.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyle.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qrubberband.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qprocess.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QJsonObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonobject.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonvalue.h \
@@ -1226,9 +1217,22 @@ CMakeFiles/SprintIDE.dir/main.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/quuid.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsondocument.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonparseerror.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStackedWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstackedwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QMouseEvent \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qprocess.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QThread \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qthread.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/c++/v1/future \
@@ -1270,7 +1274,6 @@ CMakeFiles/SprintIDE.dir/main.cpp.o: \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qpointer.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QComboBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcombobox.h \
@@ -1300,9 +1303,6 @@ CMakeFiles/SprintIDE.dir/main.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtimezone.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFileInfo \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialogButtonBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialogbuttonbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMessageBox \

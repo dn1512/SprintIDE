@@ -109,8 +109,19 @@ bool ProjectManager::openProject(const QString& projectPath)
         // 是目录，查找配置文件
         configPath = projectPath + "/.lightcppproj";
         if (!QFile::exists(configPath)) {
-            qWarning() << "Project config file not found in directory:" << projectPath;
-            return false;
+            // 没有配置文件，自动创建默认配置
+            qDebug() << "No project config found, creating default for:" << projectPath;
+            m_currentProjectName = fileInfo.fileName();
+            m_currentProjectPath = projectPath;
+            m_currentProjectConfigPath = configPath;
+            initDefaultConfig(); // 使用 m_currentProjectName 填充默认配置
+            if (!saveProjectConfig(configPath)) {
+                qWarning() << "Failed to save default project config:" << configPath;
+                // 即使保存失败，内存中的配置依然可用，继续
+            }
+            updateRecentProjects(configPath);
+            emit projectOpened(m_currentProjectName, m_currentProjectPath);
+            return true;
         }
     } else {
         // 是文件，检查是否是配置文件

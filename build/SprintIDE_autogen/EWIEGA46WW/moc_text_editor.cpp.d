@@ -867,10 +867,12 @@
   /Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include/stdarg.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QFile \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QJsonObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QList \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QPointF \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QProcess \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QRect \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QRectF \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QRegularExpression \
@@ -891,6 +893,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/q23type_traits.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/q23utility.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qabstracteventdispatcher.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qabstractitemmodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qalgorithms.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qalloc.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qanystringview.h \
@@ -908,6 +911,8 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qbytearraylist.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qbytearrayview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qcalendar.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qcborcommon.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qcborvalue.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qchar.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qcheckedint_impl.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qcompare.h \
@@ -945,8 +950,13 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qhashfunctions.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qiodevice.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qiodevicebase.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qitemselectionmodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qiterable.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qiterator.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qjsondocument.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qjsonobject.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qjsonparseerror.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qjsonvalue.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qlatin1stringview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qline.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qlist.h \
@@ -969,6 +979,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qoverload.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qpair.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qpoint.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qprocess.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qprocessordetection.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qrect.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qrefcount.h \
@@ -1021,6 +1032,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qtypes.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qurl.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qutf8stringview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/quuid.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qvariant.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qvarlengtharray.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qvector.h \
@@ -1080,6 +1092,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtguiexports.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtguiglobal.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtransform.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qvalidator.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qvector2d.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qvectornd.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qwindowdefs.h \
@@ -1087,12 +1100,17 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QHBoxLayout \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLabel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLineEdit \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QListWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMenu \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QPlainTextEdit \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QPushButton \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractbutton.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractitemdelegate.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractitemview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractscrollarea.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractspinbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qboxlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qcheckbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qframe.h \
@@ -1101,10 +1119,18 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlineedit.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlistview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlistwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qmenu.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qplaintextedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qpushbutton.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qrubberband.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qsizepolicy.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qstyle.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qstyleoption.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtabbar.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtabwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtextedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgets-config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsexports.h \
@@ -1112,4 +1138,5 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qwidget.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h

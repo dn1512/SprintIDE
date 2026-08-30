@@ -98,7 +98,7 @@ void DebugPanel::setupUI()
     m_callStackWidget = new QTreeWidget();
     m_callStackWidget->setHeaderLabels(QStringList() << "函数" << "文件" << "行号");
     m_callStackWidget->setIndentation(10);
-    m_callStackWidget->setAlternatingRowColors(true);
+    m_callStackWidget->setAlternatingRowColors(false);
     m_callStackWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_callStackWidget->setStyleSheet(
         "QTreeWidget { background-color: #1E1E1E; color: #E0E0E0; gridline-color: #3C3C3C; }"
@@ -119,7 +119,7 @@ void DebugPanel::setupUI()
     m_variableWidget = new QTreeWidget();
     m_variableWidget->setHeaderLabels(QStringList() << "名称" << "值" << "类型");
     m_variableWidget->setIndentation(10);
-    m_variableWidget->setAlternatingRowColors(true);
+    m_variableWidget->setAlternatingRowColors(false);
     m_variableWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_variableWidget->setStyleSheet(
         "QTreeWidget { background-color: #1E1E1E; color: #E0E0E0; gridline-color: #3C3C3C; }"

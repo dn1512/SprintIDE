@@ -1186,6 +1186,22 @@ CMakeFiles/SprintIDE.dir/theme_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractitemmodel.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qitemselectionmodel.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyleoption.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qvalidator.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyle.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabbar.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qrubberband.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QSyntaxHighlighter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qsyntaxhighlighter.h \
@@ -1199,19 +1215,9 @@ CMakeFiles/SprintIDE.dir/theme_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qprocess.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabbar.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemview.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractitemmodel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qitemselectionmodel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyleoption.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qvalidator.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qslider.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qabstractslider.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qstyle.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtabwidget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qrubberband.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h

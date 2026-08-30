@@ -1307,8 +1307,12 @@ CMakeFiles/SprintIDE.dir/SprintIDE_autogen/mocs_compilation.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlineedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QCheckBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcheckbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStackedWidget \
@@ -1349,15 +1353,17 @@ CMakeFiles/SprintIDE.dir/SprintIDE_autogen/mocs_compilation.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractproxymodel.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_project_selection_dialog.cpp \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/../../../project_selection_dialog.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QListWidget \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistwidget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qlistview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialogButtonBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialogbuttonbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMessageBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qmessagebox.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_replace_dialog.cpp \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/../../../replace_dialog.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_settings_dialog.cpp \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/../../../settings_dialog.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTableWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtablewidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtableview.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_syntax_highlighter.cpp \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/../../../syntax_highlighter.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/EWIEGA46WW/moc_tab_widget.cpp \

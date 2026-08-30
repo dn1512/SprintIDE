@@ -1144,6 +1144,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QHBoxLayout \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLabel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLineEdit \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QListWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMainWindow \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMenu \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QPlainTextEdit \
@@ -1174,6 +1175,8 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlineedit.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlistview.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlistwidget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qmainwindow.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qmenu.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qplaintextedit.h \

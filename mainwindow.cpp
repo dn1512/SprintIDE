@@ -82,6 +82,11 @@
 
 #include "language/language_type.h"
 
+#include "Application.h"
+#include "config_manager.h"
+#include "project_manager.h"
+#include "settings_dialog.h"
+
 
 using namespace SprintIDE;
 
@@ -617,6 +622,7 @@ void MainWindow::setupUI()
 
 void MainWindow::setupMenuBar()
 {
+
     QMenuBar *menuBar = this->menuBar();
 
     // ==================== 文件菜单 ====================
@@ -758,7 +764,14 @@ void MainWindow::setupMenuBar()
         }
     });
 
+    // 设置动作（原编译配置）
     editMenu->addSeparator();
+
+    QAction *settingsAction = editMenu->addAction(QIcon(":/icons/icons/setting.svg"), "设置...");
+    settingsAction->setShortcut(QKeySequence("Ctrl+,"));
+    settingsAction->setMenuRole(QAction::PreferencesRole);  // 关键：让其在 macOS 下进入应用程序菜单
+    connect(settingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
+
 
     QAction *findAction = editMenu->addAction("查找(&F)");
     findAction->setShortcut(QKeySequence::Find);
@@ -794,8 +807,8 @@ void MainWindow::setupMenuBar()
         d->outputPanel->append("清理构建功能开发中...");
     });
 
-    QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
-    connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
+    // QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
+    // connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
 
     // ==================== 调试菜单 ====================
     QMenu *debugMenu = menuBar->addMenu("调试(&D)");
@@ -990,7 +1003,6 @@ void MainWindow::setupDockWidgets()
                                  "QTreeView {"
                                  "  background-color: %1;"
                                  "  color: %2;"
-                                 "  alternate-background-color: %3;"
                                  "}"
                                  "QTreeView::item:selected {"
                                  "  background-color: %4;"
@@ -1009,7 +1021,7 @@ void MainWindow::setupDockWidgets()
                                      );
 
     d->projectPanel->setStyleSheet(treeStyleSheet);
-    d->projectPanel->setAlternatingRowColors(true);
+    d->projectPanel->setAlternatingRowColors(false);
 
     QString dockStyle = QString(
                             "QDockWidget {"
@@ -1331,35 +1343,65 @@ void MainWindow::saveWindowState()
 
 void MainWindow::openProject(const QString &path)
 {
-    d->currentProjectPath = path;
+    QString pomFile = path + "/pom.xml";
+    if (QFile::exists(pomFile)) {
+        QFile::remove(path + "/.project");
+        QFile::remove(path + "/.classpath");
+    }
+
+    // 尝试向上查找项目配置文件，更新实际项目根目录
+    QString actualRoot = path;
+    QDir dir(path);
+    while (!dir.isRoot()) {
+        if (dir.exists("pom.xml") || dir.exists("build.gradle") ||
+            dir.exists("settings.gradle") || dir.exists(".git")) {
+            actualRoot = dir.absolutePath();
+            break;
+        }
+        dir.cdUp();
+    }
+    // 使用 actualRoot 作为项目根目录
+    d->currentProjectPath = actualRoot;
+    // 使用 ProjectManager 打开项目（会自动处理无配置文件的情况）
+    ProjectManager* pm = ProjectManager::instance();
+    if (!pm->openProject(path)) {
+        QMessageBox::warning(this, "打开项目失败", "无法打开项目：" + path);
+        return;
+    }
+
+    // 检测并生成 Eclipse 元数据（针对 Maven 项目）
+    ensureEclipseProjectFiles(path);
+
+    // 从 ProjectManager 同步项目信息
+    d->currentProjectPath = pm->currentProjectPath();
+    d->currentProjectName = pm->currentProjectName();
     d->hasUnsavedChanges = false;
-    d->outputPanel->append(QString("项目已打开: %1").arg(path));
+    d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
 
-    // ========== 生成 compile_commands.json ==========
-    generateCompileCommands(path);
+    // --- 生成 compile_commands.json ---
+    generateCompileCommands(d->currentProjectPath);
 
+    // --- 终端工作目录 ---
     if (m_terminalPanel) {
-        m_terminalPanel->setWorkingDirectory(path);
+        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
     }
 
-    // ========== 更新本地历史项目根目录（新增） ==========
+    // --- 本地历史 ---
     if (m_localHistory) {
-        m_localHistory->setProjectRoot(path);
+        m_localHistory->setProjectRoot(d->currentProjectPath);
     }
-    qDebug() << "MainWindow::openProject called, path:" << path;
-    // 通知项目面板打开项目
+
+    // 打开项目面板（尝试加载配置文件，或传入 nullptr 由 ProjectPanel 自行处理）
     if (d->projectPanel) {
-        // 加载项目配置（如果有）
         ProjectConfig config;
-        QString configFile = path + "/.lightcppproj";
+        QString configFile = d->currentProjectPath + "/.lightcppproj";
         QStringList errors;
         bool hasConfig = config.loadFromFile(configFile, errors);
-        qDebug() << "Calling d->projectPanel->openProject with config=" << hasConfig;
-        bool ok = d->projectPanel->openProject(path, hasConfig ? &config : nullptr);
-        qDebug() << "openProject result:" << ok;
-    } else {
-        qDebug() << "d->projectPanel is NULL!";
+        d->projectPanel->openProject(d->currentProjectPath, hasConfig ? &config : nullptr);
     }
+
+    // ===== 加载所有项目文件 =====
+    loadAllProjectFiles(actualRoot);
 }
 
 void MainWindow::closeProject()
@@ -1385,6 +1427,65 @@ void MainWindow::openFile(const QString &path)
     // 2. 创建编辑器并加载文件
     // ============================================================
     TextEditor* editor = new TextEditor(this);
+
+    // 连接代码补全信号
+    connect(editor, &TextEditor::completionRequested,
+            this, [this, editor](const QString& filePath, int line, int column) {
+                // 获取 LSP 客户端
+                if (!m_lspManager) return;
+                QString projectRoot = d->currentProjectPath.isEmpty() ?
+                                          QFileInfo(filePath).absolutePath() :
+                                          d->currentProjectPath;
+                LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
+                if (client) {
+                    // 连接补全结果信号（如果尚未连接）
+                    // 为了避免重复连接，使用一个标志或静态集合
+                    static QSet<LSPClient*> connectedClients;
+                    if (!connectedClients.contains(client)) {
+                        connect(client, &LSPClient::completionReceived,
+                                this, [this, editor](const QString& filePath,
+                                               const QList<LSPCompletionItem>& items) {
+                                    if (editor && editor->filePath() == filePath) {
+                                        editor->updateCompletionItems(items);
+                                    }
+                                });
+                        connectedClients.insert(client);
+                    }
+                    client->requestCompletion(filePath, line, column);
+                }
+            });
+    // 跳转定义连接
+    connect(editor, &TextEditor::definitionRequested,
+            this, [this, editor](const QString& filePath, int line, int column) {
+                if (!m_lspManager) return;
+                QString projectRoot = d->currentProjectPath.isEmpty() ?
+                                          QFileInfo(filePath).absolutePath() :
+                                          d->currentProjectPath;
+                LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
+                if (!client) return;
+
+                // 使用 Qt::UniqueConnection 避免重复连接
+                static QMetaObject::Connection conn;
+                // 先断开旧连接（如果存在）
+                if (conn) {
+                    disconnect(conn);
+                }
+                conn = connect(client, &LSPClient::definitionReceived,
+                               this, [this](const QString& targetFile, int targetLine, int targetColumn) {
+                                   // 打开目标文件
+                                   openFile(targetFile);
+                                   // 获取当前编辑器（刚刚打开的）
+                                   TextEditor* targetEditor = currentEditor();
+                                   if (targetEditor) {
+                                       targetEditor->gotoLine(targetLine);
+                                       targetEditor->setFocus();
+                                       // 高亮该行（可选）
+                                       targetEditor->highlightLine(targetLine);
+                                   }
+                               });
+
+                client->requestDefinition(filePath, line, column);
+            });
 
     // 传递本地历史管理器
     if (m_localHistory) {
@@ -2797,7 +2898,7 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
     leftLayout->addWidget(infoLabel);
 
     QListWidget *listWidget = new QListWidget;
-    listWidget->setAlternatingRowColors(true);
+    listWidget->setAlternatingRowColors(false);
     // 按版本号从高到低显示（最新的在前）
     for (int i = versions.size() - 1; i >= 0; --i) {
         const HistoryVersion &v = versions[i];
@@ -2931,6 +3032,230 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
 
     dialog.exec();
 }
+
+bool MainWindow::ensureEclipseProjectFiles(const QString& projectPath)
+{
+    QString pomFile = projectPath + "/pom.xml";
+    if (!QFile::exists(pomFile)) {
+        return true; // 不是 Maven 项目
+    }
+
+    // 检查是否已存在
+    if (QFile::exists(projectPath + "/.project") && QFile::exists(projectPath + "/.classpath")) {
+        return true;
+    }
+
+    // ----- 读取项目/全局配置中的 MAVEN_HOME -----
+    QString mavenHome;
+    // 优先从项目配置读取
+    ProjectConfig projConfig;
+    QString configFile = projectPath + "/.lightcppproj";
+    QStringList errors;
+    if (projConfig.loadFromFile(configFile, errors)) {
+        QVariantMap sdkEnv = projConfig.sdkEnvironment();
+        if (sdkEnv.contains("MAVEN_HOME")) {
+            mavenHome = sdkEnv["MAVEN_HOME"].toString();
+        }
+    }
+    // 如果项目配置没有，尝试全局配置
+    if (mavenHome.isEmpty()) {
+        ConfigManager* cfg = Application::instance().configManager();
+        if (cfg) {
+            QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+            if (sdkEnv.contains("MAVEN_HOME")) {
+                mavenHome = sdkEnv["MAVEN_HOME"].toString();
+            }
+        }
+    }
+
+    // ----- 确定 mvn 可执行文件 -----
+    QString mvnExecutable = "mvn";  // 回退到 PATH 查找
+    if (!mavenHome.isEmpty()) {
+        QString mvnPath = QDir(mavenHome).absoluteFilePath("bin/mvn");
+#ifdef Q_OS_WIN
+        mvnPath += ".cmd";  // Windows 下可能是 mvn.cmd 或 mvn.bat
+#endif
+        if (QFile::exists(mvnPath)) {
+            mvnExecutable = mvnPath;  // 直接使用完整路径
+        } else {
+            // 如果 bin/mvn 不存在，尝试 bin/mvn (Windows 无后缀)
+            mvnPath = QDir(mavenHome).absoluteFilePath("bin/mvn");
+            if (QFile::exists(mvnPath)) {
+                mvnExecutable = mvnPath;
+            }
+        }
+    }
+
+    d->outputPanel->append(QString("使用 Maven: %1").arg(mvnExecutable));
+
+    // ----- 执行 mvn eclipse:eclipse -----
+    ProcessManager pm;
+    ProcessManager::ProcessResult result = pm.executeSync(
+        mvnExecutable,
+        {"eclipse:eclipse"},
+        projectPath,
+        60000  // 60 秒超时
+        );
+
+    if (result.success) {
+        d->outputPanel->append("Eclipse 元数据文件生成成功。");
+        return true;
+    } else {
+        d->outputPanel->append("生成失败：" + result.standardError);
+        return false;
+    }
+}
+
+void MainWindow::saveSession()
+{
+    if (d->currentProjectPath.isEmpty()) {
+        return;
+    }
+
+    // 创建 .SprintIDE 目录
+    QDir projectDir(d->currentProjectPath);
+    QDir sprintDir = projectDir.filePath(".SprintIDE");
+    if (!sprintDir.exists()) {
+        sprintDir.mkpath(".");
+    }
+
+    QJsonObject session;
+
+    // 1. 保存打开的文件列表
+    QJsonArray openFiles;
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (editor && !editor->filePath().isEmpty()) {
+            QJsonObject fileObj;
+            fileObj["path"] = editor->filePath();
+            // 保存光标位置（可选）
+            fileObj["line"] = editor->currentLine();
+            fileObj["column"] = editor->currentColumn();
+            openFiles.append(fileObj);
+        }
+    }
+    session["openFiles"] = openFiles;
+    session["activeIndex"] = d->editorTabs->currentIndex();
+
+    // 2. 保存项目树展开状态
+    QJsonArray expandedPaths;
+    if (d->projectPanel) {
+        QModelIndex root = d->projectPanel->rootIndex();
+        saveExpandedPaths(expandedPaths, root);
+    }
+    session["expandedPaths"] = expandedPaths;
+
+    // 3. 保存到文件
+    QString sessionFile = sprintDir.filePath("session.json");
+    QFile file(sessionFile);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QJsonDocument doc(session);
+        file.write(doc.toJson());
+        file.close();
+        qDebug() << "Session saved to:" << sessionFile;
+    }
+}
+
+void MainWindow::restoreSession()
+{
+    if (d->currentProjectPath.isEmpty()) {
+        return;
+    }
+
+    QString sessionFile = QDir(d->currentProjectPath).filePath(".SprintIDE/session.json");
+    if (!QFile::exists(sessionFile)) {
+        // 没有会话记录，打开一个默认的 README 或空状态
+        qDebug() << "No session file found.";
+        return;
+    }
+
+    QFile file(sessionFile);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (!doc.isObject()) {
+        return;
+    }
+
+    QJsonObject session = doc.object();
+
+    // 1. 恢复打开的文件
+    QJsonArray openFiles = session["openFiles"].toArray();
+    for (const QJsonValue &val : openFiles) {
+        QJsonObject fileObj = val.toObject();
+        QString path = fileObj["path"].toString();
+        if (QFile::exists(path)) {
+            openFile(path);
+            // 恢复光标位置（需要在 openFile 中获取返回的编辑器指针）
+            TextEditor* editor = currentEditor();
+            if (editor) {
+                int line = fileObj["line"].toInt(1);
+                editor->gotoLine(line);
+            }
+        }
+    }
+
+    // 2. 恢复活动标签
+    int activeIndex = session["activeIndex"].toInt(0);
+    if (activeIndex >= 0 && activeIndex < d->editorTabs->count()) {
+        d->editorTabs->setCurrentIndex(activeIndex);
+    }
+
+    // 3. 恢复项目树展开状态（延迟执行，等待模型加载完成）
+    QJsonArray expandedPaths = session["expandedPaths"].toArray();
+    if (!expandedPaths.isEmpty()) {
+        // 使用单次定时器，等待文件系统模型加载完成
+        QTimer::singleShot(500, this, [this, expandedPaths]() {
+            restoreExpandedPaths(expandedPaths);
+        });
+    }
+}
+
+void MainWindow::saveExpandedPaths(QJsonArray &paths, const QModelIndex &parent)
+{
+    if (!parent.isValid()) return;
+
+    QModelIndexList children;
+    for (int row = 0; row < d->projectPanel->model()->rowCount(parent); ++row) {
+        QModelIndex child = d->projectPanel->model()->index(row, 0, parent);
+        if (d->projectPanel->isExpanded(child)) {
+            QString path = d->projectPanel->getFilePath(child); // 需要 ProjectPanel 提供此方法
+            if (!path.isEmpty()) {
+                paths.append(path);
+            }
+            // 递归展开子目录
+            saveExpandedPaths(paths, child);
+        }
+    }
+}
+
+void MainWindow::restoreExpandedPaths(const QJsonArray &paths)
+{
+    if (!d->projectPanel) return;
+
+    for (const QJsonValue &val : paths) {
+        QString path = val.toString();
+        if (path.isEmpty()) continue;
+
+        // 在文件系统模型中查找该路径的索引
+        QModelIndex index = d->projectPanel->findIndexByPath(path); // 需要 ProjectPanel 提供
+        if (index.isValid()) {
+            d->projectPanel->expand(index);
+            // 递归展开父级（以确保路径可达）
+            QModelIndex parent = index.parent();
+            while (parent.isValid()) {
+                if (!d->projectPanel->isExpanded(parent)) {
+                    d->projectPanel->expand(parent);
+                }
+                parent = parent.parent();
+            }
+        }
+    }
+}
+
+
 
 // mainwindow.cpp - 实现
 QString MainWindow::resolveDebuggerPath(const QString& filePath)
@@ -3401,34 +3726,41 @@ void MainWindow::onFormatCode()
     }
 }
 
-void MainWindow::loadProjectFiles(const QString& projectPath)
+void MainWindow::loadAllProjectFiles(const QString& projectPath)
 {
+    qDebug() << "========== loadAllProjectFiles ENTRY ==========";
+    qDebug() << "Loading project files from:" << projectPath;
 
-    qDebug() << "========== loadProjectFiles ENTRY ==========";
-    qDebug() << "MainWindow::loadProjectFiles called with path:" << projectPath;
     QDir projectDir(projectPath);
     if (!projectDir.exists()) {
         QMessageBox::warning(this, "错误", "项目路径不存在");
         return;
     }
 
+    // 定义支持的文件扩展名（可根据需要扩展）
     QStringList filters;
-    filters << "*.cpp" << "*.h" << "*.hpp" << "*.c";
-    projectDir.setNameFilters(filters);
-    QStringList sourceFiles = projectDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+    filters << "*.cpp" << "*.c" << "*.cc" << "*.cxx"
+            << "*.h" << "*.hpp" << "*.hh" << "*.hxx"
+            << "*.java" << "*.py" << "*.js" << "*.ts"
+            << "*.html" << "*.css" << "*.xml" << "*.json"
+            << "*.txt" << "*.md" << "*.cmake" << "*.makefile";
 
+    // 收集所有符合条件的文件路径
+    QStringList sourceFiles;
     QStack<QString> directories;
     directories.push(projectPath);
 
-    while (!directories.empty()) {
+    while (!directories.isEmpty()) {
         QString currentDir = directories.pop();
         QDir dir(currentDir);
 
+        // 添加子目录到栈
         QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QString& subdir : subdirs) {
             directories.push(dir.absoluteFilePath(subdir));
         }
 
+        // 添加当前目录中的文件
         dir.setNameFilters(filters);
         QStringList files = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
         for (const QString& file : files) {
@@ -3436,29 +3768,12 @@ void MainWindow::loadProjectFiles(const QString& projectPath)
         }
     }
 
-    for (const QString& fileName : sourceFiles) {
-        QString filePath = projectDir.absoluteFilePath(fileName);
-        openFile(filePath);
-    }
+    // 逐个打开文件
+    // for (const QString& filePath : sourceFiles) {
+    //     openFile(filePath);
+    // }
 
-    // 设置终端工作目录到项目路径地址
-    if (m_terminalPanel) {
-        m_terminalPanel->setWorkingDirectory(projectPath);
-    }
-
-    qDebug() << "[MainWindow] m_localHistory pointer:" << m_localHistory;
-    // 设置本地历史根目录
-    qDebug() << "[MainWindow] m_localHistory pointer = " << m_localHistory;
-    if (m_localHistory) {
-        qDebug() << "[MainWindow] m_localHistory is valid, calling setProjectRoot...";
-        m_localHistory->setProjectRoot(projectPath);
-        qDebug() << "[MainWindow] 已设置本地历史根目录:" << projectPath;
-    } else {
-        qDebug() << "[MainWindow] ERROR: m_localHistory is NULL!";
-    }
-
-    d->projectPanel->openProject(projectPath);
-    generateCompileCommands(projectPath);
+    qDebug() << "Loaded" << sourceFiles.size() << "files from project";
 }
 
 void MainWindow::onNewProject()
@@ -3541,16 +3856,14 @@ QString MainWindow::getProjectTypeString(ProjectType type) const
 
 void MainWindow::onOpenProject()
 {
-    QString fileName = QFileDialog::getOpenFileName(
+    QString dir = QFileDialog::getExistingDirectory(
         this,
-        "打开项目",
+        "打开项目文件夹",
         "",
-        "SprintIDE 项目文件 (*.lightcppproj);;所有文件 (*.*)"
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
         );
-
-    if (!fileName.isEmpty()) {
-        qDebug() << "onOpenProject: calling openProject with:" << fileName;
-        openProject(fileName);
+    if (!dir.isEmpty()) {
+        openProject(dir);
     }
 }
 
@@ -3879,93 +4192,8 @@ QString MainWindow::findDebugger()
 
 void MainWindow::onCompileSettings()
 {
-    if (!m_compileManager) {
-        return;
-    }
-
-    QDialog dialog(this);
-    dialog.setWindowTitle("编译配置");
-    dialog.setMinimumSize(500, 400);
-
-    QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-    QGroupBox* compilerGroup = new QGroupBox("编译器设置", &dialog);
-    QFormLayout* compilerLayout = new QFormLayout(compilerGroup);
-
-    QComboBox* compilerTypeCombo = new QComboBox(&dialog);
-    compilerTypeCombo->addItem("自动检测", static_cast<int>(CompilerType::AutoDetect));
-    compilerTypeCombo->addItem("GCC", static_cast<int>(CompilerType::GCC));
-    compilerTypeCombo->addItem("Clang", static_cast<int>(CompilerType::Clang));
-    compilerTypeCombo->addItem("MSVC", static_cast<int>(CompilerType::MSVC));
-    compilerTypeCombo->addItem("MinGW", static_cast<int>(CompilerType::MinGW));
-
-    QLineEdit* compilerPathEdit = new QLineEdit(&dialog);
-    QPushButton* browseButton = new QPushButton("浏览...", &dialog);
-
-    QHBoxLayout* pathLayout = new QHBoxLayout();
-    pathLayout->addWidget(compilerPathEdit);
-    pathLayout->addWidget(browseButton);
-
-    compilerLayout->addRow("编译器类型:", compilerTypeCombo);
-    compilerLayout->addRow("编译器路径:", pathLayout);
-
-    QGroupBox* standardGroup = new QGroupBox("C++标准", &dialog);
-    QVBoxLayout* standardLayout = new QVBoxLayout(standardGroup);
-
-    QComboBox* cppStandardCombo = new QComboBox(&dialog);
-    cppStandardCombo->addItems({"C++11", "C++14", "C++17", "C++20", "C++23"});
-    cppStandardCombo->setCurrentText("C++17");
-
-    standardLayout->addWidget(cppStandardCombo);
-
-    QGroupBox* optimizationGroup = new QGroupBox("优化选项", &dialog);
-    QVBoxLayout* optimizationLayout = new QVBoxLayout(optimizationGroup);
-
-    QCheckBox* debugInfoCheck = new QCheckBox("包含调试信息 (-g)", &dialog);
-    debugInfoCheck->setChecked(true);
-
-    QCheckBox* warningsCheck = new QCheckBox("启用所有警告 (-Wall -Wextra)", &dialog);
-    warningsCheck->setChecked(true);
-
-    QCheckBox* warningsAsErrorsCheck = new QCheckBox("将警告视为错误 (-Werror)", &dialog);
-
-    optimizationLayout->addWidget(debugInfoCheck);
-    optimizationLayout->addWidget(warningsCheck);
-    optimizationLayout->addWidget(warningsAsErrorsCheck);
-
-    QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
-                                                           QDialogButtonBox::Cancel,
-                                                       Qt::Horizontal, &dialog);
-
-    layout->addWidget(compilerGroup);
-    layout->addWidget(standardGroup);
-    layout->addWidget(optimizationGroup);
-    layout->addWidget(buttonBox);
-
-    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    connect(browseButton, &QPushButton::clicked, [=, this]() {
-        QString path = QFileDialog::getOpenFileName(this, "选择编译器");
-        if (!path.isEmpty()) {
-            compilerPathEdit->setText(path);
-        }
-    });
-
-    if (dialog.exec() == QDialog::Accepted) {
-        CompilerType selectedType = static_cast<CompilerType>(
-            compilerTypeCombo->currentData().toInt());
-        QString compilerPath = compilerPathEdit->text();
-
-        bool success = m_compileManager->setDefaultCompiler(selectedType, compilerPath);
-
-        QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-        if (success) {
-            d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 编译配置已更新</span>").arg(timeStr));
-            m_statusLabel->setText("编译配置已保存");
-        } else {
-            d->outputPanel->append(QString("<span style='color:#FF3333;'>[%1] 编译配置更新失败</span>").arg(timeStr));
-        }
-    }
+    SettingsDialog dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::onZoomIn()
