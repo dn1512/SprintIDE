@@ -71,8 +71,6 @@ void EditorWidget::setupEditor()
 
     // 设置其他属性
     setWordWrapMode(d->wordWrap ? QTextOption::WrapAtWordBoundaryOrAnywhere : QTextOption::NoWrap);
-
-    // qDebug() << "EditorWidget initialized";
 }
 
 void EditorWidget::setupLineNumberArea()
@@ -352,8 +350,6 @@ void EditorWidget::replaceAll(const QString &find, const QString &replace, bool 
     }
 
     cursor.endEditBlock();
-
-    // qDebug() << "Replaced" << count << "occurrences";
 }
 
 bool EditorWidget::isModified() const

@@ -35,7 +35,6 @@ LSPClient::~LSPClient()
 
 bool LSPClient::startServer(const QString& serverPath)
 {
-    qDebug() << "LSP: startServer called, serverPath:" << serverPath;
     if (m_process && m_process->state() != QProcess::NotRunning) {
         return true;
     }
@@ -127,7 +126,6 @@ bool LSPClient::startServer(const QString& serverPath)
 
     QString rootUri = uriFromPath(m_projectRoot.isEmpty() ? QDir::currentPath() : m_projectRoot);
     initParams["rootUri"] = rootUri;
-    qDebug() << "LSP: initialize rootUri = " << rootUri;
 
     // ---- initializationOptions（仅 JDTLS） ----
     QJsonObject initializationOptions;
@@ -256,32 +254,44 @@ void LSPClient::requestDefinition(const QString& filePath, int line, int column)
 
 void LSPClient::handleDefinitionResponse(const QJsonObject& response)
 {
+    // 1. 获取 result
     QJsonValue result = response["result"];
-    if (result.isNull()) return;
+    if (result.isNull()) {
+        qWarning() << "[LSP] definition result is null";
+        return;
+    }
 
-    // 解析位置
+    // 2. 提取目标位置
     QString targetFile;
     int line = 0, column = 0;
+
     if (result.isObject()) {
         QJsonObject loc = result.toObject();
-        targetFile = pathFromUri(loc["uri"].toString());
+        targetFile = QUrl(loc["uri"].toString()).toLocalFile();
         QJsonObject range = loc["range"].toObject();
         QJsonObject start = range["start"].toObject();
         line = start["line"].toInt() + 1;
         column = start["character"].toInt() + 1;
-    } else if (result.isArray()) {
+    }
+    else if (result.isArray()) {
         QJsonArray arr = result.toArray();
         if (!arr.isEmpty()) {
             QJsonObject loc = arr.first().toObject();
-            targetFile = pathFromUri(loc["uri"].toString());
+            targetFile = QUrl(loc["uri"].toString()).toLocalFile();
             QJsonObject range = loc["range"].toObject();
             QJsonObject start = range["start"].toObject();
             line = start["line"].toInt() + 1;
             column = start["character"].toInt() + 1;
         }
+    } else {
+        return;
     }
+
+    // 3. 发射信号（如果解析成功）
     if (!targetFile.isEmpty()) {
         emit definitionReceived(targetFile, line, column);
+    } else {
+        qWarning() << "[LSP] targetFile is empty, NOT emitting definitionReceived";
     }
 }
 
@@ -289,9 +299,7 @@ void LSPClient::handleDefinitionResponse(const QJsonObject& response)
 
 void LSPClient::openDocument(const QString& filePath, const QString& content)
 {
-    qDebug() << "LSP: openDocument called for" << filePath;
     if (!isReady()) {
-        qDebug() << "LSP: openDocument skipped, not ready";
         return;
     }
 
@@ -316,23 +324,18 @@ void LSPClient::openDocument(const QString& filePath, const QString& content)
 
 void LSPClient::changeDocument(const QString& filePath, const QString& content)
 {
-    qDebug() << "LSP: changeDocument called for" << filePath;
     if (!isReady()) {
-        qDebug() << "LSP: changeDocument skipped, not ready";
         return;
     }
 
     m_pendingFilePath = filePath;
     m_pendingContent = content;
     m_reparseTimer->start();
-    qDebug() << "LSP: changeDocument timer started";
 }
 
 void LSPClient::onReparseTimer()
 {
-    qDebug() << "LSP: onReparseTimer triggered";
     if (m_pendingFilePath.isEmpty() || m_pendingContent.isEmpty()) {
-        qDebug() << "LSP: onReparseTimer skipped, empty";
         return;
     }
 
@@ -422,7 +425,6 @@ void LSPClient::onServerReadyRead()
     m_buffer += m_process->readAllStandardOutput();
 
     // ---- 调试：打印原始数据 ----
-    qDebug() << "LSP raw data (first 200 chars):" << m_buffer.left(200);
 
     while (true) {
         // 如果缓冲区不以 "Content-Length:" 开头，说明有非 LSP 输出，丢弃该行
@@ -437,7 +439,6 @@ void LSPClient::onServerReadyRead()
                 break;
             }
             QByteArray line = m_buffer.left(newline + 1);
-            qDebug() << "LSP: skipping non-LSP line:" << line.trimmed();
             m_buffer.remove(0, newline + 1);
             continue; // 继续检查头部
         }
@@ -517,13 +518,11 @@ void LSPClient::onServerErrorRead()
                 trimmed.contains("Enqueueing") ||
                 trimmed.contains("File version went from") ||
                 (trimmed.contains("-->") && trimmed.contains("textDocument"))) {
-                qDebug() << "clangd:" << trimmed;
                 continue;
             }
 
             // 过滤 publishDiagnostics（正常诊断）
             if (trimmed.contains("publishDiagnostics")) {
-                qDebug() << "clangd diagnostics:" << trimmed;
                 continue;
             }
 
@@ -541,7 +540,6 @@ void LSPClient::onServerErrorRead()
                 trimmed.contains("java.vendor") ||
                 trimmed.contains("BootLoader constants") ||
                 trimmed.contains("Command-line arguments")) {
-                qDebug() << "JDTLS info:" << trimmed;
                 continue;
             }
 
@@ -553,7 +551,6 @@ void LSPClient::onServerErrorRead()
                 trimmed.contains("ServiceReady") ||
                 trimmed.contains("Starting Java Language Server") ||
                 trimmed.contains("class org.eclipse.jdt.ls.core.internal.JavaLanguageServerPlugin is started")) {
-                qDebug() << "JDTLS info:" << trimmed;
                 continue;
             }
 
@@ -565,8 +562,6 @@ void LSPClient::onServerErrorRead()
                 trimmed.contains("Exception") ||
                 trimmed.contains("Error")) {
                 emit serverError("JDTLS: " + trimmed);
-            } else {
-                qDebug() << "JDTLS:" << trimmed;
             }
         }
     }
@@ -586,19 +581,20 @@ void LSPClient::handleResponse(const QJsonObject& response)
     QString method = m_pendingRequests.value(id, "");
 
     if (method == "initialize") {
+        // 初始化成功处理
         m_initTimer->stop();
-        // 初始化成功，发送 initialized 通知
         QJsonObject notification;
         notification["jsonrpc"] = "2.0";
         notification["method"] = "initialized";
         notification["params"] = QJsonObject{};
         sendMessage(notification);
-
         m_initialized = true;
         emit serverReady();
         emit serverStarted();
     } else if (method == "completion") {
         handleCompletionResponse(response);
+    } else if (method == "definition") {   // ⬅️ 新增这一行
+        handleDefinitionResponse(response);
     }
 
     m_pendingRequests.remove(id);
@@ -649,7 +645,6 @@ void LSPClient::handlePublishDiagnostics(const QJsonObject& params)
         diagnostics.append(info);
     }
 
-    qDebug() << "LSP: diagnostics count:" << diagnostics.size();
     emit diagnosticsReceived(filePath, diagnostics);
 }
 
@@ -677,7 +672,7 @@ QString LSPClient::pathFromUri(const QString& uri) const
         path.replace("/", "\\");
 #endif
     }
-    return path;
+    return QUrl(uri).toLocalFile();
 }
 
 void LSPClient::setProjectRoot(const QString& root)

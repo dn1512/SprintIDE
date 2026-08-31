@@ -8,6 +8,8 @@
 #include <QStandardPaths>
 
 #include "utils/java_utils.h"
+#include "builder/cpp_builder.h"
+#include "builder/java_builder.h"
 
 namespace SprintIDE {
 
@@ -326,7 +328,7 @@ LSPConfig LSPManager::getConfigForLanguage(const QString &languageId) const
 // ============================================================
 // 获取文件对应的 LSP 客户端
 // ============================================================
-LSPClient *LSPManager::getClientForFile(const QString &filePath,
+LSPClient* LSPManager::getClientForFile(const QString &filePath,
                                         const QString &projectRoot)
 {
     if (!m_initialized) {
@@ -347,20 +349,33 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
         return nullptr;
     }
 
-    // ---- 如果是 JDTLS，确保 wrapper 存在 ----
+    // 3. 获取项目根目录（如果未指定，尝试从文件路径推断）
+    QString root = projectRoot;
+    if (root.isEmpty()) {
+        root = QFileInfo(filePath).absolutePath();
+    }
+    root = findProjectRoot(root);   // 向上查找 .git/pom.xml 等
+
+    // ========== 新增：语言特定的环境初始化 ==========
+    // C++：生成 compile_commands.json
+    if (config.command == "clangd") {
+        CppBuilder::ensureCompileCommands(root);
+    }
+    // Java：生成 Eclipse 元数据（.project/.classpath）
     if (config.command == "jdtls") {
-        QString root = projectRoot;
-        if (root.isEmpty()) root = QFileInfo(filePath).absolutePath();
+        // 注意：ensureEclipseMetadata 内部会读取 MAVEN_HOME 配置
+        JavaUtils::ensureEclipseMetadata(root);
+    }
+    // 未来可扩展其他语言（如 Python 的 pipenv，Go 的 go mod 等）
+
+    // 4. 若是 JDTLS，确保 wrapper 存在（原有逻辑）
+    if (config.command == "jdtls") {
         QString wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.sh";
 #ifdef Q_OS_WIN
         wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.bat";
 #endif
-
         if (!QFile::exists(wrapperPath)) {
-            // 获取 JavaInfo
-            JavaInfo javaInfo;
-            // 先尝试从配置读取（已在 detectJava 内部处理）
-            javaInfo = JavaUtils::detectJava();
+            JavaInfo javaInfo = JavaUtils::detectJava();
             if (!javaInfo.isValid()) {
                 emit clientError(lang.id, "未找到 Java 17+，请安装 Java 21 并在设置中配置 JAVA_HOME。");
                 return nullptr;
@@ -373,38 +388,28 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
         config.command = wrapperPath;
     }
 
-    // 3. 查找服务器可执行文件
+    // 5. 查找服务器可执行文件（原有逻辑）
     QString serverPath = findServerExecutable(config.command);
     if (serverPath.isEmpty()) {
-        qDebug() << "[LSP Manager] 未安装 LSP 服务器:" << config.command
-                 << "语言:" << lang.id;
+        qDebug() << "[LSP Manager] 未安装 LSP 服务器:" << config.command;
         emit clientError(lang.id, "未安装服务器: " + config.command);
         return nullptr;
     }
 
-    // 4. 获取项目根目录（如果未指定，尝试从文件路径推断）
-    QString root = projectRoot;
-    if (root.isEmpty()) {
-        root = QFileInfo(filePath).absolutePath();
-    }
-    // 向上查找项目配置文件
-    root = findProjectRoot(root);
-
-    // 5. 生成缓存键
+    // 6. 生成缓存键
     QString key = makeClientKey(root, lang.id);
 
-    // 6. 检查是否已有缓存的客户端
+    // 7. 检查缓存
     if (m_clients.contains(key)) {
         LSPClient *client = m_clients[key];
         if (client && client->isServerRunning()) {
             return client;
         }
-        // 客户端已关闭或异常，移除并重新创建
         m_clients.remove(key);
         client->deleteLater();
     }
 
-    // 7. 创建新的 LSP 客户端
+    // 8. 创建新客户端
     qDebug() << "[LSP Manager] 为语言创建 LSP 客户端:" << lang.id
              << "服务器:" << config.serverName
              << "项目:" << root;
@@ -412,7 +417,7 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
     LSPClient *client = new LSPClient(this);
     client->setProjectRoot(root);
 
-    // 连接信号
+    // 连接信号（原有）
     connect(client, &LSPClient::diagnosticsReceived,
             this, &LSPManager::diagnosticsReceived);
     connect(client, &LSPClient::serverStarted,
@@ -420,22 +425,20 @@ LSPClient *LSPManager::getClientForFile(const QString &filePath,
                 qDebug() << "[LSP Manager] 服务器已启动:" << lang.id << root;
                 emit clientCreated(lang.id, root);
             });
-
     connect(client, &LSPClient::serverError,
             this, [this, lang](const QString &error) {
                 emit clientError(lang.id, error);
             });
 
-    // 8. 启动服务器
+    // 9. 启动服务器
     bool started = client->startServer(serverPath);
     if (!started) {
-        qDebug() << "[LSP Manager] 启动服务器失败:" << config.serverName;
         client->deleteLater();
         emit clientError(lang.id, "启动失败: " + config.serverName);
         return nullptr;
     }
 
-    // 9. 缓存客户端
+    // 10. 缓存
     m_clients[key] = client;
     qDebug() << "[LSP Manager] LSP 客户端已创建，当前客户端数:" << m_clients.size();
 

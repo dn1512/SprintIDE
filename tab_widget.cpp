@@ -542,7 +542,7 @@ void TabWidget::setupConnections()
     }
 
     // 确保tabCloseRequested信号能正确转发
-    qDebug() << "TabWidget connections set up";
+    // qDebug() << "TabWidget connections set up";
 }
 
 int TabWidget::addTab(QWidget *widget, const QString &label, const QString &toolTip)

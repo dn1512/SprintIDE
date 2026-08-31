@@ -130,7 +130,7 @@ public slots:
     void runProgram(const QString& executablePath, bool inTerminal = false);
     void syncBreakpointsToDebugger();
     void onLSPDiagnostics(const QString& filePath, const QList<LSPDiagnostic>& diagnostics);
-    void generateCompileCommands(const QString& projectPath);   // 生成 compile_commands.json
+    // void generateCompileCommands(const QString& projectPath);   // 生成 compile_commands.json
 
     // 菜单槽函数
     void onNewFile();
@@ -284,7 +284,7 @@ private:
      * @param projectPath 项目根目录
      * @return true 表示成功或已存在，false 表示失败或用户取消
      */
-    bool ensureEclipseProjectFiles(const QString& projectPath);
+    // bool ensureEclipseProjectFiles(const QString& projectPath);
 
     void saveSession();
     void restoreSession();
@@ -313,6 +313,14 @@ private:
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态
     // ========== 本地历史管理器指针 ==========
     LocalHistory *m_localHistory = nullptr;
+    // 存储每个 LSPClient 对应的 definition 信号连接
+    QMap<LSPClient*, QMetaObject::Connection> m_definitionConnections;
+
+    // 用于等待 LSP 就绪的延迟连接管理（防止重复创建）
+    QMap<LSPClient*, QMetaObject::Connection> m_pendingDefinitionConnections;
+
+    // 用于等待 LSP 就绪的定时器（可选，但建议保留）
+    QTimer* m_lspWaitTimer = nullptr;
 };
 
 } // namespace SprintIDE

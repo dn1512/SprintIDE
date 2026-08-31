@@ -350,6 +350,16 @@ MainWindow::~MainWindow()
     // 清理构建器工厂（释放所有 Builder）
     BuilderFactory::shutdown();
 
+    for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
+        disconnect(it.value());
+    }
+    m_definitionConnections.clear();
+
+    for (auto it = m_pendingDefinitionConnections.begin(); it != m_pendingDefinitionConnections.end(); ++it) {
+        disconnect(it.value());
+    }
+    m_pendingDefinitionConnections.clear();
+
     // 删除私有实现
     delete d;
 }
@@ -1065,9 +1075,6 @@ void MainWindow::setupDockWidgets()
     // 确保没有最大尺寸限制
     // m_bottomDockWidget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     // m_bottomDockWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // ========== 调试输出 ==========
-    qDebug() << "BottomDockWidget floating:" << m_bottomDockWidget->isFloating();
-    qDebug() << "BottomDockWidget features:" << m_bottomDockWidget->features();
 
     m_bottomTabWidget = new QTabWidget(m_bottomDockWidget);
     m_bottomTabWidget->setTabPosition(QTabWidget::South);
@@ -1340,16 +1347,8 @@ void MainWindow::saveWindowState()
 }
 
 // ==================== 项目操作 ====================
-
-void MainWindow::openProject(const QString &path)
-{
-    QString pomFile = path + "/pom.xml";
-    if (QFile::exists(pomFile)) {
-        QFile::remove(path + "/.project");
-        QFile::remove(path + "/.classpath");
-    }
-
-    // 尝试向上查找项目配置文件，更新实际项目根目录
+void MainWindow::openProject(const QString &path) {
+    // 确定实际项目根目录（现有逻辑）
     QString actualRoot = path;
     QDir dir(path);
     while (!dir.isRoot()) {
@@ -1360,38 +1359,18 @@ void MainWindow::openProject(const QString &path)
         }
         dir.cdUp();
     }
-    // 使用 actualRoot 作为项目根目录
+
     d->currentProjectPath = actualRoot;
-    // 使用 ProjectManager 打开项目（会自动处理无配置文件的情况）
+
+    // 使用 ProjectManager 打开项目
     ProjectManager* pm = ProjectManager::instance();
     if (!pm->openProject(path)) {
         QMessageBox::warning(this, "打开项目失败", "无法打开项目：" + path);
         return;
     }
-
-    // 检测并生成 Eclipse 元数据（针对 Maven 项目）
-    ensureEclipseProjectFiles(path);
-
-    // 从 ProjectManager 同步项目信息
-    d->currentProjectPath = pm->currentProjectPath();
     d->currentProjectName = pm->currentProjectName();
-    d->hasUnsavedChanges = false;
-    d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
 
-    // --- 生成 compile_commands.json ---
-    generateCompileCommands(d->currentProjectPath);
-
-    // --- 终端工作目录 ---
-    if (m_terminalPanel) {
-        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
-    }
-
-    // --- 本地历史 ---
-    if (m_localHistory) {
-        m_localHistory->setProjectRoot(d->currentProjectPath);
-    }
-
-    // 打开项目面板（尝试加载配置文件，或传入 nullptr 由 ProjectPanel 自行处理）
+    // 更新面板
     if (d->projectPanel) {
         ProjectConfig config;
         QString configFile = d->currentProjectPath + "/.lightcppproj";
@@ -1400,8 +1379,18 @@ void MainWindow::openProject(const QString &path)
         d->projectPanel->openProject(d->currentProjectPath, hasConfig ? &config : nullptr);
     }
 
-    // ===== 加载所有项目文件 =====
+    if (m_terminalPanel) {
+        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
+    }
+
+    if (m_localHistory) {
+        m_localHistory->setProjectRoot(d->currentProjectPath);
+    }
+
+    // 加载项目文件列表（可选）
     loadAllProjectFiles(actualRoot);
+
+    d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
 }
 
 void MainWindow::closeProject()
@@ -1413,7 +1402,7 @@ void MainWindow::closeProject()
 void MainWindow::openFile(const QString &path)
 {
     // ============================================================
-    // 1. 检查文件是否已打开（避免重复打开）
+    // 1. 检查文件是否已打开
     // ============================================================
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
@@ -1428,18 +1417,15 @@ void MainWindow::openFile(const QString &path)
     // ============================================================
     TextEditor* editor = new TextEditor(this);
 
-    // 连接代码补全信号
+    // ---- 代码补全信号（保持不变） ----
     connect(editor, &TextEditor::completionRequested,
             this, [this, editor](const QString& filePath, int line, int column) {
-                // 获取 LSP 客户端
                 if (!m_lspManager) return;
                 QString projectRoot = d->currentProjectPath.isEmpty() ?
                                           QFileInfo(filePath).absolutePath() :
                                           d->currentProjectPath;
                 LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
                 if (client) {
-                    // 连接补全结果信号（如果尚未连接）
-                    // 为了避免重复连接，使用一个标志或静态集合
                     static QSet<LSPClient*> connectedClients;
                     if (!connectedClients.contains(client)) {
                         connect(client, &LSPClient::completionReceived,
@@ -1454,42 +1440,69 @@ void MainWindow::openFile(const QString &path)
                     client->requestCompletion(filePath, line, column);
                 }
             });
+
+    // ============================================================
+    // 跳转定义连接（核心修复部分）
+    // ============================================================
     // 跳转定义连接
     connect(editor, &TextEditor::definitionRequested,
             this, [this, editor](const QString& filePath, int line, int column) {
+
                 if (!m_lspManager) return;
                 QString projectRoot = d->currentProjectPath.isEmpty() ?
                                           QFileInfo(filePath).absolutePath() :
                                           d->currentProjectPath;
                 LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
-                if (!client) return;
-
-                // 使用 Qt::UniqueConnection 避免重复连接
-                static QMetaObject::Connection conn;
-                // 先断开旧连接（如果存在）
-                if (conn) {
-                    disconnect(conn);
+                if (!client) {
+                    qWarning() << "[MainWindow] No LSP client for" << filePath;
+                    return;
                 }
-                conn = connect(client, &LSPClient::definitionReceived,
-                               this, [this](const QString& targetFile, int targetLine, int targetColumn) {
-                                   // 打开目标文件
-                                   openFile(targetFile);
-                                   // 获取当前编辑器（刚刚打开的）
-                                   TextEditor* targetEditor = currentEditor();
-                                   if (targetEditor) {
-                                       targetEditor->gotoLine(targetLine);
-                                       targetEditor->setFocus();
-                                       // 高亮该行（可选）
-                                       targetEditor->highlightLine(targetLine);
-                                   }
-                               });
 
+                // ---- 关键修改：只建立一次连接，之后复用 ----
+                if (!m_definitionConnections.contains(client)) {
+                    QMetaObject::Connection conn = connect(client, &LSPClient::definitionReceived,
+                                                           this, [this](const QString& targetFile, int targetLine, int targetColumn) {
+                                                               openFile(targetFile);
+                                                               TextEditor* targetEditor = currentEditor();
+                                                               if (targetEditor) {
+                                                                   targetEditor->gotoLine(targetLine);
+                                                                   targetEditor->setFocus();
+                                                                   targetEditor->highlightLine(targetLine);
+                                                               }
+                                                           });
+                    m_definitionConnections[client] = conn;
+                } else {
+                    qDebug() << "[MainWindow] definitionReceived connection already exists for client" << client;
+                }
+
+                // ---- 等待 LSP 就绪（如果有） ----
+                if (!client->isReady()) {
+                    QPointer<LSPClient> clientPtr = client;
+                    auto connPtr = std::make_shared<QMetaObject::Connection>();
+                    *connPtr = connect(client, &LSPClient::serverReady, this,
+                                       [this, clientPtr, filePath, line, column, connPtr]() {
+                                           if (!clientPtr) {
+                                               qWarning() << "[MainWindow] client destroyed before serverReady";
+                                               return;
+                                           }
+                                           clientPtr->requestDefinition(filePath, line, column);
+                                           disconnect(*connPtr);
+                                       });
+                    QTimer::singleShot(5000, this, [connPtr]() {
+                        if (*connPtr) {
+                            qWarning() << "[MainWindow] LSP ready timeout";
+                            disconnect(*connPtr);
+                        }
+                    });
+                    return;
+                }
+
+                // ---- 客户端已就绪，直接发送请求 ----
                 client->requestDefinition(filePath, line, column);
             });
 
-    // 传递本地历史管理器
+    // ---- 本地历史（原有代码） ----
     if (m_localHistory) {
-        // 如果项目已打开，用项目路径；否则用文件所在目录
         QString rootPath = d->currentProjectPath.isEmpty() ?
                                QFileInfo(path).absolutePath() :
                                d->currentProjectPath;
@@ -1497,6 +1510,7 @@ void MainWindow::openFile(const QString &path)
         editor->setLocalHistory(m_localHistory);
     }
 
+    // ---- 加载文件 ----
     if (!editor->loadFile(path)) {
         delete editor;
         QMessageBox::warning(this, "打开错误",
@@ -1508,9 +1522,7 @@ void MainWindow::openFile(const QString &path)
     d->editorTabs->setCurrentIndex(index);
     d->outputPanel->append(QString("已打开: %1").arg(path));
 
-    // ============================================================
-    // 3. 连接编辑器信号
-    // ============================================================
+    // ---- 其他信号连接（原有） ----
     connect(editor, &TextEditor::modificationChanged,
             this, &MainWindow::onEditorModificationChanged);
     connect(editor, &TextEditor::cursorPositionChanged,
@@ -1526,15 +1538,11 @@ void MainWindow::openFile(const QString &path)
     connect(editor, &TextEditor::breakpointToggled,
             this, &MainWindow::onBreakpointToggled);
 
-    // ============================================================
-    // 4. 应用主题
-    // ============================================================
+    // ---- 应用主题 ----
     bool isDark = ThemeManager::instance().isDarkTheme();
     editor->applyTheme(isDark ? "dark" : "light");
 
-    // ============================================================
-    // 5. 更新状态栏语言
-    // ============================================================
+    // ---- 更新状态栏语言 ----
     QFileInfo info(path);
     QString ext = info.suffix().toLower();
     if (ext == "cpp" || ext == "cxx" || ext == "cc" || ext == "c") {
@@ -1571,21 +1579,14 @@ void MainWindow::openFile(const QString &path)
         m_languageLabel->setText("Unknown");
     }
 
-    // ============================================================
-    // 6. ========== LSP 集成 ==========
-    // ============================================================
+    // ---- LSP 打开文档（原有） ----
     if (m_lspManager) {
-        // 确定项目根目录（优先使用打开的项目路径）
         QString projectPath = d->currentProjectPath.isEmpty() ?
                                   QFileInfo(path).absolutePath() :
                                   d->currentProjectPath;
 
-        // 获取对应语言的 LSP 客户端
         LSPClient *client = m_lspManager->getClientForFile(path, projectPath);
-
         if (client) {
-            // ---- 连接诊断信号（如果尚未连接） ----
-            // 使用静态集合跟踪已连接的客户端，避免重复连接
             static QSet<LSPClient*> connectedClients;
             if (!connectedClients.contains(client)) {
                 connect(client, &LSPClient::diagnosticsReceived,
@@ -1594,11 +1595,9 @@ void MainWindow::openFile(const QString &path)
                 qDebug() << "LSP: diagnostics signal connected for client";
             }
 
-            // ---- 6b. 打开文档 ----
             if (client->isReady()) {
-                 client->openDocument(path, editor->toPlainText());
+                client->openDocument(path, editor->toPlainText());
             } else {
-                // 使用一个一次性连接，确保只执行一次
                 QMetaObject::Connection *conn = new QMetaObject::Connection;
                 *conn = connect(client, &LSPClient::serverReady, this,
                                 [this, client, path, editor, conn]() {
@@ -1607,7 +1606,6 @@ void MainWindow::openFile(const QString &path)
                                         client->openDocument(path, content);
                                         qDebug() << "LSP: openDocument (delayed) for" << path;
                                     }
-                                    // 断开连接并释放内存
                                     disconnect(*conn);
                                     delete conn;
                                 });
@@ -2298,65 +2296,6 @@ void MainWindow::onLSPDiagnostics(const QString& filePath, const QList<LSPDiagno
     }
 }
 
-// ========== 生成 compile_commands.json ==========
-void MainWindow::generateCompileCommands(const QString& projectPath)
-{
-    QDir projectDir(projectPath);
-    QString jsonPath = projectDir.filePath("compile_commands.json");
-
-    // 如果已存在，跳过
-    if (QFile::exists(jsonPath)) {
-        d->outputPanel->append("compile_commands.json 已存在");
-        return;
-    }
-
-    // 查找所有 .cpp 文件（递归）
-    QStringList cppFiles;
-    QDirIterator it(projectPath, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        QString file = it.next();
-        if (file.endsWith(".cpp") || file.endsWith(".cxx") || file.endsWith(".cc") || file.endsWith(".c")) {
-            cppFiles.append(file);
-        }
-    }
-
-    if (cppFiles.isEmpty()) {
-        d->outputPanel->append("未找到 C++ 源文件，跳过生成 compile_commands.json");
-        return;
-    }
-
-    QJsonArray entries;
-    for (const QString& file : cppFiles) {
-        // 计算相对于项目根目录的路径（用于文件字段）
-        QString relativeFile = QDir(projectPath).relativeFilePath(file);
-
-        // 获取包含目录（可扩展为从项目配置读取）
-        QString includes = "-I" + projectDir.filePath("include") + " -I" + projectDir.filePath(".");
-
-        // 构建编译命令（简单版本）
-        QString command = QString("clang++ -c -std=c++17 -g %1 %2 -o %3.o")
-                              .arg(relativeFile)
-                              .arg(includes)
-                              .arg(relativeFile.left(relativeFile.lastIndexOf('.')));
-
-        QJsonObject entry;
-        entry["directory"] = projectPath;
-        entry["file"] = relativeFile;
-        entry["command"] = command;
-        entries.append(entry);
-    }
-
-    QJsonDocument doc(entries);
-    QFile jsonFile(jsonPath);
-    if (jsonFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        jsonFile.write(doc.toJson());
-        jsonFile.close();
-        d->outputPanel->append(QString("已生成 compile_commands.json，包含 %1 个文件").arg(entries.size()));
-    } else {
-        d->outputPanel->append("生成 compile_commands.json 失败");
-    }
-}
-
 // 辅助方法
 TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 {
@@ -3033,79 +2972,6 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
     dialog.exec();
 }
 
-bool MainWindow::ensureEclipseProjectFiles(const QString& projectPath)
-{
-    QString pomFile = projectPath + "/pom.xml";
-    if (!QFile::exists(pomFile)) {
-        return true; // 不是 Maven 项目
-    }
-
-    // 检查是否已存在
-    if (QFile::exists(projectPath + "/.project") && QFile::exists(projectPath + "/.classpath")) {
-        return true;
-    }
-
-    // ----- 读取项目/全局配置中的 MAVEN_HOME -----
-    QString mavenHome;
-    // 优先从项目配置读取
-    ProjectConfig projConfig;
-    QString configFile = projectPath + "/.lightcppproj";
-    QStringList errors;
-    if (projConfig.loadFromFile(configFile, errors)) {
-        QVariantMap sdkEnv = projConfig.sdkEnvironment();
-        if (sdkEnv.contains("MAVEN_HOME")) {
-            mavenHome = sdkEnv["MAVEN_HOME"].toString();
-        }
-    }
-    // 如果项目配置没有，尝试全局配置
-    if (mavenHome.isEmpty()) {
-        ConfigManager* cfg = Application::instance().configManager();
-        if (cfg) {
-            QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
-            if (sdkEnv.contains("MAVEN_HOME")) {
-                mavenHome = sdkEnv["MAVEN_HOME"].toString();
-            }
-        }
-    }
-
-    // ----- 确定 mvn 可执行文件 -----
-    QString mvnExecutable = "mvn";  // 回退到 PATH 查找
-    if (!mavenHome.isEmpty()) {
-        QString mvnPath = QDir(mavenHome).absoluteFilePath("bin/mvn");
-#ifdef Q_OS_WIN
-        mvnPath += ".cmd";  // Windows 下可能是 mvn.cmd 或 mvn.bat
-#endif
-        if (QFile::exists(mvnPath)) {
-            mvnExecutable = mvnPath;  // 直接使用完整路径
-        } else {
-            // 如果 bin/mvn 不存在，尝试 bin/mvn (Windows 无后缀)
-            mvnPath = QDir(mavenHome).absoluteFilePath("bin/mvn");
-            if (QFile::exists(mvnPath)) {
-                mvnExecutable = mvnPath;
-            }
-        }
-    }
-
-    d->outputPanel->append(QString("使用 Maven: %1").arg(mvnExecutable));
-
-    // ----- 执行 mvn eclipse:eclipse -----
-    ProcessManager pm;
-    ProcessManager::ProcessResult result = pm.executeSync(
-        mvnExecutable,
-        {"eclipse:eclipse"},
-        projectPath,
-        60000  // 60 秒超时
-        );
-
-    if (result.success) {
-        d->outputPanel->append("Eclipse 元数据文件生成成功。");
-        return true;
-    } else {
-        d->outputPanel->append("生成失败：" + result.standardError);
-        return false;
-    }
-}
-
 void MainWindow::saveSession()
 {
     if (d->currentProjectPath.isEmpty()) {
@@ -3152,7 +3018,6 @@ void MainWindow::saveSession()
         QJsonDocument doc(session);
         file.write(doc.toJson());
         file.close();
-        qDebug() << "Session saved to:" << sessionFile;
     }
 }
 
@@ -3165,7 +3030,6 @@ void MainWindow::restoreSession()
     QString sessionFile = QDir(d->currentProjectPath).filePath(".SprintIDE/session.json");
     if (!QFile::exists(sessionFile)) {
         // 没有会话记录，打开一个默认的 README 或空状态
-        qDebug() << "No session file found.";
         return;
     }
 
@@ -3728,9 +3592,6 @@ void MainWindow::onFormatCode()
 
 void MainWindow::loadAllProjectFiles(const QString& projectPath)
 {
-    qDebug() << "========== loadAllProjectFiles ENTRY ==========";
-    qDebug() << "Loading project files from:" << projectPath;
-
     QDir projectDir(projectPath);
     if (!projectDir.exists()) {
         QMessageBox::warning(this, "错误", "项目路径不存在");
@@ -3772,8 +3633,6 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
     // for (const QString& filePath : sourceFiles) {
     //     openFile(filePath);
     // }
-
-    qDebug() << "Loaded" << sourceFiles.size() << "files from project";
 }
 
 void MainWindow::onNewProject()
@@ -3794,7 +3653,6 @@ void MainWindow::onNewProject()
         ProjectCreationResult result = dialog.getResult();
 
         if (result.success) {
-            qDebug() << "onNewProject: calling openProject with:" << result.projectPath;
             d->currentProjectPath = result.projectPath;
             openProject(result.projectPath);
 

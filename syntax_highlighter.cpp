@@ -425,7 +425,6 @@ void SyntaxHighlighter::initHighlightRules()
         m_highlightRules.append(rule);
     }
 
-    qDebug() << "语法高亮规则初始化完成，共" << m_highlightRules.size() << "条规则";
 }
 
 void SyntaxHighlighter::initMultiLineCommentRules()

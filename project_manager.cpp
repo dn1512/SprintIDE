@@ -88,7 +88,6 @@ bool ProjectManager::createProject(const QString& projectName, const QString& pr
     // 更新最近使用的项目列表
     updateRecentProjects(m_currentProjectConfigPath);
 
-    qDebug() << "Project created successfully:" << projectName;
     emit projectOpened(m_currentProjectName, m_currentProjectPath);
 
     return true;
@@ -110,7 +109,6 @@ bool ProjectManager::openProject(const QString& projectPath)
         configPath = projectPath + "/.lightcppproj";
         if (!QFile::exists(configPath)) {
             // 没有配置文件，自动创建默认配置
-            qDebug() << "No project config found, creating default for:" << projectPath;
             m_currentProjectName = fileInfo.fileName();
             m_currentProjectPath = projectPath;
             m_currentProjectConfigPath = configPath;
@@ -146,7 +144,6 @@ bool ProjectManager::openProject(const QString& projectPath)
     // 更新最近使用的项目列表
     updateRecentProjects(m_currentProjectConfigPath);
 
-    qDebug() << "Project opened successfully:" << m_currentProjectName;
     emit projectOpened(m_currentProjectName, m_currentProjectPath);
 
     return true;
@@ -164,7 +161,6 @@ bool ProjectManager::closeProject()
     m_currentProjectConfigPath.clear();
     m_currentProjectConfig.clear();
 
-    qDebug() << "Project closed successfully";
     emit projectClosed();
 
     return true;
@@ -190,7 +186,6 @@ bool ProjectManager::saveProject()
         return false;
     }
 
-    qDebug() << "Project saved successfully:" << m_currentProjectName;
     emit projectSaved(m_currentProjectName, m_currentProjectPath);
 
     return true;
@@ -223,7 +218,6 @@ bool ProjectManager::saveProjectAs(const QString& newPath)
     // 更新最近使用的项目列表
     updateRecentProjects(m_currentProjectConfigPath);
 
-    qDebug() << "Project saved as successfully:" << newPath;
     emit projectSaved(m_currentProjectName, m_currentProjectPath);
 
     return true;

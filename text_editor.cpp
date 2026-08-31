@@ -1469,7 +1469,7 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
 {
     // 处理 Ctrl+左键（macOS 上为 Cmd+左键）
     if (event->button() == Qt::LeftButton &&
-        (event->modifiers() & Qt::ControlModifier)) {
+        (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) {
 
         // 获取光标位置
         QTextCursor cursor = cursorForPosition(event->pos());
@@ -1487,6 +1487,7 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
         }
 
         if (end > start) {
+            qDebug() << "[TextEditor] Identifier found:" << text.mid(start, end-start);
             // 有有效的标识符，发送请求
             int line = cursor.blockNumber();          // 0-based
             int column = cursor.positionInBlock();    // 0-based
@@ -1494,6 +1495,7 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
             // 显示一个小反馈（可选）
             setCursor(Qt::PointingHandCursor);
         } else {
+            qDebug() << "[TextEditor] No identifier at click position";
             // 没有标识符，按普通点击处理
             QPlainTextEdit::mousePressEvent(event);
         }
@@ -1813,80 +1815,80 @@ bool TextEditor::isBlockFolded(int line) const
  */
 void TextEditor::toggleFold(int line)
 {
-    qDebug() << "=== toggleFold 开始 ===";
-    qDebug() << "行号:" << line << "文档总行数:" << document()->blockCount();
+    // qDebug() << "=== toggleFold 开始 ===";
+    // qDebug() << "行号:" << line << "文档总行数:" << document()->blockCount();
 
     if (line < 1 || line > document()->blockCount()) {
-        qDebug() << "行号超出范围";
+        // qDebug() << "行号超出范围";
         return;
     }
 
     if (!isFoldableBlock(line)) {
-        qDebug() << "行" << line << "不可折叠";
+        // qDebug() << "行" << line << "不可折叠";
         return;
     }
 
     int matchLine = findMatchingBraceLine(line);
-    qDebug() << "匹配行:" << matchLine;
+    // qDebug() << "匹配行:" << matchLine;
     if (matchLine == -1 || matchLine <= line) {
-        qDebug() << "无效匹配行";
+        // qDebug() << "无效匹配行";
         return;
     }
 
     // 边界检查
     int totalLines = document()->blockCount();
     if (matchLine > totalLines) {
-        qDebug() << "匹配行超出文档范围，修正为" << totalLines;
+        // qDebug() << "匹配行超出文档范围，修正为" << totalLines;
         matchLine = totalLines;
     }
 
     bool isFolded = m_foldedLines.contains(line);
-    qDebug() << "当前折叠状态:" << isFolded;
+    // qDebug() << "当前折叠状态:" << isFolded;
 
     if (isFolded) {
         // ========== 展开 ==========
-        qDebug() << "--- 开始展开（遍历块） ---";
+        // qDebug() << "--- 开始展开（遍历块） ---";
         QTextBlock block = document()->findBlockByLineNumber(line - 1);
         if (!block.isValid()) {
-            qDebug() << "起始块无效";
+            // qDebug() << "起始块无效";
             return;
         }
         // 遍历从起始行到匹配行之间的所有块
         while (block.isValid() && block.blockNumber() + 1 <= matchLine) {
             block.setVisible(true);
-            qDebug() << "展开块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
+            // qDebug() << "展开块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
             block = block.next();
         }
         m_foldedLines.remove(line);
-        qDebug() << "展开完成，移除折叠记录";
+        // qDebug() << "展开完成，移除折叠记录";
     } else {
         // ========== 折叠 ==========
-        qDebug() << "--- 开始折叠（遍历块） ---";
+        // qDebug() << "--- 开始折叠（遍历块） ---";
         QTextBlock block = document()->findBlockByLineNumber(line + 1 - 1); // line+1 行的块
         if (!block.isValid()) {
-            qDebug() << "起始块无效";
+            // qDebug() << "起始块无效";
             return;
         }
         // 遍历从 line+1 到 matchLine-1
         while (block.isValid() && block.blockNumber() + 1 < matchLine) {
             block.setVisible(false);
-            qDebug() << "折叠块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
+            // qDebug() << "折叠块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
             block = block.next();
         }
         m_foldedLines.insert(line);
-        qDebug() << "折叠完成，添加折叠记录";
+        // qDebug() << "折叠完成，添加折叠记录";
     }
 
     // 强制文档重新布局
-    qDebug() << "强制文档重排...";
+    // qDebug() << "强制文档重排...";
     document()->markContentsDirty(0, document()->characterCount());
     document()->adjustSize();
 
     viewport()->update();
     m_lineNumberArea->update();
 
-    qDebug() << "折叠列表现在:" << m_foldedLines.values();
-    qDebug() << "=== toggleFold 结束 ===";
+    // qDebug() << "折叠列表现在:" << m_foldedLines.values();
+    // qDebug() << "=== toggleFold 结束 ===";
 }
 
 /**
