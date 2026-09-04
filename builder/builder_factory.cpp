@@ -30,14 +30,26 @@ void BuilderFactory::initializeDefaults() {
 }
 
 IBuilder* BuilderFactory::createBuilder(LanguageType lang) {
-    if (s_builders.contains(lang)) {
-        return s_builders[lang];
+    // 懒加载：如果映射表为空，自动初始化
+    if (s_builders.isEmpty()) {
+        qDebug() << "[BuilderFactory] s_builders is empty, auto-initializing defaults";
+        initializeDefaults();
     }
+
+    auto it = s_builders.find(lang);
+    if (it != s_builders.end()) {
+        qDebug() << "[BuilderFactory] createBuilder for language" << static_cast<int>(lang)
+        << " returning valid builder";
+        return it.value();
+    }
+
     // 如果未注册，但语言是 Generic_AI，返回通用构建器
     if (lang == LanguageType::Generic_AI && s_builders.contains(LanguageType::Generic_AI)) {
         return s_builders[LanguageType::Generic_AI];
     }
-    // 默认返回 nullptr，上层应处理
+
+    qDebug() << "[BuilderFactory] createBuilder for language" << static_cast<int>(lang)
+             << " returning nullptr (not registered)";
     return nullptr;
 }
 

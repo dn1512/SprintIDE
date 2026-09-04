@@ -15,6 +15,7 @@ public:
     bool build(const BuildTask& task, BuildResult& result) override;
     bool clean(const BuildTask& task, BuildResult& result) override;
     bool run(const BuildTask& task, const BuildResult& buildResult, QString& output) override;
+    QString getExecutablePath(const BuildTask& task) override;
 
 private:
     /**

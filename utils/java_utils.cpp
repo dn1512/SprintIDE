@@ -509,67 +509,39 @@ int JavaUtils::parseMajorVersionFromJava(const QString& javaPath)
     return parseMajorVersion(output);
 }
 
-bool JavaUtils::ensureEclipseMetadata(const QString& projectPath, const QString& mavenHome) {
+bool JavaUtils::ensureEclipseMetadata(const QString& projectPath, const QString& mavenHome)
+{
     QString pomFile = projectPath + "/pom.xml";
     if (!QFile::exists(pomFile)) {
-        return true; // 不是 Maven 项目，无需处理
+        return true; // 不是 Maven 项目
     }
 
-    // 检查是否已存在
     if (QFile::exists(projectPath + "/.project") && QFile::exists(projectPath + "/.classpath")) {
         return true;
     }
 
-    // ----- 读取项目/全局配置中的 MAVEN_HOME -----
-    // QString mavenHome;
-    // // 优先从项目配置读取
-    // ProjectConfig projConfig;
-    // QString configFile = projectPath + "/.lightcppproj";
-    // QStringList errors;
-    // if (projConfig.loadFromFile(configFile, errors)) {
-    //     QVariantMap sdkEnv = projConfig.sdkEnvironment();
-    //     if (sdkEnv.contains("MAVEN_HOME")) {
-    //         mavenHome = sdkEnv["MAVEN_HOME"].toString();
-    //     }
-    // }
-    // // 如果项目配置没有，尝试全局配置
-    // if (mavenHome.isEmpty()) {
-    //     ConfigManager* cfg = Application::instance().configManager();
-    //     if (cfg) {
-    //         QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
-    //         if (sdkEnv.contains("MAVEN_HOME")) {
-    //             mavenHome = sdkEnv["MAVEN_HOME"].toString();
-    //         }
-    //     }
-    // }
-
     // 确定 mvn 可执行文件
     QString mvnExecutable = "mvn";
-    if (!mavenHome.isEmpty()) {
-        QString mvnPath = QDir(mavenHome).absoluteFilePath("bin/mvn");
 #ifdef Q_OS_WIN
-        mvnPath += ".cmd";
+    mvnExecutable = "mvn.cmd";
 #endif
-        if (QFile::exists(mvnPath)) {
-            mvnExecutable = mvnPath;
-        }
-    } else {
-        // 从项目配置或全局配置读取 MAVEN_HOME
+
+    QString mavenHomePath = mavenHome;
+    if (mavenHomePath.isEmpty()) {
+        // 从全局配置读取 MAVEN_HOME
         ConfigManager* cfg = Application::instance().configManager();
         if (cfg) {
             QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
             if (sdkEnv.contains("MAVEN_HOME")) {
-                QString mh = sdkEnv["MAVEN_HOME"].toString();
-                if (!mh.isEmpty()) {
-                    QString mvnPath = QDir(mh).absoluteFilePath("bin/mvn");
-#ifdef Q_OS_WIN
-                    mvnPath += ".cmd";
-#endif
-                    if (QFile::exists(mvnPath)) {
-                        mvnExecutable = mvnPath;
-                    }
-                }
+                mavenHomePath = sdkEnv["MAVEN_HOME"].toString();
             }
+        }
+    }
+
+    if (!mavenHomePath.isEmpty()) {
+        QString mvnPath = QDir(mavenHomePath).absoluteFilePath("bin/" + mvnExecutable);
+        if (QFile::exists(mvnPath)) {
+            mvnExecutable = mvnPath;
         }
     }
 
@@ -579,8 +551,14 @@ bool JavaUtils::ensureEclipseMetadata(const QString& projectPath, const QString&
         mvnExecutable,
         {"eclipse:eclipse"},
         projectPath,
-        60000  // 60 秒超时
+        60000
         );
+
+    if (result.success) {
+        qDebug() << "Eclipse metadata generated for:" << projectPath;
+    } else {
+        qWarning() << "Failed to generate Eclipse metadata:" << result.errorMessage;
+    }
 
     return result.success;
 }

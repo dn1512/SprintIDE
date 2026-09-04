@@ -1,3 +1,4 @@
+// terminal_panel.h
 #ifndef TERMINAL_PANEL_H
 #define TERMINAL_PANEL_H
 
@@ -13,9 +14,6 @@
 
 namespace SprintIDE {
 
-/**
- * @brief 终端面板 - 在IDE中执行命令行命令
- */
 class TerminalPanel : public QWidget
 {
     Q_OBJECT
@@ -24,18 +22,13 @@ public:
     explicit TerminalPanel(QWidget* parent = nullptr);
     ~TerminalPanel();
 
-    // 设置工作目录
     void setWorkingDirectory(const QString& dir);
     QString workingDirectory() const;
 
-    // 执行命令
     void executeCommand(const QString& command);
     bool isCommandRunning() const;
 
-    // 清空输出
     void clearOutput();
-
-    // 停止当前命令
     void stopCurrentCommand();
 
 signals:
@@ -56,6 +49,8 @@ private:
     void setupUI();
     void appendOutput(const QString& text, bool isError = false);
     void updatePrompt();
+    void updateVenvForDirectory(const QString& dir);  // 新增
+    void updateVenvDisplay();                         // 新增
 
     QTextEdit* m_outputWidget;
     QLineEdit* m_inputWidget;
@@ -70,6 +65,10 @@ private:
 
     QStringList m_commandHistory;
     int m_historyIndex;
+
+    // ===== 新增：虚拟环境相关 =====
+    QString m_currentVenvPath;
+    QString m_currentPythonInterpreter;
 };
 
 } // namespace SprintIDE

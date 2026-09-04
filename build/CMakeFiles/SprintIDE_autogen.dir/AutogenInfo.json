@@ -650,6 +650,36 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.h",
+			"MU",
+			"4HPQGYKVIV/moc_gradle_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.h",
+			"MU",
+			"4HPQGYKVIV/moc_maven_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.h",
+			"MU",
+			"4HPQGYKVIV/moc_plain_java_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h",
+			"MU",
+			"4HPQGYKVIV/moc_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.h",
+			"MU",
+			"4HPQGYKVIV/moc_project_resolver.cpp",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h",
 			"MU",
 			"W6ZIZK5JGA/moc_language_detector.cpp",
@@ -740,6 +770,24 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.h",
+			"MU",
+			"OGWQFLWTTH/moc_java_launcher.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.h",
+			"MU",
+			"OGWQFLWTTH/moc_run_config_manager.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.h",
+			"MU",
+			"OGWQFLWTTH/moc_run_configuration.cpp",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/settings_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_settings_dialog.cpp",
@@ -773,6 +821,12 @@
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_theme_manager.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.h",
+			"MU",
+			"7HEHEGDA3T/moc_java_utils.cpp",
 			null
 		]
 	],
@@ -965,6 +1019,31 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.cpp",
+			"MU",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.cpp",
 			"MU",
 			null
@@ -1035,6 +1114,21 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.cpp",
+			"MU",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/settings_dialog.cpp",
 			"MU",
 			null
@@ -1061,6 +1155,11 @@
 		],
 		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.cpp",
 			"MU",
 			null
 		]

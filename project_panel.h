@@ -1,77 +1,34 @@
 #pragma once
 
+#include <QWidget>
 #include <QTreeView>
 #include <QFileSystemModel>
 #include <QFileSystemWatcher>
-#include <QContextMenuEvent>
 #include <QMenu>
 #include <QAction>
 #include <QFileInfo>
 #include <QDir>
-#include <QDebug>
 #include <QSortFilterProxyModel>
-#include <QFileSystemModel>
+#include <QStandardItemModel>
+#include <QVBoxLayout>
+#include <QAbstractItemModel>
+#include <QSplitter>
 
 #include "project_config.h"
 
-
 namespace SprintIDE {
 
-// 代理模型类（用于过滤排除目录）
+// 代理模型（原样保留）
 class ExcludeDirProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
-
 public:
-    explicit ExcludeDirProxyModel(QObject* parent = nullptr)
-        : QSortFilterProxyModel(parent)
-    {
-    }
-
-    void setExcludeDirs(const QStringList& dirs)
-    {
-        m_excludeDirs = dirs;
-        invalidateFilter();
-    }
-
-    // 新增：设置允许的文件扩展名白名单（小写，不带点）
-    // 空列表表示允许所有文件
-    void setAllowedExtensions(const QStringList& exts)
-    {
-        m_allowedExtensions = exts;
-        invalidateFilter();
-    }
+    explicit ExcludeDirProxyModel(QObject* parent = nullptr);
+    void setExcludeDirs(const QStringList& dirs);
+    void setAllowedExtensions(const QStringList& exts);
 
 protected:
-    bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override
-    {
-        QModelIndex idx = sourceModel()->index(source_row, 0, source_parent);
-        if (!idx.isValid()) return true;
-
-        auto* fsModel = qobject_cast<QFileSystemModel*>(sourceModel());
-        if (!fsModel) return true;
-
-        // 获取文件信息
-        QString filePath = fsModel->filePath(idx);
-        QFileInfo info(filePath);
-
-        if (info.isDir()) {
-            QString dirName = info.fileName();
-            // 排除特定目录
-            if (m_excludeDirs.contains(dirName) || dirName.endsWith(".dSYM"))
-                return false;
-            return true;  // 其他目录全部显示
-        } else {
-            // 文件：只显示白名单扩展名
-            QString ext = info.suffix().toLower();
-            static const QStringList allowedExts = {
-                "cpp", "c", "cc", "cxx", "h", "hpp", "hh", "hxx", "yml", "ini",
-                "txt", "md", "json", "xml", "py", "js", "html", "css", "lock", "toml",
-                "go", "rs", "java", "cs", "php", "cmake", "make", "lightcppproj"
-            };
-            return allowedExts.contains(ext);
-        }
-    }
+    bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override;
 
 private:
     QStringList m_excludeDirs;
@@ -79,30 +36,17 @@ private:
 };
 
 /**
- * @brief 项目面板类
- *
- * 显示项目文件树，提供文件操作功能（新建、打开、删除等）。
- * 支持拖放操作，与编辑器集成，实时显示项目结构变化。
- *
- * 主要功能：
- * 1. 显示项目目录树结构
- * 2. 文件过滤（显示特定类型文件）
- * 3. 右键菜单操作
- * 4. 文件状态指示（修改状态、Git状态等）
- * 5. 与编辑器同步（双击打开文件）
+ * @brief 项目面板（文件树 + 测试树）
  */
-class ProjectPanel : public QTreeView
+class ProjectPanel : public QWidget
 {
     Q_OBJECT
 
 public:
-    // ==================== 构造函数和析构函数 ====================
-
     explicit ProjectPanel(QWidget *parent = nullptr);
     ~ProjectPanel();
 
-    // ==================== 公共方法 ====================
-
+    // ==================== 原有公共方法（完全兼容） ====================
     bool openProject(const QString& projectPath, const ProjectConfig* config = nullptr);
     void closeProject();
     QString currentProjectPath() const;
@@ -121,6 +65,15 @@ public:
 
     QString getFilePath(const QModelIndex &index) const;
     QModelIndex findIndexByPath(const QString &path) const;
+
+    // ==================== 新增转发方法（适配 MainWindow 原有调用） ====================
+    QTreeView* getFileTreeView() const { return m_fileTreeView; }
+    void setAlternatingRowColors(bool enable) { m_fileTreeView->setAlternatingRowColors(enable); }
+    QModelIndex rootIndex() const { return m_fileTreeView->rootIndex(); }
+    QAbstractItemModel* model() const { return m_fileTreeView->model(); }
+    bool isExpanded(const QModelIndex& index) const { return m_fileTreeView->isExpanded(index); }
+    void expand(const QModelIndex& index) { m_fileTreeView->expand(index); }
+
 public slots:
     void newFile();
     void newDirectory();
@@ -131,10 +84,6 @@ public slots:
     void showInFileManager();
     void refreshSelected();
     void expandToSelected();
-
-    /**
-     * @brief 显示当前选中文件的本地历史
-     */
     void showFileHistory();
 
 signals:
@@ -144,35 +93,26 @@ signals:
     void fileRenamed(const QString& oldPath, const QString& newPath);
     void projectClosed();
     void selectionChanged(const QString& filePath);
-
-    /**
-     * @brief 请求查看文件的本地历史（由 MainWindow 处理）
-     */
     void requestFileHistory(const QString& filePath);
-    /**
-     * @brief 请求删除文件的本地历史（由 MainWindow 处理）
-     */
     void deleteRequested(const QStringList& filePaths);
+    void runTestRequested(const QString& filePath, const QString& testFullName);
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
-    void mouseDoubleClickEvent(QMouseEvent *event) override;
-    void dragEnterEvent(QDragEnterEvent *event) override;
-    void dragMoveEvent(QDragMoveEvent *event) override;
-    void dragLeaveEvent(QDragLeaveEvent *event) override;
-    void dropEvent(QDropEvent *event) override;
-    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
-    void onSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
+    void onFileTreeSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
+    void onFileTreeDoubleClicked(const QModelIndex &index);
     void onDirectoryChanged(const QString &path);
     void onFileRenamed(const QString &path, const QString &oldName, const QString &newName);
     void onWatchedDirectoryChanged(const QString &path);
     void onWatchedFileChanged(const QString &path);
+    void onTestTreeDoubleClicked(const QModelIndex &index);
 
 private:
     void setupUI();
-    void setupConnections();
+    void createFileTree();
+    void createTestTree();
     void createContextMenu();
     void updateContextMenu();
 
@@ -183,30 +123,35 @@ private:
     bool validateFileName(const QString& fileName) const;
     QString getNewFileName(const QString& parentDir, const QString& baseName, const QString& extension) const;
 
-    // ==================== 成员变量 ====================
+    void refreshTestTree();
+    void addPythonTestNodes(const QString& projectPath);
+    QStandardItem* findOrCreateTestRoot();
 
-    QFileSystemWatcher* m_fileWatcher;  ///< 文件系统监视器
-    QFileSystemModel* m_fileModel;      ///< 文件系统模型
-    QMenu* m_contextMenu;               ///< 上下文菜单
-    ProjectConfig* m_projectConfig;     ///< 项目配置指针
-    QString m_projectPath;              ///< 当前项目路径
-    bool m_showHiddenFiles;             ///< 是否显示隐藏文件
+    QSplitter* m_splitter;
 
-    QStringList m_fileFilters;          ///< 文件过滤器
-    QSortFilterProxyModel* m_proxyModel;
-    QStringList m_excludeDirs;          ///< 排除的目录
+    QTreeView* m_fileTreeView;
+    QFileSystemWatcher* m_fileWatcher;
+    QFileSystemModel* m_fileModel;
+    ExcludeDirProxyModel* m_proxyModel;
+    QString m_projectPath;
+    ProjectConfig* m_projectConfig;
+    bool m_showHiddenFiles = false;
+    QStringList m_excludeDirs;
 
-    // 上下文菜单动作
-    QAction* m_newFileAction;           ///< 新建文件
-    QAction* m_newDirAction;            ///< 新建目录
-    QAction* m_openFileAction;          ///< 打开文件
-    QAction* m_renameAction;            ///< 重命名
-    QAction* m_deleteAction;            ///< 删除
-    QAction* m_copyPathAction;          ///< 复制路径
-    QAction* m_showInExplorerAction;    ///< 在文件管理器中显示
-    QAction* m_refreshAction;           ///< 刷新
-    QAction* m_expandAction;            ///< 展开
-    QAction* m_historyAction;           ///< 查看历史（新增）
+    QTreeView* m_testTreeView;
+    QStandardItemModel* m_testModel;
+
+    QMenu* m_contextMenu;
+    QAction* m_newFileAction;
+    QAction* m_newDirAction;
+    QAction* m_openFileAction;
+    QAction* m_renameAction;
+    QAction* m_deleteAction;
+    QAction* m_copyPathAction;
+    QAction* m_showInExplorerAction;
+    QAction* m_refreshAction;
+    QAction* m_expandAction;
+    QAction* m_historyAction;
 };
 
 } // namespace SprintIDE

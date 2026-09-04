@@ -39,7 +39,6 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
     QElapsedTimer timer;
     timer.start();
 
-    // 验证命令
     if (!validateCommand(command)) {
         result.errorMessage = QString("命令不可用或不存在: %1").arg(command);
         qWarning() << result.errorMessage;
@@ -48,35 +47,30 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
 
     QProcess process;
 
-    // 设置工作目录
     if (!workingDirectory.isEmpty()) {
         process.setWorkingDirectory(workingDirectory);
     }
 
-    // 设置环境变量
     if (!m_environment.isEmpty()) {
         process.setProcessEnvironment(m_environment);
     }
 
-    // 设置编码（Qt6使用setEncoding，Qt5使用setCodec）
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    process.setProcessChannelMode(QProcess::MergedChannels);
-#else
-    process.setProcessChannelMode(QProcess::MergedChannels);
-#endif
+    // 【关键修改】不要使用 MergedChannels，分别读取 stdout 和 stderr
+    process.setProcessChannelMode(QProcess::SeparateChannels);
 
     // 连接信号
     QObject::connect(&process, &QProcess::readyReadStandardOutput,
                      [&process, &result]() {
-                         result.standardOutput += process.readAllStandardOutput();
+                         QByteArray data = process.readAllStandardOutput();
+                         result.standardOutput += QString::fromLocal8Bit(data);
                      });
 
     QObject::connect(&process, &QProcess::readyReadStandardError,
                      [&process, &result]() {
-                         result.standardError += process.readAllStandardError();
+                         QByteArray data = process.readAllStandardError();
+                         result.standardError += QString::fromLocal8Bit(data);
                      });
 
-    // 启动进程
     process.start(command, arguments);
 
     if (!process.waitForStarted()) {
@@ -85,7 +79,6 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
         return result;
     }
 
-    // 等待完成
     bool finished = false;
     if (timeoutMs > 0) {
         finished = process.waitForFinished(timeoutMs);
@@ -97,34 +90,30 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
     result.executionTime = timer.elapsed();
 
     if (!finished) {
-        // 超时或被中断
         process.terminate();
         if (!process.waitForFinished(5000)) {
             process.kill();
             process.waitForFinished(1000);
         }
-
         result.errorMessage = timeoutMs > 0 ?
-            QString("进程执行超时 (%1 毫秒)").arg(timeoutMs) :
-            "进程被中断";
+                                  QString("进程执行超时 (%1 毫秒)").arg(timeoutMs) :
+                                  "进程被中断";
         result.exitCode = -1;
     } else {
         result.exitCode = process.exitCode();
         result.success = (result.exitCode == 0);
-
         if (!result.success) {
             result.errorMessage = QString("进程退出码: %1").arg(result.exitCode);
         }
-
-        // 确保读取所有输出
-        result.standardOutput += process.readAllStandardOutput();
-        result.standardError += process.readAllStandardError();
+        // 读取剩余输出（确保完整）
+        result.standardOutput += QString::fromLocal8Bit(process.readAllStandardOutput());
+        result.standardError += QString::fromLocal8Bit(process.readAllStandardError());
     }
 
     qDebug() << QString("命令执行完成: %1, 耗时: %2ms, 退出码: %3")
-                .arg(command)
-                .arg(result.executionTime)
-                .arg(result.exitCode);
+                    .arg(command)
+                    .arg(result.executionTime)
+                    .arg(result.exitCode);
 
     return result;
 }

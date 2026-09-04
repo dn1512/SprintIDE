@@ -1,3 +1,4 @@
+// terminal_panel.cpp
 #include "terminal_panel.h"
 #include <QScrollBar>
 #include <QKeyEvent>
@@ -5,6 +6,11 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QStyle>
+#include <QProcessEnvironment>
+
+#include "project_manager.h"
+#include "python/python_virtual_env.h"
+#include "python/python_project_model.h"
 
 namespace SprintIDE {
 
@@ -16,10 +22,11 @@ TerminalPanel::TerminalPanel(QWidget* parent)
 {
     setupUI();
     setObjectName("TerminalPanel");
-    // setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
 
     // 默认工作目录为当前目录
     m_workingDirectory = QDir::currentPath();
+    // 自动检测并记录当前虚拟环境
+    updateVenvForDirectory(m_workingDirectory);
 }
 
 TerminalPanel::~TerminalPanel()
@@ -36,7 +43,7 @@ void TerminalPanel::setupUI()
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(2, 2, 2, 2);
     layout->setSpacing(2);
-    // 输入区域
+
     m_outputWidget = new QTextEdit(this);
     m_outputWidget->setReadOnly(true);
     m_outputWidget->setFont(QFont("Menlo", 10));
@@ -47,7 +54,7 @@ void TerminalPanel::setupUI()
     m_outputWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(m_outputWidget);
 
-    // 输入区域 - 增加调试背景色
+    // 输入区域
     QHBoxLayout* inputLayout = new QHBoxLayout();
     inputLayout->setContentsMargins(0, 2, 0, 2);
 
@@ -57,9 +64,6 @@ void TerminalPanel::setupUI()
     inputLayout->addWidget(m_promptLabel);
 
     m_inputWidget = new QLineEdit(this);
-    // m_inputWidget->setStyleSheet(
-    //     "QLineEdit { background-color: #FFD700; color: #000000; border: 2px solid red; padding: 4px; }"  // 亮黄色背景，红色边框，便于观察
-    //     );
     m_inputWidget->setPlaceholderText("输入命令...");
     m_inputWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_inputWidget->setMinimumWidth(200);
@@ -84,26 +88,63 @@ void TerminalPanel::setupUI()
 
     layout->addLayout(inputLayout);
 
-    // 调试：给整个面板加边框
-    // this->setStyleSheet("QWidget#TerminalPanel { border: 2px solid cyan; }");
     // 初始提示
     appendOutput("终端已准备就绪。输入命令并按 Enter 执行。", false);
     updatePrompt();
+    updateVenvDisplay();
 
-    // 确保输入框可见且获得焦点
     m_inputWidget->setVisible(true);
     m_inputWidget->setFocus();
-    m_inputWidget->setFixedHeight(30);  // 强制高度，确保可见
+    m_inputWidget->setFixedHeight(30);
+}
+
+// ========== 新增：更新当前目录的虚拟环境 ==========
+void TerminalPanel::updateVenvForDirectory(const QString& dir)
+{
+    m_currentVenvPath.clear();
+    m_currentPythonInterpreter.clear();
+
+    // 优先从 ProjectManager 获取 Python 项目模型
+    auto model = ProjectManager::instance()->pythonProjectModel();
+    if (model && !model->venvPath().isEmpty()) {
+        m_currentVenvPath = model->venvPath();
+        m_currentPythonInterpreter = model->interpreterPath();
+        return;
+    }
+
+    // 如果 ProjectManager 没有模型，尝试手动检测
+    QString detected = PythonVirtualEnv::detectVenv(dir);
+    if (!detected.isEmpty()) {
+        m_currentVenvPath = detected;
+        m_currentPythonInterpreter = PythonVirtualEnv::interpreterPath(detected);
+    }
+}
+
+// ========== 更新提示标签显示虚拟环境信息 ==========
+void TerminalPanel::updateVenvDisplay()
+{
+    if (!m_currentVenvPath.isEmpty()) {
+        QString venvName = QFileInfo(m_currentVenvPath).fileName();
+        m_promptLabel->setText("(" + venvName + ") $ ");
+        m_promptLabel->setStyleSheet("color: #33CC33; font-weight: bold; background-color: #444444;");
+    } else {
+        m_promptLabel->setText("$ ");
+        m_promptLabel->setStyleSheet("color: #33CC33; font-weight: bold; background-color: #444444;");
+    }
 }
 
 void TerminalPanel::setWorkingDirectory(const QString& dir)
 {
-    if (!dir.isEmpty() && QDir(dir).exists()) {
-        m_workingDirectory = dir;
-        emit workingDirectoryChanged(dir);
-        appendOutput("工作目录已切换: " + dir, false);
-        updatePrompt();
-    }
+    m_workingDirectory = dir;
+    // 更新虚拟环境检测
+    updateVenvForDirectory(dir);
+    updateVenvDisplay();
+
+    appendOutput("工作目录已切换至: " + dir, false);
+    emit workingDirectoryChanged(dir);
+
+    // 聚焦输入框
+    m_inputWidget->setFocus();
 }
 
 QString TerminalPanel::workingDirectory() const
@@ -142,6 +183,29 @@ void TerminalPanel::executeCommand(const QString& command)
     m_process = new QProcess(this);
     m_process->setWorkingDirectory(m_workingDirectory);
     m_process->setProcessChannelMode(QProcess::MergedChannels);
+
+    // ========== 关键修改：设置环境变量以激活虚拟环境 ==========
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    // 如果检测到虚拟环境，将虚拟环境的 bin 目录添加到 PATH 最前面
+    if (!m_currentVenvPath.isEmpty()) {
+#ifdef Q_OS_WIN
+        QString binDir = QDir(m_currentVenvPath).absoluteFilePath("Scripts");
+#else
+        QString binDir = QDir(m_currentVenvPath).absoluteFilePath("bin");
+#endif
+        if (QDir(binDir).exists()) {
+            QString path = env.value("PATH");
+            env.insert("PATH", binDir + QDir::listSeparator() + path);
+
+            // 设置 VIRTUAL_ENV 环境变量
+            env.insert("VIRTUAL_ENV", m_currentVenvPath);
+
+            appendOutput("已自动激活虚拟环境: " + m_currentVenvPath, false);
+        }
+    }
+
+    m_process->setProcessEnvironment(env);
 
     connect(m_process, &QProcess::readyReadStandardOutput,
             this, &TerminalPanel::onProcessOutput);
@@ -287,7 +351,7 @@ void TerminalPanel::updatePrompt()
     if (m_isCommandRunning) {
         m_promptLabel->setText("[运行中] ");
     } else {
-        m_promptLabel->setText("$ ");
+        updateVenvDisplay();
     }
 }
 

@@ -46,48 +46,51 @@ bool LSPClient::startServer(const QString& serverPath)
     bool isJdtls = m_serverPath.contains("jdtls", Qt::CaseInsensitive) ||
                    m_serverPath.contains("jdtls_wrapper", Qt::CaseInsensitive);
 
-    // ----- 1. 检查可执行文件 -----
+    // ----- 1. 检查可执行文件（仅当使用内置命令时）-----
     QString executable = m_serverPath;
-    if (!QFile::exists(executable)) {
-        // 尝试从 PATH 查找（仅当不是绝对路径时）
-        if (!QFileInfo(executable).isAbsolute()) {
-            QString found = QStandardPaths::findExecutable(executable);
-            if (!found.isEmpty()) {
-                executable = found;
+    // 如果有自定义参数，表示我们可能使用 python -m pylsp 等方式，不检查可执行文件是否存在
+    bool useCustomArguments = !m_customArguments.isEmpty();
+
+    if (!useCustomArguments) {
+        if (!QFile::exists(executable)) {
+            if (!QFileInfo(executable).isAbsolute()) {
+                QString found = QStandardPaths::findExecutable(executable);
+                if (!found.isEmpty()) {
+                    executable = found;
+                }
+            }
+            if (!QFile::exists(executable)) {
+                emit serverError("可执行文件不存在: " + m_serverPath);
+                return false;
             }
         }
-        if (!QFile::exists(executable)) {
-            emit serverError("可执行文件不存在: " + m_serverPath);
-            return false;
-        }
+    } else {
+        // 使用自定义参数时，executable 是解释器（如 python），不检查是否存在（交给 QProcess 处理）
+        executable = m_serverPath;
     }
 
     // ----- 2. 构建启动参数 -----
     QStringList args;
-    if (isJdtls) {
-        // 从 m_serverPath 中提取项目根目录（即 wrapper 所在目录的上一级？）
-        // 更可靠：从 m_projectRoot 获取项目根目录（已在 LSPManager 中设置）
+    if (!m_customArguments.isEmpty()) {
+        args = m_customArguments;
+    } else if (isJdtls) {
+        // JDTLS 参数
         QDir projectDir(m_projectRoot);
         QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
-
-        // 配置目录
         QString configDir = jdtlsBase + "/config";
         if (!JavaUtils::createMinimalConfig(configDir)) {
             emit serverError("无法创建 config.ini");
             return false;
         }
-
-        // 工作区目录（每个项目独立）
         QString workspaceRoot = QDir::homePath() + "/.SprintIDE/workspaces";
         QDir().mkpath(workspaceRoot);
         QString workspaceDir = workspaceRoot + "/" + QString::number(qHash(m_projectRoot));
         QDir().mkpath(workspaceDir);
-
         args << "-configuration" << configDir;
         args << "-data" << workspaceDir;
         args << "-consoleLog";
     } else {
-        // clangd 参数不变
+        // clangd 参数
         args << "--background-index";
         if (m_enableClangTidy) args << "--clang-tidy";
         if (!m_projectRoot.isEmpty()) args << "--compile-commands-dir=" + m_projectRoot;
@@ -158,10 +161,61 @@ bool LSPClient::startServer(const QString& serverPath)
         javaSettings["import"] = importObj;
         javaSettings["configuration"] = config;
 
+        // ----- 传递项目类路径（解决第三方库补全问题） -----
+        if (!m_projectRoot.isEmpty()) {
+            // 从 ProjectManager 获取 Java 项目模型
+            ProjectManager* pm = ProjectManager::instance();
+            ProjectModel* model = pm->javaProjectModel();
+            if (model) {
+                // 获取依赖 JAR 列表 + 编译输出目录
+                QStringList classpathEntries = model->dependencyJars();
+                classpathEntries.append(model->outputDirectory());
+
+                // 转换为 JSON 数组
+                QJsonArray referencedLibraries;
+                for (const QString& path : classpathEntries) {
+                    if (!path.isEmpty()) {
+                        referencedLibraries.append(path);
+                    }
+                }
+
+                // 如果列表不为空，添加到 settings 中
+                if (!referencedLibraries.isEmpty()) {
+                    QJsonObject projectSettings;
+                    projectSettings["referencedLibraries"] = referencedLibraries;
+                    javaSettings["project"] = projectSettings;  // 对应 settings.java.project.referencedLibraries
+
+                    qDebug() << "[LSP] 已传递" << referencedLibraries.size()
+                             << "个类路径条目给 JDTLS";
+                }
+            } else {
+                qDebug() << "[LSP] 未找到 Java 项目模型，无法传递类路径";
+            }
+        }
+
+        // 将 Java 设置嵌入到 initializationOptions
         QJsonObject settings;
         settings["java"] = javaSettings;
         initializationOptions["settings"] = settings;
     }
+
+
+    // 合并自定义选项（例如 Python 的虚拟环境配置）
+    if (!m_customInitializationOptions.isEmpty()) {
+        // 如果已有 JDTLS 选项，则合并，否则直接覆盖
+        if (isJdtls) {
+            // 将自定义选项合并到已有选项（深度合并较复杂，这里简单覆盖）
+            // 但为了不破坏 JDTLS 配置，仅当没有冲突时覆盖顶层
+            QJsonObject merged = initializationOptions;
+            for (auto it = m_customInitializationOptions.begin(); it != m_customInitializationOptions.end(); ++it) {
+                merged[it.key()] = it.value();
+            }
+            initializationOptions = merged;
+        } else {
+            initializationOptions = m_customInitializationOptions;
+        }
+    }
+
     initParams["initializationOptions"] = initializationOptions;
 
     // ---- capabilities ----
@@ -194,6 +248,7 @@ bool LSPClient::startServer(const QString& serverPath)
 
     return true;
 }
+
 
 void LSPClient::stopServer()
 {
@@ -722,6 +777,11 @@ void LSPClient::requestCompletion(const QString& filePath, int line, int column)
 
     sendMessage(request);
     qDebug() << "LSP: completion requested for" << filePath << "at" << line << ":" << column;
+}
+
+void LSPClient::setInitializationOptions(const QJsonObject& options)
+{
+    m_customInitializationOptions = options;
 }
 
 void LSPClient::handleCompletionResponse(const QJsonObject& response)

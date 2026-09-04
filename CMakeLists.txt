@@ -159,6 +159,8 @@ set(ALL_SOURCES
     ${HISTORY_SOURCES}
     ${BUILDER_SOURCES}
     ${UTILS_SOURCES}
+    ${JAVA_SOURCES}
+    ${PYTHON_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -176,6 +178,8 @@ set(ALL_HEADERS
     ${HISTORY_HEADERS}
     ${BUILDER_HEADERS}
     ${UTILS_HEADERS}
+    ${JAVA_HEADERS}
+    ${PYTHON_HEADERS}
 )
 
 set(ALL_FORMS
@@ -271,6 +275,51 @@ set(UTILS_HEADERS
     src/utils/java_util.h
 )
 
+set(JAVA_SOURCES
+    src/java/project_model.cpp
+    src/java/maven_project_model.cpp
+    src/java/gradle_project_model.cpp
+    src/java/plain_java_project_model.cpp
+    src/java/project_resolver.cpp
+    src/run/run_configuration.cpp
+    src/run/run_config_manager.cpp
+    src/run/java_launcher.cpp
+)
+
+set(JAVA_HEADERS
+    src/java/project_model.h
+    src/java/maven_project_model.h
+    src/java/gradle_project_model.h
+    src/java/plain_java_project_model.h
+    src/java/project_resolver.h
+    src/run/run_configuration.h
+    src/run/run_config_manager.h
+    src/run/java_launcher.h
+)
+
+set(PYTHON_SOURCES
+    src/python/python_virtual_env.cpp
+    src/python/python_project_model.cpp
+    src/python/python_dependency_manager.cpp
+    src/python/python_run_config.cpp
+    src/python/python_debugger.cpp
+    src/python/python_formatter.cpp
+    src/python/python_test_runner.cpp
+    src/python/python_settings_page.cpp
+    src/python/python_run_config_widget.cpp
+)
+set(PYTHON_HEADERS
+    src/python/python_virtual_env.h
+    src/python/python_project_model.h
+    src/python/python_dependency_manager.h
+    src/python/python_run_config.h
+    src/python/python_debugger.h
+    src/python/python_formatter.h
+    src/python/python_test_runner.h
+    src/python/python_settings_page.h
+    src/python/python_run_config_widget.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME}
     ${ALL_SOURCES}
@@ -340,6 +389,41 @@ add_executable(${PROJECT_NAME}
     builder/java_builder.cpp
     utils/java_utils.h
     utils/java_utils.cpp
+    java/project_model.h
+    java/project_model.cpp
+    java/maven_project_model.h
+    java/maven_project_model.cpp
+    java/gradle_project_model.h
+    java/gradle_project_model.cpp
+    java/plain_java_project_model.h
+    java/plain_java_project_model.cpp
+    java/project_resolver.h
+    java/project_resolver.cpp
+    run/run_configuration.h
+    run/run_config_manager.h
+    run/run_config_manager.cpp
+    run/java_launcher.h
+    run/java_launcher.cpp
+    run/run_configuration.cpp
+    python/python_project_model.h
+    python/python_virtual_env.h
+    python/python_virtual_env.cpp
+    python/python_project_model.cpp
+    python/python_dependency_manager.h
+    python/python_dependency_manager.cpp
+    python/python_run_config.h
+    python/python_run_config.cpp
+    python/python_debugger.h
+    python/python_debugger.cpp
+    python/python_formatter.h
+    python/python_formatter.cpp
+    python/python_test_runner.h
+    python/python_test_runner.cpp
+    python/python_settings_page.h
+    python/python_settings_page.cpp
+    python/python_run_config_widget.h
+    python/python_run_config_widget.cpp
+
 )
 
 
@@ -439,6 +523,28 @@ source_group("Resources\\Icons" FILES
 )
 source_group("Resources\\Fonts" FILES
     resources/fonts.qrc
+)
+
+# Run Module (运行模块)
+source_group("Run" FILES ${JAVA_SOURCES} ${JAVA_HEADERS})
+source_group("Run\\Configuration" FILES
+    src/run/run_configuration.cpp src/run/run_configuration.h
+    src/run/run_config_manager.cpp src/run/run_config_manager.h
+)
+source_group("Run\\Launcher" FILES
+    src/run/java_launcher.cpp src/run/java_launcher.h
+)
+
+# Java Module (Java 支持模块)
+source_group("Java" FILES ${JAVA_SOURCES} ${JAVA_HEADERS})
+source_group("Java\\Model" FILES
+    src/java/project_model.cpp src/java/project_model.h
+    src/java/maven_project_model.cpp src/java/maven_project_model.h
+    src/java/gradle_project_model.cpp src/java/gradle_project_model.h
+    src/java/plain_java_project_model.cpp src/java/plain_java_project_model.h
+)
+source_group("Java\\Resolver" FILES
+    src/java/project_resolver.cpp src/java/project_resolver.h
 )
 
 # 设置包含路径

@@ -22,7 +22,14 @@ public:
     bool build(const BuildTask& task, BuildResult& result) override;
     bool clean(const BuildTask& task, BuildResult& result) override;
     bool run(const BuildTask& task, const BuildResult& buildResult, QString& output) override;
+    QString getExecutablePath(const BuildTask& task) override;
 
+    /**
+     * @brief 解析 Maven/Gradle 项目依赖，填充 BuildTask 的 classpath
+     * @param task 构建任务（需包含 projectPath）
+     * @return true 成功，false 失败
+     */
+    bool resolveDependencies(BuildTask& task) const;
 private:
     /**
      * @brief 检测项目是否使用 Gradle

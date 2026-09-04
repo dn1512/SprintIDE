@@ -8,9 +8,14 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QVariantMap>
+#include <QSharedPointer>
+
+#include "java/project_model.h"
+#include "python/python_project_model.h"
 
 namespace SprintIDE {
 
+class PythonProjectModel;
 /**
  * @class ProjectManager
  * @brief 项目管理器，负责项目的创建、打开、保存和管理
@@ -133,6 +138,15 @@ public:
      */
     QByteArray loadWindowGeometry() const;
 
+    /**
+     * @brief 获取当前打开的 Java 项目模型（如果当前项目是 Java 项目）
+     * @return ProjectModel 指针（由 ProjectManager 持有，不可 delete）
+     */
+    ProjectModel* javaProjectModel() const { return m_javaModel.get(); }
+
+    QSharedPointer<PythonProjectModel> pythonProjectModel() const { return m_pythonModel; }
+
+    bool isPythonProject() const { return m_pythonModel != nullptr; }
 signals:
     /**
      * @brief 项目打开信号
@@ -227,6 +241,8 @@ private:
 
     QSettings* m_settings; ///< 设置管理器
     QMap<QString, QDateTime> m_recentProjects; ///< 最近使用的项目列表
+    std::unique_ptr<ProjectModel> m_javaModel;
+    QSharedPointer<PythonProjectModel> m_pythonModel;
 };
 
 } // namespace SprintIDE

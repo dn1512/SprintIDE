@@ -835,6 +835,126 @@ history/local_history.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/history/local_history.cpp.s
 .PHONY : history/local_history.cpp.s
 
+java/gradle_project_model.o: java/gradle_project_model.cpp.o
+.PHONY : java/gradle_project_model.o
+
+# target to build an object file
+java/gradle_project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o
+.PHONY : java/gradle_project_model.cpp.o
+
+java/gradle_project_model.i: java/gradle_project_model.cpp.i
+.PHONY : java/gradle_project_model.i
+
+# target to preprocess a source file
+java/gradle_project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.i
+.PHONY : java/gradle_project_model.cpp.i
+
+java/gradle_project_model.s: java/gradle_project_model.cpp.s
+.PHONY : java/gradle_project_model.s
+
+# target to generate assembly for a file
+java/gradle_project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.s
+.PHONY : java/gradle_project_model.cpp.s
+
+java/maven_project_model.o: java/maven_project_model.cpp.o
+.PHONY : java/maven_project_model.o
+
+# target to build an object file
+java/maven_project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o
+.PHONY : java/maven_project_model.cpp.o
+
+java/maven_project_model.i: java/maven_project_model.cpp.i
+.PHONY : java/maven_project_model.i
+
+# target to preprocess a source file
+java/maven_project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.i
+.PHONY : java/maven_project_model.cpp.i
+
+java/maven_project_model.s: java/maven_project_model.cpp.s
+.PHONY : java/maven_project_model.s
+
+# target to generate assembly for a file
+java/maven_project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.s
+.PHONY : java/maven_project_model.cpp.s
+
+java/plain_java_project_model.o: java/plain_java_project_model.cpp.o
+.PHONY : java/plain_java_project_model.o
+
+# target to build an object file
+java/plain_java_project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o
+.PHONY : java/plain_java_project_model.cpp.o
+
+java/plain_java_project_model.i: java/plain_java_project_model.cpp.i
+.PHONY : java/plain_java_project_model.i
+
+# target to preprocess a source file
+java/plain_java_project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.i
+.PHONY : java/plain_java_project_model.cpp.i
+
+java/plain_java_project_model.s: java/plain_java_project_model.cpp.s
+.PHONY : java/plain_java_project_model.s
+
+# target to generate assembly for a file
+java/plain_java_project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.s
+.PHONY : java/plain_java_project_model.cpp.s
+
+java/project_model.o: java/project_model.cpp.o
+.PHONY : java/project_model.o
+
+# target to build an object file
+java/project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_model.cpp.o
+.PHONY : java/project_model.cpp.o
+
+java/project_model.i: java/project_model.cpp.i
+.PHONY : java/project_model.i
+
+# target to preprocess a source file
+java/project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_model.cpp.i
+.PHONY : java/project_model.cpp.i
+
+java/project_model.s: java/project_model.cpp.s
+.PHONY : java/project_model.s
+
+# target to generate assembly for a file
+java/project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_model.cpp.s
+.PHONY : java/project_model.cpp.s
+
+java/project_resolver.o: java/project_resolver.cpp.o
+.PHONY : java/project_resolver.o
+
+# target to build an object file
+java/project_resolver.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o
+.PHONY : java/project_resolver.cpp.o
+
+java/project_resolver.i: java/project_resolver.cpp.i
+.PHONY : java/project_resolver.i
+
+# target to preprocess a source file
+java/project_resolver.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.i
+.PHONY : java/project_resolver.cpp.i
+
+java/project_resolver.s: java/project_resolver.cpp.s
+.PHONY : java/project_resolver.s
+
+# target to generate assembly for a file
+java/project_resolver.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.s
+.PHONY : java/project_resolver.cpp.s
+
 language/language_detector.o: language/language_detector.cpp.o
 .PHONY : language/language_detector.o
 
@@ -1171,6 +1291,78 @@ replace_dialog.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/replace_dialog.cpp.s
 .PHONY : replace_dialog.cpp.s
 
+run/java_launcher.o: run/java_launcher.cpp.o
+.PHONY : run/java_launcher.o
+
+# target to build an object file
+run/java_launcher.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o
+.PHONY : run/java_launcher.cpp.o
+
+run/java_launcher.i: run/java_launcher.cpp.i
+.PHONY : run/java_launcher.i
+
+# target to preprocess a source file
+run/java_launcher.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.i
+.PHONY : run/java_launcher.cpp.i
+
+run/java_launcher.s: run/java_launcher.cpp.s
+.PHONY : run/java_launcher.s
+
+# target to generate assembly for a file
+run/java_launcher.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.s
+.PHONY : run/java_launcher.cpp.s
+
+run/run_config_manager.o: run/run_config_manager.cpp.o
+.PHONY : run/run_config_manager.o
+
+# target to build an object file
+run/run_config_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o
+.PHONY : run/run_config_manager.cpp.o
+
+run/run_config_manager.i: run/run_config_manager.cpp.i
+.PHONY : run/run_config_manager.i
+
+# target to preprocess a source file
+run/run_config_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.i
+.PHONY : run/run_config_manager.cpp.i
+
+run/run_config_manager.s: run/run_config_manager.cpp.s
+.PHONY : run/run_config_manager.s
+
+# target to generate assembly for a file
+run/run_config_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.s
+.PHONY : run/run_config_manager.cpp.s
+
+run/run_configuration.o: run/run_configuration.cpp.o
+.PHONY : run/run_configuration.o
+
+# target to build an object file
+run/run_configuration.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o
+.PHONY : run/run_configuration.cpp.o
+
+run/run_configuration.i: run/run_configuration.cpp.i
+.PHONY : run/run_configuration.i
+
+# target to preprocess a source file
+run/run_configuration.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.i
+.PHONY : run/run_configuration.cpp.i
+
+run/run_configuration.s: run/run_configuration.cpp.s
+.PHONY : run/run_configuration.s
+
+# target to generate assembly for a file
+run/run_configuration.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.s
+.PHONY : run/run_configuration.cpp.s
+
 settings_dialog.o: settings_dialog.cpp.o
 .PHONY : settings_dialog.o
 
@@ -1315,6 +1507,30 @@ theme_manager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/theme_manager.cpp.s
 .PHONY : theme_manager.cpp.s
 
+utils/java_utils.o: utils/java_utils.cpp.o
+.PHONY : utils/java_utils.o
+
+# target to build an object file
+utils/java_utils.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o
+.PHONY : utils/java_utils.cpp.o
+
+utils/java_utils.i: utils/java_utils.cpp.i
+.PHONY : utils/java_utils.i
+
+# target to preprocess a source file
+utils/java_utils.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.i
+.PHONY : utils/java_utils.cpp.i
+
+utils/java_utils.s: utils/java_utils.cpp.s
+.PHONY : utils/java_utils.s
+
+# target to generate assembly for a file
+utils/java_utils.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.s
+.PHONY : utils/java_utils.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1410,6 +1626,21 @@ help:
 	@echo "... history/local_history.o"
 	@echo "... history/local_history.i"
 	@echo "... history/local_history.s"
+	@echo "... java/gradle_project_model.o"
+	@echo "... java/gradle_project_model.i"
+	@echo "... java/gradle_project_model.s"
+	@echo "... java/maven_project_model.o"
+	@echo "... java/maven_project_model.i"
+	@echo "... java/maven_project_model.s"
+	@echo "... java/plain_java_project_model.o"
+	@echo "... java/plain_java_project_model.i"
+	@echo "... java/plain_java_project_model.s"
+	@echo "... java/project_model.o"
+	@echo "... java/project_model.i"
+	@echo "... java/project_model.s"
+	@echo "... java/project_resolver.o"
+	@echo "... java/project_resolver.i"
+	@echo "... java/project_resolver.s"
 	@echo "... language/language_detector.o"
 	@echo "... language/language_detector.i"
 	@echo "... language/language_detector.s"
@@ -1452,6 +1683,15 @@ help:
 	@echo "... replace_dialog.o"
 	@echo "... replace_dialog.i"
 	@echo "... replace_dialog.s"
+	@echo "... run/java_launcher.o"
+	@echo "... run/java_launcher.i"
+	@echo "... run/java_launcher.s"
+	@echo "... run/run_config_manager.o"
+	@echo "... run/run_config_manager.i"
+	@echo "... run/run_config_manager.s"
+	@echo "... run/run_configuration.o"
+	@echo "... run/run_configuration.i"
+	@echo "... run/run_configuration.s"
 	@echo "... settings_dialog.o"
 	@echo "... settings_dialog.i"
 	@echo "... settings_dialog.s"
@@ -1470,6 +1710,9 @@ help:
 	@echo "... theme_manager.o"
 	@echo "... theme_manager.i"
 	@echo "... theme_manager.s"
+	@echo "... utils/java_utils.o"
+	@echo "... utils/java_utils.i"
+	@echo "... utils/java_utils.s"
 .PHONY : help
 
 

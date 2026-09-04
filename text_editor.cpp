@@ -683,6 +683,25 @@ bool TextEditor::loadFile(const QString &filePath)
     return true;
 }
 
+bool TextEditor::reloadFile()
+{
+    if (m_filePath.isEmpty()) {
+        return false;
+    }
+    // 记住当前光标位置
+    int line = currentLine();
+    int col = currentColumn();
+    bool success = loadFile(m_filePath);
+    if (success) {
+        // 恢复光标到近似位置
+        gotoLine(line);
+        QTextCursor cursor = textCursor();
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, col - 1);
+        setTextCursor(cursor);
+    }
+    return success;
+}
+
 bool TextEditor::saveFile()
 {
     if (m_filePath.isEmpty()) {

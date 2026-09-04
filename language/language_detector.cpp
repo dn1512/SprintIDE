@@ -665,6 +665,76 @@ void LanguageDetector::loadBuiltinLanguages()
     }
 
     // ============================================================
+    // YAML (新增)
+    // ============================================================
+    {
+        LanguageInfo lang;
+        lang.id = "yaml";
+        lang.name = "YAML";
+        lang.extensions = {".yml", ".yaml"};
+        lang.mimeTypes = {"text/yaml", "application/x-yaml"};
+
+        lang.lineComment = "#";
+        lang.blockCommentStart = "";
+        lang.blockCommentEnd = "";
+
+        lang.keywords = {}; // YAML 本身没有关键字，但可以将某些特殊值高亮
+        lang.controlFlow = {};
+        lang.storageTypes = {};
+        lang.dataTypes = {};
+        lang.builtinFuncs = {};
+        lang.preprocessor = {};
+        lang.constants = {"true", "false", "on", "off", "yes", "no", "null", "~"};
+
+        lang.stringDelimiter = "\"";
+        lang.charDelimiter = "'";
+        lang.caseSensitive = true;
+        lang.hasPreprocessor = false;
+        lang.indentStyle = "spaces";
+        lang.indentSize = 2;
+
+        m_languages[lang.id] = lang;
+        for (const QString& ext : lang.extensions) {
+            m_extensionMap[normalizeExtension(ext)] = lang.id;
+        }
+    }
+
+    // ============================================================
+    // Properties (新增)
+    // ============================================================
+    {
+        LanguageInfo lang;
+        lang.id = "properties";
+        lang.name = "Properties";
+        lang.extensions = {".properties"};
+        lang.mimeTypes = {"text/x-java-properties"};
+
+        lang.lineComment = "#";
+        lang.blockCommentStart = "";
+        lang.blockCommentEnd = "";
+
+        lang.keywords = {};
+        lang.controlFlow = {};
+        lang.storageTypes = {};
+        lang.dataTypes = {};
+        lang.builtinFuncs = {};
+        lang.preprocessor = {};
+        lang.constants = {};
+
+        lang.stringDelimiter = "\"";
+        lang.charDelimiter = "";
+        lang.caseSensitive = false;
+        lang.hasPreprocessor = false;
+        lang.indentStyle = "spaces";
+        lang.indentSize = 2;
+
+        m_languages[lang.id] = lang;
+        for (const QString& ext : lang.extensions) {
+            m_extensionMap[normalizeExtension(ext)] = lang.id;
+        }
+    }
+
+    // ============================================================
     // 15. XML
     // ============================================================
     {

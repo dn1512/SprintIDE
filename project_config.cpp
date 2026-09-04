@@ -1019,6 +1019,12 @@ void ProjectConfig::setExtraValue(const QString& key, const QVariant& value)
     m_modifiedDate = QDateTime::currentDateTime();
 }
 
+
+QVariant ProjectConfig::getExtraValue(const QString& key, const QVariant& defaultValue) const
+{
+    return m_extraConfig.value(key, defaultValue);
+}
+
 // ==================== 私有验证方法 ====================
 
 bool ProjectConfig::validateFilePath(const QString& path, bool checkExists) const

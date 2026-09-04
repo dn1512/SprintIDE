@@ -45,6 +45,13 @@ public:
      * @return 是否成功运行
      */
     virtual bool run(const BuildTask& task, const BuildResult& buildResult, QString& output) = 0;
+
+    /**
+     * @brief 获取构建产物的可执行文件路径
+     * @param task 构建任务
+     * @return 可执行文件的完整路径，如果无法确定则返回空字符串
+     */
+    virtual QString getExecutablePath(const BuildTask& task) = 0;
 };
 
 } // namespace SprintIDE

@@ -51,13 +51,6 @@ QProcessEnvironment JavaGradleBuilder::prepareEnvironment(const BuildTask& task)
 
 // ==================== build ====================
 bool JavaGradleBuilder::build(const BuildTask& task, BuildResult& result) {
-    if (task.projectPath.isEmpty()) {
-        result.errorMessage = "Project path is empty";
-        result.builderName = "JavaGradleBuilder";
-        return false;
-    }
-
-    // 查找 gradlew
     QString gradlew = getGradleWrapperPath(task.projectPath);
     if (gradlew.isEmpty()) {
         result.errorMessage = "gradlew not found in project root";
@@ -65,19 +58,19 @@ bool JavaGradleBuilder::build(const BuildTask& task, BuildResult& result) {
         return false;
     }
 
-    // 构建命令：./gradlew build -x test
     QStringList args;
-    args << "build" << "-x" << "test";
-    // 如果 task.extraArgs 有内容，追加
-    args << task.extraArgs;
+    // 如果 extraArgs 有内容，优先使用；否则默认 build -x test
+    if (!task.extraArgs.isEmpty()) {
+        args = task.extraArgs;
+    } else {
+        args << "build" << "-x" << "test";
+    }
 
-    // 准备环境
     QProcessEnvironment env = prepareEnvironment(task);
-
-    // 执行
     ProcessManager pm;
     pm.setEnvironment(env);
-    ProcessManager::ProcessResult pr = pm.executeSync(gradlew, args, task.projectPath, 60000);
+
+    ProcessManager::ProcessResult pr = pm.executeSync(gradlew, args, task.projectPath, 120000);
 
     result.exitCode = pr.exitCode;
     result.fullOutput = pr.standardOutput + "\n" + pr.standardError;
@@ -85,17 +78,18 @@ bool JavaGradleBuilder::build(const BuildTask& task, BuildResult& result) {
     result.success = pr.success && pr.exitCode == 0;
     result.builderName = "JavaGradleBuilder";
 
-    // 解析错误/警告（简单处理）
     if (!result.success) {
         result.errorLines = pr.standardError.split('\n', Qt::SkipEmptyParts);
         result.errorLines += pr.standardOutput.split('\n', Qt::SkipEmptyParts);
-    }
-
-    // 如果构建成功，尝试确定可执行文件路径（一般是 build/libs/*.jar 或由 run 任务决定）
-    if (result.success) {
-        // 可执行文件可以是 .jar，我们存储路径，但 run 时可能直接用 gradlew run 或 java -jar
-        // 此处我们存储一个占位，但 run 方法中会使用 gradlew run 或 aiCustomPayload 指定的 mainClass
-        result.executablePath = task.projectPath + "/build/libs/"; // 实际需精确查找，暂不实现
+    } else {
+        // 提取警告
+        for (const QString& line : pr.standardOutput.split('\n', Qt::SkipEmptyParts)) {
+            if (line.contains("warning")) {
+                result.warningLines.append(line);
+            }
+        }
+        // 查找可执行文件（JAR）
+        result.executablePath = getExecutablePath(task);
     }
 
     return true;
@@ -248,6 +242,113 @@ QString JavaGradleBuilder::findJavaExecutable() const {
         return javaCmd;
     }
     return QString();
+}
+
+QString JavaGradleBuilder::getExecutablePath(const BuildTask& task)
+{
+    // Gradle 项目的 JAR 文件通常在 build/libs/ 目录下
+    QString projectPath = task.projectPath;
+    if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
+        projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
+    }
+
+    QDir libsDir(PathUtils::joinPaths({projectPath, "build", "libs"}));
+    if (!libsDir.exists()) {
+        return QString();
+    }
+
+    // 查找 JAR 文件（优先选择包含项目名的文件）
+    QStringList jarFiles = libsDir.entryList({"*.jar"}, QDir::Files);
+    if (jarFiles.isEmpty()) {
+        return QString();
+    }
+
+    // 优先选择与项目名匹配的 JAR
+    QString projectName = task.outputName;
+    if (projectName.isEmpty()) {
+        projectName = QFileInfo(projectPath).fileName();
+    }
+
+    for (const QString& jar : jarFiles) {
+        if (jar.contains(projectName, Qt::CaseInsensitive)) {
+            return libsDir.absoluteFilePath(jar);
+        }
+    }
+
+    // 否则返回第一个 JAR
+    return libsDir.absoluteFilePath(jarFiles.first());
+}
+
+bool JavaGradleBuilder::resolveClasspath(const QString& projectPath, QStringList& classpath) const {
+    QString gradlew = getGradleWrapperPath(projectPath);
+    if (gradlew.isEmpty()) {
+        qWarning() << "gradlew not found";
+        return false;
+    }
+
+    // 执行 gradlew -q dependencies --configuration compileClasspath
+    ProcessManager pm;
+    QProcessEnvironment env = prepareEnvironmentForPath(projectPath); // 需单独实现
+    pm.setEnvironment(env);
+    QStringList args = {"-q", "dependencies", "--configuration", "compileClasspath"};
+    ProcessManager::ProcessResult result = pm.executeSync(gradlew, args, projectPath, 60000);
+
+    if (!result.success || result.exitCode != 0) {
+        qWarning() << "Gradle dependency resolution failed:" << result.errorMessage;
+        return false;
+    }
+
+    // 解析输出提取 jar 路径
+    QRegularExpression jarRegex(R"(([^ ]+\.jar))");
+    QString output = result.standardOutput;
+    QRegularExpressionMatchIterator it = jarRegex.globalMatch(output);
+    QStringList jars;
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+        QString jar = match.captured(1);
+        if (QFile::exists(jar)) {
+            jars.append(jar);
+        }
+    }
+    classpath = QSet<QString>(jars.begin(), jars.end()).values();
+    // 添加编译输出目录
+    QString classesDir = PathUtils::joinPaths({projectPath, "build", "classes", "java", "main"});
+    if (QFile::exists(classesDir)) {
+        classpath.prepend(classesDir);
+    }
+    return true;
+}
+
+QProcessEnvironment JavaGradleBuilder::prepareEnvironmentForPath(const QString& projectPath) const
+{
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    // 从全局配置加载 SDK 环境变量
+    ConfigManager* cfg = Application::instance().configManager();
+    if (cfg) {
+        QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+        for (auto it = sdkEnv.begin(); it != sdkEnv.end(); ++it) {
+            env.insert(it.key(), it.value().toString());
+        }
+    }
+
+    // 如果设置了 JAVA_HOME，将其 bin 目录加入 PATH
+    QString javaHome = env.value("JAVA_HOME");
+    if (!javaHome.isEmpty()) {
+        QString javaBin = PathUtils::joinPaths({javaHome, "bin"});
+        QString path = env.value("PATH");
+        env.insert("PATH", javaBin + ":" + path);
+    }
+
+    // 如果设置了 GRADLE_HOME，将其 bin 目录加入 PATH
+    QString gradleHome = env.value("GRADLE_HOME");
+    if (!gradleHome.isEmpty()) {
+        QString gradleBin = PathUtils::joinPaths({gradleHome, "bin"});
+        QString path = env.value("PATH");
+        env.insert("PATH", gradleBin + ":" + path);
+    }
+
+    return env;
 }
 
 } // namespace SprintIDE

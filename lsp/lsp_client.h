@@ -7,6 +7,9 @@
 #include <QTimer>
 #include <QJsonObject>
 
+#include "project_manager.h"
+#include "java/project_model.h"
+
 namespace SprintIDE {
 
 struct LSPDiagnostic {
@@ -58,6 +61,15 @@ public:
      * @param column 列号（0-based）
      */
     void requestCompletion(const QString& filePath, int line, int column);
+
+    /**
+     * @brief 设置自定义的 initializationOptions（用于 LSP 初始化）
+     * @param options JSON 对象
+     */
+    void setInitializationOptions(const QJsonObject& options);
+
+    void setCustomCommand(const QString& command) { m_serverPath = command; }
+    void setCustomArguments(const QStringList& args) { m_customArguments = args; }
 signals:
     void serverStarted();
     void serverStopped();
@@ -105,6 +117,7 @@ private:
     QString m_pendingFilePath;
     QString m_pendingContent;
     QTimer* m_initTimer;
+    QStringList m_customArguments;
     bool m_enableClangTidy;
     /**
      * @brief 处理补全响应
@@ -124,6 +137,8 @@ private:
      * @brief 当前请求补全的文件路径（用于关联响应）
      */
     QString m_completionFilePath;
+
+    QJsonObject m_customInitializationOptions;   // 自定义初始化选项
 };
 
 } // namespace SprintIDE

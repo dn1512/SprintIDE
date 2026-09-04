@@ -314,6 +314,10 @@ public:
     void setExtraValue(const QString& key, const QVariant& value);
     QVariant getExtraValue(const QString& key, const QVariant& defaultValue = QVariant()) const;
 
+    QString pythonInterpreter() const { return m_pythonInterpreter; }
+    void setPythonInterpreter(const QString& path) { m_pythonInterpreter = path; }
+    QString pythonVenv() const { return m_pythonVenv; }
+    void setPythonVenv(const QString& path) { m_pythonVenv = path; }
 private:
     // ==================== 私有方法 ====================
 
@@ -381,6 +385,8 @@ private:
 
     QVariantMap m_sdkEnv;           ///< SDK 环境变量（如 JAVA_HOME）
     QVariantMap m_genericConfig;    ///< AI 通用构建配置
+    QString m_pythonInterpreter;
+    QString m_pythonVenv;
 };
 
 } // namespace SprintIDE

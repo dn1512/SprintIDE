@@ -21,6 +21,7 @@
 #include "EWIEGA46WW/moc_project_panel.cpp"
 #include "EWIEGA46WW/moc_project_selection_dialog.cpp"
 #include "EWIEGA46WW/moc_replace_dialog.cpp"
+#include "OGWQFLWTTH/moc_java_launcher.cpp"
 #include "EWIEGA46WW/moc_settings_dialog.cpp"
 #include "EWIEGA46WW/moc_syntax_highlighter.cpp"
 #include "EWIEGA46WW/moc_tab_widget.cpp"

@@ -10,30 +10,28 @@
 #include "utils/java_utils.h"
 #include "builder/cpp_builder.h"
 #include "builder/java_builder.h"
+#include "python/python_dependency_manager.h"
+#include "python/python_project_model.h"
+#include "project_manager.h"
+#include "python/python_run_config.h"
 
 namespace SprintIDE {
 
-// ============================================================
 // 构造函数
-// ============================================================
 LSPManager::LSPManager(QObject *parent)
     : QObject(parent)
 {
     qDebug() << "[LSP Manager] 已创建";
 }
 
-// ============================================================
 // 析构函数
-// ============================================================
 LSPManager::~LSPManager()
 {
     shutdownAll();
     qDebug() << "[LSP Manager] 已销毁";
 }
 
-// ============================================================
 // 初始化
-// ============================================================
 void LSPManager::initialize()
 {
     if (m_initialized) {
@@ -48,14 +46,10 @@ void LSPManager::initialize()
     qDebug() << "[LSP Manager] 已初始化，支持" << m_configs.size() << "种语言的 LSP";
 }
 
-// ============================================================
 // 构建内置 LSP 服务器配置
-// ============================================================
 void LSPManager::buildDefaultConfigs()
 {
-    // ============================================================
     // 1. C/C++ - clangd
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "cpp";
@@ -71,22 +65,18 @@ void LSPManager::buildDefaultConfigs()
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 2. Python - pylsp
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "python";
-        config.serverName = "pylsp";
-        config.command = "pylsp";
-        config.arguments = {};
+        config.serverName = "pyright";
+        config.command = "pyright-langserver";
+        config.arguments = {"--stdio"};
         config.hasCompileCommands = false;
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 3. JavaScript / TypeScript - typescript-language-server
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "javascript";
@@ -102,9 +92,7 @@ void LSPManager::buildDefaultConfigs()
         m_configs[tsConfig.languageId] = tsConfig;
     }
 
-    // ============================================================
     // 4. Go - gopls
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "go";
@@ -115,9 +103,7 @@ void LSPManager::buildDefaultConfigs()
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 5. Rust - rust-analyzer
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "rust";
@@ -128,9 +114,7 @@ void LSPManager::buildDefaultConfigs()
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 6. Java - jdtls (需要特殊配置，这里仅作占位)
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "java";
@@ -141,9 +125,7 @@ void LSPManager::buildDefaultConfigs()
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 7. C# - omnisharp (需要特殊配置)
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "csharp";
@@ -154,9 +136,7 @@ void LSPManager::buildDefaultConfigs()
         m_configs[config.languageId] = config;
     }
 
-    // ============================================================
     // 8. PHP - intelephense (需要 npm 安装)
-    // ============================================================
     {
         LSPConfig config;
         config.languageId = "php";
@@ -189,9 +169,7 @@ static QString findProjectRoot(const QString& startPath)
     return startPath;
 }
 
-// ============================================================
 // 查找 LSP 服务器可执行文件
-// ============================================================
 QString LSPManager::findServerExecutable(const QString &command) const
 {
     // 如果已经缓存，直接返回
@@ -297,18 +275,14 @@ QString LSPManager::findServerExecutable(const QString &command) const
     return QString();
 }
 
-// ============================================================
 // 生成客户端的唯一键
-// ============================================================
 QString LSPManager::makeClientKey(const QString &projectRoot,
                                   const QString &languageId) const
 {
     return QString("%1|%2").arg(projectRoot, languageId);
 }
 
-// ============================================================
 // 获取语言对应的 LSP 配置
-// ============================================================
 LSPConfig LSPManager::getConfigForLanguage(const QString &languageId) const
 {
     // 精确匹配
@@ -325,9 +299,7 @@ LSPConfig LSPManager::getConfigForLanguage(const QString &languageId) const
     return LSPConfig();
 }
 
-// ============================================================
 // 获取文件对应的 LSP 客户端
-// ============================================================
 LSPClient* LSPManager::getClientForFile(const QString &filePath,
                                         const QString &projectRoot)
 {
@@ -343,63 +315,63 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
     }
 
     // 2. 获取语言对应的 LSP 配置
-    LSPConfig config = getConfigForLanguage(lang.id);
+    LSPConfig config;
+    if (lang.id == "python") {
+        config = getPythonLSPConfig();
+    } else {
+        config = getConfigForLanguage(lang.id);
+    }
     if (config.command.isEmpty()) {
         qDebug() << "[LSP Manager] 语言不支持 LSP:" << lang.id;
         return nullptr;
     }
 
-    // 3. 获取项目根目录（如果未指定，尝试从文件路径推断）
+    // 3. 获取项目根目录
     QString root = projectRoot;
     if (root.isEmpty()) {
         root = QFileInfo(filePath).absolutePath();
     }
-    root = findProjectRoot(root);   // 向上查找 .git/pom.xml 等
+    root = findProjectRoot(root);
 
-    // ========== 新增：语言特定的环境初始化 ==========
-    // C++：生成 compile_commands.json
+    // ========== 语言特定的环境初始化 ==========
     if (config.command == "clangd") {
         CppBuilder::ensureCompileCommands(root);
     }
-    // Java：生成 Eclipse 元数据（.project/.classpath）
     if (config.command == "jdtls") {
-        // 注意：ensureEclipseMetadata 内部会读取 MAVEN_HOME 配置
         JavaUtils::ensureEclipseMetadata(root);
+        // ... 原有 JDTLS wrapper 生成代码 ...
     }
-    // 未来可扩展其他语言（如 Python 的 pipenv，Go 的 go mod 等）
 
-    // 4. 若是 JDTLS，确保 wrapper 存在（原有逻辑）
-    if (config.command == "jdtls") {
-        QString wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.sh";
-#ifdef Q_OS_WIN
-        wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.bat";
-#endif
-        if (!QFile::exists(wrapperPath)) {
-            JavaInfo javaInfo = JavaUtils::detectJava();
-            if (!javaInfo.isValid()) {
-                emit clientError(lang.id, "未找到 Java 17+，请安装 Java 21 并在设置中配置 JAVA_HOME。");
-                return nullptr;
-            }
-            if (!JavaUtils::ensureJdtlsWrapper(root, javaInfo, wrapperPath)) {
-                emit clientError(lang.id, "无法生成 JDTLS 启动脚本");
+    // ========== Python 特殊处理 ==========
+    if (lang.id == "python") {
+        // 如果是 pylsp，确保已安装
+        if (config.serverName == "pylsp") {
+            auto model = ProjectManager::instance()->pythonProjectModel();
+            QString interpreter = model ? model->interpreterPath() : "python3";
+            if (!PythonDependencyManager::ensurePylsp(interpreter)) {
+                emit clientError(lang.id, "无法安装 pylsp，请手动安装: pip install python-lsp-server");
                 return nullptr;
             }
         }
-        config.command = wrapperPath;
     }
 
-    // 5. 查找服务器可执行文件（原有逻辑）
-    QString serverPath = findServerExecutable(config.command);
-    if (serverPath.isEmpty()) {
-        qDebug() << "[LSP Manager] 未安装 LSP 服务器:" << config.command;
-        emit clientError(lang.id, "未安装服务器: " + config.command);
-        return nullptr;
+    // 查找服务器可执行文件（仅对非 Python 或 pyright 全局模式）
+    QString serverPath;
+    if (lang.id == "python") {
+        // Python 特殊处理：不通过 findServerExecutable 查找，因为我们使用自定义命令
+        serverPath = config.command;  // 仅作为标识，实际可能不使用
+    } else {
+        serverPath = findServerExecutable(config.command);
+        if (serverPath.isEmpty()) {
+            qDebug() << "[LSP Manager] 未安装 LSP 服务器:" << config.command;
+            emit clientError(lang.id, "未安装服务器: " + config.command);
+            return nullptr;
+        }
     }
 
-    // 6. 生成缓存键
+    // 生成缓存键
     QString key = makeClientKey(root, lang.id);
 
-    // 7. 检查缓存
     if (m_clients.contains(key)) {
         LSPClient *client = m_clients[key];
         if (client && client->isServerRunning()) {
@@ -409,7 +381,7 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
         client->deleteLater();
     }
 
-    // 8. 创建新客户端
+    // 创建新客户端
     qDebug() << "[LSP Manager] 为语言创建 LSP 客户端:" << lang.id
              << "服务器:" << config.serverName
              << "项目:" << root;
@@ -417,7 +389,39 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
     LSPClient *client = new LSPClient(this);
     client->setProjectRoot(root);
 
-    // 连接信号（原有）
+    // ========== Python 特定设置（自定义命令和初始化选项） ==========
+    if (lang.id == "python") {
+        auto model = ProjectManager::instance()->pythonProjectModel();
+
+        if (config.serverName == "pylsp") {
+            QString interpreter = model ? model->interpreterPath() : "python3";
+            client->setCustomCommand(interpreter);
+            client->setCustomArguments({"-m", "pylsp"});
+        } else if (config.command == "npx") {
+            client->setCustomCommand("npx");
+            client->setCustomArguments({"pyright-langserver", "--stdio"});
+        } else if (config.serverName == "pyright (global)") {
+            client->setCustomCommand("pyright-langserver");
+            client->setCustomArguments({"--stdio"});
+        } else {
+            // 回退
+            client->setCustomCommand(config.command);
+            client->setCustomArguments(config.arguments);
+        }
+
+        // 虚拟环境
+        if (model && !model->venvPath().isEmpty()) {
+            QJsonObject initOpts;
+            QJsonObject pythonOpts;
+            pythonOpts["pythonPath"] = model->interpreterPath();
+            pythonOpts["venvPath"] = model->venvPath();
+            initOpts["python"] = pythonOpts;
+            client->setInitializationOptions(initOpts);
+            qDebug() << "[LSP] Python 虚拟环境: " << model->venvPath();
+        }
+    }
+
+    // 连接信号
     connect(client, &LSPClient::diagnosticsReceived,
             this, &LSPManager::diagnosticsReceived);
     connect(client, &LSPClient::serverStarted,
@@ -430,24 +434,78 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
                 emit clientError(lang.id, error);
             });
 
-    // 9. 启动服务器
-    bool started = client->startServer(serverPath);
+    // 启动服务器
+    bool started;
+    if (lang.id == "python") {
+        started = client->startServer();  // 使用自定义命令
+    } else {
+        started = client->startServer(serverPath);
+    }
     if (!started) {
         client->deleteLater();
         emit clientError(lang.id, "启动失败: " + config.serverName);
         return nullptr;
     }
 
-    // 10. 缓存
     m_clients[key] = client;
     qDebug() << "[LSP Manager] LSP 客户端已创建，当前客户端数:" << m_clients.size();
 
     return client;
 }
 
-// ============================================================
+LSPConfig LSPManager::getPythonLSPConfig() const
+{
+    // 检测 Node.js
+    bool nodeExists = false;
+    QProcess nodeTest;
+    nodeTest.start("node", {"--version"});
+    if (nodeTest.waitForStarted(1000) && nodeTest.waitForFinished(1000)) {
+        nodeExists = (nodeTest.exitCode() == 0);
+    }
+
+    LSPConfig config;
+    config.languageId = "python";
+    config.hasCompileCommands = false;
+
+    if (nodeExists) {
+        // 检测 npx 是否可用
+        QProcess npxTest;
+        npxTest.start("npx", {"--version"});
+        if (npxTest.waitForStarted(2000) && npxTest.waitForFinished(2000) && npxTest.exitCode() == 0) {
+            config.command = "npx";
+            config.arguments = {"pyright-langserver", "--stdio"};
+            config.serverName = "pyright (via npx)";
+        } else {
+            // 尝试直接运行 pyright-langserver
+            QProcess directTest;
+            directTest.start("pyright-langserver", {"--version"});
+            if (directTest.waitForFinished(2000) && directTest.exitCode() == 0) {
+                config.command = "pyright-langserver";
+                config.arguments = {"--stdio"};
+                config.serverName = "pyright (global)";
+            } else {
+                config = getFallbackPythonLSPConfig();
+            }
+        }
+    } else {
+        config = getFallbackPythonLSPConfig();
+    }
+
+    return config;
+}
+
+LSPConfig LSPManager::getFallbackPythonLSPConfig() const
+{
+    LSPConfig config;
+    config.languageId = "python";
+    config.serverName = "pylsp";
+    config.command = "pylsp";  // 这个值会在客户端设置时被覆盖为 python -m pylsp
+    config.arguments = {};
+    config.hasCompileCommands = false;
+    return config;
+}
+
 // 获取特定语言和项目的 LSP 客户端
-// ============================================================
 LSPClient *LSPManager::getClient(const QString &languageId,
                                  const QString &projectRoot) const
 {
@@ -455,9 +513,7 @@ LSPClient *LSPManager::getClient(const QString &languageId,
     return m_clients.value(key, nullptr);
 }
 
-// ============================================================
 // 关闭并清理所有 LSP 客户端
-// ============================================================
 void LSPManager::shutdownAll()
 {
     qDebug() << "[LSP Manager] 关闭所有 LSP 客户端，数量:" << m_clients.size();
@@ -474,9 +530,7 @@ void LSPManager::shutdownAll()
     qDebug() << "[LSP Manager] 所有 LSP 客户端已关闭";
 }
 
-// ============================================================
 // 获取支持的 LSP 服务器列表
-// ============================================================
 QList<LSPConfig> LSPManager::availableServers() const
 {
     return m_configs.values();

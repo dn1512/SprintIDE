@@ -160,6 +160,43 @@ bool GoBuilder::run(const BuildTask& task, const BuildResult& buildResult, QStri
     return runProgram(buildResult.executablePath, task, output);
 }
 
+QString GoBuilder::getExecutablePath(const BuildTask& task)
+{
+    QString outDir = PathUtils::absolutePath(task.outputDir, task.projectPath);
+    QString outName = task.outputName;
+
+    if (outName.isEmpty()) {
+        // 使用项目名或源文件名
+        if (QFileInfo(task.projectPath).exists()) {
+            outName = QFileInfo(task.projectPath).fileName();
+        } else if (!task.sourceFiles.isEmpty()) {
+            outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+        } else {
+            outName = "main";
+        }
+    }
+
+#ifdef Q_OS_WIN
+    if (!outName.endsWith(".exe", Qt::CaseInsensitive)) {
+        outName += ".exe";
+    }
+#endif
+
+    // Go 默认输出到当前目录，如果 outputDir 为空则返回 {projectPath}/{outName}
+    QString exePath = PathUtils::joinPaths({outDir, outName});
+    if (QFile::exists(exePath)) {
+        return exePath;
+    }
+
+    // 也尝试在项目根目录查找
+    QString rootExe = PathUtils::joinPaths({task.projectPath, outName});
+    if (QFile::exists(rootExe)) {
+        return rootExe;
+    }
+
+    return exePath;
+}
+
 // ==================== 私有辅助 ====================
 bool GoBuilder::runProgram(const QString& executable, const BuildTask& task, QString& output) {
     ProcessManager pm;

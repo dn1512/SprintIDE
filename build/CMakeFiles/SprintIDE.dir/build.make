@@ -781,10 +781,136 @@ CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.s"
 	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_builder.cpp -o CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.s
 
+CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o: ../utils/java_utils.cpp
+CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_48) "Building CXX object CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o -MF CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o.d -o CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.cpp
+
+CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.cpp > CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.i
+
+CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.cpp -o CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.s
+
+CMakeFiles/SprintIDE.dir/java/project_model.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/java/project_model.cpp.o: ../java/project_model.cpp
+CMakeFiles/SprintIDE.dir/java/project_model.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_49) "Building CXX object CMakeFiles/SprintIDE.dir/java/project_model.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/java/project_model.cpp.o -MF CMakeFiles/SprintIDE.dir/java/project_model.cpp.o.d -o CMakeFiles/SprintIDE.dir/java/project_model.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.cpp
+
+CMakeFiles/SprintIDE.dir/java/project_model.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/java/project_model.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.cpp > CMakeFiles/SprintIDE.dir/java/project_model.cpp.i
+
+CMakeFiles/SprintIDE.dir/java/project_model.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/java/project_model.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.cpp -o CMakeFiles/SprintIDE.dir/java/project_model.cpp.s
+
+CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o: ../java/maven_project_model.cpp
+CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_50) "Building CXX object CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o -MF CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o.d -o CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.cpp
+
+CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.cpp > CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.i
+
+CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.cpp -o CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.s
+
+CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o: ../java/gradle_project_model.cpp
+CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_51) "Building CXX object CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o -MF CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o.d -o CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.cpp
+
+CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.cpp > CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.i
+
+CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.cpp -o CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.s
+
+CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o: ../java/plain_java_project_model.cpp
+CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_52) "Building CXX object CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o -MF CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o.d -o CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.cpp
+
+CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.cpp > CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.i
+
+CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.cpp -o CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.s
+
+CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o: ../java/project_resolver.cpp
+CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_53) "Building CXX object CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o -MF CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o.d -o CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.cpp
+
+CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.cpp > CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.i
+
+CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.cpp -o CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.s
+
+CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o: ../run/run_config_manager.cpp
+CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_54) "Building CXX object CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o -MF CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o.d -o CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.cpp
+
+CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.cpp > CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.i
+
+CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.cpp -o CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.s
+
+CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o: ../run/java_launcher.cpp
+CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_55) "Building CXX object CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o -MF CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o.d -o CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.cpp
+
+CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.cpp > CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.i
+
+CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.cpp -o CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.s
+
+CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
+CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o: ../run/run_configuration.cpp
+CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_56) "Building CXX object CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o -MF CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o.d -o CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.cpp
+
+CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.cpp > CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.i
+
+CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.cpp -o CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.s
+
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o: SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_48) "Building CXX object CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_57) "Building CXX object CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o"
 	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o -MF CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o.d -o CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp
 
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.i: cmake_force
@@ -798,7 +924,7 @@ CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o: CMakeFiles/SprintIDE.dir/flags.make
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o: SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o: CMakeFiles/SprintIDE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_49) "Building CXX object CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_58) "Building CXX object CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o"
 	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o -MF CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o.d -o CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o -c /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp
 
 CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.i: cmake_force
@@ -856,6 +982,15 @@ SprintIDE_OBJECTS = \
 "CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o" \
 "CMakeFiles/SprintIDE.dir/builder/java_maven_builder.cpp.o" \
 "CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.o" \
+"CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o" \
+"CMakeFiles/SprintIDE.dir/java/project_model.cpp.o" \
+"CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o" \
+"CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o" \
+"CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o" \
+"CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o" \
+"CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o" \
+"CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o" \
+"CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o" \
 "CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o" \
 "CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o"
 
@@ -907,6 +1042,15 @@ SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/builder/node_bu
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/builder/java_maven_builder.cpp.o
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/builder/java_builder.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/java/project_model.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o
+SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp.o
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp.o
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/build.make
@@ -915,7 +1059,7 @@ SprintIDE.app/Contents/MacOS/SprintIDE: /Users/liutengjun/Qt6.10/6.10.1/macos/li
 SprintIDE.app/Contents/MacOS/SprintIDE: /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/QtGui
 SprintIDE.app/Contents/MacOS/SprintIDE: /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/QtCore
 SprintIDE.app/Contents/MacOS/SprintIDE: CMakeFiles/SprintIDE.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_50) "Linking CXX executable SprintIDE.app/Contents/MacOS/SprintIDE"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_59) "Linking CXX executable SprintIDE.app/Contents/MacOS/SprintIDE"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/SprintIDE.dir/link.txt --verbose=$(VERBOSE)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold "注意: 如需使用JetBrains Mono字体，请从 https://github.com/JetBrains/JetBrainsMono/releases 下载并放置在 resources/ 目录下"
 

@@ -144,6 +144,11 @@ private:
      */
     LSPConfig getConfigForLanguage(const QString &languageId) const;
 
+    // 获取针对 Python 的 LSP 配置（动态检测）
+    LSPConfig getPythonLSPConfig() const;
+    // 备用 Python LSP 配置（pylsp）
+    LSPConfig getFallbackPythonLSPConfig() const;
+
     // 成员变量
     QMap<QString, LSPClient *> m_clients;           ///< 客户端缓存（key → client）
     QMap<QString, LSPConfig> m_configs;             ///< 语言配置（languageId → LSPConfig）

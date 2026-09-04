@@ -26,6 +26,7 @@ public:
      */
     static bool ensureCompileCommands(const QString& projectPath);
 
+    QString getExecutablePath(const BuildTask& task) override;
 private:
     /**
      * @brief 生成编译器命令行参数

@@ -682,6 +682,101 @@ void DebugManager::updateAllEditors()
     // 将在后续实现
 }
 
+bool DebugManager::startJavaDebugging(const DebugConfig& config)
+{
+    if (config.executablePath.isEmpty()) {
+        emit errorOccurred("Java debugging: executable path is empty");
+        return false;
+    }
+
+    // 对于 Java，executablePath 实际上是 mainClass 或 jar 路径
+    // 我们需要构建 java -agentlib:jdwp 命令
+    QString javaCmd = "java";
+#ifdef Q_OS_WIN
+    javaCmd = "java.exe";
+#endif
+
+    // 从环境获取 JAVA_HOME
+    QString javaHome = QProcessEnvironment::systemEnvironment().value("JAVA_HOME");
+    if (!javaHome.isEmpty()) {
+        QString javaPath = PathUtils::joinPaths({javaHome, "bin", "java"});
+#ifdef Q_OS_WIN
+        javaPath += ".exe";
+#endif
+        if (QFile::exists(javaPath)) {
+            javaCmd = javaPath;
+        }
+    }
+
+    QStringList args;
+    // JDWP 参数
+    int debugPort = 5005;
+    args << "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=" + QString::number(debugPort);
+
+    // 添加程序参数
+    if (!config.arguments.isEmpty()) {
+        args << config.arguments;
+    } else {
+        // 默认使用 executablePath 作为主类或 jar
+        if (config.executablePath.endsWith(".jar")) {
+            args << "-jar" << config.executablePath;
+        } else {
+            args << config.executablePath;
+        }
+    }
+
+    qDebug() << "Java debugging command:" << javaCmd << args.join(" ");
+
+    // 启动进程
+    if (d->debuggerProcess) {
+        d->debuggerProcess->deleteLater();
+    }
+    d->debuggerProcess = new QProcess(this);
+
+    if (!config.workingDirectory.isEmpty()) {
+        d->debuggerProcess->setWorkingDirectory(config.workingDirectory);
+    }
+
+    connect(d->debuggerProcess, &QProcess::readyReadStandardOutput,
+            this, &DebugManager::onDebuggerReadyRead);
+    connect(d->debuggerProcess, &QProcess::readyReadStandardError,
+            this, &DebugManager::onDebuggerReadyReadError);
+    connect(d->debuggerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &DebugManager::onDebuggerFinished);
+    connect(d->debuggerProcess, &QProcess::errorOccurred,
+            this, &DebugManager::onDebuggerErrorOccurred);
+
+    d->debuggerProcess->setProgram(javaCmd);
+    d->debuggerProcess->setArguments(args);
+    d->debuggerProcess->start();
+
+    if (!d->debuggerProcess->waitForStarted(5000)) {
+        QString error = QString("Failed to start Java debugger: %1")
+        .arg(d->debuggerProcess->errorString());
+        emit errorOccurred(error);
+        return false;
+    }
+
+    d->isDebugging = true;
+    d->currentState = DebugState::Running;
+    d->currentExecutable = config.executablePath;
+    d->currentArguments = config.arguments;
+    d->workingDirectory = config.workingDirectory;
+    d->debuggerType = "java";
+
+    emit stateChanged(d->currentState);
+    emit debuggingStarted();
+
+    // 输出调试提示
+    QString msg = QString("Java 调试已启动，端口: %1\n"
+                          "请使用 IDE 或 JDB 连接: jdb -attach %2")
+                      .arg(debugPort)
+                      .arg(debugPort);
+    emit programOutput(msg, false);
+
+    return true;
+}
+
 // ==================== 私有方法 ====================
 
 QString DebugManager::findDebugger() const

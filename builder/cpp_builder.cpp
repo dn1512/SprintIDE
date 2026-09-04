@@ -238,4 +238,25 @@ BuildResult CppBuilder::parseOutput(const QString& output, const QString& projec
     return result;
 }
 
+QString CppBuilder::getExecutablePath(const BuildTask& task)
+{
+    QString outDir = PathUtils::absolutePath(task.outputDir, task.projectPath);
+    QString outName = task.outputName;
+
+    if (outName.isEmpty() && !task.sourceFiles.isEmpty()) {
+        outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+    }
+    if (outName.isEmpty()) {
+        outName = "a.out";
+    }
+
+#ifdef Q_OS_WIN
+    if (!outName.endsWith(".exe", Qt::CaseInsensitive)) {
+        outName += ".exe";
+    }
+#endif
+
+    return PathUtils::joinPaths({outDir, outName});
+}
+
 } // namespace SprintIDE

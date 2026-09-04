@@ -6,7 +6,11 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
-#include <config_manager.h>
+
+#include "config_manager.h"
+#include "python/python_project_model.h"
+#include "project_manager.h"
+#include "python/python_dependency_manager.h"
 
 namespace SprintIDE {
 
@@ -25,6 +29,16 @@ QProcessEnvironment PythonBuilder::prepareEnvironment(const BuildTask& task) {
     // 合并任务中的 sdkConfig
     for (auto it = task.sdkConfig.begin(); it != task.sdkConfig.end(); ++it) {
         env.insert(it.key(), it.value().toString());
+    }
+
+    // 若设置了 PYTHON_HOME，则将 ${PYTHON_HOME}/bin 加入 PATH
+    QString pythonHome = env.value("PYTHON_HOME");
+    if (!pythonHome.isEmpty()) {
+        QString binPath = PathUtils::joinPaths({pythonHome, "bin"});
+        if (QFile::exists(binPath)) {
+            QString path = env.value("PATH");
+            env.insert("PATH", binPath + QDir::listSeparator() + path);
+        }
     }
 
     // Python 特定：虚拟环境激活
@@ -55,6 +69,18 @@ bool PythonBuilder::build(const BuildTask& task, BuildResult& result) {
         result.errorMessage = "Source file not found: " + src;
         result.builderName = "PythonBuilder";
         return false;
+    }
+
+    bool installDeps = task.aiCustomPayload.value("installDeps", false).toBool();
+    if (installDeps) {
+        QString interpreter = task.sdkConfig.value("pythonInterpreter").toString();
+        if (interpreter.isEmpty()) {
+            auto model = ProjectManager::instance()->pythonProjectModel();
+            if (model) interpreter = model->interpreterPath();
+        }
+        if (interpreter.isEmpty()) interpreter = "python3";
+        PythonDependencyManager::installDependencies(task.projectPath, interpreter,
+                                                     [&](const QString& output) { result.fullOutput += output + "\n"; });
     }
 
     // 执行语法检查：python -m py_compile
@@ -98,18 +124,61 @@ bool PythonBuilder::clean(const BuildTask& task, BuildResult& result) {
 }
 
 bool PythonBuilder::run(const BuildTask& task, const BuildResult& buildResult, QString& output) {
-    if (buildResult.executablePath.isEmpty() || !QFile::exists(buildResult.executablePath)) {
-        output = "Source file not found.";
+    // 获取解释器
+    QString python = task.sdkConfig.value("pythonInterpreter").toString();
+    if (python.isEmpty()) {
+        // 如果未设置，尝试从模型获取（但模型可能在外部未传递，这里作为备选）
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        if (model) {
+            python = model->interpreterPath();
+        }
+    }
+    if (python.isEmpty()) {
+        python = "python3";
+    }
+
+    // 诊断日志（输出到 output，也会显示在面板）
+    output = QString("使用 Python: %1\n").arg(python);
+
+    // 获取入口
+    QString entry = task.aiCustomPayload.value("entryPath").toString();
+    QString entryType = task.aiCustomPayload.value("entryType").toString();
+    if (entry.isEmpty()) {
+        entry = buildResult.executablePath;
+    }
+    if (entry.isEmpty()) {
+        output += "错误: 未指定入口点";
         return false;
     }
+
+    QStringList args;
+    if (entryType == "module") {
+        args << "-m" << entry;
+    } else {
+        args << entry;
+    }
+    args << task.aiCustomPayload.value("programArgs").toStringList();
+
+    QProcessEnvironment env = prepareEnvironment(task);
+    QVariantMap envMap = task.aiCustomPayload.value("envVars").toMap();
+    for (auto it = envMap.begin(); it != envMap.end(); ++it) {
+        env.insert(it.key(), it.value().toString());
+    }
+
     ProcessManager pm;
-    pm.setEnvironment(prepareEnvironment(task));
-    ProcessManager::ProcessResult pr = pm.executeSync("python",
-                                                      {buildResult.executablePath},
-                                                      task.projectPath,
-                                                      0);
-    output = pr.standardOutput + "\n" + pr.standardError;
+    pm.setEnvironment(env);
+    ProcessManager::ProcessResult pr = pm.executeSync(python, args, task.projectPath, 0);
+    output += pr.standardOutput + "\n" + pr.standardError;
     return pr.success && pr.exitCode == 0;
+}
+
+QString PythonBuilder::getExecutablePath(const BuildTask& task)
+{
+    // Python 是解释型语言，直接返回源文件路径
+    if (!task.sourceFiles.isEmpty()) {
+        return PathUtils::absolutePath(task.sourceFiles.first(), task.projectPath);
+    }
+    return QString();
 }
 
 } // namespace SprintIDE

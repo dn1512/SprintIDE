@@ -28,7 +28,9 @@ enum class LanguageType {
     Xml,
     Markdown,
     PlainText,
-    Generic_AI   // 通用 AI 驱动语言
+    Yaml,
+    Properties,
+    Generic_AI      // 保留   // 通用 AI 驱动语言
 };
 
 /**
@@ -54,6 +56,8 @@ inline QString languageTypeToString(LanguageType type) {
     case LanguageType::Xml:       return "Xml";
     case LanguageType::Markdown:  return "Markdown";
     case LanguageType::PlainText: return "PlainText";
+    case LanguageType::Yaml: return "YAML";
+    case LanguageType::Properties: return "Properties";
     case LanguageType::Generic_AI:return "Generic_AI";
     default: return "Unknown";
     }

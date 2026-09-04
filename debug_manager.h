@@ -135,6 +135,12 @@ public:
     void unregisterEditor(TextEditor* editor);
     void updateAllEditors();
 
+    /**
+     * @brief 启动 Java 调试（简化版，仅启动 JVM 并开启 JDWP）
+     * @param config 调试配置
+     * @return 成功返回 true
+     */
+    bool startJavaDebugging(const DebugConfig& config);
 signals:
     void stateChanged(DebugState state);
     void debuggingStarted();

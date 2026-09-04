@@ -187,6 +187,11 @@ private:
                                 const QRegularExpression& endPattern,
                                 const QTextCharFormat& format);
 
+
+    void highlightYaml(const QString& text);
+
+    void highlightProperties(const QString& text);
+
     // ---- 成员变量 ----
 
     // 当前语言信息

@@ -1,9 +1,0 @@
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/SprintIDE.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/edit_cache.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/rebuild_cache.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/list_install_components.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/install.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/install/local.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/install/strip.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/SprintIDE_autogen_timestamp_deps.dir
-/Users/liutengjun/code/QtCode/SprintIDE/build/Qt_6_10_1_for_macOS-Debug/CMakeFiles/SprintIDE_autogen.dir

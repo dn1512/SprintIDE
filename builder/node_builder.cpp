@@ -154,6 +154,51 @@ bool NodeBuilder::run(const BuildTask& task, const BuildResult& buildResult, QSt
     return false;
 }
 
+QString NodeBuilder::getExecutablePath(const BuildTask& task)
+{
+    QString projectPath = task.projectPath;
+    if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
+        projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
+    }
+
+    // 检查是否有 package.json，从中读取 "main" 字段
+    QString packageJsonPath = PathUtils::joinPaths({projectPath, "package.json"});
+    if (QFile::exists(packageJsonPath)) {
+        QFile file(packageJsonPath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QByteArray data = file.readAll();
+            file.close();
+
+            QJsonDocument doc = QJsonDocument::fromJson(data);
+            if (doc.isObject()) {
+                QJsonObject obj = doc.object();
+                QString mainFile = obj["main"].toString("index.js");
+                QString fullPath = PathUtils::joinPaths({projectPath, mainFile});
+                if (QFile::exists(fullPath)) {
+                    return fullPath;
+                }
+            }
+        }
+    }
+
+    // 查找常见的入口文件
+    QStringList entryFiles = {"index.js", "src/index.js", "main.js", "app.js"};
+    for (const QString& file : entryFiles) {
+        QString fullPath = PathUtils::joinPaths({projectPath, file});
+        if (QFile::exists(fullPath)) {
+            return fullPath;
+        }
+    }
+
+    // 如果没有源文件，返回空
+    if (task.sourceFiles.isEmpty()) {
+        return QString();
+    }
+
+    // 返回第一个源文件
+    return PathUtils::absolutePath(task.sourceFiles.first(), projectPath);
+}
+
 // ==================== 私有辅助 ====================
 QString NodeBuilder::findNpmExecutable() const {
     QString npmCmd = "npm";

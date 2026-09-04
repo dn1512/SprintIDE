@@ -160,6 +160,34 @@ bool RustBuilder::run(const BuildTask& task, const BuildResult& buildResult, QSt
     return pr.success && pr.exitCode == 0;
 }
 
+QString RustBuilder::getExecutablePath(const BuildTask& task)
+{
+    QString projectPath = task.projectPath;
+    if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
+        projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
+    }
+
+    // Cargo 输出在 target/debug/ 或 target/release/
+    QString subDir = task.enableDebug ? "debug" : "release";
+    QString outName = task.outputName;
+
+    if (outName.isEmpty()) {
+        outName = QFileInfo(projectPath).fileName();
+        if (outName.isEmpty() && !task.sourceFiles.isEmpty()) {
+            outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+        }
+    }
+
+#ifdef Q_OS_WIN
+    if (!outName.endsWith(".exe", Qt::CaseInsensitive)) {
+        outName += ".exe";
+    }
+#endif
+
+    QString exePath = PathUtils::joinPaths({projectPath, "target", subDir, outName});
+    return exePath;
+}
+
 QString RustBuilder::findCargoExecutable() const {
     QString cargoCmd = "cargo";
 #ifdef Q_OS_WIN

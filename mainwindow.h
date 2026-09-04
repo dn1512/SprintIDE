@@ -29,6 +29,7 @@
 #include "ai/ai_server.h"
 #include "ai/chat_panel.h"
 #include "history/local_history.h"
+#include "python/python_debugger.h"
 
 class TextEditor;
 
@@ -39,6 +40,7 @@ class CompileManager;
 class FindDialog;
 class ReplaceDialog;
 struct CompileResult;
+class PythonDebugger;
 
 class MainWindow : public QMainWindow
 {
@@ -290,6 +292,9 @@ private:
     void restoreSession();
     void saveExpandedPaths(QJsonArray &paths, const QModelIndex &parent);
     void restoreExpandedPaths(const QJsonArray &paths);
+    bool startDebuggingWithExecutable(const QString& executablePath);
+
+    bool isPythonDebugging() const;
 
 private:
     MainWindowPrivate *d;
@@ -301,6 +306,7 @@ private:
     ReplaceDialog* m_replaceDialog = nullptr;
     QTextCursor m_lastFindCursor;
     bool m_compileForDebug = false;
+    bool m_autoRunAfterCompile = false;
 
     // LSPClient* m_lspClient = nullptr;
     LSPManager *m_lspManager;
@@ -321,6 +327,8 @@ private:
 
     // 用于等待 LSP 就绪的定时器（可选，但建议保留）
     QTimer* m_lspWaitTimer = nullptr;
+
+    PythonDebugger* m_pythonDebugger = nullptr;
 };
 
 } // namespace SprintIDE

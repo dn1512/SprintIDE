@@ -34,6 +34,7 @@ public:
      */
     static bool installSdk(const QString& toolName, const QString& version, const QString& installScript);
 
+    QString getExecutablePath(const BuildTask& task) override;
 private:
     /**
      * @brief 执行通用命令（内部辅助）

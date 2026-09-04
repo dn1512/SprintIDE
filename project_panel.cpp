@@ -1,4 +1,3 @@
-// project_panel.cpp
 #include "project_panel.h"
 
 #include <QFileSystemModel>
@@ -24,12 +23,13 @@
 #include <QHeaderView>
 #include <QSettings>
 
+#include "python/python_test_runner.h"
+#include "project_manager.h"
+#include "python/python_project_model.h"
 
 namespace SprintIDE {
 
-// ==================== 静态辅助函数和常量 ====================
-
-// 默认排除的目录
+// ==================== 静态常量 ====================
 static const QStringList DEFAULT_EXCLUDE_DIRS = {
     ".git", ".svn", ".hg", ".idea", ".vs", "docs",
     "build", "bin", "obj", "Debug", "Release",
@@ -37,102 +37,75 @@ static const QStringList DEFAULT_EXCLUDE_DIRS = {
     ".dSYM"
 };
 
-// 支持的文件扩展名
 static const QStringList SUPPORTED_EXTENSIONS = {
-    // C/C++ 文件
-    "cpp", "c", "cc", "cxx", "c++",
-    "h", "hpp", "hh", "hxx", "h++",
-    // 其他文本文件
+    "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx",
+    "h", "hpp", "hh", "hxx", "h++", "doc", "docx",
     "txt", "md", "json", "xml", "html", "css", "js",
-    // 配置文件
     "ini", "cfg", "conf", "pro", "pri", "yml",
-    // 项目文件
-    "lightcppproj", "cmake", "makefile"
+    "lightcppproj", "cmake", "makefile",
+    "py", "go", "rs", "java", "cs", "php"
 };
 
-// 图标映射
-static const QMap<QString, QString> FILE_ICON_MAP = {
-    // C/C++ 文件
-    {"cpp", ":/icons/icons/file_.svg"},
-    {"c", ":/icons/icons/file_c.svg"},
-    {"h", ":/icons/icons/file_h.svg"},
-    {"hpp", ":/icons/icons/file_hpp.svg"},
-    // 文本文件
-    {"txt", ":/icons/icons/file_text.svg"},
-    {"md", ":/icons/icons/file_markdown.svg"},
-    {"json", ":/icons/icons/file_json.svg"},
-    {"xml", ":/icons/icons/file_xml.svg"},
-    // 配置文件
-    {"ini", ":/icons/icons/file_config.svg"},
-    {"cfg", ":/icons/icons/file_config.svg"},
-    {"conf", ":/icons/icons/file_config.svg"},
-    // 项目文件
-    {"lightcppproj", ":/icons/icons/file_project.svg"},
-    {"cmake", ":/icons/icons/file_cmake.svg"},
-    {"makefile", ":/icons/icons/file_make.svg"},
-    // 默认图标
-    {"default", ":/icons/icons/file_default.svg"},
-    {"directory", ":/icons/icons/folder.svg"},
-    {"directory_open", ":/icons/icons/folder_open.svg"}
-};
+// ==================== ExcludeDirProxyModel 实现 ====================
+ExcludeDirProxyModel::ExcludeDirProxyModel(QObject* parent)
+    : QSortFilterProxyModel(parent) {}
 
-// ==================== 构造函数和析构函数 ====================
+void ExcludeDirProxyModel::setExcludeDirs(const QStringList& dirs)
+{
+    m_excludeDirs = dirs;
+    invalidateFilter();
+}
+
+void ExcludeDirProxyModel::setAllowedExtensions(const QStringList& exts)
+{
+    m_allowedExtensions = exts;
+    invalidateFilter();
+}
+
+bool ExcludeDirProxyModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
+{
+    QModelIndex idx = sourceModel()->index(source_row, 0, source_parent);
+    if (!idx.isValid()) return true;
+
+    auto* fsModel = qobject_cast<QFileSystemModel*>(sourceModel());
+    if (!fsModel) return true;
+
+    QString filePath = fsModel->filePath(idx);
+    QFileInfo info(filePath);
+
+    if (info.isDir()) {
+        QString dirName = info.fileName();
+        if (m_excludeDirs.contains(dirName) || dirName.endsWith(".dSYM"))
+            return false;
+        return true;
+    } else {
+        QString ext = info.suffix().toLower();
+        if (m_allowedExtensions.isEmpty()) return true;
+        return m_allowedExtensions.contains(ext);
+    }
+}
+
+// ==================== ProjectPanel 实现 ====================
 
 ProjectPanel::ProjectPanel(QWidget *parent)
-    : QTreeView(parent)
-    , m_fileWatcher(new QFileSystemWatcher(this))
-    , m_fileModel(new QFileSystemModel(this))
-    , m_contextMenu(new QMenu(this))
+    : QWidget(parent)
+    , m_splitter(new QSplitter(this))
+    , m_fileTreeView(nullptr)
+    , m_fileWatcher(nullptr)
+    , m_fileModel(nullptr)
+    , m_proxyModel(nullptr)
     , m_projectConfig(nullptr)
+    , m_testTreeView(nullptr)
+    , m_testModel(nullptr)
+    , m_contextMenu(nullptr)
 {
-    // 设置模型
-    setModel(m_fileModel);
-
-    // 初始化界面
     setupUI();
-
-    // 初始化信号连接
-    setupConnections();
-
-    // 创建上下文菜单
     createContextMenu();
-
-    // 设置默认排除目录（仅用于记录，实际过滤由文件模型处理）
-    m_excludeDirs = DEFAULT_EXCLUDE_DIRS;
-
-    // ========== 移除文件扩展名过滤器 ==========
-    // 让项目面板显示所有文件（隐藏文件除外，可通过 setFilter 控制）
-    m_fileModel->setNameFilters(QStringList());
-    m_fileModel->setNameFilterDisables(false);
-
-    // 隐藏列（只显示文件名）
-    setHeaderHidden(true);
-    for (int i = 1; i < m_fileModel->columnCount(); ++i) {
-        hideColumn(i);
-    }
-
-    // 设置拖放支持
-    setDragEnabled(true);
-    setAcceptDrops(true);
-    setDropIndicatorShown(true);
-    setDragDropMode(QAbstractItemView::DragDrop);
-
-    // 设置选择模式
-    setSelectionMode(QAbstractItemView::ExtendedSelection);
-
-    // 设置编辑触发方式：只允许 F2 键触发重命名
-    setEditTriggers(QAbstractItemView::EditKeyPressed);
-
-    // 连接文件系统监视器
-    connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged,
-            this, &ProjectPanel::onWatchedDirectoryChanged);
-    connect(m_fileWatcher, &QFileSystemWatcher::fileChanged,
-            this, &ProjectPanel::onWatchedFileChanged);
 }
 
 ProjectPanel::~ProjectPanel()
 {
-    // 不需要手动删除，Qt对象树会自动管理
+    if (m_projectConfig) delete m_projectConfig;
 }
 
 // ==================== 公共方法 ====================
@@ -140,7 +113,7 @@ ProjectPanel::~ProjectPanel()
 bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* config)
 {
     if (projectPath.isEmpty() || !QDir(projectPath).exists()) {
-        qWarning() << "项目路径不存在或为空:" << projectPath;
+        qWarning() << "Project path invalid:" << projectPath;
         return false;
     }
 
@@ -148,54 +121,47 @@ bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* 
 
     m_projectPath = QDir(projectPath).absolutePath();
 
-    // 处理配置（保持不变）...
+    if (config) {
+        if (m_projectConfig) delete m_projectConfig;
+        m_projectConfig = new ProjectConfig(*config);
+    }
 
-    // 设置根路径（触发异步加载）
     QModelIndex rootIndex = m_fileModel->setRootPath(m_projectPath);
     if (!rootIndex.isValid()) {
         qWarning() << "Invalid root index for:" << m_projectPath;
         return false;
     }
 
-    // 使用 directoryLoaded 信号，在目录加载完成后设置视图根索引
     connect(m_fileModel, &QFileSystemModel::directoryLoaded,
             this, [this, rootIndex](const QString& loadedPath) {
                 if (loadedPath == m_projectPath) {
                     QModelIndex proxyRoot = m_proxyModel->mapFromSource(rootIndex);
                     if (proxyRoot.isValid()) {
-                        setRootIndex(proxyRoot);
-                        expand(proxyRoot);
-                        // qDebug() << "Row count after load:" << model()->rowCount(proxyRoot);
-                    } else {
-                        // qWarning() << "proxyRoot invalid after load";
+                        m_fileTreeView->setRootIndex(proxyRoot);
+                        m_fileTreeView->expand(proxyRoot);
                     }
-                    // 断开连接，避免重复触发
                     disconnect(m_fileModel, &QFileSystemModel::directoryLoaded, this, nullptr);
                 }
             });
 
+    refreshTestTree();
+    m_fileWatcher->addPath(m_projectPath);
     return true;
 }
 
 void ProjectPanel::closeProject()
 {
-    // 清除模型数据
     m_fileModel->setRootPath("");
-    setRootIndex(QModelIndex());
+    m_fileTreeView->setRootIndex(QModelIndex());
 
-    // 清理项目配置
     if (m_projectConfig) {
         delete m_projectConfig;
         m_projectConfig = nullptr;
     }
 
-    // 清空项目路径
     m_projectPath.clear();
-
-    // 发射项目关闭信号
+    m_testModel->clear();
     emit projectClosed();
-
-    // qDebug() << "项目已关闭";
 }
 
 QString ProjectPanel::currentProjectPath() const
@@ -216,13 +182,11 @@ void ProjectPanel::setFileFilters(const QStringList& filters)
 
 QString ProjectPanel::selectedFilePath() const
 {
-    QModelIndexList selected = selectedIndexes();
+    QModelIndexList selected = m_fileTreeView->selectionModel()->selectedIndexes();
     if (!selected.isEmpty()) {
-        // 只取第一列
         QModelIndex first = selected.first();
         if (first.column() != 0) {
-            // 找到同一行的第0列
-            QModelIndex idx0 = model()->index(first.row(), 0, first.parent());
+            QModelIndex idx0 = m_fileTreeView->model()->index(first.row(), 0, first.parent());
             if (idx0.isValid()) first = idx0;
         }
         return getFilePath(first);
@@ -233,13 +197,11 @@ QString ProjectPanel::selectedFilePath() const
 QStringList ProjectPanel::selectedFilePaths() const
 {
     QStringList paths;
-    QModelIndexList selected = selectedIndexes();
+    QModelIndexList selected = m_fileTreeView->selectionModel()->selectedIndexes();
     for (const QModelIndex& index : selected) {
         if (index.column() == 0) {
             QString path = getFilePath(index);
-            if (!path.isEmpty()) {
-                paths.append(path);
-            }
+            if (!path.isEmpty()) paths.append(path);
         }
     }
     return paths;
@@ -248,31 +210,27 @@ QStringList ProjectPanel::selectedFilePaths() const
 void ProjectPanel::refresh()
 {
     if (!m_projectPath.isEmpty()) {
-        // 重新设置根路径会触发刷新
         m_fileModel->setRootPath(m_projectPath);
-        // 重新获取代理根索引
         QModelIndex sourceRoot = m_fileModel->index(m_projectPath);
         if (sourceRoot.isValid()) {
             QModelIndex proxyRoot = m_proxyModel->mapFromSource(sourceRoot);
-            setRootIndex(proxyRoot);
+            m_fileTreeView->setRootIndex(proxyRoot);
         }
     }
+    refreshTestTree();
 }
 
 void ProjectPanel::locateFile(const QString& filePath)
 {
-    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) {
-        return;
-    }
+    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
     QModelIndex sourceIndex = m_fileModel->index(filePath);
     if (sourceIndex.isValid()) {
         QModelIndex proxyIndex = m_proxyModel->mapFromSource(sourceIndex);
-        setCurrentIndex(proxyIndex);
-        scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
-        // 展开父目录
+        m_fileTreeView->setCurrentIndex(proxyIndex);
+        m_fileTreeView->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
         QModelIndex parent = proxyIndex.parent();
         while (parent.isValid()) {
-            expand(parent);
+            m_fileTreeView->expand(parent);
             parent = parent.parent();
         }
     }
@@ -280,32 +238,16 @@ void ProjectPanel::locateFile(const QString& filePath)
 
 bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName, bool isDirectory)
 {
-    // qDebug() << "addNewFile: 父目录=" << parentDir << "文件名=" << fileName;
-    if (parentDir.isEmpty() || fileName.isEmpty()) {
-        return false;
-    }
-
-    // 验证文件名
-    if (!validateFileName(fileName)) {
-        QMessageBox::warning(this, "文件名错误",
-                             "文件名包含非法字符或格式不正确。");
-        return false;
-    }
+    if (parentDir.isEmpty() || fileName.isEmpty() || !validateFileName(fileName)) return false;
 
     QString fullPath = QDir(parentDir).absoluteFilePath(fileName);
 
     if (isDirectory) {
-        // 创建目录
-        QDir dir(parentDir);
-        if (!dir.mkdir(fileName)) {
-            QMessageBox::critical(this, "创建失败",
-                                  "无法创建目录: " + fileName);
+        if (!QDir(parentDir).mkdir(fileName)) {
+            QMessageBox::critical(this, "创建失败", "无法创建目录: " + fileName);
             return false;
         }
-
-        // qDebug() << "目录已创建:" << fullPath;
     } else {
-        // 创建文件
         QFile file(fullPath);
         if (!file.open(QIODevice::WriteOnly)) {
             QMessageBox::critical(this, "创建失败",
@@ -313,122 +255,62 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
             return false;
         }
         file.close();
-
-        // qDebug() << "文件已创建:" << fullPath;
     }
 
-    // 刷新父目录
     m_fileModel->setRootPath(parentDir);
-
-    // 定位到新创建的文件/目录
-    QTimer::singleShot(200, [this, fullPath]() {
-        // 先检查文件是否已经出现在模型中
-        QModelIndex index = m_fileModel->index(fullPath);
-        if (!index.isValid()) {
-            // 如果模型还没有加载该文件，延迟重试
-            QTimer::singleShot(200, [this, fullPath]() {
-                QModelIndex idx = m_fileModel->index(fullPath);
-                if (idx.isValid()) {
-                    locateFile(fullPath);
-                    startRename(idx);
-                }
-            });
-            return;
-        }
-        locateFile(fullPath);
-        startRename(index);
-    });
-
-    // 发射文件创建信号
     emit fileCreated(fullPath);
+
+    QTimer::singleShot(200, [this, fullPath]() {
+        QModelIndex idx = m_fileModel->index(fullPath);
+        if (idx.isValid()) {
+            locateFile(fullPath);
+            m_fileTreeView->edit(m_proxyModel->mapFromSource(idx));
+        }
+    });
 
     return true;
 }
 
 bool ProjectPanel::renameFile(const QString& oldPath, const QString& newName)
 {
-    if (oldPath.isEmpty() || newName.isEmpty()) {
-        return false;
-    }
-
-    // 验证新文件名
-    if (!validateFileName(newName)) {
-        QMessageBox::warning(this, "文件名错误",
-                             "新文件名包含非法字符或格式不正确。");
-        return false;
-    }
+    if (oldPath.isEmpty() || newName.isEmpty() || !validateFileName(newName)) return false;
 
     QFileInfo oldInfo(oldPath);
-    QDir parentDir = oldInfo.dir();
-    QString newPath = parentDir.absoluteFilePath(newName);
-
-    // 检查新路径是否已存在
+    QString newPath = oldInfo.dir().absoluteFilePath(newName);
     if (QFileInfo::exists(newPath)) {
-        QMessageBox::warning(this, "重命名失败",
-                             "目标文件已存在: " + newName);
+        QMessageBox::warning(this, "重命名失败", "目标文件已存在: " + newName);
         return false;
     }
 
-    // 执行重命名
     if (!QFile::rename(oldPath, newPath)) {
-        QMessageBox::critical(this, "重命名失败",
-                              "无法重命名文件: " + oldInfo.fileName());
+        QMessageBox::critical(this, "重命名失败", "无法重命名文件");
         return false;
     }
 
-    // 刷新父目录
-    m_fileModel->setRootPath(parentDir.absolutePath());
-
-    // qDebug() << "文件已重命名:" << oldPath << "->" << newPath;
-
-    // 发射文件重命名信号
+    m_fileModel->setRootPath(oldInfo.dir().absolutePath());
     emit fileRenamed(oldPath, newPath);
-
     return true;
 }
 
 bool ProjectPanel::deleteFile(const QString& filePath, bool moveToTrash)
 {
-    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) {
-        return false;
-    }
+    Q_UNUSED(moveToTrash);
+    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return false;
 
     QFileInfo info(filePath);
-    QString displayName = info.fileName();
-
-    // 确认对话框
     QMessageBox::StandardButton reply = QMessageBox::question(
-        this,
-        "确认删除",
-        QString("确定要删除 \"%1\" 吗？").arg(displayName),
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No
-        );
+        this, "确认删除",
+        QString("确定要删除 \"%1\" 吗？").arg(info.fileName()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (reply != QMessageBox::Yes) return false;
 
-    if (reply != QMessageBox::Yes) {
-        return false;
-    }
-
-    bool success = false;
-    if (info.isDir()) {
-        QDir dir(filePath);
-        success = dir.removeRecursively();
-    } else {
-        success = QFile::remove(filePath);
-    }
-
+    bool success = info.isDir() ? QDir(filePath).removeRecursively() : QFile::remove(filePath);
     if (success) {
-        QDir parentDir = info.dir();
-        m_fileModel->setRootPath(parentDir.absolutePath());
-
-        // 重置当前索引，避免指向已删除的项
-        setCurrentIndex(QModelIndex());
-        viewport()->update();
-
-        // qDebug() << "文件已删除:" << filePath;
+        m_fileModel->setRootPath(info.dir().absolutePath());
+        m_fileTreeView->setCurrentIndex(QModelIndex());
         emit fileDeleted(filePath);
     } else {
-        QMessageBox::critical(this, "删除失败", "无法删除: " + displayName);
+        QMessageBox::critical(this, "删除失败", "无法删除: " + info.fileName());
     }
     return success;
 }
@@ -443,373 +325,194 @@ void ProjectPanel::setShowHiddenFiles(bool show)
 
 void ProjectPanel::setExcludeDirs(const QStringList& excludeDirs)
 {
-    if (auto* proxy = qobject_cast<ExcludeDirProxyModel*>(m_proxyModel)) {
-        proxy->setExcludeDirs(excludeDirs);
-    }
+    m_excludeDirs = excludeDirs;
+    if (m_proxyModel) m_proxyModel->setExcludeDirs(excludeDirs);
 }
 
 QIcon ProjectPanel::getFileIcon(const QString& filePath) const
 {
     QFileInfo info(filePath);
-
-    if (info.isDir()) {
-        // 使用目录图标
-        return QIcon(FILE_ICON_MAP.value("directory"));
-    }
-
-    // 获取文件扩展名
+    if (info.isDir()) return QIcon(":/icons/icons/folder.svg");
     QString ext = info.suffix().toLower();
-
-    // 查找对应的图标
-    if (FILE_ICON_MAP.contains(ext)) {
-        return QIcon(FILE_ICON_MAP.value(ext));
-    }
-
-    // 使用默认图标
-    return QIcon(FILE_ICON_MAP.value("default"));
+    static QMap<QString, QString> iconMap = {
+        {"cpp", ":/icons/icons/file_.svg"},
+        {"c", ":/icons/icons/file_c.svg"},
+        {"h", ":/icons/icons/file_h.svg"},
+        {"hpp", ":/icons/icons/file_hpp.svg"},
+        {"txt", ":/icons/icons/file_text.svg"},
+        {"md", ":/icons/icons/file_markdown.svg"},
+        {"json", ":/icons/icons/file_json.svg"},
+        {"xml", ":/icons/icons/file_xml.svg"},
+        {"ini", ":/icons/icons/file_config.svg"},
+        {"lightcppproj", ":/icons/icons/file_project.svg"},
+        {"cmake", ":/icons/icons/file_cmake.svg"},
+        {"py", ":/icons/icons/file_python.svg"},
+        {"java", ":/icons/icons/file_java.svg"},
+        {"go", ":/icons/icons/file_go.svg"},
+        {"rs", ":/icons/icons/file_rust.svg"},
+        {"js", ":/icons/icons/file_js.svg"},
+        {"html", ":/icons/icons/file_html.svg"},
+        {"css", ":/icons/icons/file_css.svg"}
+    };
+    return QIcon(iconMap.value(ext, ":/icons/icons/file_default.svg"));
 }
 
-// ==================== 公共槽函数 ====================
+QString ProjectPanel::getFilePath(const QModelIndex &index) const
+{
+    if (!index.isValid()) return QString();
+    QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
+    return sourceIndex.isValid() ? m_fileModel->filePath(sourceIndex) : QString();
+}
+
+QModelIndex ProjectPanel::findIndexByPath(const QString &path) const
+{
+    if (path.isEmpty()) return QModelIndex();
+    QModelIndex sourceIndex = m_fileModel->index(path);
+    return sourceIndex.isValid() ? m_proxyModel->mapFromSource(sourceIndex) : QModelIndex();
+}
+
+// ==================== 公共槽 ====================
 
 void ProjectPanel::newFile()
 {
     QString parentDir = selectedParentDir();
-    if (parentDir.isEmpty()) {
-        parentDir = m_projectPath;
-    }
-
-    // 获取新文件名
-    QString baseName = getNewFileName(parentDir, "new_file", "cpp");
-
+    if (parentDir.isEmpty()) parentDir = m_projectPath;
     bool ok;
-    QString fileName = QInputDialog::getText(
-        this,
-        "新建文件",
-        "请输入文件名:",
-        QLineEdit::Normal,
-        baseName,
-        &ok
-        );
-
-    if (ok && !fileName.isEmpty()) {
-        addNewFile(parentDir, fileName, false);
-    }
+    QString name = QInputDialog::getText(this, "新建文件", "文件名:", QLineEdit::Normal,
+                                         getNewFileName(parentDir, "new_file", "cpp"), &ok);
+    if (ok && !name.isEmpty()) addNewFile(parentDir, name, false);
 }
 
 void ProjectPanel::newDirectory()
 {
     QString parentDir = selectedParentDir();
-    if (parentDir.isEmpty()) {
-        parentDir = m_projectPath;
-    }
-
-    // 获取新目录名
-    QString baseName = getNewFileName(parentDir, "NewFolder", "");
-
+    if (parentDir.isEmpty()) parentDir = m_projectPath;
     bool ok;
-    QString dirName = QInputDialog::getText(
-        this,
-        "新建目录",
-        "请输入目录名:",
-        QLineEdit::Normal,
-        baseName,
-        &ok
-        );
-
-    if (ok && !dirName.isEmpty()) {
-        addNewFile(parentDir, dirName, true);
-    }
+    QString name = QInputDialog::getText(this, "新建目录", "目录名:", QLineEdit::Normal,
+                                         getNewFileName(parentDir, "NewFolder", ""), &ok);
+    if (ok && !name.isEmpty()) addNewFile(parentDir, name, true);
 }
 
 void ProjectPanel::openSelectedFile()
 {
-    QString filePath = selectedFilePath();
-    if (!filePath.isEmpty() && isFile(currentIndex())) {
-        emit fileOpenRequested(filePath);
-    }
+    QString path = selectedFilePath();
+    if (!path.isEmpty() && isFile(m_fileTreeView->currentIndex()))
+        emit fileOpenRequested(path);
 }
 
 void ProjectPanel::renameSelectedFile()
 {
-    QModelIndex index = currentIndex();
-    if (index.isValid()) {
-        startRename(index);
-    }
+    QModelIndex index = m_fileTreeView->currentIndex();
+    if (index.isValid()) m_fileTreeView->edit(index);
 }
 
 void ProjectPanel::deleteSelectedFile()
 {
     QStringList files = selectedFilePaths();
-    if (files.isEmpty()) {
-        qWarning() << "deleteSelectedFile: 没有选中的文件";
-        return;
-    }
-
-    clearSelection();  // 提前清除选择
-
-    // for (const QString& filePath : files) {
-    //     deleteFile(filePath, true);
-    // } 删除逻辑改成发送删除信号，在Mainwindow中执行deleteFile(filePath, true);
+    if (files.isEmpty()) return;
     emit deleteRequested(files);
 }
 
 void ProjectPanel::copyFilePath()
 {
-    QString filePath = selectedFilePath();
-    if (!filePath.isEmpty()) {
-        QApplication::clipboard()->setText(filePath);
-        // qDebug() << "文件路径已复制到剪贴板:" << filePath;
-    }
+    QString path = selectedFilePath();
+    if (!path.isEmpty()) QApplication::clipboard()->setText(path);
 }
 
 void ProjectPanel::showInFileManager()
 {
-    QString filePath = selectedFilePath();
-    if (!filePath.isEmpty()) {
-        QFileInfo info(filePath);
-        QString pathToOpen = info.isDir() ? filePath : info.absolutePath();
-
-        QUrl url = QUrl::fromLocalFile(pathToOpen);
-        QDesktopServices::openUrl(url);
+    QString path = selectedFilePath();
+    if (!path.isEmpty()) {
+        QFileInfo info(path);
+        QDesktopServices::openUrl(QUrl::fromLocalFile(info.isDir() ? path : info.absolutePath()));
     }
 }
 
 void ProjectPanel::refreshSelected()
 {
-    QModelIndex index = currentIndex();
-    if (index.isValid()) {
-        QString path = getFilePath(index);
-        m_fileModel->setRootPath(path);
-    } else {
-        refresh();
-    }
+    QModelIndex idx = m_fileTreeView->currentIndex();
+    if (idx.isValid()) {
+        QString path = getFilePath(idx);
+        if (!path.isEmpty()) m_fileModel->setRootPath(path);
+    } else refresh();
 }
 
 void ProjectPanel::expandToSelected()
 {
-    QModelIndex index = currentIndex();
-    while (index.isValid()) {
-        expand(index);
-        index = index.parent();
+    QModelIndex idx = m_fileTreeView->currentIndex();
+    while (idx.isValid()) {
+        m_fileTreeView->expand(idx);
+        idx = idx.parent();
     }
 }
 
 void ProjectPanel::showFileHistory()
 {
-    QString filePath = selectedFilePath();
-    if (filePath.isEmpty()) {
-        return;
-    }
-    emit requestFileHistory(filePath);
+    QString path = selectedFilePath();
+    if (!path.isEmpty()) emit requestFileHistory(path);
 }
 
-// ==================== 保护方法 ====================
+// ==================== 事件处理 ====================
 
 void ProjectPanel::contextMenuEvent(QContextMenuEvent *event)
 {
-    QModelIndex index = indexAt(event->pos());
-
+    QPoint pos = m_fileTreeView->mapFromGlobal(event->globalPos());
+    QModelIndex index = m_fileTreeView->indexAt(pos);
     if (index.isValid()) {
-        // 选中右键点击的项
-        setCurrentIndex(index);
-
-        // 更新上下文菜单状态
+        m_fileTreeView->setCurrentIndex(index);
         updateContextMenu();
-
-        // 显示菜单
         m_contextMenu->exec(event->globalPos());
     } else {
-        // 在空白处点击，显示项目级菜单
         QMenu blankMenu(this);
-
-        QAction* newFileAction = blankMenu.addAction("新建文件");
-        QAction* newDirAction = blankMenu.addAction("新建目录");
+        blankMenu.addAction("新建文件", this, &ProjectPanel::newFile);
+        blankMenu.addAction("新建目录", this, &ProjectPanel::newDirectory);
         blankMenu.addSeparator();
-        QAction* refreshAction = blankMenu.addAction("刷新");
-
-        connect(newFileAction, &QAction::triggered, this, &ProjectPanel::newFile);
-        connect(newDirAction, &QAction::triggered, this, &ProjectPanel::newDirectory);
-        connect(refreshAction, &QAction::triggered, this, &ProjectPanel::refresh);
-
+        blankMenu.addAction("刷新", this, &ProjectPanel::refresh);
         blankMenu.exec(event->globalPos());
     }
 }
 
-void ProjectPanel::mouseDoubleClickEvent(QMouseEvent *event)
-{
-    QModelIndex index = indexAt(event->pos());
+// ==================== 文件树信号槽 ====================
 
-    if (index.isValid() && isFile(index)) {
-        emit fileOpenRequested(getFilePath(index));
-    } else {
-        QTreeView::mouseDoubleClickEvent(event);
-    }
-}
-
-void ProjectPanel::dragEnterEvent(QDragEnterEvent *event)
-{
-    if (event->mimeData()->hasUrls()) {
-        event->acceptProposedAction();
-    } else {
-        event->ignore();
-    }
-}
-
-void ProjectPanel::dragMoveEvent(QDragMoveEvent *event)
-{
-    if (event->mimeData()->hasUrls()) {
-        event->acceptProposedAction();
-    } else {
-        event->ignore();
-    }
-}
-
-void ProjectPanel::dragLeaveEvent(QDragLeaveEvent *event)
-{
-    event->accept();
-}
-
-void ProjectPanel::dropEvent(QDropEvent *event)
-{
-    if (event->mimeData()->hasUrls()) {
-        QList<QUrl> urls = event->mimeData()->urls();
-
-        // 获取目标目录
-        QModelIndex targetIndex = indexAt(event->pos());
-        QString targetDir;
-
-        if (targetIndex.isValid() && isDirectory(targetIndex)) {
-            targetDir = getFilePath(targetIndex);
-        } else {
-            targetDir = m_projectPath;
-        }
-
-        // 处理每个拖放的文件
-        for (const QUrl& url : urls) {
-            QString sourcePath = url.toLocalFile();
-            QString fileName = QFileInfo(sourcePath).fileName();
-            QString destPath = QDir(targetDir).absoluteFilePath(fileName);
-
-            // 检查是否在同一目录（重命名）
-            if (sourcePath == destPath) {
-                continue;
-            }
-
-            // 检查目标文件是否存在
-            if (QFileInfo::exists(destPath)) {
-                QMessageBox::StandardButton reply = QMessageBox::question(
-                    this,
-                    "文件已存在",
-                    QString("文件 \"%1\" 已存在，是否替换？").arg(fileName),
-                    QMessageBox::Yes | QMessageBox::No
-                    );
-
-                if (reply == QMessageBox::No) {
-                    continue;
-                }
-            }
-
-            // 执行复制或移动
-            if (event->keyboardModifiers() & Qt::ControlModifier) {
-                // Ctrl键：复制
-                QFile::copy(sourcePath, destPath);
-            } else {
-                // 无修饰键：移动
-                QFile::rename(sourcePath, destPath);
-            }
-        }
-
-        event->acceptProposedAction();
-
-        // 刷新目标目录
-        m_fileModel->setRootPath(targetDir);
-    }
-}
-
-void ProjectPanel::keyPressEvent(QKeyEvent *event)
-{
-    switch (event->key()) {
-    case Qt::Key_Delete:
-        deleteSelectedFile();
-        break;
-
-    case Qt::Key_F2:
-        renameSelectedFile();
-        break;
-
-    case Qt::Key_F5:
-        refreshSelected();
-        break;
-
-    case Qt::Key_Enter:
-    case Qt::Key_Return:
-        if (!event->modifiers()) {
-            openSelectedFile();
-        } else {
-            QTreeView::keyPressEvent(event);
-        }
-        break;
-
-    default:
-        QTreeView::keyPressEvent(event);
-        break;
-    }
-}
-
-// ==================== 私有槽函数 ====================
-
-void ProjectPanel::onSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+void ProjectPanel::onFileTreeSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
     Q_UNUSED(deselected);
     if (!selected.isEmpty()) {
         QModelIndex idx = selected.indexes().first();
         QString path = getFilePath(idx);
-
-        if (!path.isEmpty()) {
-            emit selectionChanged(path);
-        }
+        emit selectionChanged(path);
     } else {
         emit selectionChanged(QString());
     }
 }
 
+void ProjectPanel::onFileTreeDoubleClicked(const QModelIndex &index)
+{
+    if (index.isValid() && isFile(index))
+        emit fileOpenRequested(getFilePath(index));
+}
+
 void ProjectPanel::onDirectoryChanged(const QString &path)
 {
-    Q_UNUSED(path);
-    // 目录改变时自动刷新
-    // 注意：这个信号可能会频繁触发，在实际使用中可能需要节流
-    // refresh();
+    Q_UNUSED(path); // 可选择性刷新
 }
 
 void ProjectPanel::onFileRenamed(const QString &path, const QString &oldName, const QString &newName)
 {
-    Q_UNUSED(path);
-    Q_UNUSED(oldName);
-    Q_UNUSED(newName);
-    // 文件重命名后的处理
-    // 这里可以添加额外的逻辑，如更新编辑器中的文件引用
+    Q_UNUSED(path); Q_UNUSED(oldName); Q_UNUSED(newName);
 }
 
 void ProjectPanel::onWatchedDirectoryChanged(const QString &path)
 {
-    // qDebug() << "监控的目录发生变化:" << path;
-
-    // 只刷新发生变化的目录
-    QModelIndex index = m_fileModel->index(path);
-    if (index.isValid()) {
-        // 重新加载该目录
-        m_fileModel->fetchMore(index);
-
-        // 更新视图
-        viewport()->update();
+    QModelIndex idx = m_fileModel->index(path);
+    if (idx.isValid()) {
+        m_fileModel->fetchMore(idx);
+        m_fileTreeView->viewport()->update();
     }
 }
 
 void ProjectPanel::onWatchedFileChanged(const QString &path)
 {
-    // qDebug() << "监控的文件发生变化:" << path;
-
-    // 文件变化时，更新其父目录
     QFileInfo info(path);
     if (info.exists()) {
         QString parentDir = info.absolutePath();
@@ -817,171 +520,165 @@ void ProjectPanel::onWatchedFileChanged(const QString &path)
     }
 }
 
+// ==================== 测试树信号槽 ====================
+
+void ProjectPanel::onTestTreeDoubleClicked(const QModelIndex &index)
+{
+    if (!index.isValid()) return;
+    QStandardItem* item = m_testModel->itemFromIndex(index);
+    if (!item) return;
+
+    QString fullName = item->data(Qt::UserRole + 2).toString();
+    QString filePath = item->data(Qt::UserRole + 1).toString();
+    if (!fullName.isEmpty() && !filePath.isEmpty()) {
+        emit runTestRequested(filePath, fullName);
+    }
+}
+
 // ==================== 私有方法 ====================
 
 void ProjectPanel::setupUI()
 {
-    // 创建文件系统模型
+    // 创建分割器（垂直方向）
+    m_splitter = new QSplitter(Qt::Vertical, this);
+    m_splitter->setChildrenCollapsible(false);
+    m_splitter->setHandleWidth(4);
+
+    createFileTree();
+    createTestTree();
+
+    // 将两个树添加到分割器
+    m_splitter->addWidget(m_fileTreeView);
+    m_splitter->addWidget(m_testTreeView);
+
+    // 初始大小比例：文件树占 70%，测试树占 30%（但测试树默认隐藏，所以文件树占满）
+    m_splitter->setStretchFactor(0, 7);
+    m_splitter->setStretchFactor(1, 3);
+
+    // 用 QVBoxLayout 包裹分割器，填满整个 ProjectPanel
+    QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(m_splitter);
+}
+
+void ProjectPanel::createFileTree()
+{
+    m_fileTreeView = new QTreeView(this);
+    m_fileTreeView->setIndentation(20);
+    m_fileTreeView->setSortingEnabled(true);
+    m_fileTreeView->setHeaderHidden(true);
+    m_fileTreeView->setAlternatingRowColors(false);
+    m_fileTreeView->setDragEnabled(true);
+    m_fileTreeView->setAcceptDrops(true);
+    m_fileTreeView->setDropIndicatorShown(true);
+    m_fileTreeView->setDragDropMode(QAbstractItemView::DragDrop);
+    m_fileTreeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_fileTreeView->setEditTriggers(QAbstractItemView::EditKeyPressed);
+    // m_fileTreeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+    // 关键：让文件树水平方向尽量扩展
+    m_fileTreeView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     m_fileModel = new QFileSystemModel(this);
     m_fileModel->setReadOnly(false);
-    // 设置过滤器：显示所有条目（文件、目录，不含 . 和 ..）
-    m_fileModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Files | QDir::Dirs);
+    m_fileModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
 
-    // 创建代理模型并设置排除目录
-    auto* proxy = new ExcludeDirProxyModel(this);
-    // qDebug() << "Proxy model filters:" << proxy->filterRegExp().pattern();
-    proxy->setSourceModel(m_fileModel);
-    // 使用默认排除目录列表（含 .dSYM、bin 等）
-    proxy->setExcludeDirs(DEFAULT_EXCLUDE_DIRS);
-    proxy->setAllowedExtensions(SUPPORTED_EXTENSIONS);
-    m_proxyModel = proxy;
+    m_proxyModel = new ExcludeDirProxyModel(this);
+    m_proxyModel->setSourceModel(m_fileModel);
+    m_proxyModel->setExcludeDirs(DEFAULT_EXCLUDE_DIRS);
+    m_proxyModel->setAllowedExtensions(SUPPORTED_EXTENSIONS);
 
-    // 将代理模型设置为视图模型
-    setModel(m_proxyModel);
+    m_fileTreeView->setModel(m_proxyModel);
 
-    // 视图属性设置
-    setAnimated(true);
-    setIndentation(20);
-    setSortingEnabled(true);
-    setHeaderHidden(true);
-    setAlternatingRowColors(false);
-
+    // 隐藏所有列，只保留第一列
     for (int i = 1; i < m_fileModel->columnCount(); ++i) {
-        hideColumn(i);
+        m_fileTreeView->hideColumn(i);
     }
 
-    // ========== 配置水平滚动条和列宽 ==========
-    // 让第一列（文件名）宽度自适应内容
-    header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    // 禁止最后一列拉伸（避免填满视口，从而出现滚动条）
-    header()->setStretchLastSection(false);
-    // 显式设置水平滚动条按需显示（默认就是，但明确一下）
-    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    // 禁止文件名换行（可选）
-    setWordWrap(false);
+    // 让第一列（文件名）填满可用宽度
+    m_fileTreeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_fileTreeView->header()->setStretchLastSection(false);
 
-    // 拖放支持
-    setDragEnabled(true);
-    setAcceptDrops(true);
-    setDropIndicatorShown(true);
-    setDragDropMode(QAbstractItemView::DragDrop);
-    setSelectionMode(QAbstractItemView::ExtendedSelection);
-    setEditTriggers(QAbstractItemView::EditKeyPressed);
+    m_fileTreeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-    // 连接信号
-    connect(selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &ProjectPanel::onSelectionChanged);
-    connect(selectionModel(), &QItemSelectionModel::currentChanged,
-            this, [this](const QModelIndex &current, const QModelIndex &previous) {
-                // qDebug() << "currentChanged: " << getFilePath(current);
-            });
-
-    // 文件系统模型信号
-    connect(m_fileModel, &QFileSystemModel::directoryLoaded,
-            this, &ProjectPanel::onDirectoryChanged);
-    connect(m_fileModel, &QFileSystemModel::fileRenamed,
-            this, &ProjectPanel::onFileRenamed);
-
-    // 文件监视器
     m_fileWatcher = new QFileSystemWatcher(this);
     connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged,
             this, &ProjectPanel::onWatchedDirectoryChanged);
     connect(m_fileWatcher, &QFileSystemWatcher::fileChanged,
             this, &ProjectPanel::onWatchedFileChanged);
+
+    connect(m_fileTreeView->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &ProjectPanel::onFileTreeSelectionChanged);
+    connect(m_fileTreeView, &QTreeView::doubleClicked,
+            this, &ProjectPanel::onFileTreeDoubleClicked);
+
+    m_splitter->addWidget(m_fileTreeView);
 }
 
-void ProjectPanel::setupConnections()
+void ProjectPanel::createTestTree()
 {
-    // 连接已在 setupUI 中完成
+    m_testTreeView = new QTreeView(this);
+    m_testTreeView->setHeaderHidden(true);
+    m_testTreeView->setIndentation(15);
+    m_testTreeView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_testTreeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_testTreeView->setStyleSheet("QTreeView { background-color: #2b2b2b; color: #cccccc; }");
+
+    // 默认隐藏
+    m_testTreeView->setVisible(false);
+
+    m_testModel = new QStandardItemModel(this);
+    m_testTreeView->setModel(m_testModel);
+
+    connect(m_testTreeView, &QTreeView::doubleClicked,
+            this, &ProjectPanel::onTestTreeDoubleClicked);
+
+    m_splitter->addWidget(m_testTreeView);
 }
 
 void ProjectPanel::createContextMenu()
 {
-    // 创建菜单动作
-    m_newFileAction = m_contextMenu->addAction("新建文件");
-    m_newDirAction = m_contextMenu->addAction("新建目录");
+    m_contextMenu = new QMenu(this);
+    m_newFileAction = m_contextMenu->addAction("新建文件", this, &ProjectPanel::newFile);
+    m_newDirAction  = m_contextMenu->addAction("新建目录", this, &ProjectPanel::newDirectory);
     m_contextMenu->addSeparator();
-
-    m_openFileAction = m_contextMenu->addAction("打开");
-    m_renameAction = m_contextMenu->addAction("重命名");
-    m_deleteAction = m_contextMenu->addAction("删除");
+    m_openFileAction = m_contextMenu->addAction("打开", this, &ProjectPanel::openSelectedFile);
+    m_renameAction   = m_contextMenu->addAction("重命名", this, &ProjectPanel::renameSelectedFile);
+    m_deleteAction   = m_contextMenu->addAction("删除", this, &ProjectPanel::deleteSelectedFile);
     m_contextMenu->addSeparator();
-
-    m_copyPathAction = m_contextMenu->addAction("复制路径");
-    m_showInExplorerAction = m_contextMenu->addAction("在文件管理器中显示");
+    m_copyPathAction = m_contextMenu->addAction("复制路径", this, &ProjectPanel::copyFilePath);
+    m_showInExplorerAction = m_contextMenu->addAction("在文件管理器中显示", this, &ProjectPanel::showInFileManager);
     m_contextMenu->addSeparator();
-
-    m_historyAction = m_contextMenu->addAction("查看历史");
-    m_historyAction->setIcon(QIcon(":/icons/icons/history.svg"));  // 如果图标不存在，可忽略
-    connect(m_historyAction, &QAction::triggered, this, &ProjectPanel::showFileHistory);
+    m_historyAction = m_contextMenu->addAction("查看历史", this, &ProjectPanel::showFileHistory);
     m_contextMenu->addSeparator();
-
-    m_refreshAction = m_contextMenu->addAction("刷新");
-    m_expandAction = m_contextMenu->addAction("展开");
-
-    // 连接动作信号
-    connect(m_newFileAction, &QAction::triggered, this, &ProjectPanel::newFile);
-    connect(m_newDirAction, &QAction::triggered, this, &ProjectPanel::newDirectory);
-    connect(m_openFileAction, &QAction::triggered, this, &ProjectPanel::openSelectedFile);
-    connect(m_renameAction, &QAction::triggered, this, &ProjectPanel::renameSelectedFile);
-    connect(m_deleteAction, &QAction::triggered, this, &ProjectPanel::deleteSelectedFile);
-    connect(m_copyPathAction, &QAction::triggered, this, &ProjectPanel::copyFilePath);
-    connect(m_showInExplorerAction, &QAction::triggered, this, &ProjectPanel::showInFileManager);
-    connect(m_refreshAction, &QAction::triggered, this, &ProjectPanel::refreshSelected);
-    connect(m_expandAction, &QAction::triggered, this, &ProjectPanel::expandToSelected);
+    m_refreshAction = m_contextMenu->addAction("刷新", this, &ProjectPanel::refreshSelected);
+    m_expandAction  = m_contextMenu->addAction("展开", this, &ProjectPanel::expandToSelected);
 }
 
 void ProjectPanel::updateContextMenu()
 {
-    QModelIndex index = currentIndex();
-    bool hasSelection = index.isValid();
-    bool isDir = hasSelection && isDirectory(index);
-    bool isFile = hasSelection && !isDir;
+    QModelIndex idx = m_fileTreeView->currentIndex();
+    bool hasSel = idx.isValid();
+    bool isDir = hasSel && isDirectory(idx);
+    bool isFil = hasSel && !isDir;
 
-    // 更新动作状态
-    m_newFileAction->setEnabled(hasSelection && isDir);
-    m_newDirAction->setEnabled(hasSelection && isDir);
-    m_openFileAction->setEnabled(hasSelection && isFile);
-    m_renameAction->setEnabled(hasSelection);
-    m_deleteAction->setEnabled(hasSelection);
-    m_copyPathAction->setEnabled(hasSelection);
-    m_showInExplorerAction->setEnabled(hasSelection);
-    m_refreshAction->setEnabled(hasSelection);
-    m_expandAction->setEnabled(hasSelection && isDir);
-    // 历史菜单只对文件启用
-    m_historyAction->setEnabled(hasSelection && isFile);
-}
-
-QString ProjectPanel::getFilePath(const QModelIndex &index) const
-{
-    if (!index.isValid()) return QString();
-    if (!m_proxyModel) {
-        // 如果没有代理，直接使用文件模型（兼容旧代码）
-        return m_fileModel->filePath(index);
-    }
-    QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
-    if (!sourceIndex.isValid()) {
-        // qDebug() << "mapToSource failed for index:" << index;
-        return QString();
-    }
-    return m_fileModel->filePath(sourceIndex);
-}
-
-QModelIndex ProjectPanel::findIndexByPath(const QString &path) const
-{
-    if (path.isEmpty() || !m_fileModel) return QModelIndex();
-
-    QModelIndex sourceIndex = m_fileModel->index(path);
-    if (!sourceIndex.isValid()) return QModelIndex();
-
-    return m_proxyModel->mapFromSource(sourceIndex);
+    m_newFileAction->setEnabled(hasSel && isDir);
+    m_newDirAction->setEnabled(hasSel && isDir);
+    m_openFileAction->setEnabled(hasSel && isFil);
+    m_renameAction->setEnabled(hasSel);
+    m_deleteAction->setEnabled(hasSel);
+    m_copyPathAction->setEnabled(hasSel);
+    m_showInExplorerAction->setEnabled(hasSel);
+    m_refreshAction->setEnabled(hasSel);
+    m_expandAction->setEnabled(hasSel && isDir);
+    m_historyAction->setEnabled(hasSel && isFil);
 }
 
 bool ProjectPanel::isDirectory(const QModelIndex &index) const
 {
     if (!index.isValid()) return false;
-    QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
-    return m_fileModel->isDir(sourceIndex);
+    QModelIndex src = m_proxyModel->mapToSource(index);
+    return m_fileModel->isDir(src);
 }
 
 bool ProjectPanel::isFile(const QModelIndex &index) const
@@ -991,14 +688,11 @@ bool ProjectPanel::isFile(const QModelIndex &index) const
 
 QString ProjectPanel::selectedParentDir() const
 {
-    QModelIndex index = currentIndex();
-    if (index.isValid()) {
-        QString path = getFilePath(index);  // 使用 getFilePath 已处理转换
-        if (isDirectory(index)) {
-            return path;
-        } else {
-            return QFileInfo(path).absolutePath();
-        }
+    QModelIndex idx = m_fileTreeView->currentIndex();
+    if (idx.isValid()) {
+        QString path = getFilePath(idx);
+        if (isDirectory(idx)) return path;
+        else return QFileInfo(path).absolutePath();
     }
     return m_projectPath;
 }
@@ -1006,70 +700,106 @@ QString ProjectPanel::selectedParentDir() const
 void ProjectPanel::startRename(const QModelIndex &index)
 {
     if (index.isValid()) {
-        scrollTo(index, QAbstractItemView::EnsureVisible);
-        // 直接编辑代理索引
-        edit(index);
+        m_fileTreeView->scrollTo(index, QAbstractItemView::EnsureVisible);
+        m_fileTreeView->edit(index);
     }
 }
 
 bool ProjectPanel::validateFileName(const QString& fileName) const
 {
-    if (fileName.isEmpty() || fileName == "." || fileName == "..") {
-        return false;
-    }
-
-    // 检查非法字符（Windows和Linux兼容）
+    if (fileName.isEmpty() || fileName == "." || fileName == "..") return false;
     static const QString illegalChars = "<>:\"|?*\\/";
-    for (const QChar& ch : illegalChars) {
-        if (fileName.contains(ch)) {
-            return false;
-        }
-    }
-
-    // 检查保留名称（Windows）
-    static const QStringList reservedNames = {
-        "CON", "PRN", "AUX", "NUL",
-        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
-    };
-
-    QString upperName = fileName.toUpper();
-    for (const QString& reserved : reservedNames) {
-        if (upperName == reserved) {
-            return false;
-        }
-    }
-
-    // 检查结尾空格或点
-    if (fileName.endsWith(' ') || fileName.endsWith('.')) {
-        return false;
-    }
-
+    for (const QChar& ch : illegalChars) if (fileName.contains(ch)) return false;
+    static const QStringList reserved = {"CON","PRN","AUX","NUL","COM1","COM2","COM3","COM4","COM5","COM6","COM7","COM8","COM9","LPT1","LPT2","LPT3","LPT4","LPT5","LPT6","LPT7","LPT8","LPT9"};
+    if (reserved.contains(fileName.toUpper())) return false;
+    if (fileName.endsWith(' ') || fileName.endsWith('.')) return false;
     return true;
 }
 
 QString ProjectPanel::getNewFileName(const QString& parentDir, const QString& baseName, const QString& extension) const
 {
     QDir dir(parentDir);
-    QString fullExtension = extension.isEmpty() ? "" : "." + extension;
-
-    // 尝试从 baseName 开始
+    QString ext = extension.isEmpty() ? "" : "." + extension;
     for (int i = 0; i < 100; ++i) {
-        QString fileName;
-        if (i == 0) {
-            fileName = baseName + fullExtension;
-        } else {
-            fileName = QString("%1%2%3").arg(baseName).arg(i).arg(fullExtension);
-        }
+        QString name = (i == 0) ? baseName + ext : QString("%1%2%3").arg(baseName).arg(i).arg(ext);
+        if (!dir.exists(name)) return name;
+    }
+    return QString("%1_%2%3").arg(baseName, QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss"), ext);
+}
 
-        if (!dir.exists(fileName)) {
-            return fileName;
-        }
+// ==================== 测试树相关 ====================
+
+void ProjectPanel::refreshTestTree()
+{
+    m_testModel->clear();
+
+    m_testTreeView->setVisible(false);
+
+    if (!m_projectPath.isEmpty()) {
+        addPythonTestNodes(m_projectPath);
+    }
+}
+
+void ProjectPanel::addPythonTestNodes(const QString& projectPath)
+{
+    auto model = ProjectManager::instance()->pythonProjectModel();
+    if (!model) return;
+
+    QList<PythonTestInfo> tests = PythonTestRunner::discoverTests(projectPath);
+    if (tests.isEmpty()) {
+        m_testTreeView->setVisible(false);
+        return;
     }
 
-    // 如果所有尝试都失败，使用时间戳
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-    return QString("%1_%2%3").arg(baseName).arg(timestamp).arg(fullExtension);
+    // 有测试，显示测试树
+    m_testTreeView->setVisible(true);
+
+    QStandardItem* testRoot = findOrCreateTestRoot();
+    if (!testRoot) return;
+
+    QMap<QString, QList<PythonTestInfo>> fileMap;
+    for (const PythonTestInfo& test : tests) {
+        fileMap[test.filePath].append(test);
+    }
+
+    testRoot->removeRows(0, testRoot->rowCount());
+
+    for (auto it = fileMap.begin(); it != fileMap.end(); ++it) {
+        QString filePath = it.key();
+        QStandardItem* fileItem = new QStandardItem(QFileInfo(filePath).fileName());
+        fileItem->setData(filePath, Qt::UserRole + 1);
+        fileItem->setIcon(QIcon(":/icons/file.svg"));
+        fileItem->setEditable(false);
+
+        for (const PythonTestInfo& test : it.value()) {
+            QStandardItem* methodItem = new QStandardItem(test.methodName);
+            methodItem->setData(filePath, Qt::UserRole + 1);
+            methodItem->setData(test.fullName, Qt::UserRole + 2);
+            methodItem->setIcon(QIcon(":/icons/run.svg"));
+            methodItem->setEditable(false);
+            fileItem->appendRow(methodItem);
+        }
+        testRoot->appendRow(fileItem);
+    }
+
+    QModelIndex rootIndex = m_testModel->indexFromItem(testRoot);
+    if (rootIndex.isValid()) m_testTreeView->expand(rootIndex);
+}
+
+QStandardItem* ProjectPanel::findOrCreateTestRoot()
+{
+    QStandardItem* root = m_testModel->invisibleRootItem();
+    for (int i = 0; i < root->rowCount(); ++i) {
+        QStandardItem* item = root->child(i);
+        if (item && item->text() == "测试 (pytest)") {
+            return item;
+        }
+    }
+    QStandardItem* newRoot = new QStandardItem("测试 (pytest)");
+    newRoot->setIcon(QIcon(":/icons/test.svg"));
+    newRoot->setEditable(false);
+    root->appendRow(newRoot);
+    return newRoot;
 }
 
 } // namespace SprintIDE

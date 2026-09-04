@@ -12,6 +12,10 @@
 #include <QApplication>
 #include <QStandardPaths>
 
+#include "java/project_resolver.h"
+#include "project_manager.h"
+#include "python/python_project_model.h"
+
 namespace SprintIDE {
 
 ProjectManager* ProjectManager::m_instance = nullptr;
@@ -144,6 +148,45 @@ bool ProjectManager::openProject(const QString& projectPath)
     // 更新最近使用的项目列表
     updateRecentProjects(m_currentProjectConfigPath);
 
+    // ========== Python 项目检测 ==========
+    if (QFile::exists(m_currentProjectPath + "/requirements.txt") ||
+        QFile::exists(m_currentProjectPath + "/pyproject.toml") ||
+        QFile::exists(m_currentProjectPath + "/setup.py") ||
+        QDir(m_currentProjectPath).exists(".venv") ||
+        QDir(m_currentProjectPath).exists("venv") ||
+        QDir(m_currentProjectPath).exists("env")) {
+        m_pythonModel = QSharedPointer<PythonProjectModel>::create(m_currentProjectPath);
+        m_pythonModel->load();
+        qDebug() << "[Python] 检测到 Python 项目, 虚拟环境:" << m_pythonModel->venvPath();
+        qDebug() << "[Python] 依赖数:" << m_pythonModel->dependencies().size();
+    }
+
+    if (!m_currentProjectPath.isEmpty()) {
+        // 检测是否存在 pom.xml 或 build.gradle 或 src/main/java 等
+        QDir dir(m_currentProjectPath);
+        bool isJavaProject = dir.exists("pom.xml") || dir.exists("build.gradle") ||
+                             dir.exists("gradlew") || dir.exists("src/main/java");
+        if (isJavaProject) {
+            m_javaModel = ProjectResolver::resolveProject(m_currentProjectPath);
+            if (m_javaModel) {
+                qDebug() << "Java project model resolved:" << m_javaModel->projectName()
+                << "type:" << static_cast<int>(m_javaModel->type());
+            }
+        } else {
+            m_javaModel.reset();
+        }
+    }
+
+    if (QFile::exists(projectPath + "/requirements.txt") ||
+        QFile::exists(projectPath + "/pyproject.toml") ||
+        QFile::exists(projectPath + "/setup.py") ||
+        QDir(projectPath).exists(".venv") ||
+        QDir(projectPath).exists("venv")) {
+        m_pythonModel = QSharedPointer<PythonProjectModel>::create(projectPath);
+        m_pythonModel->load();
+        qDebug() << "Detected Python project, venv:" << m_pythonModel->venvPath();
+    }
+
     emit projectOpened(m_currentProjectName, m_currentProjectPath);
 
     return true;
@@ -154,6 +197,7 @@ bool ProjectManager::closeProject()
     if (!hasOpenProject()) {
         return true; // 没有打开的项目，直接返回成功
     }
+    m_javaModel.reset();
 
     // 清空当前项目信息
     m_currentProjectName.clear();

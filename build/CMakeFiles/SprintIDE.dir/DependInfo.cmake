@@ -35,6 +35,11 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/find_dialog.cpp" "CMakeFiles/SprintIDE.dir/find_dialog.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/find_dialog.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/font_manager.cpp" "CMakeFiles/SprintIDE.dir/font_manager.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/font_manager.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/history/local_history.cpp" "CMakeFiles/SprintIDE.dir/history/local_history.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/history/local_history.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/gradle_project_model.cpp" "CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/java/gradle_project_model.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/maven_project_model.cpp" "CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/java/maven_project_model.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/plain_java_project_model.cpp" "CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/java/plain_java_project_model.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.cpp" "CMakeFiles/SprintIDE.dir/java/project_model.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/java/project_model.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_resolver.cpp" "CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/java/project_resolver.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.cpp" "CMakeFiles/SprintIDE.dir/language/language_detector.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/language/language_detector.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.cpp" "CMakeFiles/SprintIDE.dir/language/language_highlighter.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/language/language_highlighter.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.cpp" "CMakeFiles/SprintIDE.dir/lsp/lsp_client.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/lsp/lsp_client.cpp.o.d"
@@ -49,12 +54,16 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.cpp" "CMakeFiles/SprintIDE.dir/project_panel.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/project_panel.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.cpp" "CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.cpp" "CMakeFiles/SprintIDE.dir/replace_dialog.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/replace_dialog.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/java_launcher.cpp" "CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/run/java_launcher.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_config_manager.cpp" "CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/run/run_config_manager.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/run/run_configuration.cpp" "CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/run/run_configuration.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/settings_dialog.cpp" "CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/syntax_highlighter.cpp" "CMakeFiles/SprintIDE.dir/syntax_highlighter.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/syntax_highlighter.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.cpp" "CMakeFiles/SprintIDE.dir/tab_widget.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/tab_widget.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.cpp" "CMakeFiles/SprintIDE.dir/terminal/terminal_panel.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/terminal/terminal_panel.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/text_editor.cpp" "CMakeFiles/SprintIDE.dir/text_editor.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/text_editor.cpp.o.d"
   "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/theme_manager.cpp" "CMakeFiles/SprintIDE.dir/theme_manager.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/theme_manager.cpp.o.d"
+  "/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/utils/java_utils.cpp" "CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o" "gcc" "CMakeFiles/SprintIDE.dir/utils/java_utils.cpp.o.d"
   )
 
 # Targets to which this target links.

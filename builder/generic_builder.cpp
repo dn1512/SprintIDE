@@ -155,4 +155,32 @@ bool GenericBuilder::installSdk(const QString& toolName, const QString& version,
     return true;
 }
 
+QString GenericBuilder::getExecutablePath(const BuildTask& task)
+{
+    // 从 AI 配置中读取 run.executable
+    QVariantMap config = task.aiCustomPayload;
+    if (config.isEmpty()) {
+        return QString();
+    }
+
+    QVariantMap commands = config["commands"].toMap();
+    QVariantMap runCmd = commands["run"].toMap();
+    QString executable = runCmd["executable"].toString();
+
+    if (executable.isEmpty()) {
+        return QString();
+    }
+
+    // 如果可执行文件是相对路径，基于项目路径解析
+    if (!QFileInfo(executable).isAbsolute()) {
+        QString projectPath = task.projectPath;
+        if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
+            projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
+        }
+        executable = PathUtils::absolutePath(executable, projectPath);
+    }
+
+    return executable;
+}
+
 } // namespace SprintIDE

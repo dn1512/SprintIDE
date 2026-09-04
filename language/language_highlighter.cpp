@@ -473,6 +473,15 @@ void LanguageHighlighter::highlightBlock(const QString& text)
                                m_multiLineCommentFormat);
     }
 
+
+    // 根据语言 ID 调用对应的专门高亮函数
+    if (m_currentLanguage.id == "yaml") {
+        highlightYaml(text);
+        return; // 避免通用规则覆盖
+    } else if (m_currentLanguage.id == "properties") {
+        highlightProperties(text);
+        return;
+    }
     // ============================================================
     // 2. 应用所有高亮规则
     // ============================================================
@@ -512,6 +521,90 @@ void LanguageHighlighter::highlightBlock(const QString& text)
     // 4. 特殊情况：高亮类/类型名
     // ============================================================
     // 同样已在规则中处理
+}
+
+void LanguageHighlighter::highlightYaml(const QString& text)
+{
+    // 1. 注释: # 到行尾
+    QRegularExpression commentRegex("#.*$");
+    QRegularExpressionMatchIterator commentIt = commentRegex.globalMatch(text);
+    while (commentIt.hasNext()) {
+        QRegularExpressionMatch match = commentIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_commentFormat);
+    }
+
+    // 2. 键: 冒号前的内容（包括缩进）
+    // 匹配行首的 key:（忽略前导空格）
+    QRegularExpression keyRegex("^\\s*([a-zA-Z_][a-zA-Z0-9_\\-]*)\\s*:");
+    QRegularExpressionMatch keyMatch = keyRegex.match(text);
+    if (keyMatch.hasMatch()) {
+        setFormat(keyMatch.capturedStart(1), keyMatch.capturedLength(1), m_keywordColor);
+    }
+
+    // 3. 字符串值: 双引号或单引号内的内容
+    QRegularExpression stringRegex("\"([^\"]*)\"|'([^']*)'");
+    QRegularExpressionMatchIterator stringIt = stringRegex.globalMatch(text);
+    while (stringIt.hasNext()) {
+        QRegularExpressionMatch match = stringIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_stringFormat);
+    }
+
+    // 4. 数字: 整数或浮点数
+    QRegularExpression numberRegex("\\b(\\d+(\\.\\d+)?)\\b");
+    QRegularExpressionMatchIterator numIt = numberRegex.globalMatch(text);
+    while (numIt.hasNext()) {
+        QRegularExpressionMatch match = numIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_numberFormat);
+    }
+
+    // 5. 布尔值和 null
+    QRegularExpression boolRegex("\\b(true|false|on|off|yes|no|null|~)\\b");
+    QRegularExpressionMatchIterator boolIt = boolRegex.globalMatch(text);
+    while (boolIt.hasNext()) {
+        QRegularExpressionMatch match = boolIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_constantFormat);
+    }
+}
+
+void LanguageHighlighter::highlightProperties(const QString& text)
+{
+    // 1. 注释: # 到行尾
+    QRegularExpression commentRegex("#.*$");
+    QRegularExpressionMatchIterator commentIt = commentRegex.globalMatch(text);
+    while (commentIt.hasNext()) {
+        QRegularExpressionMatch match = commentIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_commentFormat);
+    }
+
+    // 2. 键: 等号或冒号前的部分（包括点分隔符）
+    // 匹配 key=value 或 key:value
+    QRegularExpression keyRegex("^\\s*([a-zA-Z0-9_\\.]+)\\s*[=:]");
+    QRegularExpressionMatch keyMatch = keyRegex.match(text);
+    if (keyMatch.hasMatch()) {
+        setFormat(keyMatch.capturedStart(1), keyMatch.capturedLength(1), m_keywordColor);
+    }
+
+    // 3. 值: 等号或冒号后的部分
+    QRegularExpression valueRegex("[=:]\\s*(.+)$");
+    QRegularExpressionMatch valueMatch = valueRegex.match(text);
+    if (valueMatch.hasMatch()) {
+        // 检查值是否包含引号
+        QString value = valueMatch.captured(1).trimmed();
+        if (value.startsWith('"') && value.endsWith('"')) {
+            setFormat(valueMatch.capturedStart(1), valueMatch.capturedLength(1), m_stringFormat);
+        } else {
+            // 可以是数字或普通字符串，简单赋予一个颜色
+            setFormat(valueMatch.capturedStart(1), valueMatch.capturedLength(1), m_dataTypeColor);
+        }
+    }
+
+    // 4. 额外的字符串（包含引号）
+    QRegularExpression stringRegex("\"([^\"]*)\"");
+    QRegularExpressionMatchIterator stringIt = stringRegex.globalMatch(text);
+    while (stringIt.hasNext()) {
+        QRegularExpressionMatch match = stringIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_stringFormat);
+    }
 }
 
 } // namespace SprintIDE

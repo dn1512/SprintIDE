@@ -50,6 +50,9 @@
 #include <QListWidgetItem>
 #include <QDialog>
 #include <QtCore/qjsonarray.h>
+#include <QUuid>
+#include "builder/java_maven_builder.h"
+#include "java/maven_project_model.h"
 
 // 最后包含TextEditor和TabWidget的头文件（它们依赖Qt头文件）
 #include "text_editor.h"
@@ -86,6 +89,12 @@
 #include "config_manager.h"
 #include "project_manager.h"
 #include "settings_dialog.h"
+#include "python/python_debugger.h"
+#include "python/python_formatter.h"
+#include "python/python_dependency_manager.h"
+#include "python/python_virtual_env.h"
+#include "python/python_test_runner.h"
+#include "python/python_project_model.h"
 
 
 using namespace SprintIDE;
@@ -153,6 +162,48 @@ static SprintIDE::LanguageType detectLanguageTypeFromPath(const QString& filePat
     }
 
     // 如果未识别，则返回 Unknown（后续可在编译时根据配置决定是否使用 Generic_AI）
+    return SprintIDE::LanguageType::Unknown;
+}
+
+static SprintIDE::LanguageType detectProjectLanguage(const QString& projectPath)
+{
+    if (projectPath.isEmpty()) {
+        return SprintIDE::LanguageType::Unknown;
+    }
+
+    QDir dir(projectPath);
+
+    // Java
+    if (dir.exists("pom.xml") || dir.exists("build.gradle") || dir.exists("gradlew")) {
+        return SprintIDE::LanguageType::Java;
+    }
+
+    // C++ (CMake 或 Makefile)
+    if (dir.exists("CMakeLists.txt") || dir.exists("Makefile") || dir.exists("configure")) {
+        return SprintIDE::LanguageType::Cpp;
+    }
+
+    // Python
+    if (dir.exists("requirements.txt") || dir.exists("setup.py") || dir.exists("pyproject.toml")) {
+        return SprintIDE::LanguageType::Python;
+    }
+
+    // Go
+    if (dir.exists("go.mod")) {
+        return SprintIDE::LanguageType::Go;
+    }
+
+    // Rust
+    if (dir.exists("Cargo.toml")) {
+        return SprintIDE::LanguageType::Rust;
+    }
+
+    // Node.js
+    if (dir.exists("package.json")) {
+        return SprintIDE::LanguageType::JavaScript;  // 或 TypeScript
+    }
+
+    // 无法识别，返回 Unknown
     return SprintIDE::LanguageType::Unknown;
 }
 
@@ -334,6 +385,12 @@ MainWindow::~MainWindow()
     if (m_lspManager) {
         m_lspManager->shutdownAll();
         // 不需要 delete，因为是 Qt 子对象
+    }
+
+    if (m_pythonDebugger) {
+        m_pythonDebugger->stopDebugging();
+        delete m_pythonDebugger;
+        m_pythonDebugger = nullptr;
     }
 
     // 停止所有进程（ProcessManager 是单例，但需要清理）
@@ -540,7 +597,7 @@ void MainWindow::applyThemeToProjectTree(bool isDark)
     if (!d->projectPanel) return;
 
     ThemeManager& tm = ThemeManager::instance();
-    tm.applyThemeToTreeView(d->projectPanel);
+    tm.applyThemeToTreeView(d->projectPanel->getFileTreeView());
 
     if (d->projectDock) {
         QString styleSheet = QString(
@@ -774,6 +831,59 @@ void MainWindow::setupMenuBar()
         }
     });
 
+    // ========== Python 菜单 ==========
+    QMenu* pythonMenu = menuBar->addMenu("Python(&P)");
+
+    QAction* installDepsAction = pythonMenu->addAction("安装依赖");
+    connect(installDepsAction, &QAction::triggered, this, [this]() {
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        if (!model) {
+            QMessageBox::information(this, "提示", "未打开 Python 项目");
+            return;
+        }
+        QString python = model->interpreterPath();
+        if (python.isEmpty()) python = "python3";
+        d->outputPanel->append("正在安装依赖...");
+        PythonDependencyManager::installDependencies(
+            model->projectPath(), python,
+            [this](const QString& out) { d->outputPanel->append(out); }
+            );
+        d->outputPanel->append("依赖安装完成");
+    });
+
+    QAction* createVenvAction = pythonMenu->addAction("创建虚拟环境");
+    connect(createVenvAction, &QAction::triggered, this, [this]() {
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        if (!model) {
+            QMessageBox::information(this, "提示", "未打开 Python 项目");
+            return;
+        }
+        if (PythonVirtualEnv::createVenv(model->projectPath())) {
+            d->outputPanel->append("虚拟环境创建成功");
+            model->load(); // 重新加载
+        } else {
+            d->outputPanel->append("虚拟环境创建失败");
+        }
+    });
+
+    QAction* formatPythonAction = pythonMenu->addAction("格式化代码");
+    connect(formatPythonAction, &QAction::triggered, this, [this]() {
+        TextEditor* editor = currentEditor();
+        if (!editor) return;
+        QString filePath = editor->filePath();
+        if (!filePath.endsWith(".py")) {
+            QMessageBox::information(this, "提示", "当前文件不是 Python 文件");
+            return;
+        }
+        QString error;
+        if (PythonFormatter::formatFile(filePath, error)) {
+            editor->reloadFile();
+            d->outputPanel->append("代码格式化完成");
+        } else {
+            d->outputPanel->append("格式化失败: " + error);
+        }
+    });
+
     // 设置动作（原编译配置）
     editMenu->addSeparator();
 
@@ -808,14 +918,10 @@ void MainWindow::setupMenuBar()
 
     QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译项目(&P)");
     compileProjectAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
-    connect(compileProjectAction, &QAction::triggered, this, [this]() {
-        d->outputPanel->append("编译项目功能开发中...");
-    });
+    connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
     QAction *cleanBuildAction = buildMenu->addAction("清理构建(&O)");
-    connect(cleanBuildAction, &QAction::triggered, this, [this]() {
-        d->outputPanel->append("清理构建功能开发中...");
-    });
+    connect(cleanBuildAction, &QAction::triggered, this, &MainWindow::onCleanBuild);
 
     // QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
     // connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
@@ -1192,6 +1298,59 @@ void MainWindow::setupConnections()
             this, &MainWindow::onTabCloseRequested);
     connect(d->editorTabs, &TabWidget::currentChanged,
             this, &MainWindow::onTabCurrentChanged);
+    connect(d->projectPanel, &ProjectPanel::runTestRequested,
+            this, [this](const QString& filePath, const QString& testFullName) {
+                // 执行测试
+                PythonTestInfo test;
+                test.filePath = filePath;
+                test.fullName = testFullName;
+                // 解析 fullName 获取 className, methodName（可选）
+                // 调用 PythonTestRunner::runTest
+                PythonTestRunner::runTest(d->projectPanel->currentProjectPath(), test,
+                                          [this](const QString& output) {
+                                              d->outputPanel->append(output);
+                                          });
+            });
+    // ========== 连接测试运行请求 ==========
+    connect(d->projectPanel, &ProjectPanel::runTestRequested,
+            this, [this](const QString& filePath, const QString& testFullName) {
+                if (filePath.isEmpty() || testFullName.isEmpty()) {
+                    d->outputPanel->append("测试信息不完整");
+                    return;
+                }
+
+                QString projectPath = d->projectPanel->currentProjectPath();
+                if (projectPath.isEmpty()) {
+                    d->outputPanel->append("未打开项目，无法运行测试");
+                    return;
+                }
+
+                // 构建测试信息
+                PythonTestInfo test;
+                test.filePath = filePath;
+                test.fullName = testFullName;
+
+                // 尝试解析类名和方法名（从 fullName 中提取）
+                // fullName 格式: "test_file.py::TestClass::test_method"
+                QStringList parts = testFullName.split("::");
+                if (parts.size() >= 2) {
+                    test.className = parts[parts.size() - 2];
+                    test.methodName = parts.last();
+                } else {
+                    test.methodName = testFullName;
+                }
+
+                d->outputPanel->append(QString("▶ 运行测试: %1").arg(testFullName));
+
+                // 执行测试（异步，输出实时显示）
+                PythonTestRunner::runTest(projectPath, test,
+                                          [this](const QString& output) {
+                                              // 将输出显示到输出面板
+                                              if (!output.isEmpty()) {
+                                                  d->outputPanel->append(output);
+                                              }
+                                          });
+            });
 }
 
 // ========== 调试面板设置 ==========
@@ -1390,6 +1549,20 @@ void MainWindow::openProject(const QString &path) {
     // 加载项目文件列表（可选）
     loadAllProjectFiles(actualRoot);
 
+    ProjectModel* model = pm->javaProjectModel();
+    if (model) {
+        QString typeStr;
+        switch (model->type()) {
+        case JavaProjectType::Maven: typeStr = "Maven"; break;
+        case JavaProjectType::Gradle: typeStr = "Gradle"; break;
+        default: typeStr = "Plain Java"; break;
+        }
+        d->outputPanel->append(QString("检测到 Java 项目类型: %1").arg(typeStr));
+        d->outputPanel->append(QString("  主类: %1").arg(model->defaultMainClass()));
+        d->outputPanel->append(QString("  依赖数量: %1").arg(model->dependencyJars().size()));
+        d->outputPanel->append(QString("  类路径条目: %1").arg(model->classpath().size()));
+    }
+
     d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
 }
 
@@ -1516,6 +1689,16 @@ void MainWindow::openFile(const QString &path)
         QMessageBox::warning(this, "打开错误",
                              QString("无法打开文件:\n%1").arg(path));
         return;
+    }
+
+    if (m_lspManager && path.endsWith(".py", Qt::CaseInsensitive)) {
+        QString projectRoot = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(path).absolutePath() :
+                                  d->currentProjectPath;
+        LSPClient* client = m_lspManager->getClientForFile(path, projectRoot);
+        if (client && client->isReady()) {
+            client->openDocument(path, editor->toPlainText());
+        }
     }
 
     int index = d->editorTabs->addTab(editor, editor->fileName());
@@ -1842,16 +2025,23 @@ void MainWindow::onEditorTextChanged(TextEditor* editor)
 
 void MainWindow::onBreakpointToggled(const QString& filePath, int line)
 {
-    // qDebug() << "onBreakpointToggled called: file=" << filePath << "line=" << line;
-    if (m_debugManager) {
-        m_debugManager->toggleBreakpoint(filePath, line);
+    if (!m_debugManager) return;
 
-        // 更新当前编辑器的断点显示
-        TextEditor* editor = currentEditor();
-        if (editor && editor->filePath() == filePath) {
-            bool hasBreakpoint = m_debugManager->hasBreakpoint(filePath, line);
-            editor->setBreakpoint(line, hasBreakpoint);
-        }
+    // 切换断点
+    m_debugManager->toggleBreakpoint(filePath, line);
+
+    // 更新当前编辑器的断点显示
+    TextEditor* editor = currentEditor();
+    if (editor && editor->filePath() == filePath) {
+        bool hasBreakpoint = m_debugManager->hasBreakpoint(filePath, line);
+        editor->setBreakpoint(line, hasBreakpoint);
+    }
+
+    // ========== Python 调试断点同步 ==========
+    if (m_pythonDebugger && m_isDebugging) {
+        QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
+        m_pythonDebugger->setBreakpoints(breakpoints);
+        qDebug() << "[Python Debug] 断点已同步，共" << breakpoints.size() << "个";
     }
 }
 
@@ -2007,16 +2197,28 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         }
 
         m_statusLabel->setText("编译成功");
-        // askRunProgram(result.executablePath);
+
+        // ========== 编译后自动运行（新增） ==========
+        if (m_autoRunAfterCompile) {
+            m_autoRunAfterCompile = false;
+            if (!result.executablePath.isEmpty()) {
+                d->outputPanel->append("编译成功，正在运行...");
+                runProgram(result.executablePath, false);
+            } else {
+                d->outputPanel->append("编译成功，但未找到可执行文件，无法自动运行。");
+            }
+        }
+
+        // ========== 编译后自动启动调试（原有） ==========
         if (m_compileForDebug) {
             m_compileForDebug = false;
-            d->outputPanel->append("编译成功，正在启动调试...");
-
-            // 同步断点到调试器
-            syncBreakpointsToDebugger();
-
-            // 启动调试
-            startDebugging();
+            if (!result.executablePath.isEmpty()) {
+                d->outputPanel->append("编译成功，正在启动调试...");
+                syncBreakpointsToDebugger();
+                startDebuggingWithExecutable(result.executablePath);  // 使用新方法
+            } else {
+                d->outputPanel->append("编译成功，但未找到可执行文件，无法启动调试。");
+            }
         }
 
     } else {
@@ -2049,13 +2251,19 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                                            .arg(result.errors.size() - 5));
             }
         }
+
+        // 失败时清除自动运行/调试标志
         if (m_compileForDebug) {
             m_compileForDebug = false;
             d->outputPanel->append("编译失败，无法启动调试。请修复错误后重试。");
         }
+        if (m_autoRunAfterCompile) {
+            m_autoRunAfterCompile = false;
+            d->outputPanel->append("编译失败，无法自动运行。");
+        }
     }
 
-    // ========== 显示错误/警告标记 ==========
+    // ========== 显示错误/警告标记（原有逻辑，保持不变） ==========
     if (!result.success) {
         // 清除所有编辑器的旧标记
         for (int i = 0; i < d->editorTabs->count(); ++i) {
@@ -2070,9 +2278,8 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         QMap<QString, QList<SprintIDE::ErrorMarker>> fileWarnings;
 
         for (const QString& errorLine : result.errors) {
-            ErrorMarker marker = parseErrorLine(errorLine);
+            SprintIDE::ErrorMarker marker = parseErrorLine(errorLine);
             if (marker.line > 0) {
-                // 查找对应的编辑器
                 for (int i = 0; i < d->editorTabs->count(); ++i) {
                     TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
                     if (!editor) continue;
@@ -2086,7 +2293,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         }
 
         for (const QString& warningLine : result.warnings) {
-            ErrorMarker marker = parseErrorLine(warningLine);
+            SprintIDE::ErrorMarker marker = parseErrorLine(warningLine);
             if (marker.line > 0) {
                 for (int i = 0; i < d->editorTabs->count(); ++i) {
                     TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
@@ -2119,8 +2326,14 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         }
     }
 
+    if (result.errors.isEmpty() && !result.success) {
+        d->outputPanel->append("=== 编译输出（完整） ===");
+        d->outputPanel->append(result.output);
+        d->outputPanel->append("=== 编译输出结束 ===");
+    }
+
+    // ========== 清理工作 ==========
     m_currentCompileTaskId.clear();
-    // 隐藏进度条
     m_buildProgressBar->setVisible(false);
     m_buildProgressBar->setValue(0);
 }
@@ -2317,83 +2530,323 @@ void MainWindow::onStartDebug()
         return;
     }
 
-    // 检查是否在编译中
+    QString sourceFile = editor->filePath();
+    if (sourceFile.isEmpty()) {
+        QMessageBox::warning(this, "错误", "请先保存文件。");
+        return;
+    }
+
+    if (editor->isModified() && !editor->saveFile()) {
+        QMessageBox::warning(this, "保存错误", "无法保存文件，调试中止。");
+        return;
+    }
+
     if (m_isCompiling) {
         QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再调试。");
         return;
     }
 
-    // 检查是否已经在调试中
     if (m_isDebugging) {
         QMessageBox::information(this, "提示", "当前正在调试中，请先停止调试。");
         return;
     }
 
-    QString sourceFile = editor->filePath();
-    if (sourceFile.isEmpty()) {
-        QMessageBox::warning(this, "错误", "请先保存文件再开始调试。");
+    LanguageType lang = detectLanguageTypeFromPath(sourceFile);
+
+    // ========== Python 调试 ==========
+    if (lang == LanguageType::Python || sourceFile.endsWith(".py")) {
+        // 如果已有调试器实例，先停止并删除
+        if (m_pythonDebugger) {
+            m_pythonDebugger->stopDebugging();
+            delete m_pythonDebugger;
+            m_pythonDebugger = nullptr;
+        }
+
+        // ---- 获取解释器（与 onRun 逻辑一致） ----
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        QString projectPath = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(sourceFile).absolutePath() :
+                                  d->currentProjectPath;
+        QString python;
+
+        // 1. 优先使用虚拟环境中的解释器
+        if (model && !model->interpreterPath().isEmpty()) {
+            python = model->interpreterPath();
+        }
+
+        // 2. 如果模型未提供，从 SDK 环境变量 PYTHON_HOME 读取
+        if (python.isEmpty() || python == "python3") {
+            ConfigManager* cfg = Application::instance().configManager();
+            if (cfg) {
+                QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+                if (sdkEnv.contains("PYTHON_HOME")) {
+                    QString pyHome = sdkEnv["PYTHON_HOME"].toString();
+                    if (!pyHome.isEmpty()) {
+#ifdef Q_OS_WIN
+                        QString pyExe = pyHome + "/python.exe";
+#else
+                        QString pyExe = pyHome;
+#endif
+                        if (QFile::exists(pyExe)) {
+                            python = pyExe;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. 最终 fallback
+        if (python.isEmpty()) {
+            python = "python3";
+        }
+
+        // 构建调试配置
+        DebugConfig config;
+        config.executablePath = sourceFile;
+        config.debuggerPath = python;
+        config.workingDirectory = projectPath;
+        config.stopOnEntry = true;
+
+        // 创建持久化调试器
+        m_pythonDebugger = new PythonDebugger(this);
+
+        // 连接信号
+        connect(m_pythonDebugger, &PythonDebugger::stopped,
+                this, [this](const QString& file, int line, const QString& reason) {
+                    d->outputPanel->append(QString("调试暂停: %1:%2 (%3)")
+                                               .arg(file).arg(line).arg(reason));
+                    TextEditor* ed = currentEditor();
+                    if (ed) {
+                        ed->setCurrentDebugLine(line);
+                    }
+                    m_isDebugging = true;
+                    updateDebugActions();
+                });
+
+        connect(m_pythonDebugger, &PythonDebugger::continued,
+                this, [this]() {
+                    d->outputPanel->append("继续执行");
+                    TextEditor* ed = currentEditor();
+                    if (ed) {
+                        ed->clearCurrentDebugLine();
+                    }
+                });
+
+        connect(m_pythonDebugger, &PythonDebugger::exited,
+                this, [this](int code) {
+                    d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
+                    m_isDebugging = false;
+                    updateDebugActions();
+                    TextEditor* ed = currentEditor();
+                    if (ed) {
+                        ed->clearCurrentDebugLine();
+                    }
+                    // 清除调试面板状态
+                    if (m_debugPanel) {
+                        m_debugPanel->setDebuggingState(false);
+                        m_debugPanel->updateVariables(QList<DebugVariable>());
+                        m_debugPanel->updateCallStack(QList<StackFrame>());
+                    }
+                    // 清理调试器
+                    if (m_pythonDebugger) {
+                        m_pythonDebugger->stopDebugging();
+                        delete m_pythonDebugger;
+                        m_pythonDebugger = nullptr;
+                    }
+                });
+
+        connect(m_pythonDebugger, &PythonDebugger::outputReceived,
+                this, [this](const QString& out, bool err) {
+                    if (err) {
+                        d->outputPanel->append("<span style='color:#FF6B6B;'>" + out.toHtmlEscaped() + "</span>");
+                    } else {
+                        d->outputPanel->append(out);
+                    }
+                });
+
+        connect(m_pythonDebugger, &PythonDebugger::errorOccurred,
+                this, [this](const QString& error) {
+                    d->outputPanel->append("调试错误: " + error);
+                    m_isDebugging = false;
+                    updateDebugActions();
+                    if (m_debugPanel) {
+                        m_debugPanel->setDebuggingState(false);
+                        m_debugPanel->updateVariables(QList<DebugVariable>());
+                        m_debugPanel->updateCallStack(QList<StackFrame>());
+                    }
+                    TextEditor* ed = currentEditor();
+                    if (ed) {
+                        ed->clearCurrentDebugLine();
+                    }
+                    if (m_pythonDebugger) {
+                        m_pythonDebugger->stopDebugging();
+                        delete m_pythonDebugger;
+                        m_pythonDebugger = nullptr;
+                    }
+                });
+
+        // 变量和调用栈更新
+        connect(m_pythonDebugger, &PythonDebugger::variablesUpdated,
+                this, [this](const QList<DebugVariable>& vars) {
+                    if (m_debugPanel) {
+                        m_debugPanel->updateVariables(vars);
+                    }
+                });
+        connect(m_pythonDebugger, &PythonDebugger::stackUpdated,
+                this, [this](const QList<StackFrame>& frames) {
+                    if (m_debugPanel) {
+                        m_debugPanel->updateCallStack(frames);
+                    }
+                });
+
+        // 启动调试
+        if (m_pythonDebugger->startDebugging(config)) {
+            d->outputPanel->append("Python 调试已启动");
+            m_isDebugging = true;
+
+            // 切换到调试面板
+            switchToDebugTab();
+
+            // 更新调试动作状态
+            updateDebugActions();
+
+            // 从 DebugManager 获取断点并同步
+            QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
+            if (!breakpoints.isEmpty()) {
+                m_pythonDebugger->setBreakpoints(breakpoints);
+                d->outputPanel->append(QString("已同步 %1 个断点到调试器").arg(breakpoints.size()));
+            }
+
+            // 初始化调试面板
+            if (m_debugPanel) {
+                m_debugPanel->setDebuggingState(true);
+                m_debugPanel->updateVariables(QList<DebugVariable>());
+                m_debugPanel->updateCallStack(QList<StackFrame>());
+            }
+        } else {
+            d->outputPanel->append("Python 调试启动失败");
+            delete m_pythonDebugger;
+            m_pythonDebugger = nullptr;
+        }
         return;
     }
 
-    // 确保文件已保存
-    if (editor->isModified()) {
-        d->outputPanel->append("文件已修改，正在保存...");
-        if (!editor->saveFile()) {
-            QMessageBox::warning(this, "错误", "无法保存文件，调试中止。");
-            return;
+    // ========== C++ / Java / 其他调试（原有逻辑） ==========
+    BuildTask task;
+    task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    task.language = detectLanguageTypeFromPath(sourceFile);
+    task.projectPath = d->currentProjectPath.isEmpty() ?
+                           QFileInfo(sourceFile).absolutePath() :
+                           d->currentProjectPath;
+    task.sourceFiles << sourceFile;
+    task.outputName = QFileInfo(sourceFile).completeBaseName();
+    task.outputDir = "bin";
+    task.enableDebug = true;
+    task.debugPort = 5005;
+    task.suspendOnStart = true;
+
+    if (!d->currentProjectPath.isEmpty()) {
+        ProjectConfig projConfig;
+        QString configFile = d->currentProjectPath + "/.lightcppproj";
+        QStringList errors;
+        if (projConfig.loadFromFile(configFile, errors)) {
+            task.sdkConfig = projConfig.sdkEnvironment();
         }
-        // 更新源文件路径（保存后可能变化）
-        sourceFile = editor->filePath();
     }
 
-    // 查找可执行文件
-    QString executablePath = findExecutableForSource(sourceFile);
-
-    // ========== 核心修改：检查是否需要重新编译 ==========
-    if (needsRecompile(sourceFile, executablePath)) {
-        d->outputPanel->append("检测到代码已修改或可执行文件不存在，正在重新编译...");
-        m_compileForDebug = true;
-
-        // 清除旧的断点（避免行号不匹配）
-        // 但用户可能希望保留断点，这里保留断点，编译后同步
-        // 编译
-        onCompile();
-        // 编译完成后会通过编译完成信号触发调试
-        // 但我们不能在这里等待，需要异步处理
-        // 使用 QTimer 或信号槽
-        return;  // 返回，等待编译完成信号
+    if (task.language == LanguageType::Java) {
+        ProjectManager* pm = ProjectManager::instance();
+        ProjectModel* model = pm->javaProjectModel();
+        if (model) {
+            task.classpath = model->classpath();
+            task.dependencyJars = model->dependencyJars();
+            task.aiCustomPayload["mainClass"] = model->defaultMainClass();
+            task.aiCustomPayload["isFatJar"] = model->isFatJar();
+            task.aiCustomPayload["fatJarPath"] = model->fatJarPath();
+            task.outputDir = model->outputDirectory();
+            task.projectPath = model->projectPath();
+        }
     }
 
-    // 同步断点并启动调试
-    syncBreakpointsToDebugger();
-    // 可执行文件存在且是最新的，直接启动调试
-    startDebugging();
+    IBuilder* builder = BuilderFactory::createBuilder(task.language);
+    QString executablePath;
+    if (builder) {
+        executablePath = builder->getExecutablePath(task);
+    }
+
+    if (executablePath.isEmpty() || !QFile::exists(executablePath) ||
+        QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
+        int reply = QMessageBox::question(this, "编译并调试",
+                                          "文件尚未编译或已过期，是否现在编译并调试?",
+                                          QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            m_compileForDebug = true;
+            onCompile();
+        }
+        return;
+    }
+
+    BuildResult dummyResult;
+    dummyResult.executablePath = executablePath;
+    QString output;
+    if (m_compileManager->runTask(task, dummyResult, output)) {
+        d->outputPanel->append("调试已启动，等待连接...");
+        m_isDebugging = true;
+        updateDebugActions();
+    } else {
+        d->outputPanel->append("启动调试失败: " + output);
+    }
 }
 
 void MainWindow::onStopDebug()
 {
-    if (m_isDebugging) {
+    if (isPythonDebugging()) {
+        m_pythonDebugger->stopDebugging();
+        m_isDebugging = false;
+        updateDebugActions();
+        if (m_debugPanel) {
+            m_debugPanel->setDebuggingState(false);
+            m_debugPanel->updateVariables(QList<DebugVariable>());
+            m_debugPanel->updateCallStack(QList<StackFrame>());
+        }
+        TextEditor* editor = currentEditor();
+        if (editor) editor->clearCurrentDebugLine();
+        return;
+    }
+    if (m_debugManager && m_isDebugging) {
         m_debugManager->stopDebugging();
     }
 }
 
 void MainWindow::onStepOver()
 {
-    if (m_isDebugging) {
+    if (isPythonDebugging()) {
+        m_pythonDebugger->stepOver();
+        return;
+    }
+    if (m_debugManager && m_isDebugging) {
         m_debugManager->stepOver();
     }
 }
 
 void MainWindow::onStepInto()
 {
-    if (m_isDebugging) {
+    if (isPythonDebugging()) {
+        m_pythonDebugger->stepInto();
+        return;
+    }
+    if (m_debugManager && m_isDebugging) {
         m_debugManager->stepInto();
     }
 }
 
 void MainWindow::onStepOut()
 {
-    if (m_isDebugging) {
+    if (isPythonDebugging()) {
+        m_pythonDebugger->stepOut();
+        return;
+    }
+    if (m_debugManager && m_isDebugging) {
         m_debugManager->stepOut();
     }
 }
@@ -2434,7 +2887,11 @@ void MainWindow::clearOutputPanel()
 
 void MainWindow::onContinueDebug()
 {
-    if (m_isDebugging) {
+    if (isPythonDebugging()) {
+        m_pythonDebugger->continueExecution();
+        return;
+    }
+    if (m_debugManager && m_isDebugging) {
         m_debugManager->continueExecution();
     }
 }
@@ -3119,7 +3576,50 @@ void MainWindow::restoreExpandedPaths(const QJsonArray &paths)
     }
 }
 
+bool MainWindow::startDebuggingWithExecutable(const QString& executablePath)
+{
+    if (executablePath.isEmpty()) {
+        d->outputPanel->append("可执行文件路径为空");
+        return false;
+    }
 
+    if (!QFile::exists(executablePath)) {
+        d->outputPanel->append(QString("可执行文件不存在: %1").arg(executablePath));
+        return false;
+    }
+
+    QFileInfo exeInfo(executablePath);
+    if (!exeInfo.isExecutable()) {
+        d->outputPanel->append(QString("文件不可执行: %1").arg(executablePath));
+        return false;
+    }
+
+    // 同步断点
+    syncBreakpointsToDebugger();
+
+    // 构建调试配置
+    DebugConfig config;
+    config.executablePath = executablePath;
+    config.workingDirectory = exeInfo.absolutePath();
+    config.stopOnEntry = true;
+
+    // 启动调试
+    bool success = m_debugManager->startDebugging(config);
+    if (success) {
+        m_isDebugging = true;
+        d->outputPanel->append(QString("调试已启动: %1").arg(executablePath));
+        updateDebugActions();
+    } else {
+        d->outputPanel->append("启动调试失败");
+    }
+
+    return success;
+}
+
+bool MainWindow::isPythonDebugging() const
+{
+    return m_pythonDebugger != nullptr && m_isDebugging;
+}
 
 // mainwindow.cpp - 实现
 QString MainWindow::resolveDebuggerPath(const QString& filePath)
@@ -3546,6 +4046,29 @@ void MainWindow::onFormatCode()
         return;
     }
 
+    QString filePath = editor->filePath();
+    if (filePath.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先保存文件。");
+        return;
+    }
+
+    // ========== Python 格式化 ==========
+    if (filePath.endsWith(".py", Qt::CaseInsensitive)) {
+        QString error;
+        if (PythonFormatter::isAvailable()) {
+            if (PythonFormatter::formatFile(filePath, error)) {
+                editor->reloadFile();
+                d->outputPanel->append("Python 代码格式化完成。");
+            } else {
+                d->outputPanel->append("Python 格式化失败: " + error);
+            }
+        } else {
+            QMessageBox::warning(this, "提示",
+                                 "未找到 Black 格式化工具。\n请安装: pip install black");
+        }
+        return;
+    }
+
     QString tempFileName = tempFile.fileName();
     QTextStream out(&tempFile);
     out << sourceCode;
@@ -3732,39 +4255,127 @@ void MainWindow::onCloseProject()
 
 void MainWindow::onBuildProject()
 {
-    // 检查项目面板是否已初始化
-    if (!d->projectPanel) {
-        d->outputPanel->append("项目面板未初始化");
+    // ============================================================
+    // 第一步：智能获取项目路径
+    // ============================================================
+    QString projectPath = d->currentProjectPath;
+
+    // 如果当前没有通过 "打开项目" 设置路径，尝试从当前编辑器中推导
+    if (projectPath.isEmpty()) {
+        TextEditor* editor = currentEditor();
+        if (editor) {
+            QString filePath = editor->filePath();
+            if (!filePath.isEmpty()) {
+                QDir dir = QFileInfo(filePath).absoluteDir();
+                // 向上查找常见的项目标识文件（pom.xml, build.gradle, gradlew, .git, CMakeLists.txt）
+                while (!dir.isRoot()) {
+                    if (dir.exists("pom.xml") || dir.exists("build.gradle") ||
+                        dir.exists("gradlew") || dir.exists(".git") ||
+                        dir.exists("CMakeLists.txt") || dir.exists("Makefile")) {
+                        projectPath = dir.absolutePath();
+                        break;
+                    }
+                    dir.cdUp();
+                }
+                // 如果没找到任何标识，就使用文件所在目录（降级方案）
+                if (projectPath.isEmpty()) {
+                    projectPath = QFileInfo(filePath).absolutePath();
+                }
+                // 临时设置，以便后续流程使用
+                d->currentProjectPath = projectPath;
+            }
+        }
+    }
+
+    // 如果经过以上步骤仍为空，给出明确提示并退出
+    if (projectPath.isEmpty()) {
+        QMessageBox::information(this, "提示",
+                                 "无法确定项目路径。请先打开一个文件，或通过 \"文件 → 打开项目\" 打开项目根目录。");
         return;
     }
 
-    // 检查是否有打开的项目
-    if (d->currentProjectPath.isEmpty()) {
-        QMessageBox::information(this, "提示", "请先打开一个项目。");
+    // ============================================================
+    // 第二步：检测项目语言
+    // ============================================================
+    LanguageType lang = detectProjectLanguage(projectPath);
+    if (lang == LanguageType::Unknown) {
+        QMessageBox::warning(this, "无法识别项目类型",
+                             "未能识别项目语言。请确保项目根目录包含对应的构建文件（如 pom.xml, CMakeLists.txt 等）。");
         return;
     }
 
-    // 加载项目配置
+    // ============================================================
+    // 第三步：加载项目配置与构建任务
+    // ============================================================
     ProjectConfig projectConfig;
-    QString configFile = d->currentProjectPath + "/.lightcppproj";
+    QString configFile = projectPath + "/.lightcppproj";
     QStringList errors;
     if (!projectConfig.loadFromFile(configFile, errors)) {
-        QString errorMessage = QString("无法加载项目配置文件:\n%1\n\n错误详情:\n%2")
-                                   .arg(configFile)
-                                   .arg(errors.join("\n"));
-        QMessageBox::warning(this, "项目错误", errorMessage);
-        return;
+        qWarning() << "Failed to load project config:" << errors.join(", ");
     }
 
-    // 4. 启动编译
-    QString taskId = m_compileManager->compileProject(projectConfig);
+    BuildTask task;
+    task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    task.language = lang;
+    task.projectPath = projectPath;
+    task.outputName = projectConfig.projectName().isEmpty() ?
+                          QFileInfo(projectPath).fileName() :
+                          projectConfig.projectName();
+    task.outputDir = projectConfig.outputPath().isEmpty() ? "bin" : projectConfig.outputPath();
+    task.enableDebug = projectConfig.enableDebugInfo();
+    task.sdkConfig = projectConfig.sdkEnvironment();
 
+    // ============================================================
+    // 第四步：Java 项目特殊处理（强制刷新类路径和 Spring Boot 标志）
+    // ============================================================
+    if (lang == LanguageType::Java) {
+        // 检查是否存在 pom.xml
+        QDir dir(projectPath);
+        if (dir.exists("pom.xml")) {
+            // 利用已有的 isSpringBootProject 静态方法检测 Spring Boot
+            bool isSpringBoot = JavaMavenBuilder::isSpringBootProject(projectPath);
+            task.isSpringBoot = isSpringBoot;
+            qDebug() << "Java project detected, Spring Boot:" << isSpringBoot;
+
+            // 主动解析项目模型，获取类路径（这样即使 ProjectManager 未初始化也能工作）
+            MavenProjectModel model(projectPath);
+            if (!model.dependencyJars().isEmpty()) {
+                task.classpath = model.classpath();
+                task.dependencyJars = model.dependencyJars();
+                task.aiCustomPayload["mainClass"] = model.defaultMainClass();
+                qDebug() << "Resolved classpath entries:" << task.classpath.size();
+            } else {
+                qWarning() << "Failed to resolve dependencies for Maven project";
+            }
+        } else {
+            // 尝试通过 ProjectManager 获取模型（兜底）
+            ProjectManager* pm = ProjectManager::instance();
+            ProjectModel* model = pm->javaProjectModel();
+            if (model) {
+                task.classpath = model->classpath();
+                task.dependencyJars = model->dependencyJars();
+                task.aiCustomPayload["mainClass"] = model->defaultMainClass();
+            }
+        }
+    }
+
+    // 如果是 Generic_AI，加载通用配置
+    if (lang == LanguageType::Generic_AI) {
+        task.aiCustomPayload = projectConfig.genericBuildConfig();
+    }
+
+    // ============================================================
+    // 第五步：调用编译管理器
+    // ============================================================
+    QString taskId = m_compileManager->compileTask(task);
     if (taskId.isEmpty()) {
-        QMessageBox::warning(this, "编译错误", "无法启动项目编译任务。");
+        QMessageBox::warning(this, "编译错误", "无法启动编译任务。请检查输出面板获取详细错误信息。");
         return;
     }
 
-    d->outputPanel->append("开始编译项目: " + projectConfig.projectName());
+    d->outputPanel->append(QString("开始编译项目: %1 (语言: %2)")
+                               .arg(projectConfig.displayName().isEmpty() ? QFileInfo(projectPath).fileName() : projectConfig.displayName())
+                               .arg(languageTypeToString(lang)));
 }
 
 void MainWindow::onCleanBuild()
@@ -3774,34 +4385,59 @@ void MainWindow::onCleanBuild()
         return;
     }
 
+    // 检测项目语言
+    LanguageType lang = detectProjectLanguage(d->currentProjectPath);
+    if (lang == LanguageType::Unknown) {
+        QMessageBox::warning(this, "无法识别项目类型",
+                             "无法自动识别项目语言，请确保项目根目录包含相应的构建文件。");
+        return;
+    }
+
     int reply = QMessageBox::question(this, "清理构建",
-                                      "确定要清理编译产物吗？\n这将删除所有生成的文件。",
+                                      "确定要清理编译产物吗？这将删除所有生成的文件。",
                                       QMessageBox::Yes | QMessageBox::No,
                                       QMessageBox::No);
-
     if (reply != QMessageBox::Yes) {
         return;
     }
 
-    // 读取项目配置，获取输出目录
+    // 加载项目配置（获取输出目录等）
     ProjectConfig projectConfig;
     QString configFile = d->currentProjectPath + "/.lightcppproj";
     QStringList errors;
-    QString outputDir = "bin";  // 默认
-
-    if (projectConfig.loadFromFile(configFile, errors)) {
-        outputDir = projectConfig.outputPath();
-    } else {
-        d->outputPanel->append("无法加载项目配置，使用默认输出目录: bin");
+    if (!projectConfig.loadFromFile(configFile, errors)) {
+        qWarning() << "Failed to load project config:" << errors.join(", ");
+        // 仍可继续
     }
 
-    bool success = m_compileManager->cleanBuild(d->currentProjectPath, outputDir);
+    // 构建 BuildTask
+    BuildTask task;
+    task.language = lang;
+    task.projectPath = d->currentProjectPath;
+    task.outputName = projectConfig.projectName().isEmpty() ?
+                          QFileInfo(d->currentProjectPath).fileName() :
+                          projectConfig.projectName();
+    task.outputDir = projectConfig.outputPath().isEmpty() ? "bin" : projectConfig.outputPath();
 
-    if (success) {
+    // 如果是 Java，使用模型中的输出目录
+    if (lang == LanguageType::Java) {
+        ProjectManager* pm = ProjectManager::instance();
+        ProjectModel* model = pm->javaProjectModel();
+        if (model) {
+            task.outputDir = model->outputDirectory();
+        }
+    }
+
+    // 执行清理
+    BuildResult result = m_compileManager->cleanTask(task);
+
+    if (result.success) {
         d->outputPanel->append("清理构建完成");
         m_statusLabel->setText("清理构建完成");
     } else {
-        d->outputPanel->append("清理构建失败或无文件可清理");
+        QString error = result.errorMessage.isEmpty() ? "清理构建失败" : result.errorMessage;
+        d->outputPanel->append("清理构建失败: " + error);
+        m_statusLabel->setText("清理构建失败");
     }
 }
 
@@ -3837,6 +4473,8 @@ void MainWindow::onCompile() {
         filePath = editor->filePath();
     }
 
+    // 检测语言
+    LanguageType lang = detectLanguageTypeFromPath(filePath);
     // 构造 BuildTask
     BuildTask task;
     task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -3849,6 +4487,21 @@ void MainWindow::onCompile() {
     task.outputName = QFileInfo(filePath).completeBaseName();
     task.outputDir = "bin"; // 可配置
     task.enableDebug = true;
+
+    // ========== Python 特殊处理 ==========
+    if (lang == LanguageType::Python) {
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        if (model) {
+            // 使用虚拟环境中的 Python
+            task.sdkConfig["pythonInterpreter"] = model->interpreterPath();
+            task.sdkConfig["venv"] = model->venvPath();
+            // 支持依赖安装（从设置读取）
+            ConfigManager* cfg = Application::instance().configManager();
+            if (cfg && cfg->value("Python/AutoInstallDeps", false).toBool()) {
+                task.aiCustomPayload["installDeps"] = true;
+            }
+        }
+    }
 
     // 读取项目配置中的 SDK 环境
     if (!d->currentProjectPath.isEmpty()) {
@@ -3871,7 +4524,8 @@ void MainWindow::onCompile() {
     }
 }
 
-void MainWindow::onRun() {
+void MainWindow::onRun()
+{
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件进行运行。");
@@ -3881,6 +4535,135 @@ void MainWindow::onRun() {
     QString sourceFile = editor->filePath();
     if (sourceFile.isEmpty()) {
         QMessageBox::warning(this, "运行错误", "请先保存文件再进行运行。");
+        return;
+    }
+
+    LanguageType lang = detectLanguageTypeFromPath(sourceFile);
+
+    // ========== Python 特殊处理（异步执行） ==========
+    if (lang == LanguageType::Python) {
+        auto model = ProjectManager::instance()->pythonProjectModel();
+        QString projectPath = d->currentProjectPath.isEmpty() ?
+                                  QFileInfo(sourceFile).absolutePath() :
+                                  d->currentProjectPath;
+        QString python;
+
+        // 1. 优先使用虚拟环境中的解释器
+        if (model && !model->interpreterPath().isEmpty()) {
+            python = model->interpreterPath();
+        }
+
+        // 2. 如果模型未提供，从 SDK 环境变量 PYTHON_HOME 读取
+        if (python.isEmpty() || python == "python3") {
+            ConfigManager* cfg = Application::instance().configManager();
+            if (cfg) {
+                QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+                if (sdkEnv.contains("PYTHON_HOME")) {
+                    QString pyHome = sdkEnv["PYTHON_HOME"].toString();
+                    if (!pyHome.isEmpty() && QFile::exists(pyHome)) {
+                        python = pyHome;
+                    }
+                }
+            }
+        }
+
+        // 3. 最终 fallback
+        if (python.isEmpty()) {
+            python = "python3";
+        }
+
+        // 输出诊断信息
+        d->outputPanel->append(QString("使用 Python 解释器: %1").arg(python));
+        d->outputPanel->append(QString("工作目录: %1").arg(projectPath));
+        d->outputPanel->append("正在运行...");
+
+        // 构建命令参数
+        QStringList args;
+        args << sourceFile;  // 直接执行脚本
+
+        // 创建异步进程
+        ProcessManager pm;
+        // 设置环境变量（包括虚拟环境激活）
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        if (model && !model->venvPath().isEmpty()) {
+#ifdef Q_OS_WIN
+            QString binDir = model->venvPath() + "/Scripts";
+#else
+            QString binDir = model->venvPath() + "/bin";
+#endif
+            if (QFile::exists(binDir)) {
+                QString path = env.value("PATH");
+                env.insert("PATH", binDir + QDir::listSeparator() + path);
+                env.insert("VIRTUAL_ENV", model->venvPath());
+            }
+        }
+        // 可选：添加自定义环境变量（从项目配置读取）
+        pm.setEnvironment(env);
+
+        // 生成唯一任务ID（用于跟踪）
+        QString taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+        // 启动异步进程
+        bool started = pm.executeAsync(python, args, projectPath, taskId);
+        if (!started) {
+            d->outputPanel->append("启动进程失败");
+            return;
+        }
+
+        // 连接信号以接收输出
+        // 注意：ProcessManager 会发射 outputReceived 和 processFinished 信号
+        // 但由于 pm 是局部变量，需要用 lambda 捕获或使用成员变量
+        // 更好的方式：直接使用 QProcess 并手动管理，但为了复用，我们将 ProcessManager 提升为成员变量或使用静态连接
+
+        // 由于 ProcessManager 是局部对象，其信号在函数结束后会断开，因此我们需要将进程管理转移到堆上。
+        // 简单修复：使用 QPointer 或 shared_ptr，或者直接使用 QProcess。
+        // 为了更清晰，这里我们直接使用 QProcess（更直观）
+        QProcess* process = new QProcess(this);
+        process->setProgram(python);
+        process->setArguments(args);
+        process->setWorkingDirectory(projectPath);
+        process->setProcessEnvironment(env);
+        process->setProcessChannelMode(QProcess::MergedChannels);
+
+        // 连接输出信号
+        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
+            QByteArray data = process->readAllStandardOutput();
+            QString output = QString::fromLocal8Bit(data);
+            if (!output.isEmpty()) {
+                d->outputPanel->append(output);
+            }
+        });
+        connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
+            QByteArray data = process->readAllStandardError();
+            QString output = QString::fromLocal8Bit(data);
+            if (!output.isEmpty()) {
+                d->outputPanel->append("<span style='color:#FF6B6B;'>" + output.toHtmlEscaped() + "</span>");
+            }
+        });
+
+        // 连接完成信号
+        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, [this, process](int exitCode, QProcess::ExitStatus status) {
+                    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+                    if (status == QProcess::NormalExit) {
+                        d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                                                   .arg(timeStr).arg(exitCode));
+                    } else {
+                        d->outputPanel->append(QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>").arg(timeStr));
+                    }
+                    process->deleteLater();
+                    m_statusLabel->setText("运行完成");
+                });
+
+        // 启动进程
+        process->start();
+        if (!process->waitForStarted(3000)) {
+            d->outputPanel->append("启动失败: " + process->errorString());
+            process->deleteLater();
+            return;
+        }
+
+        m_statusLabel->setText("程序运行中...");
         return;
     }
 
@@ -3899,38 +4682,83 @@ void MainWindow::onRun() {
         return;
     }
 
-    // 查找可执行文件（旧方式）
-    QString executablePath = findExecutableForSource(sourceFile);
+    // ----- 使用 BuildTask 新方式 -----
+    QString projectRoot = d->currentProjectPath.isEmpty() ?
+                              QFileInfo(sourceFile).absolutePath() :
+                              d->currentProjectPath;
 
-    // 如果可执行文件不存在或比源文件旧，则触发编译，并在编译完成后自动运行
+    BuildTask task;
+    task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    task.language = detectLanguageTypeFromPath(sourceFile);
+    task.projectPath = d->currentProjectPath.isEmpty() ?
+                           QFileInfo(sourceFile).absolutePath() :
+                           d->currentProjectPath;
+    task.sourceFiles << sourceFile;
+    task.outputName = QFileInfo(sourceFile).completeBaseName();
+    task.outputDir = "bin";
+    task.enableDebug = false;   // 运行模式不调试
+
+    // 读取项目配置中的 SDK 环境
+    if (!d->currentProjectPath.isEmpty()) {
+        ProjectConfig projConfig;
+        QString configFile = d->currentProjectPath + "/.lightcppproj";
+        QStringList errors;
+        if (projConfig.loadFromFile(configFile, errors)) {
+            task.sdkConfig = projConfig.sdkEnvironment();
+            if (task.language == LanguageType::Generic_AI) {
+                task.aiCustomPayload = projConfig.genericBuildConfig();
+            }
+        }
+    }
+
+    // ----- 针对 Java 项目填充额外信息 -----
+    if (task.language == LanguageType::Java) {
+        ProjectManager* pm = ProjectManager::instance();
+        ProjectModel* model = pm->javaProjectModel();
+        if (model) {
+            task.classpath = model->classpath();
+            task.dependencyJars = model->dependencyJars();
+            // 将主类存入 aiCustomPayload 供 JavaBuilder 使用
+            task.aiCustomPayload["mainClass"] = model->defaultMainClass();
+            task.aiCustomPayload["isFatJar"] = model->isFatJar();
+            task.aiCustomPayload["fatJarPath"] = model->fatJarPath();
+            // 设置输出目录为 Maven/Gradle 标准
+            task.outputDir = model->outputDirectory();
+            // 项目路径
+            task.projectPath = model->projectPath();
+        }
+    }
+
+    // 获取 Builder，尝试查找可执行文件
+    IBuilder* builder = BuilderFactory::createBuilder(task.language);
+    QString executablePath;
+    if (builder) {
+        executablePath = builder->getExecutablePath(task);
+    }
+
     if (executablePath.isEmpty() || !QFile::exists(executablePath) ||
         QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
-
+        // 需要先编译
         int reply = QMessageBox::question(this, "编译并运行",
                                           "文件尚未编译或已过期，是否现在编译并运行?",
                                           QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes) {
-            // 触发编译，编译完成后会通过 onCompileFinished 信号自动运行
-            // 需要设置一个标志，在编译完成槽中判断是否运行
-            // 但为了简化，我们直接调用 onCompile，并在 onCompileFinished 中检查是否有“运行”待办
-            // 此处设置一个成员变量 m_autoRunAfterCompile = true
-            // 但为了避免新增成员，我们可以利用 m_compileForDebug 标志（虽然用于调试，但可复用）
-            // 或者增加一个新变量。这里为了快速实现，我们复用 m_compileForDebug 但改名？不推荐。
-            // 更好的办法：在 onCompile 后，我们可以在 onCompileFinished 中根据源文件自动运行。
-            // 但 onCompileFinished 不知道哪个源文件触发了运行请求。
-            // 简单起见，我们暂时不修改 onCompileFinished，而是直接使用同步编译？不，异步是设计。
-            // 我建议保持原有逻辑不变：如果编译成功，用户可以点击“运行”按钮再运行。
-            // 所以这里只编译，不自动运行。
-            onCompile();
-            return;
-        } else {
-            return;
+            m_autoRunAfterCompile = true;
+            onCompile();  // onCompile 内部也会构建 BuildTask
         }
+        return;
     }
 
-    // 可执行文件存在且是最新的，直接运行
-    runProgram(executablePath, false);
+    // 直接运行
+    BuildResult dummyResult;
+    dummyResult.executablePath = executablePath;
+    QString output;
+    if (m_compileManager->runTask(task, dummyResult, output)) {
+        d->outputPanel->append(output);
+    }
 }
+
+
 
 QString MainWindow::findExecutableForSource(const QString& sourceFile)
 {

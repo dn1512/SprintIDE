@@ -25,13 +25,33 @@ QProcessEnvironment JavaBuilder::prepareEnvironment(const BuildTask& task) {
 }
 
 bool JavaBuilder::build(const BuildTask& task, BuildResult& result) {
-    IBuilder* delegate = getDelegate(task);
+    BuildTask mutableTask = task;
+
+    // 检测 Spring Boot（如果是 Maven 项目）
+    if (isMavenProject(mutableTask.projectPath)) {
+        mutableTask.isSpringBoot = JavaMavenBuilder::isSpringBootProject(mutableTask.projectPath);
+    }
+
+    // Gradle 检测暂不实现，后续可扩展
+
+    // 先解析依赖，填充 classpath
+    if (mutableTask.classpath.isEmpty()) {
+        // 直接传入 mutableTask，resolveDependencies 会填充其 classpath 和 dependencyJars
+        if (!resolveDependencies(mutableTask)) {
+            result.errorMessage = "Failed to resolve dependencies";
+            result.builderName = "JavaBuilder";
+            return false;
+        }
+        // 此时 mutableTask.classpath 和 mutableTask.dependencyJars 已被填充
+    }
+    // 然后获取具体 Builder 并执行
+    IBuilder* delegate = getDelegate(mutableTask);
     if (!delegate) {
         result.errorMessage = "No Java build tool detected (Gradle or Maven)";
         result.builderName = "JavaBuilder";
         return false;
     }
-    return delegate->build(task, result);
+    return delegate->build(mutableTask, result);
 }
 
 bool JavaBuilder::clean(const BuildTask& task, BuildResult& result) {
@@ -51,6 +71,83 @@ bool JavaBuilder::run(const BuildTask& task, const BuildResult& buildResult, QSt
         return false;
     }
     return delegate->run(task, buildResult, output);
+}
+
+QString JavaBuilder::getExecutablePath(const BuildTask& task)
+{
+    IBuilder* delegate = getDelegate(task);
+    if (delegate) {
+        return delegate->getExecutablePath(task);
+    }
+
+    // 没有检测到构建工具，尝试查找 JAR
+    QString projectPath = task.projectPath;
+    if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
+        projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
+    }
+
+    // 尝试在 target/ 和 build/libs/ 中查找
+    QStringList searchDirs = {
+        PathUtils::joinPaths({projectPath, "target"}),
+        PathUtils::joinPaths({projectPath, "build", "libs"})
+    };
+
+    for (const QString& dirPath : searchDirs) {
+        QDir dir(dirPath);
+        if (dir.exists()) {
+            QStringList jars = dir.entryList({"*.jar"}, QDir::Files);
+            if (!jars.isEmpty()) {
+                return dir.absoluteFilePath(jars.first());
+            }
+        }
+    }
+
+    return QString();
+}
+
+bool JavaBuilder::resolveDependencies(BuildTask& task) const {
+    if (task.projectPath.isEmpty()) {
+        qWarning() << "resolveDependencies: projectPath is empty";
+        return false;
+    }
+    // 检测项目类型
+    if (isGradleProject(task.projectPath)) {
+        JavaGradleBuilder gradleBuilder;
+        // 调用 Gradle 的依赖解析（需要新增一个方法）
+        QStringList cp;
+        if (gradleBuilder.resolveClasspath(task.projectPath, cp)) {
+            task.classpath = cp;
+            return true;
+        }
+        return false;
+    } else if (isMavenProject(task.projectPath)) {
+        JavaMavenBuilder mavenBuilder;
+        QStringList cp;
+        if (mavenBuilder.resolveClasspath(task.projectPath, cp)) {
+            task.classpath = cp;
+            return true;
+        }
+        return false;
+    }
+    // 没有构建工具，可能是 Plain Java，尝试扫描 lib
+    // 这里简单处理，如果存在 lib 目录，添加其中的 jar
+    QDir libDir(task.projectPath + "/lib");
+    if (libDir.exists()) {
+        QStringList jars = libDir.entryList({"*.jar"}, QDir::Files);
+        for (const QString& jar : jars) {
+            task.dependencyJars.append(libDir.absoluteFilePath(jar));
+        }
+        task.classpath = task.dependencyJars;
+        // 添加编译输出目录（通常是 out 或 target/classes）
+        if (QDir(task.projectPath + "/out").exists()) {
+            task.classpath.append(task.projectPath + "/out");
+        } else if (QDir(task.projectPath + "/target/classes").exists()) {
+            task.classpath.append(task.projectPath + "/target/classes");
+        }
+        return true;
+    }
+    // 否则无法解析
+    return false;
 }
 
 // ==================== 私有辅助 ====================

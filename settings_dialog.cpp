@@ -20,6 +20,7 @@
 #include <QDebug>
 #include <QLabel>
 #include <QCoreApplication>
+#include "python/python_settings_page.h"
 
 using namespace SprintIDE;
 
@@ -718,6 +719,9 @@ void SettingsDialog::createUI()
     m_categoryList->addItem(tr("编译配置"));
     m_categoryList->addItem(tr("环境变量"));
 
+    // 添加 Python 设置页
+    m_categoryList->addItem(tr("Python"));
+
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
 
@@ -728,6 +732,11 @@ void SettingsDialog::createUI()
     EnvironmentSettingsPage *envPage = new EnvironmentSettingsPage(this);
     m_stackedWidget->addWidget(envPage);
     m_pages.append(envPage);
+
+
+    PythonSettingsPage* pyPage = new PythonSettingsPage(this);
+    m_stackedWidget->addWidget(pyPage);
+    m_pages.append(pyPage);
 
     connect(m_categoryList, &QListWidget::currentRowChanged,
             this, &SettingsDialog::onCategoryChanged);

@@ -17,6 +17,7 @@
 #include <QDirIterator>
 
 #include "language/language_type.h"
+#include "project_manager.h"
 
 namespace SprintIDE {
 
@@ -247,6 +248,57 @@ QString CompileManager::compileCustomTask(const CompileTask& task)
     executeCompileTask(actualTask);
 
     return actualTask.taskId;
+}
+
+bool CompileManager::runTask(const BuildTask& task, const BuildResult& buildResult, QString& output)
+{
+    IBuilder* builder = BuilderFactory::createBuilder(task.language);
+    if (!builder) {
+        output = QString("No builder available for language: %1").arg(languageTypeToString(task.language));
+        return false;
+    }
+
+    // ========== 如果是 Python，传递运行配置 ==========
+    BuildTask mutableTask = task;
+    if (task.language == LanguageType::Python) {
+        // 确保 entryPath 存在
+        if (!mutableTask.aiCustomPayload.contains("entryPath")) {
+            // 如果没有指定入口，使用 sourceFiles 中的第一个
+            if (!task.sourceFiles.isEmpty()) {
+                mutableTask.aiCustomPayload["entryPath"] = task.sourceFiles.first();
+                mutableTask.aiCustomPayload["entryType"] = "script";
+            }
+        }
+        // 从 PythonProjectModel 获取虚拟环境（如果尚未设置）
+        if (!mutableTask.sdkConfig.contains("pythonInterpreter")) {
+            auto model = ProjectManager::instance()->pythonProjectModel();
+            if (model) {
+                mutableTask.sdkConfig["pythonInterpreter"] = model->interpreterPath();
+                mutableTask.sdkConfig["venv"] = model->venvPath();
+            }
+        }
+    }
+
+    BuildResult result = buildResult;
+    if (result.executablePath.isEmpty()) {
+        // 上面给出的临时构造路径代码
+        QString outDir = PathUtils::absolutePath(task.outputDir, task.projectPath);
+        QString outName = task.outputName;
+        if (outName.isEmpty() && !task.sourceFiles.isEmpty()) {
+            outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+        }
+        if (outName.isEmpty()) {
+            outName = "a.out";
+        }
+#ifdef Q_OS_WIN
+        if (!outName.endsWith(".exe")) {
+            outName += ".exe";
+        }
+#endif
+        result.executablePath = PathUtils::joinPaths({outDir, outName});
+    }
+
+    return builder->run(task, result, output);
 }
 
 // ==================== 编译控制方法 ====================
@@ -845,6 +897,21 @@ void CompileManager::setProjectSdk(const QString& projectPath, const QVariantMap
     }
 }
 
+BuildResult CompileManager::cleanTask(const BuildTask& task)
+{
+    IBuilder* builder = BuilderFactory::createBuilder(task.language);
+    if (!builder) {
+        BuildResult result;
+        result.success = false;
+        result.errorMessage = QString("No builder available for language: %1").arg(languageTypeToString(task.language));
+        return result;
+    }
+
+    BuildResult result;
+    builder->clean(task, result);
+    return result;
+}
+
 // ==================== 私有方法实现 ====================
 
 void CompileManager::executeCompileTask(const CompileTask& task)
@@ -1175,9 +1242,13 @@ void CompileManager::saveCompileConfig()
 }
 
 QString CompileManager::executeBuildTask(const BuildTask& task) {
+    qDebug() << "[CompileManager] executeBuildTask called, language:"
+             << static_cast<int>(task.language)
+             << ", projectPath:" << task.projectPath;
     // 1. 获取对应的 Builder
     IBuilder* builder = BuilderFactory::createBuilder(task.language);
     if (!builder) {
+        qWarning() << "[CompileManager] No builder for language:" << static_cast<int>(task.language);
         QString err = QString("No builder available for language: %1").arg(languageTypeToString(task.language));
         emit compileError(task.taskId, err);
         // 构造一个失败结果

@@ -63,6 +63,11 @@ public:
 
     // ========== 文件操作相关方法 ==========
     bool loadFile(const QString &filePath);
+    /**
+     * @brief 重新加载文件（从磁盘重新读取）
+     * @return 成功返回 true
+     */
+    bool reloadFile();
     bool saveFile();
     bool saveAs(const QString &filePath);
     bool isModified() const;

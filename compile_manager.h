@@ -183,6 +183,15 @@ public:
     QString compileCustomTask(const CompileTask& task);
 
     /**
+     * @brief 运行构建产物
+     * @param task 构建任务（需包含 language、projectPath、outputName 等）
+     * @param buildResult 之前构建的结果（含 executablePath）
+     * @param output 运行输出（返回）
+     * @return bool 运行成功返回 true
+     */
+    bool runTask(const BuildTask& task, const BuildResult& buildResult, QString& output);
+
+    /**
      * @brief 取消编译任务
      *
      * 停止正在进行的编译任务
@@ -287,7 +296,12 @@ public:
      * @param sdkEnv 环境变量键值对
      */
     void setProjectSdk(const QString& projectPath, const QVariantMap& sdkEnv);
-
+    /**
+     * @brief 清理构建产物（使用新的 BuildTask 体系）
+     * @param task 构建任务
+     * @return BuildResult 清理结果
+     */
+    BuildResult cleanTask(const BuildTask& task);
 signals:
     /**
      * @brief 编译开始信号
