@@ -1,0 +1,13 @@
+<svg xmlns="http://www.3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="rotate(25, 12, 12)">
+    <!-- 大脑轮廓 -->
+    <path d="M12 4 C8 4, 5 6, 5 9 C5 11, 6 12, 7 13 C6 14, 5 16, 6 18 C7 20, 9 20, 10 19 C10 21, 12 22, 14 21 C16 22, 18 21, 18 19 C19 20, 21 19, 21 17 C21 15, 20 14, 19 13 C20 12, 21 10, 20 8 C19 6, 16 4, 12 4 Z" stroke="#7C3AED" fill="none"></path>
+    <!-- 大脑中线 -->
+    <path d="M12 4 L12 21" stroke="#7C3AED" stroke-width="1"></path>
+    <!-- 神经节点 -->
+    <circle cx="8" cy="10" r="1" fill="#7C3AED" stroke="none"></circle>
+    <circle cx="16" cy="10" r="1" fill="#7C3AED" stroke="none"></circle>
+    <circle cx="9" cy="16" r="1" fill="#7C3AED" stroke="none"></circle>
+    <circle cx="15" cy="16" r="1" fill="#7C3AED" stroke="none"></circle>
+  </g>
+</svg>

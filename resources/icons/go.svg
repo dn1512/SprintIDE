@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="rotate(25, 12, 12)">
+    <!-- Go 地鼠轮廓（简化版） -->
+    <path d="M12 4 C7 4, 4 7, 4 12 C4 17, 7 20, 12 20 C17 20, 20 17, 20 12 C20 7, 17 4, 12 4 Z" stroke="#00ADD8" fill="none"></path>
+    <!-- 耳朵 -->
+    <path d="M7 6 L5 3" stroke="#00ADD8"></path>
+    <path d="M17 6 L19 3" stroke="#00ADD8"></path>
+    <!-- 眼睛 -->
+    <circle cx="9" cy="11" r="1.5" fill="#00ADD8" stroke="none"></circle>
+    <circle cx="15" cy="11" r="1.5" fill="#00ADD8" stroke="none"></circle>
+    <!-- 鼻子 -->
+    <path d="M10 15 C11 16, 13 16, 14 15" stroke="#00ADD8"></path>
+  </g>
+</svg>
