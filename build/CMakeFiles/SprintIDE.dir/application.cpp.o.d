@@ -1224,11 +1224,19 @@ CMakeFiles/SprintIDE.dir/application.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFileInfo \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QCoreApplication \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStandardPaths \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qstandardpaths.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qstandardpaths.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcessEnvironment

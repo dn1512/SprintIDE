@@ -1280,7 +1280,9 @@ CMakeFiles/SprintIDE.dir/ai/ai_action_executor.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qfileinfo.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtimezone.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFileInfo \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStackedWidget \
@@ -1292,6 +1294,13 @@ CMakeFiles/SprintIDE.dir/ai/ai_action_executor.cpp.o: \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QComboBox \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcombobox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QGroupBox \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgroupbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QFormLayout \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qformlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QLayout \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreewidget.h \
@@ -1300,8 +1309,9 @@ CMakeFiles/SprintIDE.dir/ai/ai_action_executor.cpp.o: \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_manager.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QComboBox \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcombobox.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_types.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/path_utils.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QUrl \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \

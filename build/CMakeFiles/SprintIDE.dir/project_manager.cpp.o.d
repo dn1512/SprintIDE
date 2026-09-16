@@ -1074,8 +1074,10 @@ CMakeFiles/SprintIDE.dir/project_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFile \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QTextStream \

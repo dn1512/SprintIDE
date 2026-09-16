@@ -873,6 +873,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QProcess \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSettings \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSharedPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QString \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QStringList \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QTimer \
@@ -1027,4 +1028,5 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qxptype_traits.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qyieldcpu.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h

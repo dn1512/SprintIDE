@@ -1224,4 +1224,6 @@ CMakeFiles/SprintIDE.dir/settings_dialog.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcoreapplication.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcoreevent.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qnativeinterface.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcoreapplication_platform.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_settings_page.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/../settings_dialog.h

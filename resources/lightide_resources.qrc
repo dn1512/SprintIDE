@@ -83,5 +83,12 @@
         <file>icons/pin_tab.svg</file>
         <file>icons/toggle_sidebar.svg</file>
         <file>icons/word_wrap.svg</file>
+
+        <!-- 编程语言 -->
+        <file>icons/python.svg</file>
+        <file>icons/go.svg</file>
+        <file>icons/rust.svg</file>
+        <file>icons/node.svg</file>
+        <file>icons/ai.svg</file>
     </qresource>
 </RCC>

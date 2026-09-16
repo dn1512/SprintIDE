@@ -1046,6 +1046,17 @@ CMakeFiles/SprintIDE.dir/builder/builder_factory.cpp.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/c++/v1/cassert \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/q20iterator.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/cpp_builder.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QProcess \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QTimer \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qtimer.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qbasictimer.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qeventloop.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qdeadlinetimer.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QElapsedTimer \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qelapsedtimer.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/python_builder.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/go_builder.h \

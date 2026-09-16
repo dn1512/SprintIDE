@@ -48,7 +48,11 @@ template <> constexpr inline auto SprintIDE::ProjectSelectionDialog::qt_create_m
         "onCreateNewProject",
         "onProjectSelectionChanged",
         "current",
-        "previous"
+        "previous",
+        "onProjectListContextMenuRequested",
+        "QPoint",
+        "pos",
+        "onRemoveSelectedProject"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -64,6 +68,12 @@ template <> constexpr inline auto SprintIDE::ProjectSelectionDialog::qt_create_m
         QtMocHelpers::SlotData<void(QListWidgetItem *, QListWidgetItem *)>(7, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { 0x80000000 | 3, 8 }, { 0x80000000 | 3, 9 },
         }}),
+        // Slot 'onProjectListContextMenuRequested'
+        QtMocHelpers::SlotData<void(const QPoint &)>(10, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 11, 12 },
+        }}),
+        // Slot 'onRemoveSelectedProject'
+        QtMocHelpers::SlotData<void()>(13, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -91,6 +101,8 @@ void SprintIDE::ProjectSelectionDialog::qt_static_metacall(QObject *_o, QMetaObj
         case 1: _t->onOpenExistingProject(); break;
         case 2: _t->onCreateNewProject(); break;
         case 3: _t->onProjectSelectionChanged((*reinterpret_cast<std::add_pointer_t<QListWidgetItem*>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QListWidgetItem*>>(_a[2]))); break;
+        case 4: _t->onProjectListContextMenuRequested((*reinterpret_cast<std::add_pointer_t<QPoint>>(_a[1]))); break;
+        case 5: _t->onRemoveSelectedProject(); break;
         default: ;
         }
     }
@@ -115,14 +127,14 @@ int SprintIDE::ProjectSelectionDialog::qt_metacall(QMetaObject::Call _c, int _id
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 4)
+        if (_id < 6)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 4;
+        _id -= 6;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 4)
+        if (_id < 6)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 4;
+        _id -= 6;
     }
     return _id;
 }

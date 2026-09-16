@@ -691,6 +691,78 @@ config_manager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/config_manager.cpp.s
 .PHONY : config_manager.cpp.s
 
+cpp/cpp_debugger.o: cpp/cpp_debugger.cpp.o
+.PHONY : cpp/cpp_debugger.o
+
+# target to build an object file
+cpp/cpp_debugger.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_debugger.cpp.o
+.PHONY : cpp/cpp_debugger.cpp.o
+
+cpp/cpp_debugger.i: cpp/cpp_debugger.cpp.i
+.PHONY : cpp/cpp_debugger.i
+
+# target to preprocess a source file
+cpp/cpp_debugger.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_debugger.cpp.i
+.PHONY : cpp/cpp_debugger.cpp.i
+
+cpp/cpp_debugger.s: cpp/cpp_debugger.cpp.s
+.PHONY : cpp/cpp_debugger.s
+
+# target to generate assembly for a file
+cpp/cpp_debugger.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_debugger.cpp.s
+.PHONY : cpp/cpp_debugger.cpp.s
+
+cpp/cpp_project_model.o: cpp/cpp_project_model.cpp.o
+.PHONY : cpp/cpp_project_model.o
+
+# target to build an object file
+cpp/cpp_project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_project_model.cpp.o
+.PHONY : cpp/cpp_project_model.cpp.o
+
+cpp/cpp_project_model.i: cpp/cpp_project_model.cpp.i
+.PHONY : cpp/cpp_project_model.i
+
+# target to preprocess a source file
+cpp/cpp_project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_project_model.cpp.i
+.PHONY : cpp/cpp_project_model.cpp.i
+
+cpp/cpp_project_model.s: cpp/cpp_project_model.cpp.s
+.PHONY : cpp/cpp_project_model.s
+
+# target to generate assembly for a file
+cpp/cpp_project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/cpp/cpp_project_model.cpp.s
+.PHONY : cpp/cpp_project_model.cpp.s
+
+dap/dap_client.o: dap/dap_client.cpp.o
+.PHONY : dap/dap_client.o
+
+# target to build an object file
+dap/dap_client.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/dap/dap_client.cpp.o
+.PHONY : dap/dap_client.cpp.o
+
+dap/dap_client.i: dap/dap_client.cpp.i
+.PHONY : dap/dap_client.i
+
+# target to preprocess a source file
+dap/dap_client.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/dap/dap_client.cpp.i
+.PHONY : dap/dap_client.cpp.i
+
+dap/dap_client.s: dap/dap_client.cpp.s
+.PHONY : dap/dap_client.s
+
+# target to generate assembly for a file
+dap/dap_client.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/dap/dap_client.cpp.s
+.PHONY : dap/dap_client.cpp.s
+
 debug_manager.o: debug_manager.cpp.o
 .PHONY : debug_manager.o
 
@@ -738,6 +810,78 @@ debug_panel.s: debug_panel.cpp.s
 debug_panel.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/debug_panel.cpp.s
 .PHONY : debug_panel.cpp.s
+
+deps/lldb_dap_provider.o: deps/lldb_dap_provider.cpp.o
+.PHONY : deps/lldb_dap_provider.o
+
+# target to build an object file
+deps/lldb_dap_provider.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/lldb_dap_provider.cpp.o
+.PHONY : deps/lldb_dap_provider.cpp.o
+
+deps/lldb_dap_provider.i: deps/lldb_dap_provider.cpp.i
+.PHONY : deps/lldb_dap_provider.i
+
+# target to preprocess a source file
+deps/lldb_dap_provider.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/lldb_dap_provider.cpp.i
+.PHONY : deps/lldb_dap_provider.cpp.i
+
+deps/lldb_dap_provider.s: deps/lldb_dap_provider.cpp.s
+.PHONY : deps/lldb_dap_provider.s
+
+# target to generate assembly for a file
+deps/lldb_dap_provider.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/lldb_dap_provider.cpp.s
+.PHONY : deps/lldb_dap_provider.cpp.s
+
+deps/toolchain_dialog.o: deps/toolchain_dialog.cpp.o
+.PHONY : deps/toolchain_dialog.o
+
+# target to build an object file
+deps/toolchain_dialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_dialog.cpp.o
+.PHONY : deps/toolchain_dialog.cpp.o
+
+deps/toolchain_dialog.i: deps/toolchain_dialog.cpp.i
+.PHONY : deps/toolchain_dialog.i
+
+# target to preprocess a source file
+deps/toolchain_dialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_dialog.cpp.i
+.PHONY : deps/toolchain_dialog.cpp.i
+
+deps/toolchain_dialog.s: deps/toolchain_dialog.cpp.s
+.PHONY : deps/toolchain_dialog.s
+
+# target to generate assembly for a file
+deps/toolchain_dialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_dialog.cpp.s
+.PHONY : deps/toolchain_dialog.cpp.s
+
+deps/toolchain_manager.o: deps/toolchain_manager.cpp.o
+.PHONY : deps/toolchain_manager.o
+
+# target to build an object file
+deps/toolchain_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_manager.cpp.o
+.PHONY : deps/toolchain_manager.cpp.o
+
+deps/toolchain_manager.i: deps/toolchain_manager.cpp.i
+.PHONY : deps/toolchain_manager.i
+
+# target to preprocess a source file
+deps/toolchain_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_manager.cpp.i
+.PHONY : deps/toolchain_manager.cpp.i
+
+deps/toolchain_manager.s: deps/toolchain_manager.cpp.s
+.PHONY : deps/toolchain_manager.s
+
+# target to generate assembly for a file
+deps/toolchain_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/deps/toolchain_manager.cpp.s
+.PHONY : deps/toolchain_manager.cpp.s
 
 editor_widget.o: editor_widget.cpp.o
 .PHONY : editor_widget.o
@@ -1267,6 +1411,222 @@ project_selection_dialog.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.s
 .PHONY : project_selection_dialog.cpp.s
 
+python/python_debugger.o: python/python_debugger.cpp.o
+.PHONY : python/python_debugger.o
+
+# target to build an object file
+python/python_debugger.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_debugger.cpp.o
+.PHONY : python/python_debugger.cpp.o
+
+python/python_debugger.i: python/python_debugger.cpp.i
+.PHONY : python/python_debugger.i
+
+# target to preprocess a source file
+python/python_debugger.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_debugger.cpp.i
+.PHONY : python/python_debugger.cpp.i
+
+python/python_debugger.s: python/python_debugger.cpp.s
+.PHONY : python/python_debugger.s
+
+# target to generate assembly for a file
+python/python_debugger.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_debugger.cpp.s
+.PHONY : python/python_debugger.cpp.s
+
+python/python_dependency_manager.o: python/python_dependency_manager.cpp.o
+.PHONY : python/python_dependency_manager.o
+
+# target to build an object file
+python/python_dependency_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_dependency_manager.cpp.o
+.PHONY : python/python_dependency_manager.cpp.o
+
+python/python_dependency_manager.i: python/python_dependency_manager.cpp.i
+.PHONY : python/python_dependency_manager.i
+
+# target to preprocess a source file
+python/python_dependency_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_dependency_manager.cpp.i
+.PHONY : python/python_dependency_manager.cpp.i
+
+python/python_dependency_manager.s: python/python_dependency_manager.cpp.s
+.PHONY : python/python_dependency_manager.s
+
+# target to generate assembly for a file
+python/python_dependency_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_dependency_manager.cpp.s
+.PHONY : python/python_dependency_manager.cpp.s
+
+python/python_formatter.o: python/python_formatter.cpp.o
+.PHONY : python/python_formatter.o
+
+# target to build an object file
+python/python_formatter.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_formatter.cpp.o
+.PHONY : python/python_formatter.cpp.o
+
+python/python_formatter.i: python/python_formatter.cpp.i
+.PHONY : python/python_formatter.i
+
+# target to preprocess a source file
+python/python_formatter.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_formatter.cpp.i
+.PHONY : python/python_formatter.cpp.i
+
+python/python_formatter.s: python/python_formatter.cpp.s
+.PHONY : python/python_formatter.s
+
+# target to generate assembly for a file
+python/python_formatter.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_formatter.cpp.s
+.PHONY : python/python_formatter.cpp.s
+
+python/python_project_model.o: python/python_project_model.cpp.o
+.PHONY : python/python_project_model.o
+
+# target to build an object file
+python/python_project_model.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_project_model.cpp.o
+.PHONY : python/python_project_model.cpp.o
+
+python/python_project_model.i: python/python_project_model.cpp.i
+.PHONY : python/python_project_model.i
+
+# target to preprocess a source file
+python/python_project_model.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_project_model.cpp.i
+.PHONY : python/python_project_model.cpp.i
+
+python/python_project_model.s: python/python_project_model.cpp.s
+.PHONY : python/python_project_model.s
+
+# target to generate assembly for a file
+python/python_project_model.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_project_model.cpp.s
+.PHONY : python/python_project_model.cpp.s
+
+python/python_run_config.o: python/python_run_config.cpp.o
+.PHONY : python/python_run_config.o
+
+# target to build an object file
+python/python_run_config.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config.cpp.o
+.PHONY : python/python_run_config.cpp.o
+
+python/python_run_config.i: python/python_run_config.cpp.i
+.PHONY : python/python_run_config.i
+
+# target to preprocess a source file
+python/python_run_config.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config.cpp.i
+.PHONY : python/python_run_config.cpp.i
+
+python/python_run_config.s: python/python_run_config.cpp.s
+.PHONY : python/python_run_config.s
+
+# target to generate assembly for a file
+python/python_run_config.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config.cpp.s
+.PHONY : python/python_run_config.cpp.s
+
+python/python_run_config_widget.o: python/python_run_config_widget.cpp.o
+.PHONY : python/python_run_config_widget.o
+
+# target to build an object file
+python/python_run_config_widget.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config_widget.cpp.o
+.PHONY : python/python_run_config_widget.cpp.o
+
+python/python_run_config_widget.i: python/python_run_config_widget.cpp.i
+.PHONY : python/python_run_config_widget.i
+
+# target to preprocess a source file
+python/python_run_config_widget.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config_widget.cpp.i
+.PHONY : python/python_run_config_widget.cpp.i
+
+python/python_run_config_widget.s: python/python_run_config_widget.cpp.s
+.PHONY : python/python_run_config_widget.s
+
+# target to generate assembly for a file
+python/python_run_config_widget.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_run_config_widget.cpp.s
+.PHONY : python/python_run_config_widget.cpp.s
+
+python/python_settings_page.o: python/python_settings_page.cpp.o
+.PHONY : python/python_settings_page.o
+
+# target to build an object file
+python/python_settings_page.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_settings_page.cpp.o
+.PHONY : python/python_settings_page.cpp.o
+
+python/python_settings_page.i: python/python_settings_page.cpp.i
+.PHONY : python/python_settings_page.i
+
+# target to preprocess a source file
+python/python_settings_page.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_settings_page.cpp.i
+.PHONY : python/python_settings_page.cpp.i
+
+python/python_settings_page.s: python/python_settings_page.cpp.s
+.PHONY : python/python_settings_page.s
+
+# target to generate assembly for a file
+python/python_settings_page.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_settings_page.cpp.s
+.PHONY : python/python_settings_page.cpp.s
+
+python/python_test_runner.o: python/python_test_runner.cpp.o
+.PHONY : python/python_test_runner.o
+
+# target to build an object file
+python/python_test_runner.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_test_runner.cpp.o
+.PHONY : python/python_test_runner.cpp.o
+
+python/python_test_runner.i: python/python_test_runner.cpp.i
+.PHONY : python/python_test_runner.i
+
+# target to preprocess a source file
+python/python_test_runner.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_test_runner.cpp.i
+.PHONY : python/python_test_runner.cpp.i
+
+python/python_test_runner.s: python/python_test_runner.cpp.s
+.PHONY : python/python_test_runner.s
+
+# target to generate assembly for a file
+python/python_test_runner.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_test_runner.cpp.s
+.PHONY : python/python_test_runner.cpp.s
+
+python/python_virtual_env.o: python/python_virtual_env.cpp.o
+.PHONY : python/python_virtual_env.o
+
+# target to build an object file
+python/python_virtual_env.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_virtual_env.cpp.o
+.PHONY : python/python_virtual_env.cpp.o
+
+python/python_virtual_env.i: python/python_virtual_env.cpp.i
+.PHONY : python/python_virtual_env.i
+
+# target to preprocess a source file
+python/python_virtual_env.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_virtual_env.cpp.i
+.PHONY : python/python_virtual_env.cpp.i
+
+python/python_virtual_env.s: python/python_virtual_env.cpp.s
+.PHONY : python/python_virtual_env.s
+
+# target to generate assembly for a file
+python/python_virtual_env.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SprintIDE.dir/build.make CMakeFiles/SprintIDE.dir/python/python_virtual_env.cpp.s
+.PHONY : python/python_virtual_env.cpp.s
+
 replace_dialog.o: replace_dialog.cpp.o
 .PHONY : replace_dialog.o
 
@@ -1608,12 +1968,30 @@ help:
 	@echo "... config_manager.o"
 	@echo "... config_manager.i"
 	@echo "... config_manager.s"
+	@echo "... cpp/cpp_debugger.o"
+	@echo "... cpp/cpp_debugger.i"
+	@echo "... cpp/cpp_debugger.s"
+	@echo "... cpp/cpp_project_model.o"
+	@echo "... cpp/cpp_project_model.i"
+	@echo "... cpp/cpp_project_model.s"
+	@echo "... dap/dap_client.o"
+	@echo "... dap/dap_client.i"
+	@echo "... dap/dap_client.s"
 	@echo "... debug_manager.o"
 	@echo "... debug_manager.i"
 	@echo "... debug_manager.s"
 	@echo "... debug_panel.o"
 	@echo "... debug_panel.i"
 	@echo "... debug_panel.s"
+	@echo "... deps/lldb_dap_provider.o"
+	@echo "... deps/lldb_dap_provider.i"
+	@echo "... deps/lldb_dap_provider.s"
+	@echo "... deps/toolchain_dialog.o"
+	@echo "... deps/toolchain_dialog.i"
+	@echo "... deps/toolchain_dialog.s"
+	@echo "... deps/toolchain_manager.o"
+	@echo "... deps/toolchain_manager.i"
+	@echo "... deps/toolchain_manager.s"
 	@echo "... editor_widget.o"
 	@echo "... editor_widget.i"
 	@echo "... editor_widget.s"
@@ -1680,6 +2058,33 @@ help:
 	@echo "... project_selection_dialog.o"
 	@echo "... project_selection_dialog.i"
 	@echo "... project_selection_dialog.s"
+	@echo "... python/python_debugger.o"
+	@echo "... python/python_debugger.i"
+	@echo "... python/python_debugger.s"
+	@echo "... python/python_dependency_manager.o"
+	@echo "... python/python_dependency_manager.i"
+	@echo "... python/python_dependency_manager.s"
+	@echo "... python/python_formatter.o"
+	@echo "... python/python_formatter.i"
+	@echo "... python/python_formatter.s"
+	@echo "... python/python_project_model.o"
+	@echo "... python/python_project_model.i"
+	@echo "... python/python_project_model.s"
+	@echo "... python/python_run_config.o"
+	@echo "... python/python_run_config.i"
+	@echo "... python/python_run_config.s"
+	@echo "... python/python_run_config_widget.o"
+	@echo "... python/python_run_config_widget.i"
+	@echo "... python/python_run_config_widget.s"
+	@echo "... python/python_settings_page.o"
+	@echo "... python/python_settings_page.i"
+	@echo "... python/python_settings_page.s"
+	@echo "... python/python_test_runner.o"
+	@echo "... python/python_test_runner.i"
+	@echo "... python/python_test_runner.s"
+	@echo "... python/python_virtual_env.o"
+	@echo "... python/python_virtual_env.i"
+	@echo "... python/python_virtual_env.s"
 	@echo "... replace_dialog.o"
 	@echo "... replace_dialog.i"
 	@echo "... replace_dialog.s"

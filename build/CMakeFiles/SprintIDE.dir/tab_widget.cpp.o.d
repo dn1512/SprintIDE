@@ -1226,7 +1226,9 @@ CMakeFiles/SprintIDE.dir/tab_widget.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTreeView \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtreeview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QApplication \

@@ -1098,4 +1098,10 @@ CMakeFiles/SprintIDE.dir/builder/python_builder.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFile \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/config_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSettings \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsettings.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsettings.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_dependency_manager.h

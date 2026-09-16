@@ -1227,7 +1227,9 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabBar \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStackedWidget \
@@ -1239,6 +1241,13 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialog.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QComboBox \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcombobox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QGroupBox \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgroupbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QFormLayout \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qformlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QLayout \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QThread \
@@ -1284,8 +1293,6 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qpointer.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QComboBox \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qcombobox.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/ai_action_executor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QJsonArray \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qjsonarray.h \
@@ -1302,6 +1309,9 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtNetwork.framework/Headers/qtcpsocket.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QJsonDocument \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/ai/chat_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_types.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/mainwindow_p.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTabWidget \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.h \
@@ -1309,16 +1319,12 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qfilesystemmodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFileSystemWatcher \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qfilesystemwatcher.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QContextMenuEvent \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSortFilterProxyModel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsortfilterproxymodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qabstractproxymodel.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QFormLayout \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qformlayout.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QLayout \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QGroupBox \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qgroupbox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QAbstractItemModel \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QSplitter \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qsplitter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMenuBar \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qmenubar.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QStatusBar \
@@ -1329,6 +1335,7 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qmessagebox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qdialogbuttonbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QCloseEvent \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QInputDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qinputdialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QTemporaryFile \
@@ -1363,4 +1370,12 @@ CMakeFiles/SprintIDE.dir/mainwindow.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QDialogButtonBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QTableWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtablewidget.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtableview.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qtableview.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_formatter.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_dependency_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_virtual_env.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_test_runner.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_types.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_dialog.h

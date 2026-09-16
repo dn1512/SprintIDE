@@ -1114,6 +1114,8 @@ CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qcalendar.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMessageBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qmessagebox.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QShortcut \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qshortcut.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QFileInfo \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qfileinfo.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qfile.h \
@@ -1153,4 +1155,19 @@ CMakeFiles/SprintIDE.dir/project_selection_dialog.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtextcursor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtextformat.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qpen.h \
-  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtextoption.h
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/qtextoption.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/QMenu \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Headers/qmenu.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Headers/QKeySequence \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QObject \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QString \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QStringList \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSettings \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qsettings.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h

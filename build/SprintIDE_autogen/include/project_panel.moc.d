@@ -865,6 +865,7 @@
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/xlocale.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/usr/include/xlocale/_time.h \
   /Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include/stdarg.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QAbstractItemModel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QDateTime \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QDebug \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QDir \
@@ -878,6 +879,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QObject \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QRect \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSettings \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSharedPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSize \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSizeF \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSortFilterProxyModel \
@@ -1058,6 +1060,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QDropEvent \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QFileSystemModel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QKeyEvent \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QStandardItemModel \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QTransform \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qaction.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qbitmap.h \
@@ -1092,6 +1095,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qrgba64.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qscreen.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qscreen_platform.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qstandarditemmodel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtextcursor.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtextdocument.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtextformat.h \
@@ -1110,25 +1114,33 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QInputDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMenu \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMessageBox \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QSplitter \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QTreeView \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QVBoxLayout \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractitemdelegate.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractitemview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractscrollarea.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractslider.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qabstractspinbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qapplication.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qboxlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qdialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qdialogbuttonbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qfiledialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qframe.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qgridlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qheaderview.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qinputdialog.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayoutitem.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlineedit.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qmenu.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qmessagebox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qrubberband.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qsizepolicy.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qslider.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qsplitter.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qstyle.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qstyleoption.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtabbar.h \
@@ -1138,5 +1150,9 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsexports.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qtwidgetsglobal.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qwidget.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_panel.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_test_runner.h

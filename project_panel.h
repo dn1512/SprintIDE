@@ -29,7 +29,7 @@ public:
 
 protected:
     bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override;
-
+    bool lessThan(const QModelIndex& source_left, const QModelIndex& source_right) const override;
 private:
     QStringList m_excludeDirs;
     QStringList m_allowedExtensions;

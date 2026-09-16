@@ -312,6 +312,24 @@ QByteArray ProjectManager::loadWindowGeometry() const
     return m_settings->value("window/geometry").toByteArray();
 }
 
+bool ProjectManager::removeRecentProject(const QString& projectPath)
+{
+    if (projectPath.isEmpty()) return false;
+
+    // 尝试移除；QMap::remove 返回被移除元素的个数
+    const int removed = m_recentProjects.remove(projectPath);
+    if (removed == 0) {
+        qDebug() << "[ProjectManager] removeRecentProject: 未找到" << projectPath;
+        return false;
+    }
+
+    // 持久化
+    saveRecentProjects();
+
+    qDebug() << "[ProjectManager] 已从历史记录中移除:" << projectPath;
+    return true;
+}
+
 // ============== Private Methods ==============
 
 void ProjectManager::initDefaultConfig()

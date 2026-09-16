@@ -880,6 +880,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QRegularExpression \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSet \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSettings \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSharedPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSize \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSizeF \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QString \
@@ -1152,4 +1153,5 @@
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_highlighter.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/lsp_client.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h

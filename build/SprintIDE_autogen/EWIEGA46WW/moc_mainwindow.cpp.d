@@ -894,6 +894,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QScopedPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSet \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSettings \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSharedPointer \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSize \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QSizeF \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/QString \
@@ -1147,8 +1148,11 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QComboBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QDialog \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QDockWidget \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QFormLayout \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QGroupBox \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QHBoxLayout \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLabel \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLayout \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QLineEdit \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QListWidget \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/QMainWindow \
@@ -1175,8 +1179,10 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qcombobox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qdialog.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qdockwidget.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qformlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qframe.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qgridlayout.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qgroupbox.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlabel.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayout.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtWidgets.framework/Versions/A/Headers/qlayoutitem.h \
@@ -1214,6 +1220,8 @@
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/builder_factory.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/ibuilder.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/compile_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_types.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/find_dialog.h \
@@ -1228,6 +1236,8 @@
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_config.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_creation_dialog.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_debugger.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/replace_dialog.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/tab_widget.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/terminal/terminal_panel.h \

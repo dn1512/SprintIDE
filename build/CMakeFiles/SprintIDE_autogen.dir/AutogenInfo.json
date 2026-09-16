@@ -614,6 +614,30 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_debugger.h",
+			"MU",
+			"SVODSI3R2M/moc_cpp_debugger.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_project_model.h",
+			"MU",
+			"SVODSI3R2M/moc_cpp_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_client.h",
+			"MU",
+			"XCQ3VMQEXM/moc_dap_client.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_types.h",
+			"MU",
+			"XCQ3VMQEXM/moc_dap_types.cpp",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.h",
 			"MU",
 			"EWIEGA46WW/moc_debug_manager.cpp",
@@ -623,6 +647,36 @@
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.h",
 			"MU",
 			"EWIEGA46WW/moc_debug_panel.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/lldb_dap_provider.h",
+			"MU",
+			"ZCQREGUWMX/moc_lldb_dap_provider.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_dialog.h",
+			"MU",
+			"ZCQREGUWMX/moc_toolchain_dialog.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_manager.h",
+			"MU",
+			"ZCQREGUWMX/moc_toolchain_manager.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_provider.h",
+			"MU",
+			"ZCQREGUWMX/moc_toolchain_provider.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_types.h",
+			"MU",
+			"ZCQREGUWMX/moc_toolchain_types.cpp",
 			null
 		],
 		[
@@ -761,6 +815,60 @@
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.h",
 			"MU",
 			"EWIEGA46WW/moc_project_selection_dialog.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_debugger.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_debugger.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_dependency_manager.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_dependency_manager.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_formatter.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_formatter.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_project_model.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_run_config.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_run_config.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_run_config_widget.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_run_config_widget.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_settings_page.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_settings_page.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_test_runner.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_test_runner.cpp",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_virtual_env.h",
+			"MU",
+			"K3GKKSBDS6/moc_python_virtual_env.cpp",
 			null
 		],
 		[
@@ -989,12 +1097,42 @@
 			null
 		],
 		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_debugger.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/cpp/cpp_project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/dap/dap_client.cpp",
+			"MU",
+			null
+		],
+		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_manager.cpp",
 			"MU",
 			null
 		],
 		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/debug_panel.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/lldb_dap_provider.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/deps/toolchain_manager.cpp",
 			"MU",
 			null
 		],
@@ -1105,6 +1243,51 @@
 		],
 		[
 			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/project_selection_dialog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_debugger.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_dependency_manager.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_formatter.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_run_config.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_run_config_widget.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_settings_page.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_test_runner.cpp",
+			"MU",
+			null
+		],
+		[
+			"/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_virtual_env.cpp",
 			"MU",
 			null
 		],

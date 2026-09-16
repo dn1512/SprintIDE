@@ -109,6 +109,8 @@ template <> constexpr inline auto SprintIDE::ProjectPanel::qt_create_metaobjectd
         "requestFileHistory",
         "deleteRequested",
         "filePaths",
+        "runTestRequested",
+        "testFullName",
         "newFile",
         "newDirectory",
         "openSelectedFile",
@@ -119,17 +121,21 @@ template <> constexpr inline auto SprintIDE::ProjectPanel::qt_create_metaobjectd
         "refreshSelected",
         "expandToSelected",
         "showFileHistory",
-        "onSelectionChanged",
+        "onFileTreeSelectionChanged",
         "QItemSelection",
         "selected",
         "deselected",
+        "onFileTreeDoubleClicked",
+        "QModelIndex",
+        "index",
         "onDirectoryChanged",
         "path",
         "onFileRenamed",
         "oldName",
         "newName",
         "onWatchedDirectoryChanged",
-        "onWatchedFileChanged"
+        "onWatchedFileChanged",
+        "onTestTreeDoubleClicked"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -163,45 +169,57 @@ template <> constexpr inline auto SprintIDE::ProjectPanel::qt_create_metaobjectd
         QtMocHelpers::SignalData<void(const QStringList &)>(12, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QStringList, 13 },
         }}),
+        // Signal 'runTestRequested'
+        QtMocHelpers::SignalData<void(const QString &, const QString &)>(14, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 3 }, { QMetaType::QString, 15 },
+        }}),
         // Slot 'newFile'
-        QtMocHelpers::SlotData<void()>(14, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'newDirectory'
-        QtMocHelpers::SlotData<void()>(15, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'openSelectedFile'
         QtMocHelpers::SlotData<void()>(16, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'renameSelectedFile'
+        // Slot 'newDirectory'
         QtMocHelpers::SlotData<void()>(17, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'deleteSelectedFile'
+        // Slot 'openSelectedFile'
         QtMocHelpers::SlotData<void()>(18, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'copyFilePath'
+        // Slot 'renameSelectedFile'
         QtMocHelpers::SlotData<void()>(19, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'showInFileManager'
+        // Slot 'deleteSelectedFile'
         QtMocHelpers::SlotData<void()>(20, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'refreshSelected'
+        // Slot 'copyFilePath'
         QtMocHelpers::SlotData<void()>(21, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'expandToSelected'
+        // Slot 'showInFileManager'
         QtMocHelpers::SlotData<void()>(22, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'showFileHistory'
+        // Slot 'refreshSelected'
         QtMocHelpers::SlotData<void()>(23, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onSelectionChanged'
-        QtMocHelpers::SlotData<void(const QItemSelection &, const QItemSelection &)>(24, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { 0x80000000 | 25, 26 }, { 0x80000000 | 25, 27 },
+        // Slot 'expandToSelected'
+        QtMocHelpers::SlotData<void()>(24, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'showFileHistory'
+        QtMocHelpers::SlotData<void()>(25, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onFileTreeSelectionChanged'
+        QtMocHelpers::SlotData<void(const QItemSelection &, const QItemSelection &)>(26, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 27, 28 }, { 0x80000000 | 27, 29 },
+        }}),
+        // Slot 'onFileTreeDoubleClicked'
+        QtMocHelpers::SlotData<void(const QModelIndex &)>(30, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 31, 32 },
         }}),
         // Slot 'onDirectoryChanged'
-        QtMocHelpers::SlotData<void(const QString &)>(28, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(const QString &)>(33, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 34 },
         }}),
         // Slot 'onFileRenamed'
-        QtMocHelpers::SlotData<void(const QString &, const QString &, const QString &)>(30, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 29 }, { QMetaType::QString, 31 }, { QMetaType::QString, 32 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &, const QString &)>(35, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 34 }, { QMetaType::QString, 36 }, { QMetaType::QString, 37 },
         }}),
         // Slot 'onWatchedDirectoryChanged'
-        QtMocHelpers::SlotData<void(const QString &)>(33, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(const QString &)>(38, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 34 },
         }}),
         // Slot 'onWatchedFileChanged'
-        QtMocHelpers::SlotData<void(const QString &)>(34, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(const QString &)>(39, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 34 },
+        }}),
+        // Slot 'onTestTreeDoubleClicked'
+        QtMocHelpers::SlotData<void(const QModelIndex &)>(40, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 31, 32 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
@@ -212,7 +230,7 @@ template <> constexpr inline auto SprintIDE::ProjectPanel::qt_create_metaobjectd
             qt_methods, qt_properties, qt_enums);
 }
 Q_CONSTINIT const QMetaObject SprintIDE::ProjectPanel::staticMetaObject = { {
-    QMetaObject::SuperData::link<QTreeView::staticMetaObject>(),
+    QMetaObject::SuperData::link<QWidget::staticMetaObject>(),
     qt_staticMetaObjectStaticContent<qt_meta_tag_ZN9SprintIDE12ProjectPanelE_t>.stringdata,
     qt_staticMetaObjectStaticContent<qt_meta_tag_ZN9SprintIDE12ProjectPanelE_t>.data,
     qt_static_metacall,
@@ -234,28 +252,31 @@ void SprintIDE::ProjectPanel::qt_static_metacall(QObject *_o, QMetaObject::Call 
         case 5: _t->selectionChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 6: _t->requestFileHistory((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 7: _t->deleteRequested((*reinterpret_cast<std::add_pointer_t<QStringList>>(_a[1]))); break;
-        case 8: _t->newFile(); break;
-        case 9: _t->newDirectory(); break;
-        case 10: _t->openSelectedFile(); break;
-        case 11: _t->renameSelectedFile(); break;
-        case 12: _t->deleteSelectedFile(); break;
-        case 13: _t->copyFilePath(); break;
-        case 14: _t->showInFileManager(); break;
-        case 15: _t->refreshSelected(); break;
-        case 16: _t->expandToSelected(); break;
-        case 17: _t->showFileHistory(); break;
-        case 18: _t->onSelectionChanged((*reinterpret_cast<std::add_pointer_t<QItemSelection>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QItemSelection>>(_a[2]))); break;
-        case 19: _t->onDirectoryChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 20: _t->onFileRenamed((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
-        case 21: _t->onWatchedDirectoryChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 22: _t->onWatchedFileChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 8: _t->runTestRequested((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 9: _t->newFile(); break;
+        case 10: _t->newDirectory(); break;
+        case 11: _t->openSelectedFile(); break;
+        case 12: _t->renameSelectedFile(); break;
+        case 13: _t->deleteSelectedFile(); break;
+        case 14: _t->copyFilePath(); break;
+        case 15: _t->showInFileManager(); break;
+        case 16: _t->refreshSelected(); break;
+        case 17: _t->expandToSelected(); break;
+        case 18: _t->showFileHistory(); break;
+        case 19: _t->onFileTreeSelectionChanged((*reinterpret_cast<std::add_pointer_t<QItemSelection>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QItemSelection>>(_a[2]))); break;
+        case 20: _t->onFileTreeDoubleClicked((*reinterpret_cast<std::add_pointer_t<QModelIndex>>(_a[1]))); break;
+        case 21: _t->onDirectoryChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 22: _t->onFileRenamed((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
+        case 23: _t->onWatchedDirectoryChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 24: _t->onWatchedFileChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 25: _t->onTestTreeDoubleClicked((*reinterpret_cast<std::add_pointer_t<QModelIndex>>(_a[1]))); break;
         default: ;
         }
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
         switch (_id) {
         default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
-        case 18:
+        case 19:
             switch (*reinterpret_cast<int*>(_a[1])) {
             default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
             case 1:
@@ -282,6 +303,8 @@ void SprintIDE::ProjectPanel::qt_static_metacall(QObject *_o, QMetaObject::Call 
             return;
         if (QtMocHelpers::indexOfMethod<void (ProjectPanel::*)(const QStringList & )>(_a, &ProjectPanel::deleteRequested, 7))
             return;
+        if (QtMocHelpers::indexOfMethod<void (ProjectPanel::*)(const QString & , const QString & )>(_a, &ProjectPanel::runTestRequested, 8))
+            return;
     }
 }
 
@@ -295,23 +318,23 @@ void *SprintIDE::ProjectPanel::qt_metacast(const char *_clname)
     if (!_clname) return nullptr;
     if (!strcmp(_clname, qt_staticMetaObjectStaticContent<qt_meta_tag_ZN9SprintIDE12ProjectPanelE_t>.strings))
         return static_cast<void*>(this);
-    return QTreeView::qt_metacast(_clname);
+    return QWidget::qt_metacast(_clname);
 }
 
 int SprintIDE::ProjectPanel::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
-    _id = QTreeView::qt_metacall(_c, _id, _a);
+    _id = QWidget::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 23)
+        if (_id < 26)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 23;
+        _id -= 26;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 23)
+        if (_id < 26)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 23;
+        _id -= 26;
     }
     return _id;
 }
@@ -362,5 +385,11 @@ void SprintIDE::ProjectPanel::requestFileHistory(const QString & _t1)
 void SprintIDE::ProjectPanel::deleteRequested(const QStringList & _t1)
 {
     QMetaObject::activate<void>(this, &staticMetaObject, 7, nullptr, _t1);
+}
+
+// SIGNAL 8
+void SprintIDE::ProjectPanel::runTestRequested(const QString & _t1, const QString & _t2)
+{
+    QMetaObject::activate<void>(this, &staticMetaObject, 8, nullptr, _t1, _t2);
 }
 QT_WARNING_POP

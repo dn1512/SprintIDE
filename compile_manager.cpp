@@ -15,6 +15,7 @@
 #include <QRegularExpression>
 #include <QSettings>
 #include <QDirIterator>
+#include <QFileInfo>
 
 #include "language/language_type.h"
 #include "project_manager.h"
@@ -1245,13 +1246,34 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     qDebug() << "[CompileManager] executeBuildTask called, language:"
              << static_cast<int>(task.language)
              << ", projectPath:" << task.projectPath;
+
+    // ============================================================
+    // ★ 新增：立即发出 compileStarted 信号
+    //   让 MainWindow 知道"开始编译了"，显示状态栏、清屏
+    // ============================================================
+    QString sourceDesc;
+    if (!task.sourceFiles.isEmpty()) {
+        sourceDesc = task.sourceFiles.first();
+    } else if (!task.projectPath.isEmpty()) {
+        sourceDesc = QFileInfo(task.projectPath).fileName();
+    } else {
+        sourceDesc = "unknown";
+    }
+    emit compileStarted(task.taskId, sourceDesc);
+
+    // ============================================================
     // 1. 获取对应的 Builder
+    // ============================================================
     IBuilder* builder = BuilderFactory::createBuilder(task.language);
     if (!builder) {
-        qWarning() << "[CompileManager] No builder for language:" << static_cast<int>(task.language);
-        QString err = QString("No builder available for language: %1").arg(languageTypeToString(task.language));
+        qWarning() << "[CompileManager] No builder for language:"
+                   << static_cast<int>(task.language);
+        QString err = QString("No builder available for language: %1")
+                          .arg(languageTypeToString(task.language));
+
+        emit compileOutput(task.taskId, err, true);
         emit compileError(task.taskId, err);
-        // 构造一个失败结果
+
         CompileResult oldResult;
         oldResult.success = false;
         oldResult.errorMessage = err;
@@ -1259,23 +1281,55 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
         return task.taskId;
     }
 
+    // ============================================================
     // 2. 执行构建
+    // ============================================================
     BuildResult result;
     bool started = builder->build(task, result);
+
     if (!started) {
         // 启动失败（如命令不可用）
+        emit compileOutput(task.taskId, result.errorMessage, true);
+
         CompileResult oldResult;
         oldResult.success = false;
         oldResult.errorMessage = result.errorMessage;
         oldResult.output = result.fullOutput;
         oldResult.errors = result.errorLines;
         oldResult.warnings = result.warningLines;
+
         emit compileError(task.taskId, result.errorMessage);
         emit compileFinished(task.taskId, oldResult);
         return task.taskId;
     }
 
-    // 3. 转换为旧的 CompileResult 以兼容现有信号槽
+    // ============================================================
+    // 3. ★ 新增：把构建器产生的完整输出逐行发出去
+    //    这样 MainWindow 就能在输出面板显示 CMake configure/build 的细节
+    // ============================================================
+    if (!result.fullOutput.isEmpty()) {
+        // 逐行发，避免一次性把一大段塞给 UI
+        const QStringList lines = result.fullOutput.split('\n');
+        QString chunk;
+        for (const QString& line : lines) {
+            chunk += line;
+            chunk += '\n';
+            // 每 20 行发一批
+            static int batchCounter = 0;
+            if (++batchCounter >= 20) {
+                emit compileOutput(task.taskId, chunk, !result.success);
+                chunk.clear();
+                batchCounter = 0;
+            }
+        }
+        if (!chunk.isEmpty()) {
+            emit compileOutput(task.taskId, chunk, !result.success);
+        }
+    }
+
+    // ============================================================
+    // 4. 转换为旧的 CompileResult 以兼容现有信号槽
+    // ============================================================
     CompileResult oldResult;
     oldResult.success = result.success;
     oldResult.exitCode = result.exitCode;
@@ -1285,13 +1339,15 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     oldResult.warnings = result.warningLines;
     oldResult.compileTime = result.elapsedMs;
     oldResult.errorMessage = result.errorMessage;
-    // 注入 builder 名称到额外信息（可忽略）
-    // oldResult.extraInfo = result.builderName;
 
-    // 4. 发射信号（保持与原有 MainWindow 的槽连接）
+    // ============================================================
+    // 5. 发出完成信号
+    // ============================================================
     emit compileFinished(task.taskId, oldResult);
     if (!result.success) {
-        emit compileError(task.taskId, result.errorMessage.isEmpty() ? "Build failed" : result.errorMessage);
+        emit compileError(task.taskId,
+                          result.errorMessage.isEmpty() ? "Build failed"
+                                                        : result.errorMessage);
     }
 
     return task.taskId;

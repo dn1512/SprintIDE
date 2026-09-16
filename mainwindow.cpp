@@ -95,6 +95,12 @@
 #include "python/python_virtual_env.h"
 #include "python/python_test_runner.h"
 #include "python/python_project_model.h"
+#include "cpp/cpp_project_model.h"
+
+#include "cpp/cpp_debugger.h"
+#include "deps/toolchain_manager.h"
+#include "deps/toolchain_types.h"
+#include "deps/toolchain_dialog.h"
 
 
 using namespace SprintIDE;
@@ -376,37 +382,52 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    // 停止调试
-    if (m_debugManager) {
-        m_debugManager->stopDebugging();
-    }
+    qDebug() << "[MainWindow] 析构开始";
 
-    // 停止 LSP
+    // ========== 1. 断开可能产生回调的信号 ==========
+    if (m_compileManager) {
+        disconnect(m_compileManager, nullptr, this, nullptr);
+    }
     if (m_lspManager) {
-        m_lspManager->shutdownAll();
-        // 不需要 delete，因为是 Qt 子对象
+        disconnect(m_lspManager, nullptr, this, nullptr);
+    }
+    if (m_pythonDebugger) {
+        disconnect(m_pythonDebugger, nullptr, this, nullptr);
     }
 
+    // ========== 2. Python 调试器停止（不 delete，交给 Qt parent）==========
     if (m_pythonDebugger) {
         m_pythonDebugger->stopDebugging();
-        delete m_pythonDebugger;
-        m_pythonDebugger = nullptr;
     }
 
-    // 停止所有进程（ProcessManager 是单例，但需要清理）
-    // ProcessManager::instance().clearHistory();
+    // ========== 2.5 C++ 调试器停止 ==========
+    if (m_cppDebugger) {
+        m_cppDebugger->stopDebugging();
+        delete m_cppDebugger;
+        m_cppDebugger = nullptr;
+    }
 
-    // 清除所有编辑器
-    for (int i = 0; i < d->editorTabs->count(); ++i) {
-        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (editor) {
-            editor->deleteLater();
+    // ========== 3. 显式关闭 LSP（它有 parent = this，会随后被 Qt 删除）==========
+    if (m_lspManager) {
+        m_lspManager->shutdownAll();
+    }
+
+    // ========== 4. ★ 不要在 MainWindow 析构里 shutdown DebugManager ★ ==========
+    // 因为此时可能已经晚于 QApplication 的清理时机。
+    // 全部移到 main.cpp 里做。
+
+    // ========== 5. 清理编辑器标签 ==========
+    if (d && d->editorTabs) {
+        while (d->editorTabs->count() > 0) {
+            QWidget* w = d->editorTabs->widget(0);
+            d->editorTabs->removeTab(0);
+            if (w) {
+                delete w;
+            }
         }
     }
 
-    // 清理构建器工厂（释放所有 Builder）
-    BuilderFactory::shutdown();
-
+    // ========== 6. 断开 definition 连接 ==========
     for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
         disconnect(it.value());
     }
@@ -417,8 +438,11 @@ MainWindow::~MainWindow()
     }
     m_pendingDefinitionConnections.clear();
 
-    // 删除私有实现
+    // ========== 7. 删除私有实现 ==========
     delete d;
+    d = nullptr;
+
+    qDebug() << "[MainWindow] 析构完成";
 }
 
 // ==================== 主题相关方法 ====================
@@ -1415,6 +1439,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         }
     }
 
+    saveSession();
+
     // 保存 AI 面板状态
     if (m_aiChatPanel) {
         saveChatPanelState(m_aiChatPanel);
@@ -1564,6 +1590,10 @@ void MainWindow::openProject(const QString &path) {
     }
 
     d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
+    // 延迟恢复上次会话
+    // 用 singleShot 确保当前 openProject 流程走完、UI 已就绪后再恢复，
+    // 避免在 MainWindow 构造期间被 main.cpp 提前调用导致 tab 错乱。
+    QTimer::singleShot(150, this, &MainWindow::restoreSession);
 }
 
 void MainWindow::closeProject()
@@ -1574,6 +1604,15 @@ void MainWindow::closeProject()
 
 void MainWindow::openFile(const QString &path)
 {
+    // ★ 空路径 / 不存在的路径：直接返回，不创建编辑器，不弹窗
+    if (path.isEmpty()) {
+        qWarning() << "[openFile] 空路径，跳过";
+        return;
+    }
+    if (!QFile::exists(path)) {
+        qWarning() << "[openFile] 文件不存在:" << path;
+        return;
+    }
     // ============================================================
     // 1. 检查文件是否已打开
     // ============================================================
@@ -1794,6 +1833,22 @@ void MainWindow::openFile(const QString &path)
                                 });
             }
         }
+    }
+
+    // ============================================================
+    //    打开文件时，把 DebugManager 中属于该文件的所有断点同步到编辑器
+    //    用途：会话恢复时未必把所有断点所在文件都打开，
+    //          但用户后续打开文件时应该看到红点。
+    // ============================================================
+    if (m_debugManager) {
+        const QString absPath = QFileInfo(path).absoluteFilePath();
+        const QList<Breakpoint> allBps = m_debugManager->getBreakpoints();
+        for (const Breakpoint& bp : allBps) {
+            if (QFileInfo(bp.filePath).absoluteFilePath() == absPath) {
+                editor->setBreakpoint(bp.lineNumber, bp.enabled);
+            }
+        }
+        editor->viewport()->update();
     }
 }
 
@@ -2037,12 +2092,53 @@ void MainWindow::onBreakpointToggled(const QString& filePath, int line)
         editor->setBreakpoint(line, hasBreakpoint);
     }
 
+    // ========== C++ 调试断点同步 ==========
+    if (m_cppDebugger && m_isDebugging) {
+        QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
+        m_cppDebugger->setBreakpoints(breakpoints);
+        qDebug() << "[Cpp Debug] 断点已同步，共" << breakpoints.size() << "个";
+    }
+
     // ========== Python 调试断点同步 ==========
     if (m_pythonDebugger && m_isDebugging) {
         QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
         m_pythonDebugger->setBreakpoints(breakpoints);
         qDebug() << "[Python Debug] 断点已同步，共" << breakpoints.size() << "个";
     }
+}
+
+void MainWindow::onPythonDebugFinished()
+{
+    // 幂等：避免 exited + terminated 双触发时重复清理
+    if (!m_isDebugging && !m_debugPanel)
+        return;
+
+    m_isDebugging = false;
+
+    // 1. 清除当前调试行高亮
+    if (TextEditor* editor = currentEditor()) {
+        editor->clearCurrentDebugLine();
+    }
+
+    // 2. 更新调试动作的启用/禁用
+    updateDebugActions();
+
+    // 3. 清空调试面板
+    if (m_debugPanel) {
+        m_debugPanel->setDebuggingState(false);
+        m_debugPanel->updateVariables(QList<DebugVariable>());
+        m_debugPanel->updateCallStack(QList<StackFrame>());
+    }
+
+    // 4. 状态栏提示
+    if (m_statusLabel) {
+        m_statusLabel->setText("调试已结束");
+    }
+
+    // 5. ★ 关键：切回输出面板
+    switchToOutputTab();
+
+    d->outputPanel->append(QString("<span style='color:#33CC33;'>调试会话已结束</span>"));
 }
 
 // ==================== 项目面板信号处理 ====================
@@ -2139,38 +2235,42 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
         return;
     }
 
-    // 定义错误/警告/注意的正则表达式（不区分大小写）
-    static QRegularExpression errorWarningRegex(
-        "^(error|warning|note|fatal error):",
-        QRegularExpression::CaseInsensitiveOption
-        );
+    // 编译输出关键字的分类正则
+    static QRegularExpression errorRegex(
+        "(^|\\s)(fatal\\s+)?error(\\s|:)|错误",
+        QRegularExpression::CaseInsensitiveOption);
+    static QRegularExpression warningRegex(
+        "(^|\\s)warning(\\s|:)|警告",
+        QRegularExpression::CaseInsensitiveOption);
+    static QRegularExpression noteRegex(
+        "(^|\\s)note(\\s|:)|说明",
+        QRegularExpression::CaseInsensitiveOption);
+    static QRegularExpression progressRegex(
+        "^(\\[\\s*\\d+%\\]|--|==>|\\[\\d+/\\d+\\])",
+        QRegularExpression::CaseInsensitiveOption);
 
-    QStringList lines = output.split('\n');
+    const QStringList lines = output.split('\n');
     for (const QString& line : lines) {
-        QString trimmed = line.trimmed();
-        if (trimmed.isEmpty()) {
-            continue;
+        const QString trimmed = line.trimmed();
+        if (trimmed.isEmpty()) continue;
+
+        QString color;
+        if (errorRegex.match(trimmed).hasMatch()) {
+            color = "#FF5555";
+        } else if (warningRegex.match(trimmed).hasMatch()) {
+            color = "#FFAA00";
+        } else if (noteRegex.match(trimmed).hasMatch()) {
+            color = "#9999FF";
+        } else if (progressRegex.match(trimmed).hasMatch()) {
+            color = "#88DDFF";
+        } else if (isError) {
+            color = "#FF5555";   // 编译失败时，所有输出默认红色
+        } else {
+            color = "#CCCCCC";   // 正常输出：浅灰
         }
 
-        // 只保留以 error/warning/note/fatal error 开头的行
-        QRegularExpressionMatch match = errorWarningRegex.match(trimmed);
-        if (match.hasMatch()) {
-            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            QString severity = match.captured(1).toLower();
-            QString color = (severity == "error" || severity == "fatal error") ? "#FF3333" : "#FF9900";
-            QString htmlMessage = QString("<span style='color:%1;'>[%2] %3</span>")
-                                      .arg(color)
-                                      .arg(timeStr)
-                                      .arg(line.toHtmlEscaped());
-            d->outputPanel->append(htmlMessage);
-        }
-        // 如果 isError 为 true，可能是编译管理器标记的错误，也显示
-        else if (isError) {
-            QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            d->outputPanel->append(QString("<span style='color:#FF3333;'>[%1] %2</span>")
-                                       .arg(timeStr)
-                                       .arg(line.toHtmlEscaped()));
-        }
+        d->outputPanel->append(QString("<span style='color:%1;'>%2</span>")
+                                   .arg(color, line.toHtmlEscaped()));
     }
 }
 
@@ -2196,6 +2296,12 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                                        .arg(result.executablePath));
         }
 
+        // 编译成功的细节统计
+        QString statsLine = QString("<span style='color:#66CC66;'>  错误: %1, 警告: %2</span>")
+                                .arg(result.errors.size())
+                                .arg(result.warnings.size());
+        d->outputPanel->append(statsLine);
+
         m_statusLabel->setText("编译成功");
 
         // ========== 编译后自动运行（新增） ==========
@@ -2203,7 +2309,8 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             m_autoRunAfterCompile = false;
             if (!result.executablePath.isEmpty()) {
                 d->outputPanel->append("编译成功，正在运行...");
-                runProgram(result.executablePath, false);
+                // runProgram(result.executablePath, false);
+                runExecutableAsync(result.executablePath);
             } else {
                 d->outputPanel->append("编译成功，但未找到可执行文件，无法自动运行。");
             }
@@ -2212,12 +2319,25 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         // ========== 编译后自动启动调试（原有） ==========
         if (m_compileForDebug) {
             m_compileForDebug = false;
-            if (!result.executablePath.isEmpty()) {
-                d->outputPanel->append("编译成功，正在启动调试...");
-                syncBreakpointsToDebugger();
-                startDebuggingWithExecutable(result.executablePath);  // 使用新方法
-            } else {
+
+            if (result.executablePath.isEmpty()) {
                 d->outputPanel->append("编译成功，但未找到可执行文件，无法启动调试。");
+            } else {
+                // 判断当前编辑器语言
+                TextEditor* editor = currentEditor();
+                LanguageType lang = editor ? detectLanguageTypeFromPath(editor->filePath())
+                                           : LanguageType::Unknown;
+
+                if (lang == LanguageType::Cpp) {
+                    // ★ C++：用 DAP 路径。重新进 onStartDebug()，这次 exePath 已存在
+                    d->outputPanel->append("编译成功，正在启动 C++ 调试...");
+                    QTimer::singleShot(100, this, &MainWindow::onStartDebug);
+                } else {
+                    // 其他语言：保留旧逻辑
+                    d->outputPanel->append("编译成功，正在启动调试...");
+                    syncBreakpointsToDebugger();
+                    startDebuggingWithExecutable(result.executablePath);
+                }
             }
         }
 
@@ -2522,8 +2642,7 @@ TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 }
 // ==================== 调试菜单槽函数 ====================
 
-void MainWindow::onStartDebug()
-{
+void MainWindow::onStartDebug() {
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件再开始调试。");
@@ -2555,27 +2674,18 @@ void MainWindow::onStartDebug()
 
     // ========== Python 调试 ==========
     if (lang == LanguageType::Python || sourceFile.endsWith(".py")) {
-        // 如果已有调试器实例，先停止并删除
-        if (m_pythonDebugger) {
-            m_pythonDebugger->stopDebugging();
-            delete m_pythonDebugger;
-            m_pythonDebugger = nullptr;
-        }
 
         // ---- 获取解释器（与 onRun 逻辑一致） ----
         auto model = ProjectManager::instance()->pythonProjectModel();
-        QString projectPath = d->currentProjectPath.isEmpty() ?
-                                  QFileInfo(sourceFile).absolutePath() :
-                                  d->currentProjectPath;
+        QString projectPath = d->currentProjectPath.isEmpty() ? QFileInfo(sourceFile).absolutePath() : d->currentProjectPath;
         QString python;
 
         // 1. 优先使用虚拟环境中的解释器
         if (model && !model->interpreterPath().isEmpty()) {
             python = model->interpreterPath();
         }
-
         // 2. 如果模型未提供，从 SDK 环境变量 PYTHON_HOME 读取
-        if (python.isEmpty() || python == "python3") {
+        else if (python.isEmpty() || python == "python3") {
             ConfigManager* cfg = Application::instance().configManager();
             if (cfg) {
                 QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
@@ -2585,7 +2695,14 @@ void MainWindow::onStartDebug()
 #ifdef Q_OS_WIN
                         QString pyExe = pyHome + "/python.exe";
 #else
-                        QString pyExe = pyHome;
+                        QString pyExe = pyHome; // macOS/Linux 通常直接是 bin/python3 或链接
+                        // macOS 特定路径检查
+#ifdef Q_OS_MAC
+                        if (pyExe.isEmpty() || pyExe == "python3") {
+                            if (QFile::exists("/opt/homebrew/bin/python3")) python = "/opt/homebrew/bin/python3";
+                            else if (QFile::exists("/usr/local/bin/python3")) python = "/usr/local/bin/python3";
+                        }
+#endif
 #endif
                         if (QFile::exists(pyExe)) {
                             python = pyExe;
@@ -2594,7 +2711,6 @@ void MainWindow::onStartDebug()
                 }
             }
         }
-
         // 3. 最终 fallback
         if (python.isEmpty()) {
             python = "python3";
@@ -2607,115 +2723,103 @@ void MainWindow::onStartDebug()
         config.workingDirectory = projectPath;
         config.stopOnEntry = true;
 
-        // 创建持久化调试器
-        m_pythonDebugger = new PythonDebugger(this);
+        d->outputPanel->append("调试目标文件: " + sourceFile);
 
-        // 连接信号
-        connect(m_pythonDebugger, &PythonDebugger::stopped,
-                this, [this](const QString& file, int line, const QString& reason) {
-                    d->outputPanel->append(QString("调试暂停: %1:%2 (%3)")
-                                               .arg(file).arg(line).arg(reason));
-                    TextEditor* ed = currentEditor();
-                    if (ed) {
-                        ed->setCurrentDebugLine(line);
-                    }
-                    m_isDebugging = true;
-                    updateDebugActions();
-                });
+        // --- 关键修改：复用调试器实例 ---
+        if (!m_pythonDebugger) {
+            m_pythonDebugger = new PythonDebugger(this);
 
-        connect(m_pythonDebugger, &PythonDebugger::continued,
-                this, [this]() {
-                    d->outputPanel->append("继续执行");
-                    TextEditor* ed = currentEditor();
-                    if (ed) {
-                        ed->clearCurrentDebugLine();
-                    }
-                });
+            // 连接信号
+            connect(m_pythonDebugger, &PythonDebugger::stopped, this,
+                    [this](const QString& file, int line, const QString& reason) {
 
-        connect(m_pythonDebugger, &PythonDebugger::exited,
-                this, [this](int code) {
-                    d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
-                    m_isDebugging = false;
-                    updateDebugActions();
-                    TextEditor* ed = currentEditor();
-                    if (ed) {
-                        ed->clearCurrentDebugLine();
-                    }
-                    // 清除调试面板状态
-                    if (m_debugPanel) {
-                        m_debugPanel->setDebuggingState(false);
-                        m_debugPanel->updateVariables(QList<DebugVariable>());
-                        m_debugPanel->updateCallStack(QList<StackFrame>());
-                    }
-                    // 清理调试器
-                    if (m_pythonDebugger) {
-                        m_pythonDebugger->stopDebugging();
-                        delete m_pythonDebugger;
-                        m_pythonDebugger = nullptr;
-                    }
-                });
+                        d->outputPanel->append(QString("调试暂停: %1:%2 (%3)")
+                                                   .arg(file).arg(line).arg(reason));
 
-        connect(m_pythonDebugger, &PythonDebugger::outputReceived,
-                this, [this](const QString& out, bool err) {
-                    if (err) {
-                        d->outputPanel->append("<span style='color:#FF6B6B;'>" + out.toHtmlEscaped() + "</span>");
-                    } else {
-                        d->outputPanel->append(out);
-                    }
-                });
+                        // 1. 找到（或打开）命中的文件
+                        TextEditor* editor = findEditorByFilePath(file);
+                        if (!editor) {
+                            openFile(file);
+                            editor = currentEditor();
+                        } else {
+                            d->editorTabs->setCurrentWidget(editor);
+                        }
 
-        connect(m_pythonDebugger, &PythonDebugger::errorOccurred,
-                this, [this](const QString& error) {
-                    d->outputPanel->append("调试错误: " + error);
-                    m_isDebugging = false;
-                    updateDebugActions();
-                    if (m_debugPanel) {
-                        m_debugPanel->setDebuggingState(false);
-                        m_debugPanel->updateVariables(QList<DebugVariable>());
-                        m_debugPanel->updateCallStack(QList<StackFrame>());
-                    }
-                    TextEditor* ed = currentEditor();
-                    if (ed) {
-                        ed->clearCurrentDebugLine();
-                    }
-                    if (m_pythonDebugger) {
-                        m_pythonDebugger->stopDebugging();
-                        delete m_pythonDebugger;
-                        m_pythonDebugger = nullptr;
-                    }
-                });
+                        // 2. 定位并高亮
+                        if (editor) {
+                            editor->gotoLine(line);
+                            editor->setCurrentDebugLine(line);   // 你的 TextEditor 提供的方法
+                            editor->setFocus();
+                            updateStatusBarPosition(editor);
+                        }
 
-        // 变量和调用栈更新
-        connect(m_pythonDebugger, &PythonDebugger::variablesUpdated,
-                this, [this](const QList<DebugVariable>& vars) {
-                    if (m_debugPanel) {
-                        m_debugPanel->updateVariables(vars);
-                    }
-                });
-        connect(m_pythonDebugger, &PythonDebugger::stackUpdated,
-                this, [this](const QList<StackFrame>& frames) {
-                    if (m_debugPanel) {
-                        m_debugPanel->updateCallStack(frames);
-                    }
-                });
+                        // 3. 状态更新
+                        m_isDebugging = true;
+                        updateDebugActions();
+                        switchToDebugTab();                       // 自动切到调试面板
+                    });
+
+            // connect(m_pythonDebugger, &PythonDebugger::continued, this, [this]() {
+            //     d->outputPanel->append("继续执行");
+            //     TextEditor* ed = currentEditor();
+            //     if (ed) { ed->clearCurrentDebugLine(); }
+            // });
+
+            connect(m_pythonDebugger, &PythonDebugger::exited, this, [this](int code) {
+                d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
+                onPythonDebugFinished();
+            });
+            connect(m_pythonDebugger, &PythonDebugger::terminated,
+                    this, &MainWindow::onPythonDebugFinished);
+
+
+            connect(m_pythonDebugger, &PythonDebugger::continued, this, &MainWindow::onDebuggerContinued);
+
+            connect(m_pythonDebugger, &PythonDebugger::outputReceived, this, [this](const QString& out, bool err) {
+                if (err) { d->outputPanel->append("<span style='color:#FF6B6B;'>" + out.toHtmlEscaped() + "</span>"); }
+                else { d->outputPanel->append(out); }
+            });
+
+            connect(m_pythonDebugger, &PythonDebugger::errorOccurred, this, [this](const QString& error) {
+                d->outputPanel->append("调试错误: " + error);
+                m_isDebugging = false;
+                updateDebugActions();
+                if (m_debugPanel) {
+                    m_debugPanel->setDebuggingState(false);
+                    m_debugPanel->updateVariables(QList<DebugVariable>());
+                    m_debugPanel->updateCallStack(QList<StackFrame>());
+                }
+                TextEditor* ed = currentEditor();
+                if (ed) { ed->clearCurrentDebugLine(); }
+            });
+
+            connect(m_pythonDebugger, &PythonDebugger::variablesUpdated, this, [this](const QList<DebugVariable>& vars) {
+                if (m_debugPanel) { m_debugPanel->updateVariables(vars); }
+            });
+
+            connect(m_pythonDebugger, &PythonDebugger::stackUpdated, this, [this](const QList<StackFrame>& frames) {
+                if (m_debugPanel) { m_debugPanel->updateCallStack(frames); }
+            });
+        }
 
         // 启动调试
         if (m_pythonDebugger->startDebugging(config)) {
             d->outputPanel->append("Python 调试已启动");
             m_isDebugging = true;
 
+            QList<Breakpoint> allBreakpoints = m_debugManager->getBreakpoints();
+            m_pythonDebugger->setBreakpoints(allBreakpoints);
+            d->outputPanel->append(QString("已同步 %1 个断点").arg(allBreakpoints.size()));
+
             // 切换到调试面板
             switchToDebugTab();
-
             // 更新调试动作状态
             updateDebugActions();
 
-            // 从 DebugManager 获取断点并同步
-            QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
-            if (!breakpoints.isEmpty()) {
-                m_pythonDebugger->setBreakpoints(breakpoints);
-                d->outputPanel->append(QString("已同步 %1 个断点到调试器").arg(breakpoints.size()));
-            }
+            // --- 关键修改：不再手动发送断点 ---
+            // 断点将在 debugpy 发送 "initialized" 事件后，
+            // 由 PythonDebugger 内部的 applyBreakpoints() 自动同步
+            d->outputPanel->append("断点将在调试器初始化后自动同步");
 
             // 初始化调试面板
             if (m_debugPanel) {
@@ -2725,8 +2829,171 @@ void MainWindow::onStartDebug()
             }
         } else {
             d->outputPanel->append("Python 调试启动失败");
-            delete m_pythonDebugger;
-            m_pythonDebugger = nullptr;
+            // 如果启动失败，确保状态重置
+            if (m_pythonDebugger) {
+                m_pythonDebugger->stopDebugging();
+                // 注意：这里也不删除实例，以便下次重试
+            }
+        }
+        return;
+    }
+
+    // ==========  C++ 调试（DAP）==========
+    if (lang == LanguageType::Cpp) {
+        qDebug() << "[onStartDebug] 进入 C++ DAP 分支";
+
+        // 1. 获取可执行文件路径
+        BuildTask task;
+        task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        task.language = LanguageType::Cpp;
+        task.projectPath = d->currentProjectPath.isEmpty()
+                               ? QFileInfo(sourceFile).absolutePath()
+                               : d->currentProjectPath;
+        task.sourceFiles << sourceFile;
+        task.outputName = QString();       // 留空，让 CppBuilder 从 CMake 取
+        task.outputDir = "build";          // CMake 项目默认 build
+        task.enableDebug = true;
+
+        if (!d->currentProjectPath.isEmpty()) {
+            ProjectConfig projConfig;
+            QString configFile = d->currentProjectPath + "/.lightcppproj";
+            QStringList errors;
+            if (projConfig.loadFromFile(configFile, errors)) {
+                task.sdkConfig = projConfig.sdkEnvironment();
+            }
+        }
+
+        IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Cpp);
+        QString exePath;
+        if (builder) exePath = builder->getExecutablePath(task);
+
+        qDebug() << "[onStartDebug] exePath =" << exePath;
+
+        if (exePath.isEmpty() || !QFile::exists(exePath) ||
+            QFileInfo(sourceFile).lastModified() > QFileInfo(exePath).lastModified()) {
+            int reply = QMessageBox::question(this, "编译并调试",
+                                              "文件尚未编译或已过期，是否现在编译并调试?",
+                                              QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                m_compileForDebug = true;
+                onBuildProject();      // ★ 用 onBuildProject，不是 onCompile
+            }
+            return;
+        }
+
+        // 2. 解析 DAP adapter
+        auto adapterRes = ToolchainManager::instance().resolve(ToolchainId::LldbDap);
+        if (!adapterRes.found) {
+            ToolchainManager::instance().resolveOrPrompt(ToolchainId::LldbDap, this, &adapterRes);
+            if (!adapterRes.found) {
+                d->outputPanel->append("未找到 C++ 调试适配器，调试中止。");
+                return;
+            }
+        }
+
+        d->outputPanel->append(QString("使用调试适配器: %1").arg(adapterRes.executablePath));
+
+        // 3. 构建配置
+        CppDebugConfig cfg;
+        cfg.adapterPath = adapterRes.executablePath;
+        cfg.program = exePath;
+        cfg.workingDirectory = QFileInfo(exePath).absolutePath();
+        cfg.stopOnEntry = false;
+
+        // 4. 首次创建 CppDebugger
+        if (!m_cppDebugger) {
+            m_cppDebugger = new CppDebugger(this);
+
+            connect(m_cppDebugger, &CppDebugger::stopped, this,
+                    [this](const QString& file, int line, const QString& reason) {
+                        d->outputPanel->append(
+                            QString("调试暂停: %1:%2 (%3)").arg(file).arg(line).arg(reason));
+
+                        // 空路径防护：DAP 有时不返回 source.path
+                        if (file.isEmpty()) {
+                            d->outputPanel->append(
+                                "<span style='color:#FF9900;'>警告：调试器未返回源文件路径，无法跳转高亮</span>");
+                            m_isDebugging = true;
+                            updateDebugActions();
+                            switchToDebugTab();
+                            return;
+                        }
+
+                        TextEditor* ed = findEditorByFilePath(file);
+                        if (!ed) { openFile(file); ed = currentEditor(); }
+                        else { d->editorTabs->setCurrentWidget(ed); }
+
+                        if (ed) {
+                            ed->gotoLine(line);
+                            ed->setCurrentDebugLine(line);
+                            ed->setFocus();
+                            updateStatusBarPosition(ed);
+                        }
+                        m_isDebugging = true;
+                        updateDebugActions();
+                        switchToDebugTab();
+                    });
+
+            connect(m_cppDebugger, &CppDebugger::continued,
+                    this, &MainWindow::onDebuggerContinued);
+
+            connect(m_cppDebugger, &CppDebugger::exited, this,
+                    [this](int code) {
+                        d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
+                        onPythonDebugFinished();
+                    });
+
+            connect(m_cppDebugger, &CppDebugger::terminated,
+                    this, &MainWindow::onPythonDebugFinished);
+
+            connect(m_cppDebugger, &CppDebugger::outputReceived, this,
+                    [this](const QString& out, bool err) {
+                        if (err) {
+                            d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                                                   + out.toHtmlEscaped() + "</span>");
+                        } else {
+                            d->outputPanel->append(out);
+                        }
+                    });
+
+            connect(m_cppDebugger, &CppDebugger::errorOccurred, this,
+                    [this](const QString& e) {
+                        d->outputPanel->append("调试错误: " + e);
+                        m_isDebugging = false;
+                        updateDebugActions();
+                        if (m_debugPanel) m_debugPanel->setDebuggingState(false);
+                    });
+
+            connect(m_cppDebugger, &CppDebugger::variablesUpdated, this,
+                    [this](const QList<DebugVariable>& vars) {
+                        if (m_debugPanel) m_debugPanel->updateVariables(vars);
+                    });
+
+            connect(m_cppDebugger, &CppDebugger::stackUpdated, this,
+                    [this](const QList<StackFrame>& frames) {
+                        if (m_debugPanel) m_debugPanel->updateCallStack(frames);
+                    });
+        }
+
+        // 5. 启动
+        if (m_cppDebugger->startDebugging(cfg)) {
+            d->outputPanel->append("C++ 调试已启动");
+            m_isDebugging = true;
+            updateDebugActions();
+            switchToDebugTab();
+            if (m_debugPanel) {
+                m_debugPanel->setDebuggingState(true);
+                m_debugPanel->updateVariables({});
+                m_debugPanel->updateCallStack({});
+            }
+
+            QList<Breakpoint> allBps = m_debugManager->getBreakpoints();
+            m_cppDebugger->setBreakpoints(allBps);
+            d->outputPanel->append(QString("已同步 %1 个断点").arg(allBps.size()));
+        } else {
+            d->outputPanel->append("C++ 调试启动失败");
+            m_isDebugging = false;
+            updateDebugActions();
         }
         return;
     }
@@ -2735,9 +3002,7 @@ void MainWindow::onStartDebug()
     BuildTask task;
     task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     task.language = detectLanguageTypeFromPath(sourceFile);
-    task.projectPath = d->currentProjectPath.isEmpty() ?
-                           QFileInfo(sourceFile).absolutePath() :
-                           d->currentProjectPath;
+    task.projectPath = d->currentProjectPath.isEmpty() ? QFileInfo(sourceFile).absolutePath() : d->currentProjectPath;
     task.sourceFiles << sourceFile;
     task.outputName = QFileInfo(sourceFile).completeBaseName();
     task.outputDir = "bin";
@@ -2774,11 +3039,8 @@ void MainWindow::onStartDebug()
         executablePath = builder->getExecutablePath(task);
     }
 
-    if (executablePath.isEmpty() || !QFile::exists(executablePath) ||
-        QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
-        int reply = QMessageBox::question(this, "编译并调试",
-                                          "文件尚未编译或已过期，是否现在编译并调试?",
-                                          QMessageBox::Yes | QMessageBox::No);
+    if (executablePath.isEmpty() || !QFile::exists(executablePath) || QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
+        int reply = QMessageBox::question(this, "编译并调试", "文件尚未编译或已过期，是否现在编译并调试?", QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes) {
             m_compileForDebug = true;
             onCompile();
@@ -2798,10 +3060,34 @@ void MainWindow::onStartDebug()
     }
 }
 
-void MainWindow::onStopDebug()
-{
+void MainWindow::onStopDebug() {
+    if (isCppDebugging()) {
+            m_cppDebugger->stopDebugging();
+            delete m_cppDebugger;
+            m_cppDebugger = nullptr;
+
+            m_isDebugging = false;
+            updateDebugActions();
+            if (m_debugPanel) {
+                m_debugPanel->setDebuggingState(false);
+                m_debugPanel->updateVariables(QList<DebugVariable>());
+                m_debugPanel->updateCallStack(QList<StackFrame>());
+            }
+            TextEditor* editor = currentEditor();
+            if (editor) editor->clearCurrentDebugLine();
+            switchToOutputTab();
+            return;
+        }
+
     if (isPythonDebugging()) {
+        // 1. 停止调试进程
         m_pythonDebugger->stopDebugging();
+
+        // 2. 【关键修复】删除调试器对象，释放资源
+        delete m_pythonDebugger;
+        m_pythonDebugger = nullptr;
+
+        // 3. 更新 UI 状态
         m_isDebugging = false;
         updateDebugActions();
         if (m_debugPanel) {
@@ -2813,13 +3099,20 @@ void MainWindow::onStopDebug()
         if (editor) editor->clearCurrentDebugLine();
         return;
     }
+
+    // ... 其他调试器（如 C++）的停止逻辑保持不变 ...
     if (m_debugManager && m_isDebugging) {
         m_debugManager->stopDebugging();
     }
+    switchToOutputTab();
 }
 
 void MainWindow::onStepOver()
 {
+    if (isCppDebugging()) {
+        m_cppDebugger->stepOver();
+        return;
+    }
     if (isPythonDebugging()) {
         m_pythonDebugger->stepOver();
         return;
@@ -2831,6 +3124,10 @@ void MainWindow::onStepOver()
 
 void MainWindow::onStepInto()
 {
+    if (isCppDebugging()) {
+        m_cppDebugger->stepInto();
+        return;
+    }
     if (isPythonDebugging()) {
         m_pythonDebugger->stepInto();
         return;
@@ -2842,6 +3139,10 @@ void MainWindow::onStepInto()
 
 void MainWindow::onStepOut()
 {
+    if (isCppDebugging()) {
+        m_cppDebugger->stepOut();
+        return;
+    }
     if (isPythonDebugging()) {
         m_pythonDebugger->stepOut();
         return;
@@ -2887,6 +3188,10 @@ void MainWindow::clearOutputPanel()
 
 void MainWindow::onContinueDebug()
 {
+    if (isCppDebugging()) {
+        m_cppDebugger->continueExecution();
+        return;
+    }
     if (isPythonDebugging()) {
         m_pythonDebugger->continueExecution();
         return;
@@ -3432,35 +3737,40 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
 void MainWindow::saveSession()
 {
     if (d->currentProjectPath.isEmpty()) {
+        qWarning() << "[Session] 当前项目路径为空，跳过保存";
         return;
     }
 
-    // 创建 .SprintIDE 目录
-    QDir projectDir(d->currentProjectPath);
-    QDir sprintDir = projectDir.filePath(".SprintIDE");
-    if (!sprintDir.exists()) {
-        sprintDir.mkpath(".");
+    // ---------- 1. 确保 .SprintIDE 目录存在 ----------
+    const QString sprintDirPath =
+        QDir(d->currentProjectPath).absoluteFilePath(".SprintIDE");
+
+    if (!QDir(sprintDirPath).exists()) {
+        if (!QDir().mkpath(sprintDirPath)) {
+            qWarning() << "[Session] 无法创建目录:" << sprintDirPath;
+            return;
+        }
     }
 
+    // ---------- 2. 组装 JSON ----------
     QJsonObject session;
 
-    // 1. 保存打开的文件列表
+    // 2.1 打开的文件列表
     QJsonArray openFiles;
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
         if (editor && !editor->filePath().isEmpty()) {
             QJsonObject fileObj;
-            fileObj["path"] = editor->filePath();
-            // 保存光标位置（可选）
-            fileObj["line"] = editor->currentLine();
+            fileObj["path"]   = editor->filePath();
+            fileObj["line"]   = editor->currentLine();
             fileObj["column"] = editor->currentColumn();
             openFiles.append(fileObj);
         }
     }
-    session["openFiles"] = openFiles;
+    session["openFiles"]   = openFiles;
     session["activeIndex"] = d->editorTabs->currentIndex();
 
-    // 2. 保存项目树展开状态
+    // 2.2 项目树展开的路径
     QJsonArray expandedPaths;
     if (d->projectPanel) {
         QModelIndex root = d->projectPanel->rootIndex();
@@ -3468,66 +3778,155 @@ void MainWindow::saveSession()
     }
     session["expandedPaths"] = expandedPaths;
 
-    // 3. 保存到文件
-    QString sessionFile = sprintDir.filePath("session.json");
-    QFile file(sessionFile);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QJsonDocument doc(session);
-        file.write(doc.toJson());
-        file.close();
+    // ============================================================
+    // 2.3 ★ 保存断点
+    // ------------------------------------------------------------
+    // Breakpoint 有 filePath / lineNumber / enabled / condition 四个
+    // 关键字段，全部写入。hitCount 是运行时统计，不用持久化。
+    // ============================================================
+    QJsonArray breakpointsArr;
+    if (m_debugManager) {
+        const QList<Breakpoint> breakpoints = m_debugManager->getBreakpoints();
+        for (const Breakpoint& bp : breakpoints) {
+            QJsonObject bpObj;
+            bpObj["file"]      = bp.filePath;
+            bpObj["line"]      = bp.lineNumber;
+            bpObj["enabled"]   = bp.enabled;
+            bpObj["condition"] = bp.condition;
+            breakpointsArr.append(bpObj);
+        }
     }
+    session["breakpoints"] = breakpointsArr;
+
+    // ---------- 3. 写入文件 ----------
+    const QString sessionFile = QDir(sprintDirPath).absoluteFilePath("session.json");
+
+    QFile file(sessionFile);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "[Session] 无法写入会话文件:" << sessionFile
+                   << "错误:" << file.errorString();
+        return;
+    }
+
+    const QByteArray json = QJsonDocument(session).toJson(QJsonDocument::Indented);
+    if (file.write(json) == -1) {
+        qWarning() << "[Session] 写入失败:" << file.errorString();
+    }
+    file.close();
+
+    qDebug() << "[Session] 已保存到:" << sessionFile
+             << "打开文件数:" << openFiles.size()
+             << "断点数:"   << breakpointsArr.size();
 }
 
 void MainWindow::restoreSession()
 {
     if (d->currentProjectPath.isEmpty()) {
+        qWarning() << "[Session] 当前项目路径为空，跳过恢复";
         return;
     }
 
-    QString sessionFile = QDir(d->currentProjectPath).filePath(".SprintIDE/session.json");
+    const QString sprintDirPath =
+        QDir(d->currentProjectPath).absoluteFilePath(".SprintIDE");
+    const QString sessionFile =
+        QDir(sprintDirPath).absoluteFilePath("session.json");
+
     if (!QFile::exists(sessionFile)) {
-        // 没有会话记录，打开一个默认的 README 或空状态
+        qDebug() << "[Session] 未找到会话文件:" << sessionFile;
         return;
     }
 
     QFile file(sessionFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "[Session] 无法读取会话文件:" << sessionFile;
         return;
     }
 
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (!doc.isObject()) {
+    const QByteArray data = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "[Session] 解析会话文件失败:" << parseError.errorString();
         return;
     }
 
     QJsonObject session = doc.object();
+    qDebug() << "[Session] 恢复会话，打开文件数:"
+             << session["openFiles"].toArray().size()
+             << "断点数:"
+             << session["breakpoints"].toArray().size();
 
-    // 1. 恢复打开的文件
-    QJsonArray openFiles = session["openFiles"].toArray();
+    // ---------- 1. 恢复打开的文件 ----------
+    const QJsonArray openFiles = session["openFiles"].toArray();
     for (const QJsonValue &val : openFiles) {
-        QJsonObject fileObj = val.toObject();
-        QString path = fileObj["path"].toString();
-        if (QFile::exists(path)) {
-            openFile(path);
-            // 恢复光标位置（需要在 openFile 中获取返回的编辑器指针）
-            TextEditor* editor = currentEditor();
-            if (editor) {
-                int line = fileObj["line"].toInt(1);
-                editor->gotoLine(line);
-            }
+        const QJsonObject fileObj = val.toObject();
+        const QString path = fileObj["path"].toString();
+        if (!QFile::exists(path)) continue;
+
+        openFile(path);
+
+        TextEditor* editor = currentEditor();
+        if (editor) {
+            const int line   = fileObj["line"].toInt(1);
+            const int column = fileObj["column"].toInt(1);
+            editor->gotoLine(line);
+            Q_UNUSED(column);
         }
     }
 
-    // 2. 恢复活动标签
-    int activeIndex = session["activeIndex"].toInt(0);
+    // ============================================================
+    // 2. ★ 恢复断点
+    // ------------------------------------------------------------
+    //  顺序很重要：
+    //    1) addBreakpoint(...) → 写入 DebugManager（断点的权威数据源）
+    //    2) setBreakpointEnabled(...) → 修正启用/禁用状态
+    //    3) 同步到对应编辑器 → 显示红点
+    // ============================================================
+    const QJsonArray breakpointsArr = session["breakpoints"].toArray();
+    if (m_debugManager && !breakpointsArr.isEmpty()) {
+        int restored = 0;
+        for (const QJsonValue& val : breakpointsArr) {
+            const QJsonObject bpObj = val.toObject();
+            const QString filePath  = bpObj["file"].toString();
+            const int     line      = bpObj["line"].toInt();
+            const bool    enabled   = bpObj["enabled"].toBool(true);
+            const QString condition = bpObj["condition"].toString();
+
+            if (filePath.isEmpty() || line <= 0) continue;
+
+            // ---- 2.1 写入 DebugManager（带条件） ----
+            if (!m_debugManager->hasBreakpoint(filePath, line)) {
+                m_debugManager->addBreakpoint(filePath, line, condition);
+            }
+
+            // ---- 2.2 恢复启用/禁用状态 ----
+            // addBreakpoint 默认是 enabled=true，因此只需在禁用时修正
+            if (!enabled) {
+                m_debugManager->setBreakpointEnabled(filePath, line, false);
+            }
+
+            // ---- 2.3 同步到已打开的编辑器 ----
+            TextEditor* ed = findEditorByFilePath(filePath);
+            if (ed) {
+                ed->setBreakpoint(line, enabled);   // 禁用断点通常渲染成空心红点
+                ed->viewport()->update();
+            }
+            ++restored;
+        }
+        qDebug() << "[Session] 已恢复断点数:" << restored;
+    }
+
+    // ---------- 3. 恢复活动标签 ----------
+    const int activeIndex = session["activeIndex"].toInt(0);
     if (activeIndex >= 0 && activeIndex < d->editorTabs->count()) {
         d->editorTabs->setCurrentIndex(activeIndex);
     }
 
-    // 3. 恢复项目树展开状态（延迟执行，等待模型加载完成）
-    QJsonArray expandedPaths = session["expandedPaths"].toArray();
+    // ---------- 4. 恢复项目树展开状态 ----------
+    const QJsonArray expandedPaths = session["expandedPaths"].toArray();
     if (!expandedPaths.isEmpty()) {
-        // 使用单次定时器，等待文件系统模型加载完成
         QTimer::singleShot(500, this, [this, expandedPaths]() {
             restoreExpandedPaths(expandedPaths);
         });
@@ -3619,6 +4018,66 @@ bool MainWindow::startDebuggingWithExecutable(const QString& executablePath)
 bool MainWindow::isPythonDebugging() const
 {
     return m_pythonDebugger != nullptr && m_isDebugging;
+}
+
+bool MainWindow::isCppDebugging() const
+{
+    return m_cppDebugger != nullptr && m_isDebugging;
+}
+
+void MainWindow::runExecutableAsync(const QString& executablePath)
+{
+    if (executablePath.isEmpty() || !QFile::exists(executablePath)) {
+        d->outputPanel->append("可执行文件不存在: " + executablePath);
+        return;
+    }
+
+    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+    d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 正在运行: %2</span>")
+                               .arg(timeStr).arg(executablePath));
+
+    QProcess* process = new QProcess(this);
+    process->setProgram(executablePath);
+    process->setWorkingDirectory(QFileInfo(executablePath).absolutePath());
+    process->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
+        QByteArray data = process->readAllStandardOutput();
+        QString output = QString::fromLocal8Bit(data);
+        if (!output.isEmpty()) {
+            d->outputPanel->append(output);
+        }
+    });
+    connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
+        QByteArray data = process->readAllStandardError();
+        QString output = QString::fromLocal8Bit(data);
+        if (!output.isEmpty()) {
+            d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                                   + output.toHtmlEscaped() + "</span>");
+        }
+    });
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, process](int exitCode, QProcess::ExitStatus status) {
+                QString t = QTime::currentTime().toString("hh:mm:ss");
+                if (status == QProcess::NormalExit) {
+                    d->outputPanel->append(
+                        QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                            .arg(t).arg(exitCode));
+                } else {
+                    d->outputPanel->append(
+                        QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>").arg(t));
+                }
+                process->deleteLater();
+                m_statusLabel->setText("运行完成");
+            });
+
+    process->start();
+    if (!process->waitForStarted(3000)) {
+        d->outputPanel->append("启动失败: " + process->errorString());
+        process->deleteLater();
+        return;
+    }
+    m_statusLabel->setText("程序运行中...");
 }
 
 // mainwindow.cpp - 实现
@@ -3998,6 +4457,19 @@ void MainWindow::onReplaceAll(const QString& findText, const QString& replaceTex
     d->outputPanel->append(QString("替换完成，共替换 %1 处").arg(count));
 }
 
+void MainWindow::onDebuggerContinued()
+{
+    // 这个槽函数在调试器继续运行时被调用
+    // 主要任务是更新 UI 状态
+    d->outputPanel->append("调试器已继续运行");
+    // 清除上一处停止的行高亮，避免两个绿色行
+    if (TextEditor* editor = currentEditor()) {
+        editor->clearCurrentDebugLine();
+    }
+
+    updateDebugActions(); // 这个函数会根据 m_isDebugging 状态更新按钮
+}
+
 void MainWindow::onComment()
 {
     TextEditor* editor = currentEditor();
@@ -4287,6 +4759,9 @@ void MainWindow::onBuildProject()
         }
     }
 
+    d->outputPanel->clear();
+    switchToOutputTab();
+
     // 如果经过以上步骤仍为空，给出明确提示并退出
     if (projectPath.isEmpty()) {
         QMessageBox::information(this, "提示",
@@ -4318,12 +4793,40 @@ void MainWindow::onBuildProject()
     task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     task.language = lang;
     task.projectPath = projectPath;
-    task.outputName = projectConfig.projectName().isEmpty() ?
-                          QFileInfo(projectPath).fileName() :
-                          projectConfig.projectName();
-    task.outputDir = projectConfig.outputPath().isEmpty() ? "bin" : projectConfig.outputPath();
+
+    // ★ C++ 项目：不预设 outputName，让 CppBuilder 从 CMakeLists 里取真正的 target 名
+    if (lang == LanguageType::Cpp) {
+        task.outputName = QString();
+        task.outputDir = "build";
+    } else {
+        task.outputName = projectConfig.projectName().isEmpty() ?
+                              QFileInfo(projectPath).fileName() :
+                              projectConfig.projectName();
+        task.outputDir = projectConfig.outputPath().isEmpty() ? "bin" : projectConfig.outputPath();
+    }
     task.enableDebug = projectConfig.enableDebugInfo();
     task.sdkConfig = projectConfig.sdkEnvironment();
+
+    // ============================================================
+    // 第四步（前置）：C++ 项目 —— 只做快速探测，避免重复扫描
+    //
+    //   注意：不要把 CppProjectModel 完整 load 一遍。真正的 CMake 目标
+    //         探测在 CppBuilder::buildWithCMake() 内部会做，这里只打印
+    //         一条日志告知用户即可。
+    // ============================================================
+    if (lang == LanguageType::Cpp) {
+        QDir projDir(projectPath);
+        if (projDir.exists("CMakeLists.txt")) {
+            d->outputPanel->append("C++ 项目构建系统: CMake");
+            // task.outputName 留空，让 CppBuilder 内部用 model.defaultTarget() 自动选择
+        } else if (projDir.exists("Makefile") ||
+                   projDir.exists("makefile") ||
+                   projDir.exists("GNUmakefile")) {
+            d->outputPanel->append("C++ 项目构建系统: Makefile");
+        } else {
+            d->outputPanel->append("C++ 项目构建系统: SingleFile");
+        }
+    }
 
     // ============================================================
     // 第四步：Java 项目特殊处理（强制刷新类路径和 Spring Boot 标志）
@@ -4367,15 +4870,11 @@ void MainWindow::onBuildProject()
     // ============================================================
     // 第五步：调用编译管理器
     // ============================================================
-    QString taskId = m_compileManager->compileTask(task);
-    if (taskId.isEmpty()) {
+    m_currentCompileTaskId = m_compileManager->compileTask(task);
+    if (m_currentCompileTaskId.isEmpty()) {
         QMessageBox::warning(this, "编译错误", "无法启动编译任务。请检查输出面板获取详细错误信息。");
         return;
     }
-
-    d->outputPanel->append(QString("开始编译项目: %1 (语言: %2)")
-                               .arg(projectConfig.displayName().isEmpty() ? QFileInfo(projectPath).fileName() : projectConfig.displayName())
-                               .arg(languageTypeToString(lang)));
 }
 
 void MainWindow::onCleanBuild()
@@ -4417,6 +4916,9 @@ void MainWindow::onCleanBuild()
     task.outputName = projectConfig.projectName().isEmpty() ?
                           QFileInfo(d->currentProjectPath).fileName() :
                           projectConfig.projectName();
+    if (lang == LanguageType::Cpp) {
+        task.outputName.clear();
+    }
     task.outputDir = projectConfig.outputPath().isEmpty() ? "bin" : projectConfig.outputPath();
 
     // 如果是 Java，使用模型中的输出目录
@@ -4425,6 +4927,15 @@ void MainWindow::onCleanBuild()
         ProjectModel* model = pm->javaProjectModel();
         if (model) {
             task.outputDir = model->outputDirectory();
+        }
+    }
+
+    // CMake 项目：不需要手动 load 模型，CppBuilder 内部会判断
+    // 只设置 outputDir 为 "build"，让 cleanWithCMake() 走 CMake clean 路径
+    if (lang == LanguageType::Cpp) {
+        QDir projDir(d->currentProjectPath);
+        if (projDir.exists("CMakeLists.txt")) {
+            task.outputDir = "build";
         }
     }
 
@@ -4579,11 +5090,9 @@ void MainWindow::onRun()
 
         // 构建命令参数
         QStringList args;
-        args << sourceFile;  // 直接执行脚本
+        args << sourceFile;
 
-        // 创建异步进程
-        ProcessManager pm;
-        // 设置环境变量（包括虚拟环境激活）
+        // ===== 构造环境变量（保留！后面 QProcess 要用） =====
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         if (model && !model->venvPath().isEmpty()) {
 #ifdef Q_OS_WIN
@@ -4597,27 +5106,9 @@ void MainWindow::onRun()
                 env.insert("VIRTUAL_ENV", model->venvPath());
             }
         }
-        // 可选：添加自定义环境变量（从项目配置读取）
-        pm.setEnvironment(env);
+        // =================================================
 
-        // 生成唯一任务ID（用于跟踪）
-        QString taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-        // 启动异步进程
-        bool started = pm.executeAsync(python, args, projectPath, taskId);
-        if (!started) {
-            d->outputPanel->append("启动进程失败");
-            return;
-        }
-
-        // 连接信号以接收输出
-        // 注意：ProcessManager 会发射 outputReceived 和 processFinished 信号
-        // 但由于 pm 是局部变量，需要用 lambda 捕获或使用成员变量
-        // 更好的方式：直接使用 QProcess 并手动管理，但为了复用，我们将 ProcessManager 提升为成员变量或使用静态连接
-
-        // 由于 ProcessManager 是局部对象，其信号在函数结束后会断开，因此我们需要将进程管理转移到堆上。
-        // 简单修复：使用 QPointer 或 shared_ptr，或者直接使用 QProcess。
-        // 为了更清晰，这里我们直接使用 QProcess（更直观）
+        // 使用 QProcess 异步运行（信号槽机制，不阻塞 UI 线程）
         QProcess* process = new QProcess(this);
         process->setProgram(python);
         process->setArguments(args);
@@ -4637,7 +5128,8 @@ void MainWindow::onRun()
             QByteArray data = process->readAllStandardError();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                d->outputPanel->append("<span style='color:#FF6B6B;'>" + output.toHtmlEscaped() + "</span>");
+                d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                                       + output.toHtmlEscaped() + "</span>");
             }
         });
 
@@ -4646,16 +5138,19 @@ void MainWindow::onRun()
                 this, [this, process](int exitCode, QProcess::ExitStatus status) {
                     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
                     if (status == QProcess::NormalExit) {
-                        d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
-                                                   .arg(timeStr).arg(exitCode));
+                        d->outputPanel->append(
+                            QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                                .arg(timeStr).arg(exitCode));
                     } else {
-                        d->outputPanel->append(QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>").arg(timeStr));
+                        d->outputPanel->append(
+                            QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
+                                .arg(timeStr));
                     }
                     process->deleteLater();
                     m_statusLabel->setText("运行完成");
                 });
 
-        // 启动进程
+        // 启动进程（异步）
         process->start();
         if (!process->waitForStarted(3000)) {
             d->outputPanel->append("启动失败: " + process->errorString());
@@ -4663,6 +5158,120 @@ void MainWindow::onRun()
             return;
         }
 
+        m_statusLabel->setText("程序运行中...");
+        return;
+    }
+
+
+    // ========== C++ / 其他可执行语言：异步运行 ==========
+    if (lang == LanguageType::Cpp) {
+        if (editor->isModified()) {
+            if (!editor->saveFile()) {
+                QMessageBox::warning(this, "保存错误", "无法保存文件，运行中止。");
+                return;
+            }
+            sourceFile = editor->filePath();
+        }
+
+        if (m_isCompiling) {
+            QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再运行。");
+            return;
+        }
+
+        // 1. 判断项目路径
+        QString projectPath = d->currentProjectPath.isEmpty()
+                                  ? QFileInfo(sourceFile).absolutePath()
+                                  : d->currentProjectPath;
+
+        // 2. 构造 BuildTask
+        BuildTask task;
+        task.taskId     = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        task.language   = LanguageType::Cpp;
+        task.projectPath = projectPath;
+        task.sourceFiles << sourceFile;
+        task.outputName = QFileInfo(sourceFile).completeBaseName();
+        task.outputDir  = "bin";
+        task.enableDebug = false;
+
+        // 3. 读取项目配置
+        if (!d->currentProjectPath.isEmpty()) {
+            ProjectConfig projConfig;
+            QString configFile = d->currentProjectPath + "/.lightcppproj";
+            QStringList errors;
+            if (projConfig.loadFromFile(configFile, errors)) {
+                task.sdkConfig = projConfig.sdkEnvironment();
+            }
+        }
+
+        // 4. 拿可执行文件路径
+        IBuilder* builder = BuilderFactory::createBuilder(task.language);
+        QString executablePath;
+        if (builder) {
+            executablePath = builder->getExecutablePath(task);
+        }
+
+        bool needBuild = executablePath.isEmpty()
+                         || !QFile::exists(executablePath)
+                         || QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified();
+
+        if (needBuild) {
+            int reply = QMessageBox::question(this, "编译并运行",
+                                              "文件尚未编译或已过期，是否现在编译并运行?",
+                                              QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                m_autoRunAfterCompile = true;
+                onCompile();
+            }
+            return;
+        }
+
+        // 5. 异步运行可执行文件
+        d->outputPanel->append(QString("使用可执行文件: %1").arg(executablePath));
+        d->outputPanel->append("正在运行...");
+
+        QProcess* process = new QProcess(this);
+        process->setProgram(executablePath);
+        process->setArguments(task.extraArgs);
+        process->setWorkingDirectory(QFileInfo(executablePath).absolutePath());
+        process->setProcessChannelMode(QProcess::MergedChannels);
+
+        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
+            QByteArray data = process->readAllStandardOutput();
+            QString output = QString::fromLocal8Bit(data);
+            if (!output.isEmpty()) {
+                d->outputPanel->append(output);
+            }
+        });
+        connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
+            QByteArray data = process->readAllStandardError();
+            QString output = QString::fromLocal8Bit(data);
+            if (!output.isEmpty()) {
+                d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                                       + output.toHtmlEscaped() + "</span>");
+            }
+        });
+        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, [this, process](int exitCode, QProcess::ExitStatus status) {
+                    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
+                    if (status == QProcess::NormalExit) {
+                        d->outputPanel->append(
+                            QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                                .arg(timeStr).arg(exitCode));
+                    } else {
+                        d->outputPanel->append(
+                            QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
+                                .arg(timeStr));
+                    }
+                    process->deleteLater();
+                    m_statusLabel->setText("运行完成");
+                });
+
+        process->start();
+        if (!process->waitForStarted(3000)) {
+            d->outputPanel->append("启动失败: " + process->errorString());
+            process->deleteLater();
+            return;
+        }
         m_statusLabel->setText("程序运行中...");
         return;
     }

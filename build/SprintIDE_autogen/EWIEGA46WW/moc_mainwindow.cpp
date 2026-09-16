@@ -67,6 +67,7 @@ template <> constexpr inline auto SprintIDE::MainWindow::qt_create_metaobjectdat
         "error",
         "onBreakpointToggled",
         "line",
+        "onPythonDebugFinished",
         "onFormatCode",
         "createNewEditorTab",
         "title",
@@ -160,7 +161,8 @@ template <> constexpr inline auto SprintIDE::MainWindow::qt_create_metaobjectdat
         "onReplaceCurrent",
         "findText",
         "replaceText",
-        "onReplaceAll"
+        "onReplaceAll",
+        "onDebuggerContinued"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -208,202 +210,206 @@ template <> constexpr inline auto SprintIDE::MainWindow::qt_create_metaobjectdat
         QtMocHelpers::SlotData<void(const QString &, int)>(25, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QString, 17 }, { QMetaType::Int, 26 },
         }}),
-        // Slot 'onFormatCode'
+        // Slot 'onPythonDebugFinished'
         QtMocHelpers::SlotData<void()>(27, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onFormatCode'
+        QtMocHelpers::SlotData<void()>(28, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'createNewEditorTab'
-        QtMocHelpers::SlotData<void(const QString &)>(28, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(const QString &)>(29, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 30 },
         }}),
         // Slot 'closeEditorTab'
-        QtMocHelpers::SlotData<bool(int)>(30, 2, QMC::AccessPublic, QMetaType::Bool, {{
-            { QMetaType::Int, 31 },
+        QtMocHelpers::SlotData<bool(int)>(31, 2, QMC::AccessPublic, QMetaType::Bool, {{
+            { QMetaType::Int, 32 },
         }}),
         // Slot 'closeEditorForFile'
-        QtMocHelpers::SlotData<bool(const QString &)>(32, 2, QMC::AccessPublic, QMetaType::Bool, {{
+        QtMocHelpers::SlotData<bool(const QString &)>(33, 2, QMC::AccessPublic, QMetaType::Bool, {{
             { QMetaType::QString, 17 },
         }}),
         // Slot 'updateTabTitle'
-        QtMocHelpers::SlotData<void(int, const QString &)>(33, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 31 }, { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(int, const QString &)>(34, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 32 }, { QMetaType::QString, 30 },
         }}),
         // Slot 'onTabCloseRequested'
-        QtMocHelpers::SlotData<void(int)>(34, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 31 },
+        QtMocHelpers::SlotData<void(int)>(35, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 32 },
         }}),
         // Slot 'onTabCurrentChanged'
-        QtMocHelpers::SlotData<void(int)>(35, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 31 },
+        QtMocHelpers::SlotData<void(int)>(36, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 32 },
         }}),
         // Slot 'onTabContextMenuRequested'
-        QtMocHelpers::SlotData<void(int, const QPoint &)>(36, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 31 }, { 0x80000000 | 10, 11 },
+        QtMocHelpers::SlotData<void(int, const QPoint &)>(37, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 32 }, { 0x80000000 | 10, 11 },
         }}),
         // Slot 'onEditorModificationChanged'
-        QtMocHelpers::SlotData<void(bool)>(37, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Bool, 38 },
+        QtMocHelpers::SlotData<void(bool)>(38, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 39 },
         }}),
         // Slot 'onEditorCursorPositionChanged'
-        QtMocHelpers::SlotData<void(int, int)>(39, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 26 }, { QMetaType::Int, 40 },
+        QtMocHelpers::SlotData<void(int, int)>(40, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 26 }, { QMetaType::Int, 41 },
         }}),
         // Slot 'onFileLoaded'
-        QtMocHelpers::SlotData<void(const QString &)>(41, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 17 },
-        }}),
-        // Slot 'onFileSaved'
         QtMocHelpers::SlotData<void(const QString &)>(42, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QString, 17 },
         }}),
+        // Slot 'onFileSaved'
+        QtMocHelpers::SlotData<void(const QString &)>(43, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 17 },
+        }}),
         // Slot 'onEditorTextChanged'
-        QtMocHelpers::SlotData<void(TextEditor *)>(43, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 44, 45 },
+        QtMocHelpers::SlotData<void(TextEditor *)>(44, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 45, 46 },
         }}),
         // Slot 'onProjectItemDoubleClicked'
-        QtMocHelpers::SlotData<void(const QModelIndex &)>(46, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 47, 31 },
+        QtMocHelpers::SlotData<void(const QModelIndex &)>(47, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 48, 32 },
         }}),
         // Slot 'onCompileStarted'
-        QtMocHelpers::SlotData<void(const QString &, const QString &)>(48, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 49 }, { QMetaType::QString, 50 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &)>(49, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 50 }, { QMetaType::QString, 51 },
         }}),
         // Slot 'onCompileProgress'
-        QtMocHelpers::SlotData<void(const QString &, int, const QString &)>(51, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 49 }, { QMetaType::Int, 52 }, { QMetaType::QString, 53 },
+        QtMocHelpers::SlotData<void(const QString &, int, const QString &)>(52, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 50 }, { QMetaType::Int, 53 }, { QMetaType::QString, 54 },
         }}),
         // Slot 'onCompileOutput'
-        QtMocHelpers::SlotData<void(const QString &, const QString &, bool)>(54, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 49 }, { QMetaType::QString, 55 }, { QMetaType::Bool, 56 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &, bool)>(55, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 50 }, { QMetaType::QString, 56 }, { QMetaType::Bool, 57 },
         }}),
         // Slot 'onCompileFinished'
-        QtMocHelpers::SlotData<void(const QString &, const CompileResult &)>(57, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 49 }, { 0x80000000 | 58, 59 },
+        QtMocHelpers::SlotData<void(const QString &, const CompileResult &)>(58, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 50 }, { 0x80000000 | 59, 60 },
         }}),
         // Slot 'onCompileError'
-        QtMocHelpers::SlotData<void(const QString &, const QString &)>(60, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 49 }, { QMetaType::QString, 61 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &)>(61, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 50 }, { QMetaType::QString, 62 },
         }}),
         // Slot 'onCompilersDetected'
-        QtMocHelpers::SlotData<void(const QStringList &)>(62, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QStringList, 63 },
+        QtMocHelpers::SlotData<void(const QStringList &)>(63, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QStringList, 64 },
         }}),
         // Slot 'stopCompile'
-        QtMocHelpers::SlotData<void()>(64, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(65, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'askRunProgram'
-        QtMocHelpers::SlotData<void(const QString &)>(65, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 66 },
+        QtMocHelpers::SlotData<void(const QString &)>(66, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 67 },
         }}),
         // Slot 'runProgram'
-        QtMocHelpers::SlotData<void(const QString &, bool)>(67, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 66 }, { QMetaType::Bool, 68 },
+        QtMocHelpers::SlotData<void(const QString &, bool)>(68, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 67 }, { QMetaType::Bool, 69 },
         }}),
         // Slot 'runProgram'
-        QtMocHelpers::SlotData<void(const QString &)>(67, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
-            { QMetaType::QString, 66 },
+        QtMocHelpers::SlotData<void(const QString &)>(68, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
+            { QMetaType::QString, 67 },
         }}),
         // Slot 'syncBreakpointsToDebugger'
-        QtMocHelpers::SlotData<void()>(69, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(70, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'onLSPDiagnostics'
-        QtMocHelpers::SlotData<void(const QString &, const QList<LSPDiagnostic> &)>(70, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 17 }, { 0x80000000 | 71, 72 },
+        QtMocHelpers::SlotData<void(const QString &, const QList<LSPDiagnostic> &)>(71, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 17 }, { 0x80000000 | 72, 73 },
         }}),
         // Slot 'onNewFile'
-        QtMocHelpers::SlotData<void()>(73, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onOpenFile'
         QtMocHelpers::SlotData<void()>(74, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onSaveFile'
+        // Slot 'onOpenFile'
         QtMocHelpers::SlotData<void()>(75, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onSaveAs'
+        // Slot 'onSaveFile'
         QtMocHelpers::SlotData<void()>(76, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCloseFile'
+        // Slot 'onSaveAs'
         QtMocHelpers::SlotData<void()>(77, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onExit'
+        // Slot 'onCloseFile'
         QtMocHelpers::SlotData<void()>(78, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onUndo'
+        // Slot 'onExit'
         QtMocHelpers::SlotData<void()>(79, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onRedo'
+        // Slot 'onUndo'
         QtMocHelpers::SlotData<void()>(80, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCut'
+        // Slot 'onRedo'
         QtMocHelpers::SlotData<void()>(81, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCopy'
+        // Slot 'onCut'
         QtMocHelpers::SlotData<void()>(82, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onPaste'
+        // Slot 'onCopy'
         QtMocHelpers::SlotData<void()>(83, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onFind'
+        // Slot 'onPaste'
         QtMocHelpers::SlotData<void()>(84, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onReplace'
+        // Slot 'onFind'
         QtMocHelpers::SlotData<void()>(85, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onComment'
+        // Slot 'onReplace'
         QtMocHelpers::SlotData<void()>(86, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onGotoLine'
+        // Slot 'onComment'
         QtMocHelpers::SlotData<void()>(87, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onOpenProject'
+        // Slot 'onGotoLine'
         QtMocHelpers::SlotData<void()>(88, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCloseProject'
+        // Slot 'onOpenProject'
         QtMocHelpers::SlotData<void()>(89, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onBuildProject'
+        // Slot 'onCloseProject'
         QtMocHelpers::SlotData<void()>(90, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCleanBuild'
+        // Slot 'onBuildProject'
         QtMocHelpers::SlotData<void()>(91, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCompile'
+        // Slot 'onCleanBuild'
         QtMocHelpers::SlotData<void()>(92, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onRun'
+        // Slot 'onCompile'
         QtMocHelpers::SlotData<void()>(93, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onRun'
+        QtMocHelpers::SlotData<void()>(94, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'findDebugger'
-        QtMocHelpers::SlotData<QString()>(94, 2, QMC::AccessPublic, QMetaType::QString),
+        QtMocHelpers::SlotData<QString()>(95, 2, QMC::AccessPublic, QMetaType::QString),
         // Slot 'onCompileSettings'
-        QtMocHelpers::SlotData<void()>(95, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onZoomIn'
         QtMocHelpers::SlotData<void()>(96, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onZoomOut'
+        // Slot 'onZoomIn'
         QtMocHelpers::SlotData<void()>(97, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onZoomReset'
+        // Slot 'onZoomOut'
         QtMocHelpers::SlotData<void()>(98, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onSettings'
+        // Slot 'onZoomReset'
         QtMocHelpers::SlotData<void()>(99, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onQuickStart'
+        // Slot 'onSettings'
         QtMocHelpers::SlotData<void()>(100, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onDocumentation'
+        // Slot 'onQuickStart'
         QtMocHelpers::SlotData<void()>(101, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onAbout'
+        // Slot 'onDocumentation'
         QtMocHelpers::SlotData<void()>(102, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onAbout'
+        QtMocHelpers::SlotData<void()>(103, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'onThemeChanged'
-        QtMocHelpers::SlotData<void(ThemeManager::ThemeType)>(103, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 104, 105 },
+        QtMocHelpers::SlotData<void(ThemeManager::ThemeType)>(104, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 105, 106 },
         }}),
         // Slot 'onThemeLight'
-        QtMocHelpers::SlotData<void()>(106, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onThemeDark'
         QtMocHelpers::SlotData<void()>(107, 2, QMC::AccessPublic, QMetaType::Void),
-        // Slot 'onCustomTheme'
+        // Slot 'onThemeDark'
         QtMocHelpers::SlotData<void()>(108, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onCustomTheme'
+        QtMocHelpers::SlotData<void()>(109, 2, QMC::AccessPublic, QMetaType::Void),
         // Slot 'createNewFileWithName'
-        QtMocHelpers::SlotData<void(const QString &, const QString &, const QString &)>(109, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 110 }, { QMetaType::QString, 29 }, { QMetaType::QString, 111 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &, const QString &)>(110, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 111 }, { QMetaType::QString, 30 }, { QMetaType::QString, 112 },
         }}),
         // Slot 'createNewFileWithName'
-        QtMocHelpers::SlotData<void(const QString &, const QString &)>(109, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
-            { QMetaType::QString, 110 }, { QMetaType::QString, 29 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &)>(110, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
+            { QMetaType::QString, 111 }, { QMetaType::QString, 30 },
         }}),
         // Slot 'createNewFileWithName'
-        QtMocHelpers::SlotData<void(const QString &)>(109, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
-            { QMetaType::QString, 110 },
+        QtMocHelpers::SlotData<void(const QString &)>(110, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
+            { QMetaType::QString, 111 },
         }}),
         // Slot 'onFindNext'
-        QtMocHelpers::SlotData<void(const QString &, bool, bool)>(112, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 113 }, { QMetaType::Bool, 114 }, { QMetaType::Bool, 115 },
+        QtMocHelpers::SlotData<void(const QString &, bool, bool)>(113, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 114 }, { QMetaType::Bool, 115 }, { QMetaType::Bool, 116 },
         }}),
         // Slot 'onFindPrevious'
-        QtMocHelpers::SlotData<void(const QString &, bool, bool)>(116, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 113 }, { QMetaType::Bool, 114 }, { QMetaType::Bool, 115 },
+        QtMocHelpers::SlotData<void(const QString &, bool, bool)>(117, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 114 }, { QMetaType::Bool, 115 }, { QMetaType::Bool, 116 },
         }}),
         // Slot 'onReplaceCurrent'
-        QtMocHelpers::SlotData<void(const QString &, const QString &, bool, bool)>(117, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 118 }, { QMetaType::QString, 119 }, { QMetaType::Bool, 114 }, { QMetaType::Bool, 115 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &, bool, bool)>(118, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 119 }, { QMetaType::QString, 120 }, { QMetaType::Bool, 115 }, { QMetaType::Bool, 116 },
         }}),
         // Slot 'onReplaceAll'
-        QtMocHelpers::SlotData<void(const QString &, const QString &, bool, bool)>(120, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 118 }, { QMetaType::QString, 119 }, { QMetaType::Bool, 114 }, { QMetaType::Bool, 115 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &, bool, bool)>(121, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 119 }, { QMetaType::QString, 120 }, { QMetaType::Bool, 115 }, { QMetaType::Bool, 116 },
         }}),
+        // Slot 'onDebuggerContinued'
+        QtMocHelpers::SlotData<void()>(122, 2, QMC::AccessPublic, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -442,83 +448,85 @@ void SprintIDE::MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 12: _t->onProgramExited((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
         case 13: _t->onDebugError((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 14: _t->onBreakpointToggled((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
-        case 15: _t->onFormatCode(); break;
-        case 16: _t->createNewEditorTab((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 17: { bool _r = _t->closeEditorTab((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])));
+        case 15: _t->onPythonDebugFinished(); break;
+        case 16: _t->onFormatCode(); break;
+        case 17: _t->createNewEditorTab((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 18: { bool _r = _t->closeEditorTab((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])));
             if (_a[0]) *reinterpret_cast<bool*>(_a[0]) = std::move(_r); }  break;
-        case 18: { bool _r = _t->closeEditorForFile((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 19: { bool _r = _t->closeEditorForFile((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<bool*>(_a[0]) = std::move(_r); }  break;
-        case 19: _t->updateTabTitle((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 20: _t->onTabCloseRequested((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 21: _t->onTabCurrentChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 22: _t->onTabContextMenuRequested((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QPoint>>(_a[2]))); break;
-        case 23: _t->onEditorModificationChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 24: _t->onEditorCursorPositionChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
-        case 25: _t->onFileLoaded((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 26: _t->onFileSaved((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 27: _t->onEditorTextChanged((*reinterpret_cast<std::add_pointer_t<TextEditor*>>(_a[1]))); break;
-        case 28: _t->onProjectItemDoubleClicked((*reinterpret_cast<std::add_pointer_t<QModelIndex>>(_a[1]))); break;
-        case 29: _t->onCompileStarted((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 30: _t->onCompileProgress((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
-        case 31: _t->onCompileOutput((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
-        case 32: _t->onCompileFinished((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<CompileResult>>(_a[2]))); break;
-        case 33: _t->onCompileError((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 34: _t->onCompilersDetected((*reinterpret_cast<std::add_pointer_t<QStringList>>(_a[1]))); break;
-        case 35: _t->stopCompile(); break;
-        case 36: _t->askRunProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 37: _t->runProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2]))); break;
-        case 38: _t->runProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 39: _t->syncBreakpointsToDebugger(); break;
-        case 40: _t->onLSPDiagnostics((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QList<LSPDiagnostic>>>(_a[2]))); break;
-        case 41: _t->onNewFile(); break;
-        case 42: _t->onOpenFile(); break;
-        case 43: _t->onSaveFile(); break;
-        case 44: _t->onSaveAs(); break;
-        case 45: _t->onCloseFile(); break;
-        case 46: _t->onExit(); break;
-        case 47: _t->onUndo(); break;
-        case 48: _t->onRedo(); break;
-        case 49: _t->onCut(); break;
-        case 50: _t->onCopy(); break;
-        case 51: _t->onPaste(); break;
-        case 52: _t->onFind(); break;
-        case 53: _t->onReplace(); break;
-        case 54: _t->onComment(); break;
-        case 55: _t->onGotoLine(); break;
-        case 56: _t->onOpenProject(); break;
-        case 57: _t->onCloseProject(); break;
-        case 58: _t->onBuildProject(); break;
-        case 59: _t->onCleanBuild(); break;
-        case 60: _t->onCompile(); break;
-        case 61: _t->onRun(); break;
-        case 62: { QString _r = _t->findDebugger();
+        case 20: _t->updateTabTitle((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 21: _t->onTabCloseRequested((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 22: _t->onTabCurrentChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 23: _t->onTabContextMenuRequested((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QPoint>>(_a[2]))); break;
+        case 24: _t->onEditorModificationChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 25: _t->onEditorCursorPositionChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
+        case 26: _t->onFileLoaded((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 27: _t->onFileSaved((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 28: _t->onEditorTextChanged((*reinterpret_cast<std::add_pointer_t<TextEditor*>>(_a[1]))); break;
+        case 29: _t->onProjectItemDoubleClicked((*reinterpret_cast<std::add_pointer_t<QModelIndex>>(_a[1]))); break;
+        case 30: _t->onCompileStarted((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 31: _t->onCompileProgress((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
+        case 32: _t->onCompileOutput((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
+        case 33: _t->onCompileFinished((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<CompileResult>>(_a[2]))); break;
+        case 34: _t->onCompileError((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 35: _t->onCompilersDetected((*reinterpret_cast<std::add_pointer_t<QStringList>>(_a[1]))); break;
+        case 36: _t->stopCompile(); break;
+        case 37: _t->askRunProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 38: _t->runProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2]))); break;
+        case 39: _t->runProgram((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 40: _t->syncBreakpointsToDebugger(); break;
+        case 41: _t->onLSPDiagnostics((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QList<LSPDiagnostic>>>(_a[2]))); break;
+        case 42: _t->onNewFile(); break;
+        case 43: _t->onOpenFile(); break;
+        case 44: _t->onSaveFile(); break;
+        case 45: _t->onSaveAs(); break;
+        case 46: _t->onCloseFile(); break;
+        case 47: _t->onExit(); break;
+        case 48: _t->onUndo(); break;
+        case 49: _t->onRedo(); break;
+        case 50: _t->onCut(); break;
+        case 51: _t->onCopy(); break;
+        case 52: _t->onPaste(); break;
+        case 53: _t->onFind(); break;
+        case 54: _t->onReplace(); break;
+        case 55: _t->onComment(); break;
+        case 56: _t->onGotoLine(); break;
+        case 57: _t->onOpenProject(); break;
+        case 58: _t->onCloseProject(); break;
+        case 59: _t->onBuildProject(); break;
+        case 60: _t->onCleanBuild(); break;
+        case 61: _t->onCompile(); break;
+        case 62: _t->onRun(); break;
+        case 63: { QString _r = _t->findDebugger();
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 63: _t->onCompileSettings(); break;
-        case 64: _t->onZoomIn(); break;
-        case 65: _t->onZoomOut(); break;
-        case 66: _t->onZoomReset(); break;
-        case 67: _t->onSettings(); break;
-        case 68: _t->onQuickStart(); break;
-        case 69: _t->onDocumentation(); break;
-        case 70: _t->onAbout(); break;
-        case 71: _t->onThemeChanged((*reinterpret_cast<std::add_pointer_t<ThemeManager::ThemeType>>(_a[1]))); break;
-        case 72: _t->onThemeLight(); break;
-        case 73: _t->onThemeDark(); break;
-        case 74: _t->onCustomTheme(); break;
-        case 75: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
-        case 76: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 77: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 78: _t->onFindNext((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
-        case 79: _t->onFindPrevious((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
-        case 80: _t->onReplaceCurrent((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[4]))); break;
-        case 81: _t->onReplaceAll((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[4]))); break;
+        case 64: _t->onCompileSettings(); break;
+        case 65: _t->onZoomIn(); break;
+        case 66: _t->onZoomOut(); break;
+        case 67: _t->onZoomReset(); break;
+        case 68: _t->onSettings(); break;
+        case 69: _t->onQuickStart(); break;
+        case 70: _t->onDocumentation(); break;
+        case 71: _t->onAbout(); break;
+        case 72: _t->onThemeChanged((*reinterpret_cast<std::add_pointer_t<ThemeManager::ThemeType>>(_a[1]))); break;
+        case 73: _t->onThemeLight(); break;
+        case 74: _t->onThemeDark(); break;
+        case 75: _t->onCustomTheme(); break;
+        case 76: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[3]))); break;
+        case 77: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 78: _t->createNewFileWithName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 79: _t->onFindNext((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
+        case 80: _t->onFindPrevious((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3]))); break;
+        case 81: _t->onReplaceCurrent((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[4]))); break;
+        case 82: _t->onReplaceAll((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[4]))); break;
+        case 83: _t->onDebuggerContinued(); break;
         default: ;
         }
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
         switch (_id) {
         default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
-        case 27:
+        case 28:
             switch (*reinterpret_cast<int*>(_a[1])) {
             default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
             case 0:
@@ -548,14 +556,14 @@ int SprintIDE::MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 82)
+        if (_id < 84)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 82;
+        _id -= 84;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 82)
+        if (_id < 84)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 82;
+        _id -= 84;
     }
     return _id;
 }

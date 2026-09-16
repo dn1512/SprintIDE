@@ -33,6 +33,7 @@ signals:
     void stopped(const QString& file, int line, const QString& reason);
     void continued();
     void exited(int exitCode);
+    void terminated();
     void variablesUpdated(const QList<DebugVariable>& variables);
     void stackUpdated(const QList<StackFrame>& frames);
     void outputReceived(const QString& output, bool isError);
@@ -41,6 +42,7 @@ signals:
 private:
     class Private;
     QScopedPointer<Private> d;
+    DebugConfig config;   // 存储启动配置
 };
 
 } // namespace SprintIDE

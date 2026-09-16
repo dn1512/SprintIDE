@@ -6,6 +6,9 @@
 #include <QDebug>
 #include <QStandardPaths>
 #include <QDir>
+#include <QObject>
+
+#include "builder/builder_factory.h"
 
 namespace SprintIDE {
 
@@ -33,7 +36,12 @@ Application::Application()
 
 Application::~Application()
 {
-    shutdown();
+    qDebug() << "[Application] 析构开始";
+
+    // 清理 BuilderFactory（纯静态资源，必须在 Qt 基础设施还存在时清理）
+    SprintIDE::BuilderFactory::shutdown();
+
+    qDebug() << "[Application] 析构完成";
 }
 
 bool Application::initialize(int argc, char *argv[])

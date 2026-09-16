@@ -85,6 +85,51 @@ bool ExcludeDirProxyModel::filterAcceptsRow(int source_row, const QModelIndex& s
     }
 }
 
+// ============================================================
+//  自定义排序逻辑
+// ------------------------------------------------------------
+//  规则：
+//    1. 文件夹永远排在文件前面；
+//    2. 同类之间按文件名 A-Z 升序排列；
+//    3. 名称比较不区分大小写（跨平台体验一致）。
+// ============================================================
+bool ExcludeDirProxyModel::lessThan(const QModelIndex& source_left,
+                                    const QModelIndex& source_right) const
+{
+    // ---------- 1. 拿到源模型，并断言它是 QFileSystemModel ----------
+    auto* fsModel = qobject_cast<QFileSystemModel*>(sourceModel());
+    if (!fsModel) {
+        // 理论上不会发生；如果不是文件系统模型，退回默认比较
+        return QSortFilterProxyModel::lessThan(source_left, source_right);
+    }
+
+    // ---------- 2. 只关心第 0 列（文件名列） ----------
+    //    其他列（大小 / 类型 / 修改时间）已被隐藏，但保险起见还是判断一下。
+    if (source_left.column() != 0 || source_right.column() != 0) {
+        return source_left.column() < source_right.column();
+    }
+
+    // ---------- 3. 取得两侧的路径与文件信息 ----------
+    const QString leftPath  = fsModel->filePath(source_left);
+    const QString rightPath = fsModel->filePath(source_right);
+
+    QFileInfo leftInfo(leftPath);
+    QFileInfo rightInfo(rightPath);
+
+    const bool leftIsDir  = leftInfo.isDir();
+    const bool rightIsDir = rightInfo.isDir();
+
+    // ---------- 4. 文件夹优先 ----------
+    if (leftIsDir != rightIsDir) {
+        return leftIsDir;   // 左边是目录 → 返回 true → 排在前面
+    }
+
+    // ---------- 5. 同类之间：按文件名升序（不区分大小写） ----------
+    return QString::compare(leftInfo.fileName(),
+                            rightInfo.fileName(),
+                            Qt::CaseInsensitive) < 0;
+}
+
 // ==================== ProjectPanel 实现 ====================
 
 ProjectPanel::ProjectPanel(QWidget *parent)
@@ -589,6 +634,11 @@ void ProjectPanel::createFileTree()
     m_proxyModel->setAllowedExtensions(SUPPORTED_EXTENSIONS);
 
     m_fileTreeView->setModel(m_proxyModel);
+
+    // 显式触发一次按第 0 列升序排序
+    //   - 表头隐藏时 QTreeView 不会自动排序，必须手动调用
+    //   - 立即生效，避免首帧乱序闪烁
+    m_fileTreeView->sortByColumn(0, Qt::AscendingOrder);
 
     // 隐藏所有列，只保留第一列
     for (int i = 1; i < m_fileModel->columnCount(); ++i) {

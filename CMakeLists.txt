@@ -161,6 +161,9 @@ set(ALL_SOURCES
     ${UTILS_SOURCES}
     ${JAVA_SOURCES}
     ${PYTHON_SOURCES}
+    ${CPP_SOURCES}
+    ${DEPS_SOURCES}
+    ${DAP_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -180,6 +183,9 @@ set(ALL_HEADERS
     ${UTILS_HEADERS}
     ${JAVA_HEADERS}
     ${PYTHON_HEADERS}
+    ${CPP_HEADERS}
+    ${DEPS_HEADERS}
+    ${DAP_HEADERS}
 )
 
 set(ALL_FORMS
@@ -241,30 +247,30 @@ set(HISTORY_SOURCES
 )
 
 set(BUILDER_SOURCES
-    src/build/cpp_builder.cpp
-    src/build/python_builder.cpp
-    src/build/java_gradle_builder.cpp
-    src/build/go_builder.cpp
-    src/build/rust_builder.cpp
-    src/build/node_builder.cpp
-    src/build/generic_builder.cpp
-    src/build/builder_factory.cpp
-    builder/java_maven_builder.cpp
+    src/builder/cpp_builder.cpp
+    src/builder/python_builder.cpp
+    src/builder/java_gradle_builder.cpp
+    src/builder/go_builder.cpp
+    src/builder/rust_builder.cpp
+    src/builder/node_builder.cpp
+    src/builder/generic_builder.cpp
+    src/builder/builder_factory.cpp
+    src/builder/java_maven_builder.cpp
 )
 
 set(BUILDER_HEADERS
-    src/build/build_task.h
-    src/build/build_result.h
-    src/build/ibuilder.h
-    src/build/cpp_builder.h
-    src/build/python_builder.h
-    src/build/java_gradle_builder.h
-    src/build/go_builder.h
-    src/build/rust_builder.h
-    src/build/node_builder.h
-    src/build/generic_builder.h
-    src/build/builder_factory.h
-    builder/java_maven_builder.h
+    src/builder/build_task.h
+    src/builder/build_result.h
+    src/builder/ibuilder.h
+    src/builder/cpp_builder.h
+    src/builder/python_builder.h
+    src/builder/java_gradle_builder.h
+    src/builder/go_builder.h
+    src/builder/rust_builder.h
+    src/builder/node_builder.h
+    src/builder/generic_builder.h
+    src/builder/builder_factory.h
+    src/builder/java_maven_builder.h
 )
 
 set(UTILS_SOURCES
@@ -318,6 +324,37 @@ set(PYTHON_HEADERS
     src/python/python_test_runner.h
     src/python/python_settings_page.h
     src/python/python_run_config_widget.h
+)
+
+set(CPP_SOURCES
+    src/cpp/cpp_project_model.cpp
+)
+
+set(CPP_HEADERS
+    src/cpp/cpp_project_model.h
+)
+
+set(DEPS_SOURCES
+    src/deps/toolchain_manager.cpp
+    src/deps/lldb_dap_provider.cpp
+    src/deps/toolchain_dialog.cpp
+)
+
+set(DEPS_HEADERS
+    src/deps/toolchain_types.h
+    src/deps/toolchain_provider.h
+    src/deps/toolchain_manager.h
+    src/deps/lldb_dap_provider.h
+    src/deps/toolchain_dialog.h
+)
+
+set(DAP_SOURCES
+    src/dap/dap_client.cpp
+)
+
+set(DAP_HEADERS
+    src/dap/dap_client.h
+    src/dap/dap_types.h
 )
 
 # 创建可执行文件
@@ -423,6 +460,20 @@ add_executable(${PROJECT_NAME}
     python/python_settings_page.cpp
     python/python_run_config_widget.h
     python/python_run_config_widget.cpp
+    cpp/cpp_project_model.h
+    cpp/cpp_project_model.cpp
+    deps/toolchain_manager.h
+    deps/toolchain_manager.cpp
+    deps/toolchain_provider.h
+    deps/lldb_dap_provider.h deps/lldb_dap_provider.cpp
+    deps/toolchain_types.h
+    deps/toolchain_dialog.h
+    deps/toolchain_dialog.cpp
+    dap/dap_types.h
+    dap/dap_client.h
+    dap/dap_client.cpp
+    cpp/cpp_debugger.h
+    cpp/cpp_debugger.cpp
 
 )
 

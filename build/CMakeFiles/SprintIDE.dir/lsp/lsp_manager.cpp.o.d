@@ -1098,8 +1098,10 @@ CMakeFiles/SprintIDE.dir/lsp/lsp_manager.cpp.o: \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariantMap \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvariantmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVariant \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QSharedPointer \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/java/project_model.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QDateTime \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_project_model.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_detector.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QVector \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qvector.h \
@@ -1114,7 +1116,11 @@ CMakeFiles/SprintIDE.dir/lsp/lsp_manager.cpp.o: \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_task.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/language/language_type.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/build_result.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/process_manager.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/QElapsedTimer \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Headers/qelapsedtimer.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_builder.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_gradle_builder.h \
   /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/builder/java_maven_builder.h \
-  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/lsp/../project_manager.h
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_dependency_manager.h \
+  /Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/python/python_run_config.h

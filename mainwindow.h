@@ -31,6 +31,8 @@
 #include "history/local_history.h"
 #include "python/python_debugger.h"
 
+#include "cpp/cpp_debugger.h"
+
 class TextEditor;
 
 namespace SprintIDE {
@@ -94,6 +96,7 @@ public slots:
     void onProgramExited(int exitCode);
     void onDebugError(const QString& error);
     void onBreakpointToggled(const QString& filePath, int line);
+    void onPythonDebugFinished();
 
     // 格式化代码
     void onFormatCode();
@@ -193,6 +196,7 @@ public slots:
                           bool caseSensitive, bool wholeWord);
     void onReplaceAll(const QString& findText, const QString& replaceText,
                       bool caseSensitive, bool wholeWord);
+    void onDebuggerContinued();
 
 private:
     void setupUI();
@@ -296,6 +300,9 @@ private:
 
     bool isPythonDebugging() const;
 
+    void runExecutableAsync(const QString& executablePath);
+
+    bool isCppDebugging() const;
 private:
     MainWindowPrivate *d;
     // 底部面板相关
@@ -329,6 +336,8 @@ private:
     QTimer* m_lspWaitTimer = nullptr;
 
     PythonDebugger* m_pythonDebugger = nullptr;
+
+    CppDebugger* m_cppDebugger = nullptr;
 };
 
 } // namespace SprintIDE

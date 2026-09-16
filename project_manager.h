@@ -147,6 +147,13 @@ public:
     QSharedPointer<PythonProjectModel> pythonProjectModel() const { return m_pythonModel; }
 
     bool isPythonProject() const { return m_pythonModel != nullptr; }
+
+    /**
+     * @brief 从最近项目列表中移除指定项目
+     * @param projectPath 项目路径
+     * @return 是否成功移除（未找到也返回 false）
+     */
+    bool removeRecentProject(const QString& projectPath);
 signals:
     /**
      * @brief 项目打开信号

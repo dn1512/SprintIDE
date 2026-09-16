@@ -981,6 +981,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qversiontagging.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qxptype_traits.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtCore.framework/Versions/A/Headers/qyieldcpu.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/QShortcut \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qaction.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qbitmap.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qbrush.h \
@@ -1002,6 +1003,7 @@
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qregion.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qrgb.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qrgba64.h \
+  /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qshortcut.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtextdocument.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtgui-config.h \
   /Users/liutengjun/Qt6.10/6.10.1/macos/lib/QtGui.framework/Versions/A/Headers/qtguiexports.h \

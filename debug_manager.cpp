@@ -113,20 +113,44 @@ bool DebugManager::initialize()
 
 void DebugManager::shutdown()
 {
+    // ★ 幂等：允许被多次调用
+    if (!d->debuggerProcess && !d->isDebugging) {
+        return;
+    }
+
+    qDebug() << "[DebugManager] shutdown 开始";
+
+    // ---- 1. 停止调试会话 ----
     if (d->isDebugging) {
         stopDebugging();
     }
 
+    // ---- 2. 显式销毁 QProcess ----
     if (d->debuggerProcess) {
-        d->debuggerProcess->deleteLater();
+        // 断开所有信号，防止 finished/errorOccurred 回调
+        d->debuggerProcess->disconnect(this);
+
+        if (d->debuggerProcess->state() != QProcess::NotRunning) {
+            d->debuggerProcess->terminate();
+            if (!d->debuggerProcess->waitForFinished(1000)) {
+                d->debuggerProcess->kill();
+                d->debuggerProcess->waitForFinished(500);
+            }
+        }
+        delete d->debuggerProcess;   // ← 不能用 deleteLater（事件循环可能已停）
         d->debuggerProcess = nullptr;
     }
 
+    // ---- 3. 清理状态 ----
+    d->isDebugging = false;
+    d->currentState = DebugState::Stopped;
     d->breakpoints.clear();
     d->breakpointIds.clear();
     d->registeredEditors.clear();
+    d->commandQueue.clear();
+    d->outputBuffer.clear();
 
-    qDebug() << "调试管理器已关闭";
+    qDebug() << "[DebugManager] shutdown 完成";
 }
 
 // ==================== 调试会话控制 ====================

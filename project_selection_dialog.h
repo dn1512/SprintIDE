@@ -11,6 +11,7 @@
 #include <QMap>
 #include <QDateTime>
 #include <QMessageBox>
+#include <QShortcut>
 
 namespace SprintIDE {
 
@@ -78,6 +79,10 @@ private slots:
      */
     void onProjectSelectionChanged(QListWidgetItem* current, QListWidgetItem* previous);
 
+    // 从历史中移除项目
+    void onProjectListContextMenuRequested(const QPoint& pos);
+    void onRemoveSelectedProject();
+
 private:
     /**
      * @brief 初始化UI布局
@@ -96,6 +101,12 @@ private:
      */
     void showProjectInfo(const QString& projectPath);
 
+    // 从列表中移除某一项（含确认、持久化、空列表占位处理）
+    void removeProjectItem(QListWidgetItem* item);
+
+    // 列表为空时，插入一个不可选择的占位项
+    void ensureEmptyPlaceholder();
+
 private:
     QString m_selectedProjectPath; ///< 用户选择的项目路径
     bool m_createNewProject; ///< 是否选择创建新项目
@@ -105,6 +116,8 @@ private:
     QPushButton* m_openButton; ///< 打开现有项目按钮
     QPushButton* m_createButton; ///< 创建新项目按钮
     QDialogButtonBox* m_buttonBox; ///< 按钮组
+
+    QShortcut* m_deleteShortcut = nullptr; /// Delete 键快捷方式
 };
 
 } // namespace SprintIDE

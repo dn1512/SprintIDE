@@ -2,6 +2,11 @@
 #include "mainwindow.h"
 #include "project_manager.h"
 #include "project_selection_dialog.h"
+#include "deps/toolchain_manager.h"
+
+// 需要显式清理的静态单例
+#include "debug_manager.h"
+#include "builder/builder_factory.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -9,6 +14,7 @@
 #include <QFile>
 #include <QIcon>
 #include <QDir>
+#include <memory>   // ★ 新增：std::make_unique
 
 // 使用命名空间SprintIDE
 using namespace SprintIDE;
@@ -18,19 +24,10 @@ using namespace SprintIDE;
  * @param argc 命令行参数个数
  * @param argv 命令行参数数组
  * @return 应用程序退出代码
- *
- * 这个函数是SprintIDE的启动入口，负责：
- * 1. 创建QApplication实例
- * 2. 设置应用程序图标和字体
- * 3. 初始化应用程序核心
- * 4. 显示项目选择对话框
- * 5. 创建并显示主窗口
- * 6. 处理命令行参数
- * 7. 执行应用程序主循环
  */
 int main(int argc, char *argv[])
 {
-    // 创建QApplication实例，管理GUI应用程序的控制流和主要设置
+    // 创建QApplication实例
     QApplication app(argc, argv);
 
     // 设置应用程序的基本信息
@@ -42,9 +39,8 @@ int main(int argc, char *argv[])
     // 设置应用程序图标
     app.setWindowIcon(QIcon(":/icons/icons/app_logo.ico"));
 
-    // 设置应用程序字体 - 优先使用适合儿童的中文字体
+    // 设置应用程序字体
     QFont font;
-
 #ifdef Q_OS_WIN
     font.setFamily("Microsoft YaHei");
 #elif defined(Q_OS_MAC)
@@ -52,7 +48,6 @@ int main(int argc, char *argv[])
 #else
     font.setFamily("WenQuanYi Micro Hei");
 #endif
-
     font.setPointSize(10);
     font.setStyleHint(QFont::SansSerif);
     app.setFont(font);
@@ -96,23 +91,44 @@ int main(int argc, char *argv[])
                     }
                 }
             } else {
+                // 用户取消，走正常清理流程（避免直接 return 0 跳过清理）
+                sprintApp.shutdown();
                 return 0;
             }
         } else {
             projectManager->openProject(projectPath);
         }
 
-        SprintIDE::MainWindow mainWindow;
+        // ================================================================
+        // ★ 关键改动 1：用 unique_ptr 接管 MainWindow 的生命周期
+        //   原因：MainWindow 是栈对象时，只能在 main() 末尾析构，
+        //         那时已经是 QApplication 析构之后，来不及清理单例。
+        //         用 unique_ptr 可以在 app.exec() 返回后立即 reset()。
+        // ================================================================
+        auto mainWindow = std::make_unique<SprintIDE::MainWindow>();
 
         if (projectManager->hasOpenProject()) {
             QString projectName = projectManager->currentProjectName();
-            mainWindow.setWindowTitle(QString("SprintIDE - %1").arg(projectName));
-            mainWindow.openProject(projectManager->currentProjectPath());
+            mainWindow->setWindowTitle(QString("SprintIDE - %1").arg(projectName));
+            mainWindow->openProject(projectManager->currentProjectPath());
         } else if (projectPath == "create_new") {
-            mainWindow.onNewProject();
+            mainWindow->onNewProject();
         }
 
-        mainWindow.show();
+        {
+            using namespace SprintIDE;
+            auto res = ToolchainManager::instance().resolve(ToolchainId::LldbDap);
+            if (res.found) {
+                qDebug() << "[main] ✓ DAP adapter 已就绪:";
+                qDebug() << "   path:   " << res.executablePath;
+                qDebug() << "   version:" << res.version;
+                qDebug() << "   source: " << res.source;
+            } else {
+                qWarning() << "[main] ✗ DAP adapter 未找到";
+            }
+        }
+
+        mainWindow->show();
 
         qDebug() << "SprintIDE启动成功！版本：" << app.applicationVersion();
         qDebug() << "应用程序字体：" << app.font().family();
@@ -128,10 +144,10 @@ int main(int argc, char *argv[])
                 if (QFile::exists(arg)) {
                     if (arg.endsWith(".lightcppproj")) {
                         qDebug() << "打开项目文件：" << arg;
-                        mainWindow.openProject(arg);
+                        mainWindow->openProject(arg);
                     } else {
                         qDebug() << "打开代码文件：" << arg;
-                        mainWindow.openFile(arg);
+                        mainWindow->openFile(arg);
                     }
                 } else {
                     qWarning() << "文件不存在：" << arg;
@@ -141,9 +157,48 @@ int main(int argc, char *argv[])
             }
         }
 
+        // ================================================================
+        // 进入事件循环
+        // ================================================================
         int result = app.exec();
 
-        // 清理资源
+        qDebug() << "[main] app.exec() 返回，退出码:" << result;
+
+        // ================================================================
+        // ★ 关键改动 2：显式销毁 MainWindow
+        //   这会触发：
+        //     - LSPManager::shutdownAll()（在 ~MainWindow 里）
+        //     - PythonDebugger::stopDebugging()（在 ~MainWindow 里）
+        //     - 所有 TextEditor / LanguageHighlighter 的析构
+        //     - 断开所有信号连接
+        //   必须在 QApplication 还活着时完成。
+        // ================================================================
+        mainWindow.reset();
+        qDebug() << "[main] MainWindow 已销毁";
+
+        // ================================================================
+        // ★ 关键改动 3：在 QApplication 析构之前，显式清理所有依赖 Qt 的静态单例
+        //
+        //   这些单例（Meyers singleton）如果放任不管，它们的析构时机在
+        //   main() 返回后、进程退出前的 atexit 阶段——此时 QApplication
+        //   已经析构，QProcess / QTcpSocket 等会访问已释放的 eventDispatcher
+        //   导致 SIGABRT（macOS 上表现为"意外退出"）。
+        //
+        //   显式调用 shutdown() 后，这些单例内部持有的 Qt 对象被销毁，
+        //   析构函数再被调用时就是空操作，不会再崩溃。
+        // ================================================================
+
+        // 3.1 DebugManager：持有 QProcess（LLDB/GDB）
+        DebugManager::instance().shutdown();
+        qDebug() << "[main] DebugManager 已 shutdown";
+
+        // 3.2 BuilderFactory：纯静态资源，但习惯上一起清理
+        BuilderFactory::shutdown();
+        qDebug() << "[main] BuilderFactory 已 shutdown";
+
+        // 3.3 Application：清理 ConfigManager（QObject 子对象）
+        //     注意：Application 单例本身的析构还会在 atexit 阶段跑一次，
+        //          但因为内部状态已清空，第二次 shutdown() 是幂等的空操作。
         sprintApp.shutdown();
 
         qDebug() << "SprintIDE正常退出，退出码：" << result;
@@ -151,6 +206,11 @@ int main(int argc, char *argv[])
 
     } catch (const std::exception& e) {
         qCritical() << "致命错误:" << e.what();
+
+        // 异常路径也要尝试清理
+        DebugManager::instance().shutdown();
+        BuilderFactory::shutdown();
+
         QMessageBox::critical(nullptr, "致命错误",
                               QString("发生未处理的异常：\n\n%1\n\n"
                                       "SprintIDE将退出。请重启程序并检查文件完整性。")
@@ -158,6 +218,11 @@ int main(int argc, char *argv[])
         return -1;
     } catch (...) {
         qCritical() << "未知致命错误";
+
+        // 异常路径也要尝试清理
+        DebugManager::instance().shutdown();
+        BuilderFactory::shutdown();
+
         QMessageBox::critical(nullptr, "未知错误",
                               "发生未知的严重错误。\n\n"
                               "SprintIDE将退出。请重启程序。");

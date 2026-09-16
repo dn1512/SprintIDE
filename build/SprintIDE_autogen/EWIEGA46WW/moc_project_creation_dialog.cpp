@@ -7,6 +7,7 @@
 *****************************************************************************/
 
 #include "../../../project_creation_dialog.h"
+#include <QtGui/qtextcursor.h>
 #include <QtCore/qmetatype.h>
 
 #include <QtCore/qtmochelpers.h>
@@ -47,8 +48,9 @@ template <> constexpr inline auto SprintIDE::ProjectCreationDialog::qt_create_me
         "onDisplayNameChanged",
         "onLocationChanged",
         "path",
-        "onTemplateChanged",
+        "onLanguageChanged",
         "index",
+        "onTemplateChanged",
         "onCompileModeChanged",
         "checked",
         "onCompilerChanged",
@@ -84,47 +86,51 @@ template <> constexpr inline auto SprintIDE::ProjectCreationDialog::qt_create_me
         QtMocHelpers::SlotData<void(const QString &)>(7, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::QString, 8 },
         }}),
-        // Slot 'onTemplateChanged'
+        // Slot 'onLanguageChanged'
         QtMocHelpers::SlotData<void(int)>(9, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Int, 10 },
         }}),
-        // Slot 'onCompileModeChanged'
-        QtMocHelpers::SlotData<void(bool)>(11, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Bool, 12 },
-        }}),
-        // Slot 'onCompilerChanged'
-        QtMocHelpers::SlotData<void(int)>(13, 2, QMC::AccessPrivate, QMetaType::Void, {{
+        // Slot 'onTemplateChanged'
+        QtMocHelpers::SlotData<void(int)>(11, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Int, 10 },
         }}),
-        // Slot 'onCppStandardChanged'
+        // Slot 'onCompileModeChanged'
+        QtMocHelpers::SlotData<void(bool)>(12, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Bool, 13 },
+        }}),
+        // Slot 'onCompilerChanged'
         QtMocHelpers::SlotData<void(int)>(14, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Int, 10 },
         }}),
-        // Slot 'onOptimizationChanged'
+        // Slot 'onCppStandardChanged'
         QtMocHelpers::SlotData<void(int)>(15, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Int, 10 },
         }}),
-        // Slot 'onWarningLevelChanged'
+        // Slot 'onOptimizationChanged'
         QtMocHelpers::SlotData<void(int)>(16, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Int, 10 },
         }}),
+        // Slot 'onWarningLevelChanged'
+        QtMocHelpers::SlotData<void(int)>(17, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Int, 10 },
+        }}),
         // Slot 'onShowAdvancedConfig'
-        QtMocHelpers::SlotData<void()>(17, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onShowExampleCode'
         QtMocHelpers::SlotData<void()>(18, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onResetToDefaults'
+        // Slot 'onShowExampleCode'
         QtMocHelpers::SlotData<void()>(19, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onResetToDefaults'
+        QtMocHelpers::SlotData<void()>(20, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'setDisplayName'
-        QtMocHelpers::SlotData<void(const QString &)>(20, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 21 },
+        QtMocHelpers::SlotData<void(const QString &)>(21, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 22 },
         }}),
         // Slot 'setProjectType'
-        QtMocHelpers::SlotData<void(ProjectType)>(22, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { 0x80000000 | 23, 24 },
+        QtMocHelpers::SlotData<void(ProjectType)>(23, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 24, 25 },
         }}),
         // Slot 'setCompilerType'
-        QtMocHelpers::SlotData<void(ProjectCompilerType)>(25, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { 0x80000000 | 26, 24 },
+        QtMocHelpers::SlotData<void(ProjectCompilerType)>(26, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 27, 25 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
@@ -154,18 +160,19 @@ void SprintIDE::ProjectCreationDialog::qt_static_metacall(QObject *_o, QMetaObje
         case 2: _t->onProjectNameChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 3: _t->onDisplayNameChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 4: _t->onLocationChanged((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 5: _t->onTemplateChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 6: _t->onCompileModeChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 7: _t->onCompilerChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 8: _t->onCppStandardChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 9: _t->onOptimizationChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 10: _t->onWarningLevelChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 11: _t->onShowAdvancedConfig(); break;
-        case 12: _t->onShowExampleCode(); break;
-        case 13: _t->onResetToDefaults(); break;
-        case 14: _t->setDisplayName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 15: _t->setProjectType((*reinterpret_cast<std::add_pointer_t<ProjectType>>(_a[1]))); break;
-        case 16: _t->setCompilerType((*reinterpret_cast<std::add_pointer_t<ProjectCompilerType>>(_a[1]))); break;
+        case 5: _t->onLanguageChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 6: _t->onTemplateChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 7: _t->onCompileModeChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 8: _t->onCompilerChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 9: _t->onCppStandardChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 10: _t->onOptimizationChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 11: _t->onWarningLevelChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 12: _t->onShowAdvancedConfig(); break;
+        case 13: _t->onShowExampleCode(); break;
+        case 14: _t->onResetToDefaults(); break;
+        case 15: _t->setDisplayName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 16: _t->setProjectType((*reinterpret_cast<std::add_pointer_t<ProjectType>>(_a[1]))); break;
+        case 17: _t->setCompilerType((*reinterpret_cast<std::add_pointer_t<ProjectCompilerType>>(_a[1]))); break;
         default: ;
         }
     }
@@ -190,14 +197,14 @@ int SprintIDE::ProjectCreationDialog::qt_metacall(QMetaObject::Call _c, int _id,
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 17)
+        if (_id < 18)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 17;
+        _id -= 18;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 17)
+        if (_id < 18)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 17;
+        _id -= 18;
     }
     return _id;
 }
