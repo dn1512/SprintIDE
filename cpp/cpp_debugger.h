@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QMap>
 #include <QProcessEnvironment>
+#include <QSet>
+
 #include "debug_manager.h"   // 复用 DebugVariable / StackFrame / Breakpoint
 #include "dap/dap_types.h"
 
@@ -53,6 +55,11 @@ public:
     void pause();
     void evaluateExpression(const QString& expr);
 
+    // UI 请求展开某个变量引用
+    void requestChildVariables(int variablesReference);
+    // UI 请求求值（无 frameId 时用当前帧）
+    void evaluate(const QString& expression);
+
 signals:
     // 与 PythonDebugger 一致，便于 MainWindow 复用连接
     void stopped(const QString& file, int line, const QString& reason);
@@ -63,6 +70,11 @@ signals:
     void errorOccurred(const QString& error);
     void variablesUpdated(const QList<DebugVariable>& variables);
     void stackUpdated(const QList<StackFrame>& frames);
+
+    void childVariablesUpdated(int parentRef, const QList<DebugVariable>& children);
+    void evaluateResultReady(const QString& expression,
+                             const QString& result,
+                             const QString& type);
 
 private slots:
     void onAdapterInitialized();
@@ -97,6 +109,8 @@ private:
 
     // 顶层作用域 → 变量引用
     int m_localsVariablesRef = 0;
+
+    QSet<int> m_topLevelRefs;
 };
 
 } // namespace SprintIDE

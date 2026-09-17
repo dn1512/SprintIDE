@@ -41,6 +41,9 @@ struct DebugVariable {
     bool isComplex;         // 是否复杂类型（结构体/类）
     QList<DebugVariable> children;  // 子变量（成员）
 
+    int variablesReference = 0;     // 来自 DAP；>0 表示可展开
+    QString evaluateName;           // DAP 的变量全路径名（用于表达式求值）
+
     DebugVariable() : isComplex(false) {}
 };
 

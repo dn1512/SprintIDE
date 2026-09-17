@@ -193,7 +193,7 @@ void PythonDebugger::Private::processMessage(const QByteArray &data) {
             QString output = body["output"].toString();
             emit q_ptr->outputReceived(output, category == "stderr");
         } else if (event == "initialized") {
-            // ★ 收到 initialized 事件后，发送 launch 请求
+            // 收到 initialized 事件后，发送 launch 请求
             qDebug() << "[PythonDebugger] 收到 initialized 事件，开始配置断点和调试会话...";
             // 1. 标记已初始化
             initialized = true;
@@ -636,7 +636,7 @@ void PythonDebugger::Private::sendAttachRequest() {
     QJsonObject request;
     request["seq"] = ++seq;
     request["type"] = "request";
-    request["command"] = "attach";  // ★ 改为 "attach"
+    request["command"] = "attach";  // 改为 "attach"
 
     QJsonObject args;
     QJsonObject connect;

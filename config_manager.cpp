@@ -51,10 +51,11 @@ bool ConfigManager::initialize()
     if (!d->settings->contains("General/FirstRun")) {
         d->settings->setValue("General/FirstRun", true);
         d->settings->setValue("General/Version", "1.0.0");
+        d->settings->setValue("General/Theme", "Dark");
         d->settings->setValue("Editor/UseSpaces", true);
         d->settings->setValue("Editor/TabWidth", 4);
         d->settings->setValue("Editor/FontFamily", "Monaco");
-        d->settings->setValue("Editor/FontSize", 12);
+        d->settings->setValue("Editor/FontSize", 13);
         d->settings->sync();
     }
 

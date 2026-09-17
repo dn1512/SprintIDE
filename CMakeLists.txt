@@ -42,6 +42,7 @@ set(UI_SOURCES
     mainwindow.cpp
     editor_widget.cpp
     tab_widget.cpp
+    editor_settings_page.cpp
 )
 
 set(UI_HEADERS
@@ -49,6 +50,7 @@ set(UI_HEADERS
     mainwindow_p.h
     editor_widget.h
     tab_widget.h
+    editor_settings_page.h
 )
 
 set(UI_FORMS
@@ -338,6 +340,7 @@ set(DEPS_SOURCES
     src/deps/toolchain_manager.cpp
     src/deps/lldb_dap_provider.cpp
     src/deps/toolchain_dialog.cpp
+    src/deps/gdb_dap_provider.cpp
 )
 
 set(DEPS_HEADERS
@@ -346,6 +349,7 @@ set(DEPS_HEADERS
     src/deps/toolchain_manager.h
     src/deps/lldb_dap_provider.h
     src/deps/toolchain_dialog.h
+    src/deps/gdb_dap_provider.h
 )
 
 set(DAP_SOURCES
@@ -474,6 +478,10 @@ add_executable(${PROJECT_NAME}
     dap/dap_client.cpp
     cpp/cpp_debugger.h
     cpp/cpp_debugger.cpp
+    editor_settings_page.h
+    editor_settings_page.cpp
+    deps/gdb_dap_provider.h
+    deps/gdb_dap_provider.cpp
 
 )
 

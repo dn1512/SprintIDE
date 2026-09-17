@@ -21,6 +21,7 @@
 #include <QHBoxLayout>
 #include <QString>
 #include <QListWidget>
+#include <QMap>
 
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
@@ -110,6 +111,11 @@ public:
     void setCurrentDebugLine(int line);          // 设置当前执行行
     void clearCurrentDebugLine();                // 清除当前执行行高亮
 
+    /// 设置某一行行尾要显示的变量文本（例如 "x = 42, name = \"abc\""）
+    void setInlineValues(int line, const QString& text);
+    /// 清空所有内联变量显示
+    void clearInlineValues();
+
     // ========== 错误/警告标记 ==========
     void setErrorMarker(const QString& filePath, int line, int column, const QString& message);
     void setWarningMarker(const QString& filePath, int line, int column, const QString& message);
@@ -184,6 +190,9 @@ public:
     void updateCompletionItems(const QList<LSPCompletionItem>& items);
 
     void highlightLine(int line);
+
+    void setBreakpointWithCondition(int line, bool enabled, bool hasCondition);
+
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -203,6 +212,8 @@ signals:
 
     void definitionRequested(const QString& filePath, int line, int column);
 
+    void breakpointConditionChanged(const QString& filePath, int line,
+                                    const QString& condition);
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -247,6 +258,7 @@ private:
     void matchParentheses();
     int lineNumberAreaWidth() const;
     void autoIndent();
+    void indentSelection(bool increase);
     int findMatchingParenthesis(int position, QChar parenthesis, bool backward);  // 添加函数声明
     void applyDefaultPalette();  // 添加默认调色板设置
     void initFontMetrics();
@@ -289,6 +301,8 @@ private:
      */
     int findBraceInBlock(const QTextBlock &block, bool opening) const;
 
+    void applyLineHeight();
+
     // 存储已折叠的行号（行号为 1-based）
     QSet<int> m_foldedLines;
 
@@ -310,6 +324,8 @@ private:
     QSet<int> m_breakpoints;      // 存储有断点的行号
     int m_currentDebugLine;       // 当前调试执行的行号（-1表示无）
 
+    QMap<int, QString> m_inlineValues;   // 行号 → 显示的文本
+
     // ========== 绘制相关方法 ==========
     void drawBreakpointMarkers(QPainter *painter, const QRect &rect);
     void drawCurrentLineMarker(QPainter *painter, const QRect &rect);
@@ -322,6 +338,10 @@ private:
      * @brief 从补全列表中插入选中的项
      */
     void insertCompletion(const QString& insertText);
+
+    // 保存/恢复 modified 状态的辅助函数
+    void beginSilentModification();
+    void endSilentModification();
 
     // 补全相关成员
     QList<LSPCompletionItem> m_completionItems;
@@ -377,6 +397,9 @@ private:
 
     // ========== 本地历史管理器指针 ==========
     LocalHistory *m_localHistory = nullptr;
+
+    bool m_suppressModificationFlag = false;    // 静默修改守卫：在这些操作期间不允许 modified 被置 true
+    QSet<int> m_conditionalBreakpoints;   // 存储带条件的断点行号
 };
 
 /**
@@ -390,6 +413,7 @@ class LineNumberArea : public QWidget
 public:
     explicit LineNumberArea(TextEditor *editor);
     QSize sizeHint() const override;
+    void contextMenuEvent(QContextMenuEvent* event);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

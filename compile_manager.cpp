@@ -1247,10 +1247,7 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
              << static_cast<int>(task.language)
              << ", projectPath:" << task.projectPath;
 
-    // ============================================================
-    // ★ 新增：立即发出 compileStarted 信号
-    //   让 MainWindow 知道"开始编译了"，显示状态栏、清屏
-    // ============================================================
+    //  立即发出 compileStarted 信号
     QString sourceDesc;
     if (!task.sourceFiles.isEmpty()) {
         sourceDesc = task.sourceFiles.first();
@@ -1261,9 +1258,7 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     }
     emit compileStarted(task.taskId, sourceDesc);
 
-    // ============================================================
-    // 1. 获取对应的 Builder
-    // ============================================================
+    // 获取对应的 Builder
     IBuilder* builder = BuilderFactory::createBuilder(task.language);
     if (!builder) {
         qWarning() << "[CompileManager] No builder for language:"
@@ -1304,7 +1299,7 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     }
 
     // ============================================================
-    // 3. ★ 新增：把构建器产生的完整输出逐行发出去
+    //    把构建器产生的完整输出逐行发出去
     //    这样 MainWindow 就能在输出面板显示 CMake configure/build 的细节
     // ============================================================
     if (!result.fullOutput.isEmpty()) {

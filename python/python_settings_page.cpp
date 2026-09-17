@@ -88,7 +88,7 @@ void PythonSettingsPage::saveSettings()
     cfg->setValue("Python/TestRunner", m_testRunner->currentData().toString());
     cfg->setValue("Python/Formatter", m_formatter->currentData().toString());
 
-    QMessageBox::information(this, tr("保存成功"), tr("Python 设置已保存。"));
+    // QMessageBox::information(this, tr("保存成功"), tr("Python 设置已保存。"));
 }
 
 } // namespace SprintIDE

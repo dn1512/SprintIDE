@@ -36,12 +36,21 @@ public:
     // 连接调试管理器信号
     void connectToDebugManager(DebugManager* manager);
 
+public slots:
+    void onChildVariablesUpdated(int parentRef,
+                                 const QList<DebugVariable>& children);
+    void onEvaluateResult(const QString& expression,
+                          const QString& result,
+                          const QString& type);
 signals:
     void continueRequested();
     void stepOverRequested();
     void stepIntoRequested();
     void stepOutRequested();
     void stopRequested();
+
+    void variablesExpandRequested(int variablesReference);
+    void evaluateRequested(const QString& expression);
 
 private slots:
     void onContinueClicked();
@@ -50,6 +59,9 @@ private slots:
     void onStepOutClicked();
     void onStopClicked();
     void onClearConsoleClicked();
+
+    void onVariableItemExpanded(QTreeWidgetItem* item);
+    void onEvaluateInputEntered();
 
 private:
     void setupUI();
@@ -72,6 +84,13 @@ private:
     QTextEdit* m_consoleWidget = nullptr;
 
     bool m_isDebugging = false;
+
+    QMap<int, QTreeWidgetItem*> m_refToItem;
+    QMap<QTreeWidgetItem*, int> m_itemToRef;
+    QSet<QTreeWidgetItem*> m_placeholderItems;
+
+    QLineEdit* m_evalInput = nullptr;                          // 表达式输入框
+    QTextEdit* m_evalOutput = nullptr;                         // 表达式结果输出
 };
 
 } // namespace SprintIDE

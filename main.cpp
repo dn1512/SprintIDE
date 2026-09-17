@@ -7,6 +7,7 @@
 // 需要显式清理的静态单例
 #include "debug_manager.h"
 #include "builder/builder_factory.h"
+#include "font_manager.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -14,7 +15,7 @@
 #include <QFile>
 #include <QIcon>
 #include <QDir>
-#include <memory>   // ★ 新增：std::make_unique
+#include <memory>   // std::make_unique
 
 // 使用命名空间SprintIDE
 using namespace SprintIDE;
@@ -40,22 +41,22 @@ int main(int argc, char *argv[])
     app.setWindowIcon(QIcon(":/icons/icons/app_logo.ico"));
 
     // 设置应用程序字体
-    QFont font;
-#ifdef Q_OS_WIN
-    font.setFamily("Microsoft YaHei");
+    QFont uiFont;
+#if defined(Q_OS_WIN)
+    uiFont.setFamily("Microsoft YaHei UI");
 #elif defined(Q_OS_MAC)
-    font.setFamily("JetBrainsMono-Regular");
+    uiFont.setFamily("Helvetica Neue");         // macOS 系统 sans 字体
 #else
-    font.setFamily("WenQuanYi Micro Hei");
+    uiFont.setFamily("Noto Sans CJK SC");       // Linux 中文字体
 #endif
-    font.setPointSize(10);
-    font.setStyleHint(QFont::SansSerif);
-    app.setFont(font);
+    uiFont.setPointSize(10);
+    uiFont.setStyleHint(QFont::SansSerif);
+    app.setFont(uiFont);
 
     // 创建必要的目录结构
-    QDir().mkdir("config");
-    QDir().mkdir("projects");
-    QDir().mkdir("temp");
+    // QDir().mkdir("config");
+    // QDir().mkdir("projects");
+    // QDir().mkdir("temp");
 
     try {
         auto& sprintApp = SprintIDE::Application::instance();
@@ -99,12 +100,7 @@ int main(int argc, char *argv[])
             projectManager->openProject(projectPath);
         }
 
-        // ================================================================
-        // ★ 关键改动 1：用 unique_ptr 接管 MainWindow 的生命周期
-        //   原因：MainWindow 是栈对象时，只能在 main() 末尾析构，
-        //         那时已经是 QApplication 析构之后，来不及清理单例。
-        //         用 unique_ptr 可以在 app.exec() 返回后立即 reset()。
-        // ================================================================
+        // 用 unique_ptr 接管 MainWindow 的生命周期
         auto mainWindow = std::make_unique<SprintIDE::MainWindow>();
 
         if (projectManager->hasOpenProject()) {
@@ -157,36 +153,16 @@ int main(int argc, char *argv[])
             }
         }
 
-        // ================================================================
         // 进入事件循环
-        // ================================================================
         int result = app.exec();
 
         qDebug() << "[main] app.exec() 返回，退出码:" << result;
 
-        // ================================================================
-        // ★ 关键改动 2：显式销毁 MainWindow
-        //   这会触发：
-        //     - LSPManager::shutdownAll()（在 ~MainWindow 里）
-        //     - PythonDebugger::stopDebugging()（在 ~MainWindow 里）
-        //     - 所有 TextEditor / LanguageHighlighter 的析构
-        //     - 断开所有信号连接
-        //   必须在 QApplication 还活着时完成。
-        // ================================================================
+        // 显式销毁 MainWindow
         mainWindow.reset();
         qDebug() << "[main] MainWindow 已销毁";
 
-        // ================================================================
-        // ★ 关键改动 3：在 QApplication 析构之前，显式清理所有依赖 Qt 的静态单例
-        //
-        //   这些单例（Meyers singleton）如果放任不管，它们的析构时机在
-        //   main() 返回后、进程退出前的 atexit 阶段——此时 QApplication
-        //   已经析构，QProcess / QTcpSocket 等会访问已释放的 eventDispatcher
-        //   导致 SIGABRT（macOS 上表现为"意外退出"）。
-        //
-        //   显式调用 shutdown() 后，这些单例内部持有的 Qt 对象被销毁，
-        //   析构函数再被调用时就是空操作，不会再崩溃。
-        // ================================================================
+        // 在 QApplication 析构之前，显式清理所有依赖 Qt 的静态单例
 
         // 3.1 DebugManager：持有 QProcess（LLDB/GDB）
         DebugManager::instance().shutdown();

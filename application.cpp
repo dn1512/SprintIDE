@@ -82,6 +82,20 @@ bool Application::initialize(int argc, char *argv[])
     // 初始化主题管理器
     d->themeManager = &ThemeManager::instance(); // ThemeManager是单例
 
+    if (d->configManager) {
+        const QString fontFamily = d->configManager->value(
+                                                       "Editor/FontFamily", "Monaco").toString();
+        const int fontSize = d->configManager->value(
+                                                 "Editor/FontSize", 12).toInt();
+
+        // 范围硬约束，避免配置被改坏
+        const int clampedSize = qBound(8, fontSize, 24);
+
+        d->themeManager->setEditorFont(fontFamily, clampedSize);
+        qDebug() << "[Application] 编辑器字体已从配置加载:"
+                 << fontFamily << clampedSize << "pt";
+    }
+
     emit initialized();
     qDebug() << "Application initialized successfully";
     return true;

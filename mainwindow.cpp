@@ -310,9 +310,25 @@ MainWindow::MainWindow(QWidget *parent)
     m_isCompiling = false;
     connectCompileManagerSignals();
 
-    // 设置深色主题
+    // 从配置读取上次的主题
     ThemeManager& tm = ThemeManager::instance();
-    tm.setTheme(ThemeManager::ThemeType::Dark);
+    {
+        ConfigManager* cfg = Application::instance().configManager();
+        QString savedTheme = cfg ? cfg->value("General/Theme", "Dark").toString()
+                                 : QStringLiteral("Dark");
+
+        if (savedTheme == QLatin1String("Light")) {
+            tm.setTheme(ThemeManager::ThemeType::Light);
+            qDebug() << "[MW] 从配置恢复浅色主题";
+        } else {
+            tm.setTheme(ThemeManager::ThemeType::Dark);
+            qDebug() << "[MW] 使用深色主题（默认或配置）";
+        }
+    }
+
+    // 设置深色主题
+    // ThemeManager& tm = ThemeManager::instance();
+    // tm.setTheme(ThemeManager::ThemeType::Dark);
 
     setupUI();
     setupMenuBar();
@@ -325,11 +341,16 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(&tm, &ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
+    connect(&tm, &ThemeManager::fontChanged, this, [this]() {
+        // 字体或字号变化 → 遍历所有编辑器重新应用
+        applyCurrentTheme();
+    });
     applyCurrentTheme();
 
     // 初始化 LSP 管理器
     m_lspManager = new LSPManager(this);
     m_lspManager->initialize();
+    qDebug() << "[MW-13] LSP ready";
 
     connect(m_lspManager, &LSPManager::clientCreated,
             this, [this](const QString &languageId, const QString &projectRoot) {
@@ -378,6 +399,7 @@ MainWindow::MainWindow(QWidget *parent)
         connect(d->projectPanel, &ProjectPanel::requestFileHistory,
                 this, &MainWindow::showFileHistoryDialog);
     }
+    qDebug() << "[MW-99] 构造结束";
 }
 
 MainWindow::~MainWindow()
@@ -412,7 +434,7 @@ MainWindow::~MainWindow()
         m_lspManager->shutdownAll();
     }
 
-    // ========== 4. ★ 不要在 MainWindow 析构里 shutdown DebugManager ★ ==========
+    // ========== 4.    不要在 MainWindow 析构里 shutdown DebugManager    ==========
     // 因为此时可能已经晚于 QApplication 的清理时机。
     // 全部移到 main.cpp 里做。
 
@@ -456,118 +478,36 @@ void MainWindow::onThemeChanged(ThemeManager::ThemeType theme)
 void MainWindow::applyCurrentTheme()
 {
     ThemeManager& tm = ThemeManager::instance();
-    bool isDark = tm.isDarkTheme();
 
-    // qDebug() << "开始应用主题: " << (isDark ? "深色" : "浅色");
+    // 全局 QSS 已经由 ThemeManager::applyThemeToApplication() 推送
+    // 这里只需要处理 QSS 覆盖不到的自绘组件
 
-    if (isDark) {
-        QColor mainWindowBackground("#2D2D2D");
-        QColor editorBackground("#1E1E1E");
-        QColor textColor("#E0E0E0");
-        QColor selectionBackground("#3A3D41");
-        QColor alternateBase("#3C3C3C");
-        QColor menuBackground("#3C3C3C");
-        QColor buttonBackground("#4A4A4A");
-
-        QPalette windowPalette = palette();
-        windowPalette.setColor(QPalette::Window, mainWindowBackground);
-        windowPalette.setColor(QPalette::WindowText, textColor);
-        setPalette(windowPalette);
-
-        if (menuBar()) {
-            QPalette menuPalette = menuBar()->palette();
-            menuPalette.setColor(QPalette::Button, menuBackground);
-            menuPalette.setColor(QPalette::ButtonText, textColor);
-            menuBar()->setPalette(menuPalette);
-        }
-
-        for (QToolBar* toolBar : findChildren<QToolBar*>()) {
-            QPalette toolPalette = toolBar->palette();
-            toolPalette.setColor(QPalette::Button, buttonBackground);
-            toolPalette.setColor(QPalette::ButtonText, textColor);
-            toolBar->setPalette(toolPalette);
-        }
-
-        if (statusBar()) {
-            QPalette statusPalette = statusBar()->palette();
-            statusPalette.setColor(QPalette::Window, mainWindowBackground);
-            statusPalette.setColor(QPalette::WindowText, textColor);
-            statusBar()->setPalette(statusPalette);
-        }
-
-        if (d->projectPanel) {
-            QPalette treePalette = d->projectPanel->palette();
-            treePalette.setColor(QPalette::Base, mainWindowBackground);
-            treePalette.setColor(QPalette::Text, textColor);
-            treePalette.setColor(QPalette::Highlight, selectionBackground);
-            treePalette.setColor(QPalette::HighlightedText, textColor);
-            d->projectPanel->setPalette(treePalette);
-        }
-
-        if (d->outputPanel) {
-            QPalette outputPalette = d->outputPanel->palette();
-            outputPalette.setColor(QPalette::Base, editorBackground);
-            outputPalette.setColor(QPalette::Text, QColor("#CCCCCC"));
-            d->outputPanel->setPalette(outputPalette);
-        }
-    } else {
-        QColor mainWindowBackground("#F8F9FA");
-        QColor editorBackground("#FFFFFF");
-        QColor textColor("#333333");
-        QColor selectionBackground("#D3E9F7");
-        QColor alternateBase("#E9ECEF");
-        QColor menuBackground("#FFFFFF");
-        QColor buttonBackground("#E9ECEF");
-
-        QPalette windowPalette = palette();
-        windowPalette.setColor(QPalette::Window, mainWindowBackground);
-        windowPalette.setColor(QPalette::WindowText, textColor);
-        setPalette(windowPalette);
-
-        if (menuBar()) {
-            QPalette menuPalette = menuBar()->palette();
-            menuPalette.setColor(QPalette::Button, menuBackground);
-            menuPalette.setColor(QPalette::ButtonText, textColor);
-            menuBar()->setPalette(menuPalette);
-        }
-
-        for (QToolBar* toolBar : findChildren<QToolBar*>()) {
-            QPalette toolPalette = toolBar->palette();
-            toolPalette.setColor(QPalette::Button, buttonBackground);
-            toolPalette.setColor(QPalette::ButtonText, textColor);
-            toolBar->setPalette(toolPalette);
-        }
-
-        if (statusBar()) {
-            QPalette statusPalette = statusBar()->palette();
-            statusPalette.setColor(QPalette::Window, mainWindowBackground);
-            statusPalette.setColor(QPalette::WindowText, textColor);
-            statusBar()->setPalette(statusPalette);
-        }
-
-        if (d->projectPanel) {
-            QPalette treePalette = d->projectPanel->palette();
-            treePalette.setColor(QPalette::Base, mainWindowBackground);
-            treePalette.setColor(QPalette::Text, textColor);
-            treePalette.setColor(QPalette::Highlight, selectionBackground);
-            treePalette.setColor(QPalette::HighlightedText, textColor);
-            d->projectPanel->setPalette(treePalette);
-        }
-
-        if (d->outputPanel) {
-            QPalette outputPalette = d->outputPanel->palette();
-            outputPalette.setColor(QPalette::Base, editorBackground);
-            outputPalette.setColor(QPalette::Text, textColor);
-            d->outputPanel->setPalette(outputPalette);
+    // 1. 编辑器主题（TextEditor 内部用令牌，不用硬编码）
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        if (auto* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i))) {
+            editor->applyTheme(tm.isDarkTheme() ? "dark" : "light");
         }
     }
 
-    applyThemeToTextEditors(isDark);
-    // updateWindowTitle();
+    // 2. 标签页自绘
+    if (auto* tabWidget = qobject_cast<TabWidget*>(d->editorTabs)) {
+        tabWidget->updateTheme();
+    }
+
+    // 3. 项目树（自绘 branch 图标时需要）
+    if (d->projectPanel) {
+        tm.applyThemeToTreeView(d->projectPanel->getFileTreeView());
+    }
+
+    // 4. 输出面板（QTextEdit，QSS 已覆盖，但 objectName 要设上）
+    if (d->outputPanel) {
+        d->outputPanel->setObjectName("OutputPanel");
+        d->outputPanel->style()->unpolish(d->outputPanel);
+        d->outputPanel->style()->polish(d->outputPanel);
+    }
+
     update();
     repaint();
-
-    // qDebug() << "主题应用完成";
 }
 
 void MainWindow::applyThemeToDockWidget(QDockWidget* dockWidget, bool isDark)
@@ -937,11 +877,11 @@ void MainWindow::setupMenuBar()
     QMenu *buildMenu = menuBar->addMenu("构建(&B)");
 
     QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译当前文件(&C)");
-    compileFileAction->setShortcut(QKeySequence("Ctrl+B"));
+    compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
     connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
 
     QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译项目(&P)");
-    compileProjectAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
+    compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
     connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
     QAction *cleanBuildAction = buildMenu->addAction("清理构建(&O)");
@@ -1013,13 +953,46 @@ void MainWindow::setupMenuBar()
         d->outputPanel->append("性能监控功能开发中...");
     });
 
-    QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/terminal.svg"), "终端(&T)");
+    QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/icons/terminal.svg"), "终端(&T)");
     terminalAction->setShortcut(QKeySequence("Ctrl+`"));  // Cmd+`
     connect(terminalAction, &QAction::triggered, this, [this]() {
         if (m_terminalPanel) {
             m_terminalPanel->setVisible(!m_terminalPanel->isVisible());
         }
     });
+
+    // ==================== 视图菜单 ====================
+    QMenu *viewMenu = menuBar->addMenu("视图(&V)");
+
+    // 底部面板 toggle
+    QAction* toggleBottomPanelAction = viewMenu->addAction("底部面板(&B)");
+    toggleBottomPanelAction->setShortcut(QKeySequence("Ctrl+J"));
+    toggleBottomPanelAction->setCheckable(true);
+    toggleBottomPanelAction->setChecked(true);
+    toggleBottomPanelAction->setStatusTip("显示 / 隐藏底部面板 (Ctrl+J)");
+
+    connect(toggleBottomPanelAction, &QAction::toggled, this, [this](bool checked) {
+        if (m_bottomDockWidget) {
+            m_bottomDockWidget->setVisible(checked);
+        }
+    });
+    m_toggleBottomPanelAction = toggleBottomPanelAction;   // 存成员，供后面同步状态
+
+    viewMenu->addSeparator();
+
+    // 项目面板 toggle（顺手做）
+    QAction* toggleProjectPanelAction = viewMenu->addAction("项目面板(&P)");
+    toggleProjectPanelAction->setShortcut(QKeySequence("Ctrl+Shift+E"));
+    toggleProjectPanelAction->setCheckable(true);
+    toggleProjectPanelAction->setChecked(true);
+    toggleProjectPanelAction->setStatusTip("显示 / 隐藏项目面板 (Ctrl+Shift+E)");
+
+    connect(toggleProjectPanelAction, &QAction::toggled, this, [this](bool checked) {
+        if (d->projectDock) {
+            d->projectDock->setVisible(checked);
+        }
+    });
+    m_toggleProjectPanelAction = toggleProjectPanelAction;
 
     // ==================== 帮助菜单 ====================
     QMenu *helpMenu = menuBar->addMenu("帮助(&H)");
@@ -1052,7 +1025,7 @@ void MainWindow::setupToolBar()
     toolBar->addSeparator();
 
     QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),"编译");
-    connect(buildAction, &QAction::triggered, this, &MainWindow::onCompile);
+    connect(buildAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
     QAction *runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"),"运行");
     runAction->setShortcut(QKeySequence("Ctrl+R"));
@@ -1110,210 +1083,164 @@ void MainWindow::setupStatusBar()
 
 void MainWindow::setupDockWidgets()
 {
-    // ========== 项目面板（左侧） ==========
-    d->projectDock = new QDockWidget("项目面板", this);
+    ThemeManager& tm = ThemeManager::instance();
 
-    // 创建 ProjectPanel 实例
+    // ============================== 项目面板（左侧） ==============================
+    d->projectDock = new QDockWidget("项目面板", this);
+    d->projectDock->setObjectName("ProjectDock");
+    d->projectDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    connect(d->projectDock, &QDockWidget::visibilityChanged,
+            this, [this](bool visible) {
+                if (m_toggleProjectPanelAction) {
+                    QSignalBlocker blocker(m_toggleProjectPanelAction);
+                    m_toggleProjectPanelAction->setChecked(visible);
+                }
+            });
+
     d->projectPanel = new ProjectPanel(d->projectDock);
     d->projectDock->setWidget(d->projectPanel);
     addDockWidget(Qt::LeftDockWidgetArea, d->projectDock);
+
     d->projectPanel->setShowHiddenFiles(false);
-
-    QColor mainWindowBackground("#2D2D2D");
-    QColor editorBackground("#1E1E1E");
-    QColor textColor("#E0E0E0");
-    QColor selectionBackground("#3A3D41");
-    QColor alternateBase("#3C3C3C");
-
-    QPalette treePalette = d->projectPanel->palette();
-    treePalette.setColor(QPalette::Base, mainWindowBackground);
-    treePalette.setColor(QPalette::Text, textColor);
-    treePalette.setColor(QPalette::Highlight, selectionBackground);
-    treePalette.setColor(QPalette::HighlightedText, textColor);
-    treePalette.setColor(QPalette::Window, mainWindowBackground);
-    treePalette.setColor(QPalette::WindowText, textColor);
-    treePalette.setColor(QPalette::Button, mainWindowBackground.darker(110));
-    treePalette.setColor(QPalette::ButtonText, textColor);
-    treePalette.setColor(QPalette::AlternateBase, alternateBase);
-
-    d->projectPanel->setPalette(treePalette);
-    d->projectPanel->setAutoFillBackground(true);
-
-    QString treeStyleSheet = QString(
-                                 "QTreeView {"
-                                 "  background-color: %1;"
-                                 "  color: %2;"
-                                 "}"
-                                 "QTreeView::item:selected {"
-                                 "  background-color: %4;"
-                                 "  color: %5;"
-                                 "}"
-                                 "QTreeView::item:hover {"
-                                 "  background-color: %6;"
-                                 "}"
-                                 ).arg(
-                                     mainWindowBackground.name(),
-                                     textColor.name(),
-                                     alternateBase.name(),
-                                     selectionBackground.name(),
-                                     textColor.name(),
-                                     selectionBackground.lighter(120).name()
-                                     );
-
-    d->projectPanel->setStyleSheet(treeStyleSheet);
     d->projectPanel->setAlternatingRowColors(false);
 
-    QString dockStyle = QString(
-                            "QDockWidget {"
-                            "  background-color: %1;"
-                            "  color: %2;"
-                            "  border: 1px solid #555555;"
-                            "}"
-                            "QDockWidget::title {"
-                            "  background-color: %3;"
-                            "  color: %2;"
-                            "  padding: 4px;"
-                            "  text-align: left;"
-                            "}"
-                            "QDockWidget::close-button, QDockWidget::float-button {"
-                            "  background-color: %4;"
-                            "  border: 1px solid #555555;"
-                            "}"
-                            ).arg(
-                                mainWindowBackground.name(),
-                                textColor.name(),
-                                alternateBase.name(),
-                                mainWindowBackground.lighter(110).name()
-                                );
+    //    只需调用 ThemeManager，不再手动拼 QSS
+    tm.applyThemeToTreeView(d->projectPanel->getFileTreeView());
 
-    d->projectDock->setStyleSheet(dockStyle);
-
-    QStandardItemModel *model = new QStandardItemModel(this);
-    QStandardItem *rootItem = new QStandardItem("项目");
-    rootItem->setForeground(QBrush(textColor));
-    model->appendRow(rootItem);
-    // d->projectPanel->setModel(model);
-
-    d->projectDock->setWidget(d->projectPanel);
-    addDockWidget(Qt::LeftDockWidgetArea, d->projectDock);
-
-    // ========== 底部面板 ==========
+    // =============================== 底部面板 =============================
     m_bottomDockWidget = new QDockWidget("面板", this);
     m_bottomDockWidget->setObjectName("BottomPanel");
     m_bottomDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-    m_bottomDockWidget->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
-    // 确保没有最大尺寸限制
-    // m_bottomDockWidget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-    // m_bottomDockWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_bottomDockWidget->setFeatures(QDockWidget::DockWidgetClosable |
+                                    QDockWidget::DockWidgetMovable);
+    m_bottomDockWidget->setMinimumHeight(0);
+    m_bottomDockWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    connect(m_bottomDockWidget, &QDockWidget::visibilityChanged,
+                this, [this](bool visible) {
+                    if (m_toggleBottomPanelAction) {
+                        QSignalBlocker blocker(m_toggleBottomPanelAction);
+                        m_toggleBottomPanelAction->setChecked(visible);
+                    }
+                });
 
     m_bottomTabWidget = new QTabWidget(m_bottomDockWidget);
+    m_bottomTabWidget->setObjectName("BottomTabWidget");
+    m_bottomTabWidget->tabBar()->setObjectName("BottomTabBar");
     m_bottomTabWidget->setTabPosition(QTabWidget::South);
     m_bottomTabWidget->setDocumentMode(true);
     m_bottomTabWidget->setTabsClosable(false);
-    // 确保 TabWidget 填满 DockWidget
     m_bottomTabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // ========== 输出面板（第一个标签） ==========
-    d->outputPanel = new QTextEdit(this);
+    // =============================== 输出面板 =============================
+    // parent 直接给最终容器，避免"创建时 parent=MainWindow，后面 reparent"的隐患
+    d->outputPanel = new QTextEdit(m_bottomTabWidget);
+
+    // objectName 必须在【创建之后】设置，否则就是空指针
+    d->outputPanel->setObjectName("OutputPanel");
+
     d->outputPanel->setReadOnly(true);
-    d->outputPanel->setFont(QFont("Consolas", 9));
-    // ========== 确保支持键盘选择（从而支持 Ctrl+C 复制） ==========
-    d->outputPanel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-    // 确保可以接收焦点
+    d->outputPanel->setTextInteractionFlags(
+        Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     d->outputPanel->setFocusPolicy(Qt::StrongFocus);
-    d->outputPanel->setStyleSheet(
-        "QTextEdit {"
-        "  background-color: #1E1E1E;"
-        "  color: #CCCCCC;"
-        "  border: none;"
-        "  font-family: 'Monaco', 'Consolas', monospace;"
-        "  font-size: 10pt;"
-        "}"
-        );
-    // ========== 使用 QShortcut 绑定复制快捷键 ==========
+    d->outputPanel->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // 复制快捷键
     QShortcut* copyShortcut = new QShortcut(QKeySequence::Copy, this);
+    copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);   //    避免抢占编辑器的 Cmd+C
     connect(copyShortcut, &QShortcut::activated, this, [this]() {
         if (d->outputPanel && d->outputPanel->textCursor().hasSelection()) {
             d->outputPanel->copy();
         }
     });
 
-    QPalette outputPalette = d->outputPanel->palette();
-    outputPalette.setColor(QPalette::Base, QColor("#1E1E1E"));
-    outputPalette.setColor(QPalette::Text, QColor("#CCCCCC"));
-    d->outputPanel->setPalette(outputPalette);
-
-    d->outputPanel->setContextMenuPolicy(Qt::CustomContextMenu);
+    // 上下文菜单
     connect(d->outputPanel, &QTextEdit::customContextMenuRequested,
             this, [this](const QPoint& pos) {
                 QMenu* menu = new QMenu(this);
 
-                // 复制（如果选中了文本才启用）
                 QAction* copyAction = new QAction("复制", this);
                 copyAction->setShortcut(QKeySequence::Copy);
                 copyAction->setEnabled(d->outputPanel->textCursor().hasSelection());
-                connect(copyAction, &QAction::triggered, d->outputPanel, &QTextEdit::copy);
+                connect(copyAction, &QAction::triggered,
+                        d->outputPanel, &QTextEdit::copy);
                 menu->addAction(copyAction);
 
                 menu->addSeparator();
 
-                // 清空
                 QAction* clearAction = new QAction("清空", this);
-                connect(clearAction, &QAction::triggered, d->outputPanel, &QTextEdit::clear);
+                connect(clearAction, &QAction::triggered,
+                        d->outputPanel, &QTextEdit::clear);
                 menu->addAction(clearAction);
 
                 menu->addSeparator();
 
-                // 全选
                 QAction* selectAllAction = new QAction("全选", this);
                 selectAllAction->setShortcut(QKeySequence::SelectAll);
-                connect(selectAllAction, &QAction::triggered, d->outputPanel, &QTextEdit::selectAll);
+                connect(selectAllAction, &QAction::triggered,
+                        d->outputPanel, &QTextEdit::selectAll);
                 menu->addAction(selectAllAction);
 
                 menu->exec(d->outputPanel->viewport()->mapToGlobal(pos));
                 delete menu;
             });
 
-    m_bottomTabWidget->addTab(d->outputPanel, QIcon(":/icons/run_view.svg"), "输出");
+    m_bottomTabWidget->addTab(d->outputPanel,
+                              QIcon(":/icons/run_view.svg"),
+                              "输出");
 
     m_bottomDockWidget->setWidget(m_bottomTabWidget);
     addDockWidget(Qt::BottomDockWidgetArea, m_bottomDockWidget);
 
-    // 设置初始高度
-    m_bottomDockWidget->resize(width(), 200);
+    // 不再 setGeometry，改用 resizeDocks 设定初始高度
+    resizeDocks({m_bottomDockWidget}, {200}, Qt::Vertical);
     m_bottomDockWidget->setVisible(true);
-
-    // 确保不浮动
     m_bottomDockWidget->setFloating(false);
-    // 重置几何位置
-    m_bottomDockWidget->setGeometry(0, height() - 200, width(), 200);
-    // 确保停靠
-    m_bottomDockWidget->show();
 
-    // 连接项目面板的删除请求
+    connect(m_bottomTabWidget, &QTabWidget::currentChanged,
+                this, [this](int index) {
+                    QWidget* w = m_bottomTabWidget->widget(index);
+                    if (!w) return;
+
+                    int targetHeight = 200;      // 默认
+
+                    if (w == m_debugPanel) {
+                        targetHeight = 420;
+                    } else if (w == m_terminalPanel) {
+                        targetHeight = 300;
+                    } else if (w == d->outputPanel) {
+                        targetHeight = 200;
+                    }
+
+                    // 避免小于最小值
+                    targetHeight = qMax(targetHeight, 100);
+
+                    resizeDocks({m_bottomDockWidget}, {targetHeight}, Qt::Vertical);
+                });
+
+    // ============================================================
+    // 四、删除请求信号
+    // ============================================================
     connect(d->projectPanel, &ProjectPanel::deleteRequested,
             this, [this](const QStringList& filePaths) {
-                // 第一步：尝试关闭所有打开的文件
                 bool canDelete = true;
                 for (const QString& path : filePaths) {
                     if (!closeEditorForFile(path)) {
-                        canDelete = false; // 用户取消关闭，中止删除
+                        canDelete = false;
                         break;
                     }
                 }
-
                 if (!canDelete) {
                     d->outputPanel->append("删除操作已取消");
                     return;
                 }
-
-                // 第二步：执行实际删除
                 for (const QString& path : filePaths) {
-                    // deleteFile 内部仍有确认对话框，保留双重确认
                     d->projectPanel->deleteFile(path, true);
                     updateWindowTitle();
                 }
             });
+
+    qDebug() << "[SDW] setupDockWidgets 完成";
 }
 
 void MainWindow::setupConnections()
@@ -1382,7 +1309,7 @@ void MainWindow::setupConnections()
 void MainWindow::setupDebugPanel()
 {
     m_debugPanel = new DebugPanel(this);
-    int index = m_bottomTabWidget->addTab(m_debugPanel, QIcon(":/icons/debug.svg"), "调试");
+    int index = m_bottomTabWidget->addTab(m_debugPanel, QIcon(":/icons/icons/debug.svg"), "调试");
     m_bottomTabWidget->setTabVisible(index, false);
 
     // 连接调试面板信号到 MainWindow 的槽函数
@@ -1404,7 +1331,7 @@ void MainWindow::setupDebugPanel()
 void MainWindow::setupTerminalPanel()
 {
     m_terminalPanel = new TerminalPanel(this);
-    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/terminal.svg"), "终端");
+    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/icons/terminal.svg"), "终端");
 
     if (!d->currentProjectPath.isEmpty()) {
         m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
@@ -1451,6 +1378,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 bool MainWindow::confirmUnsavedChanges()
 {
+    qDebug() << "[MW::confirmUnsavedChanges] 遍历编辑器检查未保存";
+
     bool hasUnsaved = false;
 
     for (int i = 0; i < d->editorTabs->count(); ++i) {
@@ -1604,7 +1533,7 @@ void MainWindow::closeProject()
 
 void MainWindow::openFile(const QString &path)
 {
-    // ★ 空路径 / 不存在的路径：直接返回，不创建编辑器，不弹窗
+    //    空路径 / 不存在的路径：直接返回，不创建编辑器，不弹窗
     if (path.isEmpty()) {
         qWarning() << "[openFile] 空路径，跳过";
         return;
@@ -1624,9 +1553,7 @@ void MainWindow::openFile(const QString &path)
         }
     }
 
-    // ============================================================
     // 2. 创建编辑器并加载文件
-    // ============================================================
     TextEditor* editor = new TextEditor(this);
 
     // ---- 代码补全信号（保持不变） ----
@@ -1653,9 +1580,6 @@ void MainWindow::openFile(const QString &path)
                 }
             });
 
-    // ============================================================
-    // 跳转定义连接（核心修复部分）
-    // ============================================================
     // 跳转定义连接
     connect(editor, &TextEditor::definitionRequested,
             this, [this, editor](const QString& filePath, int line, int column) {
@@ -1760,6 +1684,26 @@ void MainWindow::openFile(const QString &path)
     connect(editor, &TextEditor::breakpointToggled,
             this, &MainWindow::onBreakpointToggled);
 
+    connect(editor, &TextEditor::breakpointConditionChanged,
+            this, [this](const QString& file, int line, const QString& cond) {
+                if (!m_debugManager) return;
+
+                // 1. 写入 DebugManager（断点的权威数据源）
+                m_debugManager->setBreakpointCondition(file, line, cond);
+
+                // 2. 更新编辑器的视觉标记
+                TextEditor* ed = findEditorByFilePath(file);
+                if (ed) {
+                    bool hasCond = !cond.trimmed().isEmpty();
+                    bool enabled = m_debugManager->hasBreakpoint(file, line);
+                    ed->setBreakpointWithCondition(line, enabled, hasCond);
+                }
+
+                // 3. 如果 C++ 调试正在进行，重新同步全部断点到 adapter
+                if (m_cppDebugger && m_isDebugging) {
+                    m_cppDebugger->setBreakpoints(m_debugManager->getBreakpoints());
+                }
+            });
     // ---- 应用主题 ----
     bool isDark = ThemeManager::instance().isDarkTheme();
     editor->applyTheme(isDark ? "dark" : "light");
@@ -2115,30 +2059,36 @@ void MainWindow::onPythonDebugFinished()
 
     m_isDebugging = false;
 
-    // 1. 清除当前调试行高亮
+    // 清除当前调试行高亮
     if (TextEditor* editor = currentEditor()) {
         editor->clearCurrentDebugLine();
     }
 
-    // 2. 更新调试动作的启用/禁用
+    // 更新调试动作的启用/禁用
     updateDebugActions();
 
-    // 3. 清空调试面板
+    // 清空调试面板
     if (m_debugPanel) {
         m_debugPanel->setDebuggingState(false);
         m_debugPanel->updateVariables(QList<DebugVariable>());
         m_debugPanel->updateCallStack(QList<StackFrame>());
     }
 
-    // 4. 状态栏提示
+    // 状态栏提示
     if (m_statusLabel) {
         m_statusLabel->setText("调试已结束");
     }
 
-    // 5. ★ 关键：切回输出面板
+    // 切回输出面板
     switchToOutputTab();
 
+    setDebugTabVisible(false);
+
     d->outputPanel->append(QString("<span style='color:#33CC33;'>调试会话已结束</span>"));
+    // 调试面板控制台也打一条结束线
+    if (m_debugPanel) {
+        m_debugPanel->appendConsoleOutput("=== 调试会话结束 ===", false);
+    }
 }
 
 // ==================== 项目面板信号处理 ====================
@@ -2329,7 +2279,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                                            : LanguageType::Unknown;
 
                 if (lang == LanguageType::Cpp) {
-                    // ★ C++：用 DAP 路径。重新进 onStartDebug()，这次 exePath 已存在
+                    //    C++：用 DAP 路径。重新进 onStartDebug()，这次 exePath 已存在
                     d->outputPanel->append("编译成功，正在启动 C++ 调试...");
                     QTimer::singleShot(100, this, &MainWindow::onStartDebug);
                 } else {
@@ -2776,8 +2726,17 @@ void MainWindow::onStartDebug() {
             connect(m_pythonDebugger, &PythonDebugger::continued, this, &MainWindow::onDebuggerContinued);
 
             connect(m_pythonDebugger, &PythonDebugger::outputReceived, this, [this](const QString& out, bool err) {
-                if (err) { d->outputPanel->append("<span style='color:#FF6B6B;'>" + out.toHtmlEscaped() + "</span>"); }
-                else { d->outputPanel->append(out); }
+                // 输出面板
+                if (err) {
+                    d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                                           + out.toHtmlEscaped() + "</span>");
+                } else {
+                    d->outputPanel->append(out);
+                }
+                // 调试面板控制台
+                if (m_debugPanel) {
+                    m_debugPanel->appendConsoleOutput(out, err);
+                }
             });
 
             connect(m_pythonDebugger, &PythonDebugger::errorOccurred, this, [this](const QString& error) {
@@ -2805,6 +2764,14 @@ void MainWindow::onStartDebug() {
         // 启动调试
         if (m_pythonDebugger->startDebugging(config)) {
             d->outputPanel->append("Python 调试已启动");
+            // 清空调试面板控制台并打分隔线
+                        if (m_debugPanel) {
+                            m_debugPanel->clearConsole();
+                            m_debugPanel->appendConsoleOutput(
+                                QString("=== 调试会话开始: %1 ===")
+                                    .arg(QFileInfo(sourceFile).fileName()),
+                                false);
+                        }
             m_isDebugging = true;
 
             QList<Breakpoint> allBreakpoints = m_debugManager->getBreakpoints();
@@ -2876,17 +2843,50 @@ void MainWindow::onStartDebug() {
                                               QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::Yes) {
                 m_compileForDebug = true;
-                onBuildProject();      // ★ 用 onBuildProject，不是 onCompile
+                onBuildProject();      //    用 onBuildProject，不是 onCompile
             }
             return;
         }
 
         // 2. 解析 DAP adapter
-        auto adapterRes = ToolchainManager::instance().resolve(ToolchainId::LldbDap);
+        //    平台策略：
+        //     - Linux 上优先 GDB DAP（GDB 14+ 支持 --interpreter=dap）
+        //     - macOS / Windows 上仍用 lldb-dap / codelldb
+        //    若首选不可用，回退到另一种。
+        ToolchainId preferred = ToolchainId::LldbDap;
+#ifdef Q_OS_LINUX
+        if (ToolchainManager::instance().resolve(ToolchainId::GdbDap).found) {
+            preferred = ToolchainId::GdbDap;
+            qDebug() << "[onStartDebug] Linux 平台，优先使用 GDB DAP";
+        }
+#endif
+
+        auto adapterRes = ToolchainManager::instance().resolve(preferred);
+
+        // 首选失败 → 尝试另一种 adapter（跨平台兜底）
         if (!adapterRes.found) {
-            ToolchainManager::instance().resolveOrPrompt(ToolchainId::LldbDap, this, &adapterRes);
+            ToolchainId fallback =
+                (preferred == ToolchainId::LldbDap)
+                    ? ToolchainId::GdbDap
+                    : ToolchainId::LldbDap;
+
+            qDebug() << "[onStartDebug] 首选 adapter 不可用，尝试回退到"
+                     << toolchainIdName(fallback);
+
+            auto fallbackRes = ToolchainManager::instance().resolve(fallback);
+            if (fallbackRes.found) {
+                adapterRes = fallbackRes;
+                preferred  = fallback;
+            }
+        }
+
+        // 两者都没有 → 弹安装引导（对首选弹，用户可换）
+        if (!adapterRes.found) {
+            ToolchainManager::instance().resolveOrPrompt(preferred, this, &adapterRes);
             if (!adapterRes.found) {
-                d->outputPanel->append("未找到 C++ 调试适配器，调试中止。");
+                d->outputPanel->append(
+                    QString("未找到 %1 调试适配器，调试中止。")
+                        .arg(toolchainIdName(preferred)));
                 return;
             }
         }
@@ -2948,11 +2948,16 @@ void MainWindow::onStartDebug() {
 
             connect(m_cppDebugger, &CppDebugger::outputReceived, this,
                     [this](const QString& out, bool err) {
+                        // 输出面板
                         if (err) {
                             d->outputPanel->append("<span style='color:#FF6B6B;'>"
                                                    + out.toHtmlEscaped() + "</span>");
                         } else {
                             d->outputPanel->append(out);
+                        }
+                        // 调试面板控制台
+                        if (m_debugPanel) {
+                            m_debugPanel->appendConsoleOutput(out, err);
                         }
                     });
 
@@ -2973,11 +2978,67 @@ void MainWindow::onStartDebug() {
                     [this](const QList<StackFrame>& frames) {
                         if (m_debugPanel) m_debugPanel->updateCallStack(frames);
                     });
+
+            // 内联变量显示：变量更新时把关键值贴到当前停止行行尾
+            connect(m_cppDebugger, &CppDebugger::variablesUpdated,
+                    this, [this](const QList<DebugVariable>& vars) {
+                        TextEditor* ed = currentEditor();
+                        if (!ed) return;
+
+                        // 只取前 5 个简单变量，跳过复杂类型（结构体/容器）避免刷屏
+                        QStringList parts;
+                        for (const DebugVariable& v : vars) {
+                            if (parts.size() >= 5) break;
+
+                            // 跳过空名或空值
+                            if (v.name.isEmpty() || v.value.isEmpty()) continue;
+
+                            // 跳过可展开的复杂对象（它们在变量面板里更适合查看）
+                            // 但如果用户想要显示指针/引用的地址，可以放开这条限制
+                            // if (v.variablesReference > 0) continue;
+
+                            QString val = v.value;
+                            // 长值截断（例如 std::string 全文、vector 的完整内容）
+                            if (val.length() > 40) {
+                                val = val.left(37) + QStringLiteral("...");
+                            }
+
+                            parts << QStringLiteral("%1 = %2").arg(v.name, val);
+                        }
+
+                        if (parts.isEmpty()) {
+                            ed->clearInlineValues();
+                        } else {
+                            ed->setInlineValues(
+                                ed->currentLine(),
+                                QStringLiteral("  ") + parts.join(QStringLiteral("   ")));
+                        }
+                    });
+            // ========== 变量懒加载 + 表达式求值 ==========
+            connect(m_debugPanel, &DebugPanel::variablesExpandRequested,
+                    m_cppDebugger, &CppDebugger::requestChildVariables);
+
+            connect(m_debugPanel, &DebugPanel::evaluateRequested,
+                    m_cppDebugger, &CppDebugger::evaluate);
+
+            connect(m_cppDebugger, &CppDebugger::childVariablesUpdated,
+                    m_debugPanel, &DebugPanel::onChildVariablesUpdated);
+
+            connect(m_cppDebugger, &CppDebugger::evaluateResultReady,
+                    m_debugPanel, &DebugPanel::onEvaluateResult);
         }
 
         // 5. 启动
         if (m_cppDebugger->startDebugging(cfg)) {
             d->outputPanel->append("C++ 调试已启动");
+            // 清空调试面板控制台并打分隔线
+            if (m_debugPanel) {
+                m_debugPanel->clearConsole();
+                m_debugPanel->appendConsoleOutput(
+                    QString("=== C++ 调试会话开始: %1 ===")
+                        .arg(QFileInfo(sourceFile).fileName()),
+                    false);
+            }
             m_isDebugging = true;
             updateDebugActions();
             switchToDebugTab();
@@ -2994,6 +3055,7 @@ void MainWindow::onStartDebug() {
             d->outputPanel->append("C++ 调试启动失败");
             m_isDebugging = false;
             updateDebugActions();
+            setDebugTabVisible(false);
         }
         return;
     }
@@ -3075,7 +3137,8 @@ void MainWindow::onStopDebug() {
             }
             TextEditor* editor = currentEditor();
             if (editor) editor->clearCurrentDebugLine();
-            switchToOutputTab();
+            setDebugTabVisible(false);
+            // switchToOutputTab();
             return;
         }
 
@@ -3104,7 +3167,8 @@ void MainWindow::onStopDebug() {
     if (m_debugManager && m_isDebugging) {
         m_debugManager->stopDebugging();
     }
-    switchToOutputTab();
+    // switchToOutputTab();
+    setDebugTabVisible(false);
 }
 
 void MainWindow::onStepOver()
@@ -3234,13 +3298,15 @@ void MainWindow::onDebugStateChanged(DebugState state)
                 m_bottomTabWidget->setTabVisible(debugIndex, false);
             }
         }
-        switchToOutputTab();
+        // switchToOutputTab();
+        setDebugTabVisible(false);
         break;
     case DebugState::Starting:
         m_isDebugging = true;
         if (m_statusLabel) {
             m_statusLabel->setText("正在启动调试...");
         }
+        setDebugTabVisible(true);
         if (m_bottomTabWidget) {
             int debugIndex = m_bottomTabWidget->indexOf(m_debugPanel);
             if (debugIndex >= 0) {
@@ -3545,6 +3611,27 @@ void MainWindow::switchToDebugTab()
             m_bottomTabWidget->setCurrentIndex(debugIndex);
         }
     }
+    setDebugTabVisible(true);
+}
+
+void MainWindow::setDebugTabVisible(bool visible)
+{
+    if (!m_bottomTabWidget || !m_debugPanel) return;
+
+    const int idx = m_bottomTabWidget->indexOf(m_debugPanel);
+    if (idx < 0) return;
+
+    if (visible) {
+        m_bottomTabWidget->setTabVisible(idx, true);
+        m_bottomTabWidget->setCurrentIndex(idx);
+    } else {
+        // 如果当前 Tab 就是调试面板，先切到输出面板，再隐藏
+        // 否则 Qt 在隐藏当前 Tab 时会自己找另一个 Tab 顶上，可能不是我们想要的
+        if (m_bottomTabWidget->currentIndex() == idx) {
+            switchToOutputTab();
+        }
+        m_bottomTabWidget->setTabVisible(idx, false);
+    }
 }
 
 void MainWindow::switchToOutputTab()
@@ -3779,7 +3866,7 @@ void MainWindow::saveSession()
     session["expandedPaths"] = expandedPaths;
 
     // ============================================================
-    // 2.3 ★ 保存断点
+    // 2.3    保存断点
     // ------------------------------------------------------------
     // Breakpoint 有 filePath / lineNumber / enabled / condition 四个
     // 关键字段，全部写入。hitCount 是运行时统计，不用持久化。
@@ -3876,14 +3963,7 @@ void MainWindow::restoreSession()
         }
     }
 
-    // ============================================================
-    // 2. ★ 恢复断点
-    // ------------------------------------------------------------
-    //  顺序很重要：
-    //    1) addBreakpoint(...) → 写入 DebugManager（断点的权威数据源）
-    //    2) setBreakpointEnabled(...) → 修正启用/禁用状态
-    //    3) 同步到对应编辑器 → 显示红点
-    // ============================================================
+    // 2.    恢复断点
     const QJsonArray breakpointsArr = session["breakpoints"].toArray();
     if (m_debugManager && !breakpointsArr.isEmpty()) {
         int restored = 0;
@@ -3910,7 +3990,8 @@ void MainWindow::restoreSession()
             // ---- 2.3 同步到已打开的编辑器 ----
             TextEditor* ed = findEditorByFilePath(filePath);
             if (ed) {
-                ed->setBreakpoint(line, enabled);   // 禁用断点通常渲染成空心红点
+                bool hasCond = !condition.trimmed().isEmpty();   // condition 是 JSON 里读出来的
+                ed->setBreakpointWithCondition(line, enabled, hasCond);   // 禁用断点通常渲染成空心红点
                 ed->viewport()->update();
             }
             ++restored;
@@ -4794,7 +4875,7 @@ void MainWindow::onBuildProject()
     task.language = lang;
     task.projectPath = projectPath;
 
-    // ★ C++ 项目：不预设 outputName，让 CppBuilder 从 CMakeLists 里取真正的 target 名
+    //    C++ 项目：不预设 outputName，让 CppBuilder 从 CMakeLists 里取真正的 target 名
     if (lang == LanguageType::Cpp) {
         task.outputName = QString();
         task.outputDir = "build";
@@ -5559,6 +5640,10 @@ void MainWindow::onThemeDark()
     ThemeManager::instance().setTheme(ThemeManager::ThemeType::Dark);
     applyCurrentTheme();
 
+    if (ConfigManager* cfg = Application::instance().configManager()) {
+        cfg->setValue("General/Theme", "Dark");
+    }
+
     d->outputPanel->append("已切换到深色主题");
     m_statusLabel->setText("主题已切换为深色");
 }
@@ -5567,6 +5652,10 @@ void MainWindow::onThemeLight()
 {
     ThemeManager::instance().setTheme(ThemeManager::ThemeType::Light);
     applyCurrentTheme();
+
+    if (ConfigManager* cfg = Application::instance().configManager()) {
+            cfg->setValue("General/Theme", "Light");
+    }
 
     d->outputPanel->append("已切换到浅色主题");
     m_statusLabel->setText("主题已切换为浅色");

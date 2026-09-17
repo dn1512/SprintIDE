@@ -47,6 +47,13 @@ public:
     explicit DapClient(QObject* parent = nullptr);
     ~DapClient() override;
 
+
+    struct BreakpointSpec {
+        int line = 0;
+        QString condition;      // 空 = 无条件
+        QString hitCondition;   // 可选
+    };
+
     // ---------- 启动 ----------
     /// 启动 adapter 进程
     bool startAdapter(const QString& program,
@@ -62,6 +69,8 @@ public:
                     const QString& clientID = QStringLiteral("SprintIDE"));
     void launch(const QJsonObject& launchArgs);
     void attach(const QJsonObject& attachArgs);
+    void setBreakpoints(const QString& sourcePath,
+                        const QList<BreakpointSpec>& specs);
     void setBreakpoints(const QString& sourcePath,
                         const QList<int>& lines);   ///< 行号 1-based
     void configurationDone();
@@ -128,6 +137,7 @@ private:
     QByteArray m_buffer;
     int m_nextSeq = 1;
     QMap<int, QString> m_pendingCommands;   ///< seq → command 名，用于响应匹配
+    QMap<int, int> m_pendingVariablesRef;   //seq → variablesReference
     State m_state = State::Disconnected;
     QString m_adapterID;
     QString m_clientID;

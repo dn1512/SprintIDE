@@ -44,6 +44,7 @@ private slots:
     void onProcessFinished(int exitCode, QProcess::ExitStatus status);
     void onProcessErrorOccurred(QProcess::ProcessError error);
     void onClearClicked();
+    void recolorAllOutput();
 
 private:
     void setupUI();

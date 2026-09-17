@@ -1,5 +1,3 @@
-// ============================================================================
-//  project_creation_dialog.cpp
 //  多语言版本项目创建向导
 //
 //  设计要点：
@@ -9,7 +7,6 @@
 //       当前语言下的模板。
 //    3. 每种语言走各自的生成器函数（generatePythonProject 等），C++ 沿
 //       用原有 generateProjectFiles()。
-// ============================================================================
 #include "project_creation_dialog.h"
 #include "ui_project_creation_dialog.h"
 
@@ -52,9 +49,7 @@
 
 namespace SprintIDE {
 
-// ============================================================================
-//  一、语言枚举的辅助函数
-// ============================================================================
+// 语言枚举的辅助函数
 
 QString projectLanguageToString(ProjectLanguage lang)
 {
@@ -94,9 +89,7 @@ ProjectLanguage projectLanguageFromId(const QString& id)
     return ProjectLanguage::Cpp;
 }
 
-// ============================================================================
-//  二、静态辅助函数与内置示例代码
-// ============================================================================
+// 静态辅助函数与内置示例代码
 
 // 返回默认的"项目目录"位置
 static QString getDefaultProjectsPath()
@@ -216,9 +209,7 @@ static const QString NODE_TS_EXAMPLE =
     "const greeting: string = 'Hello from SprintIDE!';\n"
     "console.log(greeting);\n";
 
-// ============================================================================
-//  三、构造函数 / 析构函数
-// ============================================================================
+// 构造函数 / 析构函数
 
 ProjectCreationDialog::ProjectCreationDialog(QWidget *parent)
     : QDialog(parent)
@@ -298,9 +289,7 @@ ProjectCreationDialog::~ProjectCreationDialog()
     delete ui;
 }
 
-// ============================================================================
-//  四、公共方法
-// ============================================================================
+// 公共方法
 
 ProjectCreationResult ProjectCreationDialog::getResult() const
 {
@@ -336,15 +325,11 @@ QList<ProjectTemplate> ProjectCreationDialog::availableTemplates() const
     return m_templates;
 }
 
-// ============================================================================
-//  五、accept() —— 核心：按语言分发
-// ============================================================================
+//  按语言分发
 
 void ProjectCreationDialog::accept()
 {
-    // ------------------------------------------------------------
-    // 1. 输入校验
-    // ------------------------------------------------------------
+    // 输入校验
     QStringList errors;
     if (!validateInput(errors)) {
         QString errorMsg = "请修正以下错误：\n\n";
@@ -355,26 +340,20 @@ void ProjectCreationDialog::accept()
         return;
     }
 
-    // ------------------------------------------------------------
-    // 2. 重置结果对象，并记录当前语言
-    // ------------------------------------------------------------
+    // 重置结果对象，并记录当前语言
     m_result.reset();
-    m_result.language = currentLanguage();   // ★ 关键：把语言写进结果
+    m_result.language = currentLanguage();   // 把语言写进结果
 
-    // ------------------------------------------------------------
-    // 3. 创建项目目录结构（所有语言共用）
-    // ------------------------------------------------------------
+    // 创建项目目录结构
     if (!createProjectStructure()) {
         m_result.errorMessage = "无法创建项目目录结构";
         QMessageBox::critical(this, "创建失败", m_result.errorMessage);
         return;
     }
 
-    // ------------------------------------------------------------
-    // 4. 按语言分发到不同的生成器
-    //    - C++ 与 GenericAI 走原 generateProjectFiles()
-    //    - 其余语言走各自的生成器
-    // ------------------------------------------------------------
+    // 按语言分发到不同的生成器
+    // C++ 与 GenericAI 走原 generateProjectFiles()
+    // 其余语言走各自的生成器
     bool ok = false;
     switch (m_result.language) {
     case ProjectLanguage::Python:
@@ -469,9 +448,7 @@ void ProjectCreationDialog::accept()
     QDialog::accept();
 }
 
-// ============================================================================
-//  六、用户交互槽函数
-// ============================================================================
+//  用户交互槽函数
 
 void ProjectCreationDialog::onBrowseLocation()
 {
@@ -514,11 +491,7 @@ void ProjectCreationDialog::onLocationChanged(const QString& path)
     updatePathPreview();
 }
 
-// ------------------------------------------------------------
-// ★ 新增：语言切换槽函数
-//   1. 刷新模板下拉框（只显示当前语言的模板）
-//   2. 刷新"语言特有选项"组
-// ------------------------------------------------------------
+// 语言切换槽函数
 void ProjectCreationDialog::onLanguageChanged(int /*index*/)
 {
     if (!m_initialized) {
@@ -676,9 +649,7 @@ void ProjectCreationDialog::setCompilerType(ProjectCompilerType type)
     m_projectConfig.setProjectCompilerType(type);
 }
 
-// ============================================================================
-//  七、初始化方法
-// ============================================================================
+//  初始化方法
 
 void ProjectCreationDialog::setupUI()
 {
@@ -736,13 +707,7 @@ void ProjectCreationDialog::setupUI()
 
     ui->projectNameLineEdit->setFocus();
 
-    // ============================================================
-    //  ★ 关键：创建并插入"语言选择器"与"语言特有选项组"
-    // ------------------------------------------------------------
-    //  1) 创建语言下拉框
-    //  2) 把它插入到 templateComboBox 上方
-    //  3) 创建"语言特有选项"分组
-    // ============================================================
+    // 创建并插入"语言选择器"与"语言特有选项组"
     createLanguageComboBox();
     insertLanguageComboBoxIntoLayout();
     createLanguageSpecificGroup();
@@ -799,9 +764,7 @@ void ProjectCreationDialog::setupConnections()
     connect(ui->buttonBox, &QDialogButtonBox::rejected,
             this, &QDialog::reject);
 
-    // ============================================================
-    //  ★ 关键：语言下拉框信号
-    // ============================================================
+    // 语言下拉框信号
     if (m_languageComboBox) {
         connect(m_languageComboBox,
                 static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -809,18 +772,14 @@ void ProjectCreationDialog::setupConnections()
     }
 }
 
-// ============================================================================
-//  八、模板系统
-// ============================================================================
+//  模板系统
 
 void ProjectCreationDialog::initTemplates()
 {
     m_templates.clear();
     m_templateMap.clear();
 
-    // ============================================================
-    //  C++ 模板（与原版本一致，只是补上 language = Cpp）
-    // ============================================================
+    //  C++ 模板
     {
         ProjectTemplate t;
         t.id = "console_app";
@@ -1072,13 +1031,9 @@ void ProjectCreationDialog::initCompilerSettings()
     }
 }
 
-// ============================================================================
-//  九、★ 新增：多语言支持相关方法
-// ============================================================================
+// 多语言支持相关方法
 
-// ------------------------------------------------------------
 // 创建语言下拉框
-// ------------------------------------------------------------
 void ProjectCreationDialog::createLanguageComboBox()
 {
     m_languageComboBox = new QComboBox(this);
@@ -1423,9 +1378,7 @@ void ProjectCreationDialog::refreshLanguageSpecificUI()
     }
 }
 
-// ============================================================================
-//  十、输入验证
-// ============================================================================
+// 输入验证
 
 bool ProjectCreationDialog::validateInput(QStringList& errors) const
 {
@@ -1524,9 +1477,7 @@ bool ProjectCreationDialog::validateProjectPath(const QString& path, QString& er
     return true;
 }
 
-// ============================================================================
-//  十一、目录结构创建（所有语言共用）
-// ============================================================================
+// 目录结构创建（所有语言共用）
 
 bool ProjectCreationDialog::createProjectStructure()
 {
@@ -1560,9 +1511,7 @@ bool ProjectCreationDialog::createProjectStructure()
     return true;
 }
 
-// ============================================================================
-//  十二、C++ / GenericAI 项目生成（原有流程，稍作整理）
-// ============================================================================
+//  C++ / GenericAI 项目生成
 
 bool ProjectCreationDialog::generateProjectFiles()
 {
@@ -1659,13 +1608,9 @@ bool ProjectCreationDialog::generateExampleFiles()
     return true;
 }
 
-// ============================================================================
-//  十三、★ 新增：Python / Go / Rust / Node 生成器
-// ============================================================================
+// Python / Go / Rust / Node 生成器
 
-// ------------------------------------------------------------
 // Python 项目生成器
-// ------------------------------------------------------------
 bool ProjectCreationDialog::generatePythonProject()
 {
     QDir projDir(m_projectConfig.projectPath());
@@ -1715,9 +1660,7 @@ bool ProjectCreationDialog::generatePythonProject()
     return true;
 }
 
-// ------------------------------------------------------------
 // Go 项目生成器
-// ------------------------------------------------------------
 bool ProjectCreationDialog::generateGoProject()
 {
     QDir projDir(m_projectConfig.projectPath());
@@ -1910,13 +1853,11 @@ bool ProjectCreationDialog::generateNodeProject()
     return true;
 }
 
-// ============================================================================
-//  十四、UI 更新辅助函数
-// ============================================================================
+// UI 更新辅助函数
 
 void ProjectCreationDialog::updatePathPreview()
 {
-    // 早退：ui 或关键控件缺失
+    // ui 或关键控件缺失
     if (!ui || !ui->projectNameLineEdit || !ui->locationLineEdit
         || !ui->pathPreviewLabel || !ui->buttonBox) {
         return;
@@ -2027,9 +1968,7 @@ QString ProjectCreationDialog::replaceTemplateVariables(
     return result;
 }
 
-// ============================================================================
 //  十五、状态持久化
-// ============================================================================
 
 void ProjectCreationDialog::saveDialogState()
 {
@@ -2046,7 +1985,7 @@ void ProjectCreationDialog::saveDialogState()
     settings.setValue("autoOpen",     ui->autoOpenCheckBox->isChecked());
     settings.setValue("createGitRepo", ui->createGitRepoCheckBox->isChecked());
 
-    // ★ 保存语言选择
+    // 保存语言选择
     if (m_languageComboBox) {
         settings.setValue("lastLanguage",
                           static_cast<int>(currentLanguage()));
@@ -2129,9 +2068,7 @@ void ProjectCreationDialog::loadDialogState()
     m_createGitRepo = createGitRepo;
 }
 
-// ============================================================================
-//  十六、辅助工具函数
-// ============================================================================
+// 辅助工具函数
 
 bool ProjectCreationDialog::writeTextFile(const QString& filePath, const QString& content)
 {

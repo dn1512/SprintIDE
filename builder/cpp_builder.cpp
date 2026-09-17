@@ -82,8 +82,6 @@ bool CppBuilder::build(const BuildTask& task, BuildResult& result)
 // ====================================================================
 bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
 {
-    qDebug() << "★★★★★ buildWithCMake v2 生效了 ★★★★★";
-
     CppProjectModel model(task.projectPath);
     model.load();
 
@@ -119,7 +117,7 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
             configArgs << "-DCMAKE_BUILD_TYPE=Release";
         }
 
-        // 生成器：优先 Ninja，★ 不传 -DCMAKE_MAKE_PROGRAM ★
+        // 生成器：优先 Ninja，不传 -DCMAKE_MAKE_PROGRAM
         const QString ninja = CppProjectModel::findNinjaExecutable();
         if (!ninja.isEmpty()) {
             configArgs << "-G" << "Ninja";
@@ -163,7 +161,7 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
     QStringList buildArgs;
     buildArgs << "--build" << buildDir;
 
-    // ★ 验证 target 有效性（核心修复）
+    // 验证 target 有效性（核心修复）
     QString requestedTarget = task.outputName;
     QStringList validTargets = model.targetNames();
     QString actualTarget;
@@ -364,7 +362,7 @@ QString CppBuilder::getExecutablePath(const BuildTask& task)
     model.load();
 
     if (model.buildSystem() == CppBuildSystem::CMake) {
-        // ★ 验证 target 有效性（与 buildWithCMake 一致）
+        // 验证 target 有效性（与 buildWithCMake 一致）
         QString target = task.outputName;
         QStringList validTargets = model.targetNames();
 

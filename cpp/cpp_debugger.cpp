@@ -42,6 +42,24 @@ static QString normalizeDapSourcePath(const QString& rawPath,
     return rawPath;
 }
 
+static QList<SprintIDE::DebugVariable> toDebugVariables(
+    const QList<SprintIDE::Dap::Variable>& vars)
+{
+    QList<SprintIDE::DebugVariable> out;
+    out.reserve(vars.size());
+    for (const auto& v : vars) {
+        SprintIDE::DebugVariable dv;
+        dv.name = v.name;
+        dv.type = v.type;
+        dv.value = v.value;
+        dv.isComplex = v.isContainer();
+        dv.variablesReference = v.variablesReference;   // 关键
+        dv.evaluateName = v.name;                       // 基础版（DAP 若返回 evaluateName 可扩展）
+        out.append(dv);
+    }
+    return out;
+}
+
 // ============================================================
 // 构造 / 析构
 // ============================================================
@@ -111,6 +129,10 @@ bool CppDebugger::startDebugging(const CppDebugConfig& config)
             this, &CppDebugger::onScopes);
     connect(m_dap, &DapClient::variablesReceived,
             this, &CppDebugger::onVariables);
+    connect(m_dap, &DapClient::evaluateResult,
+            this, [this](const QString& expr, const QString& result, const QString& type) {
+                emit evaluateResultReady(expr, result, type);
+            });
     connect(m_dap, &DapClient::errorOccurred,
             this, &CppDebugger::onAdapterError);
     connect(m_dap, &DapClient::adapterExited,
@@ -126,6 +148,8 @@ bool CppDebugger::startDebugging(const CppDebugConfig& config)
                              << "message=" << bp.message;
                 }
             });
+
+
 
     // 启动 adapter 进程
     bool ok = m_dap->startAdapter(config.adapterPath,
@@ -180,18 +204,24 @@ void CppDebugger::sendLaunch()
     for (const QString& a : m_config.programArgs) argArr.append(a);
     args["args"] = argArr;
 
-    args["stopOnEntry"] = m_config.stopOnEntry;
-    args["terminal"] = "console";
-    args["console"] = "internalConsole";
+    const bool isGdb = m_config.adapterPath.contains("gdb", Qt::CaseInsensitive);
 
-    // LLDB 初始化命令：不让 LLDB 在 exec 后立即停
-    //（macOS 上会表现为停在 _dyld_start，误导用户）
-    // 暂时去掉 initCommands，避免和 codelldb 的解析逻辑冲突。
-    // 我们用 onStackTrace 里的 startup-stop 过滤来处理 dyld 停止。
-    // （如果未来需要，可以加 args["initCommands"]，但要用字符串数组格式）
+    if (isGdb) {
+        // GDB DAP 用 stopAtBeginningOfMainSubprogram
+        args["stopAtBeginningOfMainSubprogram"] = m_config.stopOnEntry;
+        args["terminal"] = "console";
+    } else {
+        // LLDB / codelldb
+        args["stopOnEntry"] = m_config.stopOnEntry;
+        args["terminal"] = "console";
+        args["console"] = "internalConsole";
+    }
 
     m_dap->launch(args);
+
     qDebug() << "[CppDebugger] launch sent:" << m_config.program
+             << "adapter=" << m_config.adapterPath
+             << "isGdb=" << isGdb
              << "stopOnEntry=" << m_config.stopOnEntry;
 }
 
@@ -208,18 +238,23 @@ void CppDebugger::setBreakpoints(const QList<SprintIDE::Breakpoint>& breakpoints
 
 void CppDebugger::applyBreakpoints()
 {
-    // 按文件分组
-    QMap<QString, QList<int>> byFile;
+    // 改为按文件分组 BreakpointSpec（携带 condition）
+    QMap<QString, QList<DapClient::BreakpointSpec>> byFile;
+
     for (const SprintIDE::Breakpoint& bp : m_breakpoints) {
         if (!bp.enabled) continue;
         QString abs = QFileInfo(bp.filePath).absoluteFilePath();
-        byFile[abs].append(bp.lineNumber);
+
+        DapClient::BreakpointSpec spec;
+        spec.line = bp.lineNumber;
+        spec.condition = bp.condition;
+        byFile[abs].append(spec);
     }
 
-    // 每个文件发一次 setBreakpoints
     for (auto it = byFile.begin(); it != byFile.end(); ++it) {
         m_dap->setBreakpoints(it.key(), it.value());
-        qDebug() << "[CppDebugger] setBreakpoints" << it.key() << it.value();
+        qDebug() << "[CppDebugger] setBreakpoints" << it.key()
+                 << "count=" << it.value().size();
     }
 }
 
@@ -256,6 +291,20 @@ void CppDebugger::evaluateExpression(const QString& expr)
     if (m_dap) m_dap->evaluate(expr, m_currentFrameId, "repl");
 }
 
+void CppDebugger::requestChildVariables(int ref)
+{
+    if (m_dap && ref > 0) {
+        m_dap->variables(ref);
+    }
+}
+
+void CppDebugger::evaluate(const QString& expression)
+{
+    if (!m_dap || expression.trimmed().isEmpty()) return;
+    // 有当前帧则带上，否则让 adapter 在全局作用域求值
+    m_dap->evaluate(expression, m_currentFrameId, "repl");
+}
+
 // ============================================================
 // DAP 事件响应
 // ============================================================
@@ -263,6 +312,7 @@ void CppDebugger::onDapStopped(const Dap::StoppedInfo& info)
 {
     qDebug() << "[CppDebugger] stopped, reason=" << info.reason
              << "threadId=" << info.threadId;
+    m_topLevelRefs.clear();
     m_currentThreadId = info.threadId > 0 ? info.threadId : 1;
     requestTopFrameData();
 }
@@ -275,7 +325,7 @@ void CppDebugger::requestTopFrameData()
 
 void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
 {
-    // 1. 转成 DebugManager 用的 StackFrame（供 DebugPanel 显示调用栈）
+    // 转成 DebugManager 用的 StackFrame（供 DebugPanel 显示调用栈）
     QList<SprintIDE::StackFrame> out;
     for (int i = 0; i < frames.size(); ++i) {
         const Dap::StackFrame& f = frames[i];
@@ -295,7 +345,7 @@ void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
     const Dap::StackFrame& top = frames.first();
     m_currentFrameId = top.id;
 
-    // 2. 补全路径
+    // 补全路径
     m_currentFile = normalizeDapSourcePath(top.source.path,
                                            top.source.name,
                                            m_config.workingDirectory);
@@ -306,13 +356,15 @@ void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
              << "name=" << top.source.name
              << "-> resolved=" << m_currentFile;
 
-    // 3. ★ 判断是否是"启动阶段的伪停止"（dyld / 系统加载器）
-    //    macOS LLDB 启动时会在 dyld/startup 阶段收到一次 exception，
-    //    这不是用户关心的停止，应自动 continue 直到真正的断点。
+    // 判断是否是"启动阶段的伪停止"（dyld / 系统加载器）
+    // macOS LLDB 启动时会在 dyld/startup 阶段收到一次 exception，
+    // 这不是用户关心的停止，应自动 continue 直到真正的断点。
     bool isStartupStop = m_currentFile.isEmpty() &&
                          (top.name == "_dyld_start" ||
                           top.name == "start" ||
                           top.name == "__start" ||
+                          top.name == "__libc_start_main" ||   // GDB
+                          top.name == "_start" ||              // GDB
                           top.name.startsWith("dyld", Qt::CaseInsensitive) ||
                           top.name.contains("dyld", Qt::CaseInsensitive) ||
                           top.name.contains("libdyld", Qt::CaseInsensitive) ||
@@ -354,6 +406,7 @@ void CppDebugger::onScopes(int frameId, const QList<Dap::Scope>& scopes)
 
     if (localsRef > 0) {
         m_localsVariablesRef = localsRef;
+        m_topLevelRefs.insert(localsRef);
         m_dap->variables(localsRef);
     } else {
         emit variablesUpdated({});
@@ -363,16 +416,14 @@ void CppDebugger::onScopes(int frameId, const QList<Dap::Scope>& scopes)
 void CppDebugger::onVariables(int parentRef, const QList<Dap::Variable>& vars)
 {
     Q_UNUSED(parentRef);
-    QList<SprintIDE::DebugVariable> out;
-    for (const Dap::Variable& v : vars) {
-        SprintIDE::DebugVariable dv;
-        dv.name = v.name;
-        dv.type = v.type;
-        dv.value = v.value;
-        dv.isComplex = v.isContainer();
-        out.append(dv);
+    QList<SprintIDE::DebugVariable> out = toDebugVariables(vars);
+
+    if (m_topLevelRefs.contains(parentRef)) {
+        m_topLevelRefs.remove(parentRef);
+        emit variablesUpdated(out);                     // 顶层：替换整个列表
+    } else {
+        emit childVariablesUpdated(parentRef, out);     // 子级：只更新对应节点
     }
-    emit variablesUpdated(out);
 }
 
 void CppDebugger::onDapContinued(int threadId)
@@ -440,6 +491,7 @@ void CppDebugger::stopDebugging()
     m_initReceived = false;
     m_launched = false;
     m_localsVariablesRef = 0;
+    m_topLevelRefs.clear();
 }
 
 } // namespace SprintIDE

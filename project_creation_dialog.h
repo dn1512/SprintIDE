@@ -50,31 +50,29 @@ QString projectLanguageToId(ProjectLanguage lang);
 // 从内部 ID 还原语言枚举（读取配置文件用）
 ProjectLanguage projectLanguageFromId(const QString& id);
 
-// ============================================================
 //  项目模板结构体
-// ------------------------------------------------------------
+
 //  每个模板自带一个 language 字段，用于按语言过滤模板列表。
-// ============================================================
 struct ProjectTemplate
 {
-    QString id;                                        ///< 模板唯一标识符（英文）
-    QString name;                                      ///< 显示名称（中文）
-    QString description;                               ///< 详细描述
-    ProjectLanguage language = ProjectLanguage::Cpp;   ///< ★ 新增：该模板所属语言
-    ProjectType type;                                  ///< 项目类型（C++ 语义为主）
-    QString icon;                                      ///< 图标资源路径
-    QStringList defaultFiles;                          ///< 默认包含的文件（仅用于展示）
-    QStringList directories;                           ///< 需要创建的目录结构
+    QString id;                                        /// 模板唯一标识符（英文）
+    QString name;                                      /// 显示名称（中文）
+    QString description;                               /// 详细描述
+    ProjectLanguage language = ProjectLanguage::Cpp;   /// 新增：该模板所属语言
+    ProjectType type;                                  /// 项目类型（C++ 语义为主）
+    QString icon;                                      /// 图标资源路径
+    QStringList defaultFiles;                          /// 默认包含的文件（仅用于展示）
+    QStringList directories;                           /// 需要创建的目录结构
 
     // 模板自带的示例文件
     struct ExampleFile {
-        QString path;        ///< 相对项目根目录的路径
-        QString content;     ///< 文件内容
-        QString language;    ///< 文件语言（用于编辑器高亮，非关键）
+        QString path;        /// 相对项目根目录的路径
+        QString content;     /// 文件内容
+        QString language;    /// 文件语言（用于编辑器高亮，非关键）
     };
-    QList<ExampleFile> exampleFiles;                   ///< 示例文件列表
+    QList<ExampleFile> exampleFiles;                   /// 示例文件列表
 
-    QMap<QString, QString> variables;                  ///< 模板变量（可选）
+    QMap<QString, QString> variables;                  /// 模板变量（可选）
 };
 
 // ============================================================
@@ -89,7 +87,7 @@ struct ProjectCreationResult
     QString projectPath;                               ///< 项目根目录
     QString projectName;                               ///< 项目英文名（标识符）
     QString displayName;                               ///< 项目显示名（中文）
-    ProjectLanguage language = ProjectLanguage::Cpp;   ///< ★ 新增：项目语言
+    ProjectLanguage language = ProjectLanguage::Cpp;   ///< 项目语言
     ProjectType projectType;                           ///< 项目类型
     QString errorMessage;                              ///< 错误消息
     QDateTime createdTime;                             ///< 创建时间
@@ -155,7 +153,7 @@ private slots:
     void onDisplayNameChanged(const QString& name);
     void onLocationChanged(const QString& path);
 
-    void onLanguageChanged(int index);           ///< ★ 新增：语言下拉框切换
+    void onLanguageChanged(int index);           /// 语言下拉框切换
 
     void onTemplateChanged(int index);
     void onCompileModeChanged(bool checked);
@@ -178,7 +176,7 @@ private:
     void initTemplates();
     void initCompilerSettings();
 
-    // ---------- ★ 新增：多语言支持相关方法 ----------
+    // ---------- 多语言支持相关方法 ----------
     void             createLanguageComboBox();          ///< 创建语言下拉框
     void             insertLanguageComboBoxIntoLayout();///< 把语言下拉框插入到模板下拉框上方
     void             createLanguageSpecificGroup();     ///< 创建"语言特有选项"分组
@@ -197,7 +195,7 @@ private:
     bool generateConfigFile();
     bool generateExampleFiles();
 
-    // ---------- ★ 新增：其他语言专属生成器 ----------
+    // ---------- 其他语言专属生成器 ----------
     bool generatePythonProject();
     bool generateGoProject();
     bool generateRustProject();
@@ -223,9 +221,7 @@ private:
     void appendCreatedFile(const QString& filePath);
     bool saveProjectConfigFile();  ///< 统一保存 .lightcppproj 的辅助函数
 
-    // ============================================================
     //  成员变量
-    // ============================================================
     Ui::ProjectCreationDialog *ui;              ///< UI 对象（由 uic 生成）
     ProjectCreationResult      m_result;        ///< 项目创建结果
     ProjectConfig              m_projectConfig; ///< 项目配置对象
@@ -242,9 +238,7 @@ private:
     QString m_lastUsedPath;            ///< 上次使用的路径
     QMap<QString, QString> m_exampleCodeCache;
 
-    // ------------------------------------------------------------
-    //  ★ 新增：动态控件（不占用 .ui 文件的空间）
-    // ------------------------------------------------------------
+    // 动态控件
     QComboBox*   m_languageComboBox      = nullptr;  ///< 语言选择下拉框
     QGroupBox*   m_languageSpecificGroup = nullptr;  ///< 语言特有选项分组
     QFormLayout* m_languageSpecificForm  = nullptr;  ///< 语言特有选项表单

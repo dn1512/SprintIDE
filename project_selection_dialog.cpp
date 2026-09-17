@@ -10,11 +10,11 @@
 #include <QDateTime>
 #include <QInputDialog>
 #include <QPushButton>
-#include <QMenu>          // ★ 新增：右键菜单
-#include <QShortcut>      // ★ 新增：Delete 键
-#include <QKeySequence>   // ★ 新增
+#include <QMenu>
+#include <QShortcut>
+#include <QKeySequence>
 
-#include "project_manager.h"   // ★ 新增：用于持久化移除操作
+#include "project_manager.h"   // 用于持久化移除操作
 
 namespace SprintIDE {
 
@@ -97,7 +97,7 @@ void ProjectSelectionDialog::onProjectSelectionChanged(QListWidgetItem* current,
     m_selectedProjectPath = projectPath;
 }
 
-// ==================== ★ 新增：从历史中移除 ====================
+// 从历史中移除
 
 void ProjectSelectionDialog::onProjectListContextMenuRequested(const QPoint& pos)
 {
@@ -221,7 +221,7 @@ void ProjectSelectionDialog::initUI()
     m_projectList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_projectList->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-    // ★ 关键：启用自定义右键菜单
+    // 启用自定义右键菜单
     m_projectList->setContextMenuPolicy(Qt::CustomContextMenu);
 
     m_projectList->setStyleSheet(
@@ -288,11 +288,11 @@ void ProjectSelectionDialog::initUI()
     connect(m_buttonBox, &QDialogButtonBox::rejected,
             this, &ProjectSelectionDialog::reject);
 
-    // ★ 关键：右键菜单
+    // 右键菜单
     connect(m_projectList, &QListWidget::customContextMenuRequested,
             this, &ProjectSelectionDialog::onProjectListContextMenuRequested);
 
-    // ★ 关键：Delete 键快捷方式（作用于整个对话框，但只在列表有选中项时生效）
+    // Delete 键快捷方式（作用于整个对话框，但只在列表有选中项时生效）
     m_deleteShortcut = new QShortcut(QKeySequence::Delete, m_projectList);
     m_deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(m_deleteShortcut, &QShortcut::activated,
@@ -366,7 +366,7 @@ void ProjectSelectionDialog::showProjectInfo(const QString& projectPath)
     m_infoLabel->setText(infoText);
 }
 
-// ★ 新增：确保空列表有占位项
+// 确保空列表有占位项
 void ProjectSelectionDialog::ensureEmptyPlaceholder()
 {
     if (m_projectList->count() > 0) return;

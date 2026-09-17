@@ -211,7 +211,7 @@ private:
 
     void setupUI();
     void createMessageArea();
-    void createInputArea();
+    QWidget* createInputArea();
     void createToolbar();
 
     // ============================================================

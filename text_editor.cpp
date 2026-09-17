@@ -2,6 +2,8 @@
 // #include "syntax_highlighter.h"
 #include "language/language_highlighter.h"
 #include "font_manager.h"
+#include "theme_manager.h"
+
 #include <QPainter>
 #include <QTextBlock>
 #include <QSet>
@@ -57,12 +59,51 @@ QSize LineNumberArea::sizeHint() const
     return QSize(width, 0);
 }
 
+void LineNumberArea::contextMenuEvent(QContextMenuEvent* event)
+{
+    int y = event->y();
+    // 与 mousePressEvent 相同的行号计算方式
+    const int line = m_editor->cursorForPosition(event->pos()).blockNumber() + 1;
+    if (line < 1 || line > m_editor->lineCount()) {
+        QWidget::contextMenuEvent(event);
+        return;
+    }
+
+    // 只有已有断点才提供"编辑条件"选项
+    if (!m_editor->hasBreakpoint(line)) {
+        QWidget::contextMenuEvent(event);
+        return;
+    }
+
+    QMenu menu;
+    QAction* editCond = menu.addAction("编辑断点条件...");
+    QAction* removeBp = menu.addAction("移除断点");
+
+    QAction* chosen = menu.exec(event->globalPos());
+    if (chosen == editCond) {
+        QString oldCond;
+        // 从 MainWindow 侧拿不到，简单起见弹空输入框，用户重填
+        bool ok;
+        QString cond = QInputDialog::getText(
+            this, "断点条件",
+            QString("第 %1 行的断点条件（空 = 无条件）:").arg(line),
+            QLineEdit::Normal, oldCond, &ok);
+        if (ok) {
+            emit m_editor->breakpointConditionChanged(
+                m_editor->filePath(), line, cond);
+        }
+    } else if (chosen == removeBp) {
+        emit m_editor->breakpointToggled(m_editor->filePath(), line);
+    }
+}
 
 void LineNumberArea::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
     painter.fillRect(event->rect(), Qt::red);
-    painter.fillRect(event->rect(), palette().window());
+    painter.fillRect(event->rect(),
+                     ThemeManager::instance().color(
+                         ThemeManager::UIElement::LineNumberAreaBackground));
 
     QTextBlock block = m_editor->firstVisibleBlock();
     int blockNumber = block.blockNumber();
@@ -120,10 +161,19 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
                 painter.setBrush(QColor(255, 0, 0));
                 painter.setPen(Qt::NoPen);
                 painter.drawEllipse(dotX, dotY, dotSize, dotSize);
-                // 可选白色边框
                 painter.setBrush(Qt::NoBrush);
                 painter.setPen(QColor(255, 255, 255, 100));
                 painter.drawEllipse(dotX, dotY, dotSize, dotSize);
+
+                // 条件断点在内圈画一个黄色小点
+                if (m_editor->m_conditionalBreakpoints.contains(lineNumber)) {
+                    painter.setBrush(QColor(255, 220, 0));
+                    painter.setPen(Qt::NoPen);
+                    int innerSize = 5;
+                    painter.drawEllipse(dotX + (dotSize - innerSize) / 2,
+                                        dotY + (dotSize - innerSize) / 2,
+                                        innerSize, innerSize);
+                }
             }
 
             // ---- 绘制行号数字（右对齐） ----
@@ -193,35 +243,29 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
 {
     // 获取点击位置相对于 LineNumberArea 的 x 坐标
     int x = event->x();
-    int clickAreaWidth = 22;  // 左侧断点点击区宽度
+    int clickAreaWidth = 26;  // 左侧断点点击区宽度
     int foldAreaWidth = 16;  // 折叠按钮区域宽度
 
-
-    // 点击在折叠按钮区域（最左侧）
-    if (x < foldAreaWidth) {
-        // 计算行号
-        int line = m_editor->cursorForPosition(event->pos()).blockNumber() + 1;
-        if (line >= 1 && line <= m_editor->lineCount()) {
-            // 检查该行是否可折叠
-            if (m_editor->isFoldableBlock(line)) {
-                m_editor->toggleFold(line);
-                return;
-            }
-        }
+    // 先算出点击的是哪一行
+    const int line = m_editor->cursorForPosition(event->pos()).blockNumber() + 1;
+    if (line < 1 || line > m_editor->lineCount()) {
+        m_editor->mousePressEvent(event);
         return;
     }
 
-    // 点击在左侧断点点击区
-    if (x < clickAreaWidth) {
-        // 计算行号
-        int line = m_editor->cursorForPosition(event->pos()).blockNumber() + 1;
-        if (line >= 1 && line <= m_editor->lineCount()) {
-            emit m_editor->breakpointToggled(m_editor->filePath(), line);
-        }
-        return;  // 不继续传递事件
+    //    不可折叠行的折叠区不拦截，交给下方断点逻辑
+    if (x < foldAreaWidth && m_editor->isFoldableBlock(line)) {
+        m_editor->toggleFold(line);
+        return;
     }
-    // qDebug() << "LineNumberArea::mousePressEvent called";
-    // 将鼠标点击事件转发给编辑器
+
+    // 断点点击：整个左侧点击区（含不可折叠行的折叠区）
+    if (x < clickAreaWidth) {
+        emit m_editor->breakpointToggled(m_editor->filePath(), line);
+        return;
+    }
+
+    // 4. 落在行号数字区 → 转发给编辑器（选中行、拖选等）
     m_editor->mousePressEvent(event);
 }
 
@@ -288,51 +332,58 @@ TextEditor::~TextEditor()
 
 void TextEditor::initEditor()
 {
-    // 设置编辑器基本属性
     setLineWrapMode(QPlainTextEdit::NoWrap);
 
-    // 使用字体管理器获取最佳编程字体
-    FontManager::loadEmbeddedFonts();
-    QFont editorFont = FontManager::getDefaultMonoFont(12);
-    setEditorFont(editorFont);
 
-    // 关键：设置文档的默认字体
-    // 这确保所有新插入的文本都使用相同字体
-    document()->setDefaultFont(editorFont);
-
-    // 设置Tab键宽度
-    setTabStopDistance(fontMetrics().horizontalAdvance(' ') * m_tabWidth);
+    // ============================================================
+    //    从 ThemeManager 取字体
+    //   - ThemeManager 在 Application::initialize() 里已经从
+    //     ConfigManager 读入了用户设置（family + size）
+    //   - 如果 ThemeManager 还没初始化（极端情况），回退到 FontManager 默认值
+    // ============================================================
+    QFont editorFont = ThemeManager::instance().editorFont();
 
     // 创建行号区域
     m_lineNumberArea = new LineNumberArea(this);
-
-    // 行号区域也使用相同字体
     m_lineNumberArea->setFont(editorFont);
 
-    // 创建语法高亮器
+    if (editorFont.family().isEmpty() || editorFont.pointSize() <= 0) {
+        // 回退：用 FontManager 的默认等宽字体
+        FontManager::loadEmbeddedFonts();
+        editorFont = FontManager::getDefaultMonoFont(12);
+    }
+
+    // 确保等宽属性
+    editorFont.setFixedPitch(true);
+    editorFont.setStyleHint(QFont::Monospace);
+
+    setEditorFont(editorFont);
+
+    // 文档默认字体（影响粘贴的文本、新插入的文本）
+    document()->setDefaultFont(editorFont);
+
+    // Tab 键宽度跟随字体
+    setTabStopDistance(fontMetrics().horizontalAdvance(' ') * m_tabWidth);
+
+    // 语法高亮器
     m_highlighter = new LanguageHighlighter(document());
+    m_highlighter->setTheme(ThemeManager::instance().isDarkTheme());
 
-    // 立即应用主题
-    m_highlighter->setTheme(true); // 默认使用深色主题
-
-    // 创建上下文菜单
+    // 上下文菜单
     createContextMenu();
 
-    // 连接信号槽
-    connect(this, &TextEditor::blockCountChanged, this, &TextEditor::updateLineNumberAreaWidth);
-    connect(this, &TextEditor::updateRequest, this, &TextEditor::updateLineNumberArea);
-    connect(this, &TextEditor::cursorPositionChanged, this, &TextEditor::onCursorPositionChanged);
-    connect(this, &TextEditor::textChanged, this, &TextEditor::onTextChanged);
+    // 信号连接
+    connect(this, &TextEditor::blockCountChanged,
+            this, &TextEditor::updateLineNumberAreaWidth);
+    connect(this, &TextEditor::updateRequest,
+            this, &TextEditor::updateLineNumberArea);
+    connect(this, &TextEditor::cursorPositionChanged,
+            this, &TextEditor::onCursorPositionChanged);
+    connect(this, &TextEditor::textChanged,
+            this, &TextEditor::onTextChanged);
 
-    // 初始化行号区域宽度
     updateLineNumberAreaWidth();
-
-    // 设置默认的调色板
     applyDefaultPalette();
-
-    // 验证字体选择
-    // qDebug() << "Final editor font:" << font().family()
-    //          << "Is fixed pitch:" << font().fixedPitch();
 }
 
 void TextEditor::setupFindBar()
@@ -488,7 +539,9 @@ void TextEditor::applyDefaultPalette()
 
     // 强制更新一次
     update();
-    m_lineNumberArea->update();
+    if (m_lineNumberArea) {
+        m_lineNumberArea->update();
+    }
 }
 
 void TextEditor::initFontMetrics()
@@ -660,25 +713,32 @@ bool TextEditor::loadFile(const QString &filePath)
     QString content = stream.readAll();
     file.close();
 
-    // 临时断开信号，防止触发修改标记
-    disconnect(this, &TextEditor::textChanged, this, &TextEditor::onTextChanged);
+    // 进入静默期：此后所有程序内部的文档改动都不算"用户修改"
+    beginSilentModification();
 
+
+    // 加载文本
     setPlainText(content);
     m_filePath = filePath;
-    m_isModified = false;
-    document()->setModified(false);
 
-    // 重新连接信号
-    connect(this, &TextEditor::textChanged, this, &TextEditor::onTextChanged);
+    // 应用行距
+    applyLineHeight();
 
-    // 在文件加载成功后，自动检测并设置语言
+    // 4. 应用语法高亮
     if (m_highlighter) {
         m_highlighter->setLanguageByFilePath(filePath);
     }
 
-    emit fileLoaded(filePath);
-
+    // 5. 计算折叠
     updateFolding();
+
+    // 结束静默期，重置为"干净"状态
+    endSilentModification();
+    m_isModified = false;
+    document()->setModified(false);
+
+    // 发出加载完成信号
+    emit fileLoaded(filePath);
 
     return true;
 }
@@ -826,37 +886,78 @@ void TextEditor::setUseSpacesForTab(bool useSpaces, int tabWidth)
 
 void TextEditor::setEditorFont(const QFont &font)
 {
+    // 只有真正需要改字体时才走静默逻辑
+    const bool wasModified = m_isModified || document()->isModified();
+    beginSilentModification();
+
     QPlainTextEdit::setFont(font);
+    document()->setDefaultFont(font);       // 确保新插入的文本用同一字体
+
+    // Tab 宽度跟随字体尺寸
     setTabStopDistance(fontMetrics().horizontalAdvance(' ') * m_tabWidth);
-    updateLineNumberAreaWidth();
+
+    // 应用行距（每次字体变化都要重设）
+    applyLineHeight();
+
+    // 行号区字体也同步
+    if (m_lineNumberArea) {
+        m_lineNumberArea->setFont(font);
+        m_lineNumberArea->update();
+    }
+
+    applyDefaultPalette();
+
+    if (m_lineNumberArea) {
+        updateLineNumberAreaWidth();
+    }
+
+    endSilentModification();
+    m_isModified = wasModified;
+    document()->setModified(wasModified);
 }
 
 // ========== 主题相关方法实现 ==========
 
 void TextEditor::applyTheme(const QString &themeName)
 {
-    bool isDark = (themeName == "dark");
+    // 保存当前真实状态，因为主题应用不应改变"是否被用户修改"的语义
+    const bool wasModified = m_isModified || document()->isModified();
 
-    // 更新语法高亮器
-    if (m_highlighter) {
-        m_highlighter->setTheme(isDark);
-        // 重新高亮整个文档（不触发 contentsChanged）
-        m_highlighter->rehighlight();
+    beginSilentModification();
+
+    const bool isDark = (themeName == "dark");
+    ThemeManager& tm = ThemeManager::instance();
+    QFont tmFont = tm.editorFont();
+    tmFont.setFixedPitch(true);
+    tmFont.setStyleHint(QFont::Monospace);
+
+    if (font().family() != tmFont.family() ||
+        font().pointSize() != tmFont.pointSize()) {
+        setEditorFont(tmFont);
+        document()->setDefaultFont(tmFont);
     }
 
-    // 应用主题到编辑器
+    if (m_highlighter) {
+        m_highlighter->setTheme(isDark);
+        m_highlighter->rehighlight();          // ← 这里会触发 textChanged
+    }
+
     if (isDark) {
         applyDarkTheme();
     } else {
         applyLightTheme();
     }
 
-    // 更新行号区域
     if (m_lineNumberArea) {
+        m_lineNumberArea->setFont(tmFont);
         updateLineNumberAreaPalette(isDark);
     }
 
-    // 强制重绘
+    // 结束静默期，并把 modified 恢复到之前的真实值
+    endSilentModification();
+    m_isModified = wasModified;
+    document()->setModified(wasModified);
+
     update();
     viewport()->update();
 }
@@ -866,7 +967,9 @@ void TextEditor::updateLineNumberAreaPalette(bool isDark)
     QPalette palette = m_lineNumberArea->palette();
 
     if (isDark) {
-        palette.setColor(QPalette::Window, QColor(30, 30, 40));
+        palette.setColor(QPalette::Window,
+                         ThemeManager::instance().color(
+                             ThemeManager::UIElement::LineNumberAreaBackground));
         palette.setColor(QPalette::WindowText, QColor(150, 150, 150));
     } else {
         palette.setColor(QPalette::Window, QColor(240, 240, 240));
@@ -879,62 +982,186 @@ void TextEditor::updateLineNumberAreaPalette(bool isDark)
 
 void TextEditor::applyDarkTheme()
 {
+    ThemeManager& tm = ThemeManager::instance();
+
     QPalette palette = this->palette();
-
-    // Dark theme colors
-    palette.setColor(QPalette::Base, QColor("#2b2b2b"));
-    palette.setColor(QPalette::Text, QColor("#cccccc"));
-    palette.setColor(QPalette::Window, QColor("#3c3f41"));
-    palette.setColor(QPalette::WindowText, QColor("#cccccc"));
-    palette.setColor(QPalette::Button, QColor("#3c3f41"));
-    palette.setColor(QPalette::ButtonText, QColor("#cccccc"));
-
-    // Line number area
-    QPalette lineNumberPalette = m_lineNumberArea->palette();
-    lineNumberPalette.setColor(QPalette::Window, QColor("#313335"));
-    lineNumberPalette.setColor(QPalette::WindowText, QColor("#606060"));
-    m_lineNumberArea->setPalette(lineNumberPalette);
-    m_lineNumberArea->setAutoFillBackground(true);
+    palette.setColor(QPalette::Base,   tm.color(ThemeManager::UIElement::EditorBackground));
+    palette.setColor(QPalette::Text,   tm.color(ThemeManager::UIElement::TextColor));
+    palette.setColor(QPalette::Highlight,
+                     tm.color(ThemeManager::UIElement::SelectionBackground));
+    palette.setColor(QPalette::HighlightedText,
+                     tm.color(ThemeManager::UIElement::TextColor));
+    palette.setColor(QPalette::Window,
+                     tm.color(ThemeManager::UIElement::MainWindowBackground));
+    palette.setColor(QPalette::WindowText,
+                     tm.color(ThemeManager::UIElement::TextColor));
+    palette.setColor(QPalette::Button,
+                     tm.color(ThemeManager::UIElement::ButtonBackground));
+    palette.setColor(QPalette::ButtonText,
+                     tm.color(ThemeManager::UIElement::TextColor));
 
     setPalette(palette);
 
-    // 清空当前行高亮
-    QList<QTextEdit::ExtraSelection> extraSelections;
-    setExtraSelections(extraSelections);
+    if (m_lineNumberArea) {
+        QPalette lnPal = m_lineNumberArea->palette();
+        lnPal.setColor(QPalette::Window,
+                       tm.color(ThemeManager::UIElement::LineNumberAreaBackground));
+        lnPal.setColor(QPalette::WindowText,
+                       tm.color(ThemeManager::UIElement::LineNumberColor));
+        m_lineNumberArea->setPalette(lnPal);
+        m_lineNumberArea->setAutoFillBackground(true);
+        m_lineNumberArea->update();
+    }
 
-    // 更新显示
+    // 查找栏同理，只是取色一样，其实可以用同一个 lambda 复用
+    if (m_findBar) {
+        m_findBar->setStyleSheet(QString(
+                                     "QWidget { background-color: %1; border-top: 1px solid %2; }"
+                                     "QLineEdit { background-color: %3; color: %4; "
+                                     "  border: 1px solid %2; border-radius: 3px; padding: 2px 6px; }"
+                                     "QLineEdit:focus { border: 1px solid %5; }"
+                                     "QCheckBox { color: %4; }"
+                                     "QPushButton { background-color: %6; color: %4; "
+                                     "  border: 1px solid %2; border-radius: 3px; padding: 3px 8px; }"
+                                     "QPushButton:hover { background-color: %7; }"
+                                     "QLabel { color: %8; }"
+                                     )
+                                     .arg(tm.colorString(ThemeManager::UIElement::MainWindowBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::BorderColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::EditorBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::TextColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::PrimaryColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::ButtonBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::HoverBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::SecondaryTextColor)));
+    }
+
+    if (m_highlightCurrentLine) {
+        highlightCurrentLine();
+    }
+
     update();
-    m_lineNumberArea->update();
+    viewport()->update();
+    if (m_lineNumberArea) {
+        m_lineNumberArea->update();
+    }
 }
 
 void TextEditor::applyLightTheme()
 {
+    ThemeManager& tm = ThemeManager::instance();
+
+    // ============================================================
+    // 1. 编辑器本体调色板（从 Polaris Solar Flare 取令牌）
+    // ============================================================
     QPalette palette = this->palette();
 
-    // Light theme colors
-    palette.setColor(QPalette::Base, QColor("#ffffff"));
-    palette.setColor(QPalette::Text, QColor("#000000"));
-    palette.setColor(QPalette::Window, QColor("#f0f0f0"));
-    palette.setColor(QPalette::WindowText, QColor("#000000"));
-    palette.setColor(QPalette::Button, QColor("#f0f0f0"));
-    palette.setColor(QPalette::ButtonText, QColor("#000000"));
+    // 编辑区背景 + 文字
+    palette.setColor(QPalette::Base,
+                     tm.color(ThemeManager::UIElement::EditorBackground));      // #FFFFFF
+    palette.setColor(QPalette::Text,
+                     tm.color(ThemeManager::UIElement::TextColor));             // #2C3848
 
-    // Line number area
-    QPalette lineNumberPalette = m_lineNumberArea->palette();
-    lineNumberPalette.setColor(QPalette::Window, QColor("#f8f8f8"));
-    lineNumberPalette.setColor(QPalette::WindowText, QColor("#888888"));
-    m_lineNumberArea->setPalette(lineNumberPalette);
-    m_lineNumberArea->setAutoFillBackground(true);
+    // 选区
+    palette.setColor(QPalette::Highlight,
+                     tm.color(ThemeManager::UIElement::SelectionBackground));   // #D7E6FF
+    palette.setColor(QPalette::HighlightedText,
+                     tm.color(ThemeManager::UIElement::TextColor));
+
+    // 整个控件的窗口色（比如滚动条所在区域），也走侧边栏色
+    palette.setColor(QPalette::Window,
+                     tm.color(ThemeManager::UIElement::MainWindowBackground));  // #F4F7FA
+    palette.setColor(QPalette::WindowText,
+                     tm.color(ThemeManager::UIElement::TextColor));
+
+    // 按钮态（极少数场景会用到，比如内联查找栏）
+    palette.setColor(QPalette::Button,
+                     tm.color(ThemeManager::UIElement::ButtonBackground));      // #E8ECF0
+    palette.setColor(QPalette::ButtonText,
+                     tm.color(ThemeManager::UIElement::TextColor));
 
     setPalette(palette);
 
-    // 清空当前行高亮
-    QList<QTextEdit::ExtraSelection> extraSelections;
-    setExtraSelections(extraSelections);
+    // ============================================================
+    // 2. 行号区调色板（自绘控件，必须单独设）
+    // ============================================================
+    if (m_lineNumberArea) {
+        QPalette lnPal = m_lineNumberArea->palette();
 
-    // 更新显示
+        // 行号区背景与编辑器一致（Polaris 要求"行号区背景透明/与编辑器一致"）
+        lnPal.setColor(QPalette::Window,
+                       tm.color(ThemeManager::UIElement::LineNumberAreaBackground));
+        // 行号默认文字色 #9AAEC2（浅色主题下用的是 SecondaryTextColor）
+        lnPal.setColor(QPalette::WindowText,
+                       tm.color(ThemeManager::UIElement::SecondaryTextColor));
+
+        m_lineNumberArea->setPalette(lnPal);
+        m_lineNumberArea->setAutoFillBackground(true);
+        m_lineNumberArea->update();
+    }
+
+    // ============================================================
+    // 3. 内联查找栏（如果已创建）重新套色
+    // ============================================================
+    if (m_findBar) {
+        m_findBar->setStyleSheet(QString(
+                                     "QWidget {"
+                                     "  background-color: %1;"
+                                     "  border-top: 1px solid %2;"
+                                     "}"
+                                     "QLineEdit {"
+                                     "  background-color: %3;"
+                                     "  color: %4;"
+                                     "  border: 1px solid %2;"
+                                     "  border-radius: 3px;"
+                                     "  padding: 2px 6px;"
+                                     "}"
+                                     "QLineEdit:focus {"
+                                     "  border: 1px solid %5;"
+                                     "}"
+                                     "QCheckBox { color: %4; }"
+                                     "QPushButton {"
+                                     "  background-color: %6;"
+                                     "  color: %4;"
+                                     "  border: 1px solid %2;"
+                                     "  border-radius: 3px;"
+                                     "  padding: 3px 8px;"
+                                     "}"
+                                     "QPushButton:hover {"
+                                     "  background-color: %7;"
+                                     "}"
+                                     "QLabel { color: %8; }"
+                                     )
+                                     .arg(tm.colorString(ThemeManager::UIElement::MainWindowBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::BorderColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::EditorBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::TextColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::PrimaryColor))
+                                     .arg(tm.colorString(ThemeManager::UIElement::ButtonBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::HoverBackground))
+                                     .arg(tm.colorString(ThemeManager::UIElement::SecondaryTextColor)));
+    }
+
+    // ============================================================
+    // 4. 关键修复：不要在这里清空 ExtraSelection
+    //    原来代码：
+    //        QList<QTextEdit::ExtraSelection> extraSelections;
+    //        setExtraSelections(extraSelections);
+    //    这样会把【查找高亮】【括号匹配】【当前调试行】全部清掉，
+    //    所以这次改为只调用 highlightCurrentLine()（内部自己处理）
+    // ============================================================
+    if (m_highlightCurrentLine) {
+        highlightCurrentLine();
+    }
+
+    // ============================================================
+    // 5. 强制重绘
+    // ============================================================
     update();
-    m_lineNumberArea->update();
+    viewport()->update();
+    if (m_lineNumberArea) {
+        m_lineNumberArea->update();
+    }
 }
 
 // ========== 代码编辑相关方法 ==========
@@ -1102,6 +1329,8 @@ void TextEditor::clearAllBreakpoints()
 
 void TextEditor::setCurrentDebugLine(int line)
 {
+    // 切换停止行时，旧的变量值立即作废（它们属于上一行）
+    m_inlineValues.clear();
     m_currentDebugLine = line;
     // 滚动到该行
     if (line > 0) {
@@ -1113,7 +1342,27 @@ void TextEditor::setCurrentDebugLine(int line)
 void TextEditor::clearCurrentDebugLine()
 {
     m_currentDebugLine = -1;
+    m_inlineValues.clear();
     update();
+}
+
+void TextEditor::setInlineValues(int line, const QString& text)
+{
+    if (line <= 0) return;
+    if (text.isEmpty()) {
+        m_inlineValues.remove(line);
+    } else {
+        m_inlineValues[line] = text;
+    }
+    // 简单起见：整块 viewport 重绘。绘制代价很小（只多画一行文本）
+    viewport()->update();
+}
+
+void TextEditor::clearInlineValues()
+{
+    if (m_inlineValues.isEmpty()) return;
+    m_inlineValues.clear();
+    viewport()->update();
 }
 
 // ========== 错误/警告标记 ==========
@@ -1682,7 +1931,7 @@ void TextEditor::paintEvent(QPaintEvent *event)
         QPainter painter(viewport());
         QTextBlock block = document()->findBlockByNumber(m_currentDebugLine - 1);
         if (block.isValid()) {
-            QPointF offset = contentOffset();  // 获取视口偏移
+            QPointF offset = contentOffset();
             QRectF blockRect = blockBoundingGeometry(block).translated(offset);
             // 半透明黄色背景
             QColor highlightColor = QColor(255, 255, 100, 60);
@@ -1700,6 +1949,48 @@ void TextEditor::paintEvent(QPaintEvent *event)
                       << QPoint(arrowX + 8, arrowY)
                       << QPoint(arrowX, arrowY + 6);
                 painter.drawPolygon(arrow);
+            }
+
+            // 内联变量显示（在当前停止行的行尾绘制）
+            if (m_inlineValues.contains(m_currentDebugLine)) {
+                const QString text = m_inlineValues.value(m_currentDebugLine);
+                if (!text.isEmpty()) {
+                    painter.save();
+
+                    // 用行末字符位置算出绘制起点
+                    QTextCursor endCursor(block);
+                    endCursor.movePosition(QTextCursor::EndOfBlock);
+                    QRect endRect = cursorRect(endCursor);   // viewport 坐标
+
+                    int x = endRect.right() + 20;   // 行尾留 20px 空白
+                    int y = endRect.top();
+                    int h = endRect.height();
+                    int availableWidth = viewport()->width() - x - 10;
+
+                    // 只在可见范围内、且宽度足够时绘制
+                    if (availableWidth > 50
+                        && y + h >= 0
+                        && y < viewport()->height()) {
+
+                        QFont inlineFont = font();
+                        inlineFont.setPointSize(qMax(8, font().pointSize() - 1));
+                        inlineFont.setItalic(true);
+                        inlineFont.setBold(false);
+
+                        painter.setFont(inlineFont);
+                        QColor inlineColor = ThemeManager::instance().color(
+                            ThemeManager::UIElement::InlineValueColor);
+                        inlineColor.setAlpha(220);
+                        painter.setPen(inlineColor);
+
+                        painter.drawText(
+                            QRect(x, y, availableWidth, h),
+                            Qt::AlignLeft | Qt::AlignVCenter,
+                            text);
+                    }
+
+                    painter.restore();
+                }
             }
         }
     }
@@ -1727,6 +2018,24 @@ int TextEditor::findBraceInBlock(const QTextBlock &block, bool opening) const
         }
     }
     return -1;
+}
+
+void TextEditor::applyLineHeight()
+{
+    QTextBlockFormat fmt;
+    fmt.setLineHeight(ThemeManager::kEditorLineHeightPercent,
+                      QTextBlockFormat::ProportionalHeight);
+
+    // 记住原始 modified 状态，避免这段操作污染"文件已修改"标记
+    const bool wasModified = document()->isModified();
+
+    QTextCursor cursor(document());
+    cursor.beginEditBlock();
+    cursor.select(QTextCursor::Document);
+    cursor.mergeBlockFormat(fmt);
+    cursor.endEditBlock();
+
+    document()->setModified(wasModified);
 }
 
 /**
@@ -2014,15 +2323,18 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         return;
     }
 
-    // 处理 Tab 键（插入空格或制表符）
-    if (event->key() == Qt::Key_Tab && !event->modifiers()) {
-        if (m_useSpacesForTab) {
-            QTextCursor cursor = textCursor();
-            cursor.insertText(QString(m_tabWidth, ' '));
-        } else {
-            QPlainTextEdit::keyPressEvent(event);
-        }
-        // 注意：Tab 键不触发补全，直接返回
+    // 处理 Tab 键 多行缩进 / 单点插入
+    if (event->key() == Qt::Key_Tab
+        && (event->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier) {
+        indentSelection(true);
+        return;   // Tab 不触发补全
+    }
+
+    // Shift+Tab / Backtab：多行反缩进 / 单点反缩进
+    if (event->key() == Qt::Key_Backtab
+        || (event->key() == Qt::Key_Tab
+            && (event->modifiers() & Qt::ShiftModifier))) {
+        indentSelection(false);
         return;
     }
 
@@ -2209,6 +2521,19 @@ void TextEditor::highlightLine(int line)
     ensureCursorVisible();
 }
 
+void TextEditor::setBreakpointWithCondition(int line, bool enabled, bool hasCondition)
+{
+    if (enabled) {
+        m_breakpoints.insert(line);
+        if (hasCondition) m_conditionalBreakpoints.insert(line);
+        else              m_conditionalBreakpoints.remove(line);
+    } else {
+        m_breakpoints.remove(line);
+        m_conditionalBreakpoints.remove(line);
+    }
+    if (m_lineNumberArea) m_lineNumberArea->update();
+}
+
 void TextEditor::insertCompletion(const QString& insertText)
 {
     QTextCursor cursor = textCursor();
@@ -2240,6 +2565,20 @@ void TextEditor::insertCompletion(const QString& insertText)
     cursor.insertText(insertText);
     cursor.endEditBlock();
     setTextCursor(cursor);
+}
+
+void TextEditor::beginSilentModification()
+{
+    m_suppressModificationFlag = true;
+}
+
+void TextEditor::endSilentModification()
+{
+    m_suppressModificationFlag = false;
+
+    // 从"脏"恢复为"净"——因为这是程序内部改动，用户没编辑
+    m_isModified = false;
+    document()->setModified(false);
 }
 
 void TextEditor::resizeEvent(QResizeEvent *event)
@@ -2325,6 +2664,10 @@ void TextEditor::onCursorPositionChanged()
 
 void TextEditor::onTextChanged()
 {
+    if (m_suppressModificationFlag) {
+        return;
+    }
+
     // 如果文档没有内容变化，不标记修改
     if (!document()->isModified()) {
         // 但也要检查是否有真正的修改
@@ -2466,12 +2809,12 @@ int TextEditor::lineNumberAreaWidth() const
     }
 
     // 左侧留出 22px 作为断点点击区，右侧留出 16px 给断点红点
-    int leftPadding = 22;
+    int leftPadding = 26;
     int rightPadding = 16;
     int width = leftPadding + digitWidth * digits + rightPadding;
 
     // 最小宽度 55px
-    return qMax(width, 55);
+    return qMax(width, 60);
 }
 
 void TextEditor::autoIndent()
@@ -2555,4 +2898,127 @@ void TextEditor::autoIndent()
         }
     }
 }
+
+// ============================================================================
+//  多行缩进 / 反缩进
+//  - increase = true  → Tab（在每行行首插入一个缩进单元）
+//  - increase = false → Shift+Tab（删除每行行首的一个缩进单元）
+//  - 有选区：处理选区覆盖的所有完整行
+//  - 无选区：Tab 在光标处插入缩进；Shift+Tab 删除光标前一个缩进单元
+// ============================================================================
+void TextEditor::indentSelection(bool increase)
+{
+    QTextCursor cursor = textCursor();
+
+    // ------------------------------------------------------------------------
+    // A. 无选区：局部处理
+    // ------------------------------------------------------------------------
+    if (!cursor.hasSelection()) {
+        if (increase) {
+            cursor.beginEditBlock();
+            if (m_useSpacesForTab) {
+                cursor.insertText(QString(m_tabWidth, ' '));
+            } else {
+                cursor.insertText("\t");
+            }
+            cursor.endEditBlock();
+            return;
+        }
+
+        // 反缩进：删除光标前一个缩进单元
+        const QString blockText = cursor.block().text();
+        const int posInBlock = cursor.positionInBlock();
+        if (posInBlock <= 0) return;
+
+        int removeCount = 0;
+        const QChar prevChar = blockText.at(posInBlock - 1);
+        if (prevChar == '\t') {
+            removeCount = 1;
+        } else if (prevChar == ' ') {
+            // 从光标前一个字符开始，向前数连续的、不超过 tabWidth 个的空格
+            int i = posInBlock - 1;
+            while (i >= 0 && blockText.at(i) == ' '
+                   && (posInBlock - i) <= m_tabWidth) {
+                --i;
+            }
+            removeCount = posInBlock - i - 1;
+        }
+
+        if (removeCount > 0) {
+            cursor.beginEditBlock();
+            cursor.movePosition(QTextCursor::Left,
+                                QTextCursor::KeepAnchor,
+                                removeCount);
+            cursor.removeSelectedText();
+            cursor.endEditBlock();
+        }
+        return;
+    }
+
+    // ------------------------------------------------------------------------
+    // B. 有选区：处理所有完整行
+    // ------------------------------------------------------------------------
+    const int selStart = cursor.selectionStart();
+    const int selEnd   = cursor.selectionEnd();
+
+    // 计算选区覆盖的行号范围
+    QTextCursor tmp(document());
+    tmp.setPosition(selStart);
+    const int startBlock = tmp.blockNumber();
+
+    tmp.setPosition(selEnd);
+    int endBlock = tmp.blockNumber();
+    // 选区末尾恰好停在行首 → 不算这一行（避免多缩进一行）
+    if (tmp.positionInBlock() == 0 && endBlock > startBlock) {
+        --endBlock;
+    }
+
+    cursor.beginEditBlock();
+
+    // 从后往前处理，避免前面的插入/删除影响后面的行号
+    for (int blockNum = endBlock; blockNum >= startBlock; --blockNum) {
+        QTextBlock block = document()->findBlockByNumber(blockNum);
+        if (!block.isValid()) continue;
+
+        QTextCursor blockCursor(block);
+        blockCursor.movePosition(QTextCursor::StartOfBlock);
+
+        if (increase) {
+            // ---- 缩进：行首插入一个缩进单元 ----
+            if (m_useSpacesForTab) {
+                blockCursor.insertText(QString(m_tabWidth, ' '));
+            } else {
+                blockCursor.insertText("\t");
+            }
+        } else {
+            // ---- 反缩进：删除行首一个缩进单元 ----
+            const QString text = block.text();
+            if (text.isEmpty()) continue;   // 空行跳过
+
+            int removeCount = 0;
+            if (text.at(0) == '\t') {
+                removeCount = 1;
+            } else {
+                // 最多删 tabWidth 个前导空格
+                int i = 0;
+                while (i < text.length()
+                       && i < m_tabWidth
+                       && text.at(i) == ' ') {
+                    ++i;
+                }
+                removeCount = i;
+            }
+
+            if (removeCount > 0) {
+                blockCursor.movePosition(QTextCursor::Right,
+                                         QTextCursor::KeepAnchor,
+                                         removeCount);
+                blockCursor.removeSelectedText();
+            }
+        }
+    }
+
+    cursor.endEditBlock();
+}
+
 }

@@ -456,12 +456,7 @@ QString CppProjectModel::findCMakeExecutable()
     // ================================================================
     for (const QString& cand : uniqueCandidates) {
 
-        // ★★★ 关键修复：通用规则，过滤所有 macOS GUI shim ★★★
-        //     凡是路径形如 *.app/Contents/MacOS/xxx 的，一律跳过。
-        //     这能拦住：
-        //       /Applications/CMake.app/Contents/MacOS/cmake
-        //       /Users/xxx/Qt*/Tools/CMake/CMake.app/Contents/MacOS/cmake
-        //       以及未来任何形式的 *.app GUI 入口
+        // 过滤所有 macOS GUI shim
         if (cand.contains(".app/Contents/MacOS/")) {
             qDebug() << "[CppProjectModel] 跳过 GUI shim:" << cand;
             continue;
@@ -569,7 +564,7 @@ QString CppProjectModel::findNinjaExecutable()
     QStringList pathDirs = env.value("PATH").split(QDir::listSeparator(),
                                                    Qt::SkipEmptyParts);
     for (const QString& dir : pathDirs) {
-        // ★ 跳过 Qt 相关路径（Qt Creator 注入的 ninja 曾导致卡死）
+        // 跳过 Qt 相关路径
         if (dir.contains("Qt", Qt::CaseInsensitive)) continue;
         for (const QString& name : names) {
             candidates << QDir(dir).absoluteFilePath(name);

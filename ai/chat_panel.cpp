@@ -1,6 +1,7 @@
 #include "chat_panel.h"
 #include "ai_server.h"
 #include "ai_action_executor.h"
+#include "theme_manager.h"
 
 #include <QScrollBar>
 #include <QDateTime>
@@ -105,83 +106,24 @@ void ChatPanel::setActionExecutor(AIActionExecutor *executor)
 void ChatPanel::setupUI()
 {
     QWidget *container = new QWidget(this);
+    container->setObjectName("ChatPanelContainer");
     setWidget(container);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(container);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
+    // 按顺序创建
     createToolbar();
     createMessageArea();
-    createInputArea();
+    QWidget* inputContainer = createInputArea();   // 拿到返回的容器
 
+    // 按顺序加入主布局 —— 只加这三个，不再单独加 m_inputEdit
     mainLayout->addWidget(m_toolbar);
-    mainLayout->addWidget(m_messageDisplay, 1);
-    mainLayout->addWidget(m_inputEdit);
+    mainLayout->addWidget(m_messageDisplay, 1);    // stretch = 1，占满中间
+    mainLayout->addWidget(inputContainer);         // 底部
 
-    // 输入框获得焦点
     m_inputEdit->setFocus();
-
-    // 应用样式表（深色主题）
-    setStyleSheet(
-        "QTextEdit#messageDisplay {"
-        "  background-color: #1E1E1E;"
-        "  color: #E0E0E0;"
-        "  border: none;"
-        "  font-size: 13px;"
-        "  padding: 8px;"
-        "}"
-        "QTextEdit#inputEdit {"
-        "  background-color: #2D2D2D;"
-        "  color: #E0E0E0;"
-        "  border: 1px solid #555555;"
-        "  border-radius: 4px;"
-        "  padding: 6px 10px;"
-        "  font-size: 13px;"
-        "  margin: 4px 8px;"
-        "  max-height: 120px;"   /* 限制高度为6行左右 */
-        "}"
-        "QTextEdit#inputEdit:focus {"
-        "  border: 1px solid #4A90E2;"
-        "}"
-        "QPushButton {"
-        "  background-color: #3C3C3C;"
-        "  color: #E0E0E0;"
-        "  border: 1px solid #555555;"
-        "  border-radius: 3px;"
-        "  padding: 4px 12px;"
-        "  margin: 4px 2px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #4A4A4A;"
-        "}"
-        "QPushButton:disabled {"
-        "  color: #666666;"
-        "}"
-        "QPushButton#sendButton {"
-        "  background-color: #4A90E2;"
-        "  border-color: #4A90E2;"
-        "  font-weight: bold;"
-        "}"
-        "QPushButton#sendButton:hover {"
-        "  background-color: #5A9EF2;"
-        "}"
-        "QPushButton#sendButton:disabled {"
-        "  background-color: #555555;"
-        "  border-color: #555555;"
-        "}"
-        "QLabel#statusLabel {"
-        "  color: #888888;"
-        "  font-size: 11px;"
-        "  padding: 4px 8px;"
-        "}"
-        "QLabel#statusLabel.connected {"
-        "  color: #4CAF50;"
-        "}"
-        "QLabel#statusLabel.disconnected {"
-        "  color: #F44336;"
-        "}"
-        );
 }
 
 // ============================================================
@@ -190,29 +132,35 @@ void ChatPanel::setupUI()
 void ChatPanel::createToolbar()
 {
     m_toolbar = new QToolBar(this);
+    m_toolbar->setObjectName("ChatToolbar");
     m_toolbar->setMovable(false);
     m_toolbar->setFloatable(false);
-    m_toolbar->setIconSize(QSize(16, 16));
-    m_toolbar->setStyleSheet("QToolBar { background-color: #2D2D2D; border: none; padding: 2px; }");
+    m_toolbar->setIconSize(QSize(14, 14));
+    m_toolbar->setFixedHeight(32);
 
-    m_statusLabel = new QLabel("⚪ 未连接", this);
+    // 左：状态
+    m_statusLabel = new QLabel("● 未连接", this);
     m_statusLabel->setObjectName("statusLabel");
     m_statusLabel->setProperty("class", "disconnected");
     m_toolbar->addWidget(m_statusLabel);
 
-    m_toolbar->addSeparator();
-
-    m_clearButton = new QPushButton("清空对话", this);
-    m_clearButton->setToolTip("清空所有对话消息");
-    connect(m_clearButton, &QPushButton::clicked, this, &ChatPanel::onClearClicked);
-    m_toolbar->addWidget(m_clearButton);
-
+    // 中：弹性空白
     QWidget *spacer = new QWidget(this);
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_toolbar->addWidget(spacer);
 
+    // 右：清空 + 复制
+    m_clearButton = new QPushButton("清空", this);
+    m_clearButton->setObjectName("ChatClearButton");
+    m_clearButton->setToolTip("清空所有对话消息");
+    m_clearButton->setFixedHeight(24);
+    connect(m_clearButton, &QPushButton::clicked, this, &ChatPanel::onClearClicked);
+    m_toolbar->addWidget(m_clearButton);
+
     QPushButton *copyButton = new QPushButton("复制", this);
+    copyButton->setObjectName("ChatCopyButton");
     copyButton->setToolTip("复制整个对话内容");
+    copyButton->setFixedHeight(24);
     connect(copyButton, &QPushButton::clicked, this, [this]() {
         if (m_messageDisplay) {
             QApplication::clipboard()->setText(m_messageDisplay->toPlainText());
@@ -235,6 +183,8 @@ void ChatPanel::createMessageArea()
     m_messageDisplay->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_messageDisplay->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_messageDisplay->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_messageDisplay->setFrameShape(QFrame::NoFrame);        // 无边框
+    m_messageDisplay->document()->setDocumentMargin(12);     // 文本边距 12px
 
     connect(m_messageDisplay, &QTextEdit::customContextMenuRequested,
             this, [this](const QPoint &pos) {
@@ -249,51 +199,46 @@ void ChatPanel::createMessageArea()
 // ============================================================
 // 创建输入区域
 // ============================================================
-void ChatPanel::createInputArea()
+QWidget* ChatPanel::createInputArea()
 {
-    // 使用 QTextEdit 作为输入框（支持多行）
     m_inputEdit = new QTextEdit(this);
     m_inputEdit->setObjectName("inputEdit");
     m_inputEdit->setPlaceholderText("输入消息，按 Enter 发送，Ctrl+Enter 换行...");
     m_inputEdit->setEnabled(false);
     m_inputEdit->setAcceptRichText(false);
     m_inputEdit->setTabChangesFocus(false);
-
-    // 连接文本变化信号以动态调整高度（但 Qt 的 sizeHint 已自动调整）
-    connect(m_inputEdit, &QTextEdit::textChanged, this, &ChatPanel::onInputTextChanged);
-
-    // 捕获按键事件（在事件过滤器中处理更简单，但这里用 keyPressEvent 重写？）
-    // 由于 ChatPanel 不是输入框父类，我们用 installEventFilter，但更简单：连接信号
-    // 但 QTextEdit 没有 returnPressed 信号，我们需要用事件过滤器或重写 keyPressEvent。
-    // 方法：安装事件过滤器到 m_inputEdit
+    m_inputEdit->setFrameShape(QFrame::NoFrame);
+    m_inputEdit->document()->setDocumentMargin(6);
+    m_inputEdit->setMinimumHeight(36);
+    m_inputEdit->setMaximumHeight(120);
     m_inputEdit->installEventFilter(this);
+    connect(m_inputEdit, &QTextEdit::textChanged,
+            this, &ChatPanel::onInputTextChanged);
 
-    // 发送按钮
     m_sendButton = new QPushButton("发送", this);
     m_sendButton->setObjectName("sendButton");
     m_sendButton->setEnabled(false);
     m_sendButton->setToolTip("发送消息 (Enter)");
-    m_sendButton->setFixedHeight(30);
 
-    connect(m_sendButton, &QPushButton::clicked, this, &ChatPanel::onSendClicked);
+    // 宽度固定 64，高度不设 —— 交给布局拉伸
+    m_sendButton->setFixedWidth(64);
+    m_sendButton->setMinimumHeight(36);           // 最小与输入框一致
+    m_sendButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);   // ← 高度可拉伸
 
-    // 布局
-    QHBoxLayout *containerLayout = new QHBoxLayout();
-    containerLayout->setContentsMargins(8, 4, 8, 8);
-    containerLayout->setSpacing(8);
-    containerLayout->addWidget(m_inputEdit, 1);
-    containerLayout->addWidget(m_sendButton);
+    connect(m_sendButton, &QPushButton::clicked,
+            this, &ChatPanel::onSendClicked);
 
-    QWidget *inputContainer = new QWidget(this);
-    inputContainer->setLayout(containerLayout);
+    QHBoxLayout* inputRow = new QHBoxLayout();
+    inputRow->setContentsMargins(12, 8, 12, 12);
+    inputRow->setSpacing(8);
+    inputRow->addWidget(m_inputEdit, 1);
+    inputRow->addWidget(m_sendButton);   // ★ 不加 Qt::AlignBottom —— 让按钮跟输入框等高
 
-    QWidget *container = widget();
-    if (container) {
-        QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout*>(container->layout());
-        if (mainLayout) {
-            mainLayout->addWidget(inputContainer);
-        }
-    }
+    QWidget* inputContainer = new QWidget(this);
+    inputContainer->setObjectName("inputFrame");
+    inputContainer->setLayout(inputRow);
+
+    return inputContainer;
 }
 
 // ============================================================
@@ -652,34 +597,44 @@ QTextCursor ChatPanel::addMessage(const QString &sender, const QString &content,
 // ============================================================
 QString ChatPanel::formatMessage(const QString &sender, const QString &content) const
 {
+    ThemeManager& tm = ThemeManager::instance();
+    const bool isUser = (sender == "user");
+    const bool isAI   = (sender == "ai");
+
     QString displayName = getSenderDisplayName(sender);
-    QString color = getSenderColor(sender);
     QString time = QDateTime::currentDateTime().toString("hh:mm");
 
-    // 转义 HTML
     QString escapedContent = content.toHtmlEscaped();
     escapedContent.replace("\n", "<br/>");
 
-    // 对齐方式：用户消息右对齐，AI消息左对齐
-    QString alignment = (sender == "user") ? "right" : "left";
-    QString bgColor = (sender == "user") ? "#4A90E2" : "#3C3C3C";
-    QString textColor = (sender == "user") ? "#FFFFFF" : "#E0E0E0";
-    QString maxWidth = "70%";
+    QString alignment = isUser ? "right" : "left";
+    QString bgColor   = isUser
+                          ? tm.colorString(ThemeManager::UIElement::AIChatUserBubble)
+                          : tm.colorString(ThemeManager::UIElement::AIChatAIBubble);
+    QString textColor = tm.colorString(ThemeManager::UIElement::TextColor);
+    QString aiBorder  = tm.colorString(ThemeManager::UIElement::AIChatAIBorder);
 
-    // 构建气泡样式
-    QString html = QString(
-                       "<div style='text-align: %1; margin-bottom: 8px;'>"
-                       "  <div style='display: inline-block; max-width: %2; "
-                       "              background-color: %3; color: %4; "
-                       "              border-radius: 12px; padding: 8px 14px; "
-                       "              text-align: left; word-wrap: break-word;'>"
-                       "    <div style='font-size: 12px; color: #AAAAAA; margin-bottom: 2px;'>%5</div>"
-                       "    <div>%6</div>"
-                       "  </div>"
-                       "</div>"
-                       ).arg(alignment, maxWidth, bgColor, textColor, displayName + " " + time, escapedContent);
+    // AI 气泡：左侧 3px 极光青竖条
+    QString aiBar = isAI
+                        ? QString("border-left: 3px solid %1; padding-left: 10px;").arg(aiBorder)
+                        : QString();
 
-    return html;
+    return QString(
+               "<div style='text-align: %1; margin-bottom: 10px;'>"
+               "  <div style='display: inline-block; max-width: 78%; "
+               "              background-color: %2; color: %3; "
+               "              border-radius: 8px; padding: 8px 12px; "
+               "              text-align: left; word-wrap: break-word; %4'>"
+               "    <div style='font-size: 11px; color: %5; margin-bottom: 3px;'>%6 · %7</div>"
+               "    <div style='font-size: 13px; line-height: 1.5;'>%8</div>"
+               "  </div>"
+               "</div>"
+               ).arg(alignment)
+        .arg(bgColor)
+        .arg(textColor)
+        .arg(aiBar)
+        .arg(tm.colorString(ThemeManager::UIElement::SecondaryTextColor))
+        .arg(displayName, time, escapedContent);
 }
 
 // ============================================================

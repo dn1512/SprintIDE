@@ -113,7 +113,7 @@ bool DebugManager::initialize()
 
 void DebugManager::shutdown()
 {
-    // ★ 幂等：允许被多次调用
+    // 幂等：允许被多次调用
     if (!d->debuggerProcess && !d->isDebugging) {
         return;
     }

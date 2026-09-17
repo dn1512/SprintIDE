@@ -1,8 +1,8 @@
-// src/deps/toolchain_manager.cpp
 #include "toolchain_manager.h"
 #include "toolchain_provider.h"
 #include "lldb_dap_provider.h"
 #include "toolchain_dialog.h"
+#include "gdb_dap_provider.h"
 
 #include <QDebug>
 #include <QWidget>
@@ -36,8 +36,8 @@ void ToolchainManager::ensureDefaultsRegistered()
     // 注册顺序决定优先级（先注册先尝试）
     registerProvider(std::make_unique<LldbDapProvider>());
 
+    registerProvider(std::make_unique<GdbDapProvider>());
     // 未来：
-    // registerProvider(std::make_unique<GdbDapProvider>());
     // registerProvider(std::make_unique<CppDbgProvider>());
 }
 

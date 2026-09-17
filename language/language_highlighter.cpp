@@ -133,52 +133,52 @@ void LanguageHighlighter::rehighlightDocument()
 void LanguageHighlighter::initDefaultColors(bool isDark)
 {
     if (isDark) {
-        // ========== 深色主题（VS Code Dark+ 风格） ==========
-        m_keywordColor = QColor("#569CD6");        // 蓝色
-        m_controlFlowColor = QColor("#C586C0");    // 紫色
-        m_storageTypeColor = QColor("#569CD6");    // 蓝色
-        m_dataTypeColor = QColor("#4EC9B0");       // 青色
-        m_builtinFuncColor = QColor("#DCDCAA");    // 金色
-        m_commentColor = QColor("#6A9955");        // 绿色
-        m_stringColor = QColor("#CE9178");         // 橙色
-        m_charColor = QColor("#CE9178");           // 橙色
-        m_numberColor = QColor("#B5CEA8");         // 浅绿色
-        m_preprocessorColor = QColor("#C586C0");   // 紫色
-        m_constantColor = QColor("#9CDCFE");       // 浅蓝色
-        m_functionColor = QColor("#DCDCAA");       // 金色
-        m_classColor = QColor("#4EC9B0");          // 青色
+        // Polaris Dark Nexus —— 去紫
+        m_keywordColor        = QColor("#4AB0E6");  // 存储/类型
+        m_controlFlowColor    = QColor("#EF7B7B");  // 控制流（原 #C586C0 紫）
+        m_storageTypeColor    = QColor("#4AB0E6");
+        m_dataTypeColor       = QColor("#4AB0E6");  // 原 #4EC9B0
+        m_builtinFuncColor    = QColor("#F0C57A");  // 原 #DCDCAA
+        m_commentColor        = QColor("#5E6D82");  // 原 #6A9955
+        m_stringColor         = QColor("#86C28C");  // 原 #CE9178
+        m_charColor           = QColor("#86C28C");
+        m_numberColor         = QColor("#D4A06A");  // 原 #B5CEA8
+        m_preprocessorColor   = QColor("#9BB5D4");  // 原 #C586C0 紫
+        m_constantColor       = QColor("#66D4E0");  // 原 #9CDCFE
+        m_functionColor       = QColor("#F0C57A");  // 原 #DCDCAA
+        m_classColor          = QColor("#4AB0E6");  // 原 #4EC9B0
     } else {
-        // ========== 浅色主题 ==========
-        m_keywordColor = QColor("#0000FF");        // 蓝色
-        m_controlFlowColor = QColor("#AF00DB");    // 紫色
-        m_storageTypeColor = QColor("#0000FF");    // 蓝色
-        m_dataTypeColor = QColor("#2B91AF");       // 青色
-        m_builtinFuncColor = QColor("#8B008B");    // 深紫色
-        m_commentColor = QColor("#008000");        // 绿色
-        m_stringColor = QColor("#A31515");         // 红色
-        m_charColor = QColor("#A31515");           // 红色
-        m_numberColor = QColor("#098658");         // 深绿色
-        m_preprocessorColor = QColor("#800080");   // 紫色
-        m_constantColor = QColor("#001080");       // 深蓝色
-        m_functionColor = QColor("#795E26");       // 棕色
-        m_classColor = QColor("#2B91AF");          // 青色
+        // Polaris Solar Flare
+        m_keywordColor        = QColor("#0D6EFD");
+        m_controlFlowColor    = QColor("#C0392B");
+        m_storageTypeColor    = QColor("#0D6EFD");
+        m_dataTypeColor       = QColor("#0D6EFD");
+        m_builtinFuncColor    = QColor("#B8770E");
+        m_commentColor        = QColor("#9AAEC2");
+        m_stringColor         = QColor("#3E8E4E");
+        m_charColor           = QColor("#3E8E4E");
+        m_numberColor         = QColor("#A8721E");
+        m_preprocessorColor   = QColor("#5E7A96");
+        m_constantColor       = QColor("#0E8B8B");
+        m_functionColor       = QColor("#B8770E");
+        m_classColor          = QColor("#0D6EFD");
     }
 
-    // 创建格式对象
-    m_keywordFormat = createFormat(m_keywordColor);
-    m_controlFlowFormat = createFormat(m_controlFlowColor, true);
-    m_storageTypeFormat = createFormat(m_storageTypeColor);
-    m_dataTypeFormat = createFormat(m_dataTypeColor, true);
-    m_builtinFuncFormat = createFormat(m_builtinFuncColor);
-    m_commentFormat = createFormat(m_commentColor, false, true);
-    m_multiLineCommentFormat = createFormat(m_commentColor, false, true);
-    m_stringFormat = createFormat(m_stringColor);
-    m_charFormat = createFormat(m_charColor);
-    m_numberFormat = createFormat(m_numberColor);
-    m_preprocessorFormat = createFormat(m_preprocessorColor);
-    m_constantFormat = createFormat(m_constantColor, true);
-    m_functionFormat = createFormat(m_functionColor);
-    m_classFormat = createFormat(m_classColor, true);
+    // 其余 createFormat 调用不变，只是颜色变了
+    m_keywordFormat           = createFormat(m_keywordColor);
+    m_controlFlowFormat       = createFormat(m_controlFlowColor, true);
+    m_storageTypeFormat       = createFormat(m_storageTypeColor);
+    m_dataTypeFormat          = createFormat(m_dataTypeColor, true);
+    m_builtinFuncFormat       = createFormat(m_builtinFuncColor);
+    m_commentFormat           = createFormat(m_commentColor, false, true);
+    m_multiLineCommentFormat  = createFormat(m_commentColor, false, true);
+    m_stringFormat            = createFormat(m_stringColor);
+    m_charFormat              = createFormat(m_charColor);
+    m_numberFormat            = createFormat(m_numberColor);
+    m_preprocessorFormat      = createFormat(m_preprocessorColor);
+    m_constantFormat          = createFormat(m_constantColor, true);
+    m_functionFormat          = createFormat(m_functionColor);
+    m_classFormat             = createFormat(m_classColor, true);
 }
 
 // ============================================================
@@ -360,7 +360,7 @@ void LanguageHighlighter::updateRules(const LanguageInfo& info)
     // 8.1 函数调用: 标识符后跟左括号
     {
         HighlightRule rule;
-        rule.pattern = QRegularExpression("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(");
+        rule.pattern = QRegularExpression("\\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\\s*\\()");
         rule.format = m_functionFormat;
         rule.priority = 2;
         m_rules.append(rule);

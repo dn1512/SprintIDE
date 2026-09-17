@@ -1,8 +1,0 @@
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/edit_cache.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/rebuild_cache.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/list_install_components.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/install.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/install/local.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/install/strip.dir
-/Users/liutengjun/code/gitDownloadCode/SprintIDE/SprintIDE/build/CMakeFiles/SprintIDE_autogen.dir

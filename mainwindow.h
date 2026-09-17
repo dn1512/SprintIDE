@@ -279,6 +279,10 @@ private:
     void switchToOutputTab();
     void switchToTerminalTab();
 
+    // 集中管理调试 Tab 的可见性
+    /// @param visible true=显示（并切过去），false=隐藏（若当前在它上面则切到输出）
+    void setDebugTabVisible(bool visible);
+
     void showFileHistoryDialog(const QString &filePath);
 
     /**
@@ -338,6 +342,9 @@ private:
     PythonDebugger* m_pythonDebugger = nullptr;
 
     CppDebugger* m_cppDebugger = nullptr;
+
+    QAction* m_toggleBottomPanelAction = nullptr;
+    QAction* m_toggleProjectPanelAction = nullptr;
 };
 
 } // namespace SprintIDE

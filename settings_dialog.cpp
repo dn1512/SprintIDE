@@ -21,6 +21,7 @@
 #include <QLabel>
 #include <QCoreApplication>
 #include "python/python_settings_page.h"
+#include "editor_settings_page.h"
 
 using namespace SprintIDE;
 
@@ -716,6 +717,7 @@ void SettingsDialog::createUI()
     // 左侧分类列表
     m_categoryList = new QListWidget(this);
     m_categoryList->setFixedWidth(180);
+    m_categoryList->addItem(tr("编辑器"));
     m_categoryList->addItem(tr("编译配置"));
     m_categoryList->addItem(tr("环境变量"));
 
@@ -724,6 +726,11 @@ void SettingsDialog::createUI()
 
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
+
+
+    EditorSettingsPage *editorPage = new EditorSettingsPage(this);
+    m_stackedWidget->addWidget(editorPage);
+    m_pages.append(editorPage);
 
     CompilerSettingsPage *compilerPage = new CompilerSettingsPage(this);
     m_stackedWidget->addWidget(compilerPage);

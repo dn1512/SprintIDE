@@ -147,27 +147,36 @@ void DapClient::attach(const QJsonObject& attachArgs)
     sendRequest("attach", attachArgs);
 }
 
-void DapClient::setBreakpoints(const QString& sourcePath, const QList<int>& lines)
+void DapClient::setBreakpoints(const QString& sourcePath,
+                               const QList<BreakpointSpec>& specs)
 {
     QJsonObject src;
     src["path"] = sourcePath;
     src["name"] = QFileInfo(sourcePath).fileName();
 
     QJsonArray bps;
-    for (int line : lines) {
+    for (const auto& spec : specs) {
         QJsonObject bp;
-        bp["line"] = line;
+        bp["line"] = spec.line;
+        if (!spec.condition.isEmpty())    bp["condition"] = spec.condition;
+        if (!spec.hitCondition.isEmpty()) bp["hitCondition"] = spec.hitCondition;
         bps.append(bp);
     }
 
     QJsonObject args;
     args["source"] = src;
     args["breakpoints"] = bps;
-    // 注意：不要传 args["lines"]！
-    //   DAP 规范里 "lines" 是 int[]（旧协议），传对象数组会被 adapter 拒绝。
-    //   codelldb 遇到 args["lines"] 里的对象会报 "invalid type: map, expected i64"。
-
     sendRequest("setBreakpoints", args);
+}
+
+void DapClient::setBreakpoints(const QString& sourcePath, const QList<int>& lines)
+{
+    QList<BreakpointSpec> specs;
+    for (int l : lines) {
+        BreakpointSpec s; s.line = l;
+        specs.append(s);
+    }
+    setBreakpoints(sourcePath, specs);
 }
 
 void DapClient::configurationDone()
@@ -231,7 +240,8 @@ void DapClient::variables(int variablesReference)
 {
     QJsonObject args;
     args["variablesReference"] = variablesReference;
-    sendRequest("variables", args);
+    int seq = sendRequest("variables", args);
+    m_pendingVariablesRef[seq] = variablesReference;
 }
 
 void DapClient::evaluate(const QString& expr, int frameId, const QString& context)
@@ -338,6 +348,10 @@ void DapClient::handleResponse(const QJsonObject& msg)
     m_pendingCommands.remove(requestSeq);
 
     if (!success) {
+        if (command == "variables") {
+            m_pendingVariablesRef.remove(requestSeq);
+        }
+
         QString errMsg = msg["message"].toString();
         qWarning() << "[DapClient] request failed:" << command << "->" << errMsg;
         emit errorOccurred(QString("%1 failed: %2").arg(command, errMsg));
@@ -359,7 +373,7 @@ void DapClient::handleResponse(const QJsonObject& msg)
         emit scopesReceived(frameId, scopes);
     }
     else if (command == "variables") {
-        int parentRef = body["variablesReference"].toInt();
+        int parentRef = m_pendingVariablesRef.take(requestSeq);
         QList<Variable> vars = parseVariables(body["variables"].toArray());
         emit variablesReceived(parentRef, vars);
     }

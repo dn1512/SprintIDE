@@ -25,6 +25,7 @@ public:
         , m_pressedTab(-1)
         , m_hoveredCloseTab(-1)
         , m_maxTabWidth(400)
+        , m_showCloseButton(true)
     {
         setMouseTracking(true);
         setFocusPolicy(Qt::NoFocus);
@@ -34,7 +35,7 @@ public:
         setExpanding(false);
 
         // 重要：禁用系统的关闭按钮
-        setTabsClosable(true);
+        setTabsClosable(false);
 
         // 设置布局策略，确保左对齐
         QSizePolicy policy = sizePolicy();
@@ -42,6 +43,13 @@ public:
         policy.setHorizontalStretch(0);
         setSizePolicy(policy);
     }
+
+    void setShowCloseButton(bool show) {
+        if (m_showCloseButton == show) return;
+        m_showCloseButton = show;
+        update();
+    }
+    bool showCloseButton() const { return m_showCloseButton; }
     // 设置标签最大宽度
     void setMaxTabWidth(int width) { m_maxTabWidth = width; }
     int maxTabWidth() const { return m_maxTabWidth; }
@@ -50,25 +58,34 @@ public:
     }
 
 protected:
+    QRect closeButtonRect(int tabIndex) const
+    {
+        const QRect r = tabRect(tabIndex);
+        if (!r.isValid()) return QRect();
+
+        constexpr int stripeWidth   = 2;   // 左侧活动竖条宽度
+        constexpr int closeBtnSize  = 14;  // 关闭按钮尺寸
+        constexpr int closeBtnMargin = 6;  // 按钮与竖条/文字的间距
+
+        const int x = r.left() + stripeWidth + closeBtnMargin;
+        const int y = r.top() + (r.height() - closeBtnSize) / 2;
+
+        return QRect(x, y, closeBtnSize, closeBtnSize);
+    }
+
     // 重写tabSizeHint以限制标签宽度
     QSize tabSizeHint(int index) const override
     {
         QSize size = QTabBar::tabSizeHint(index);
 
-        // 根据内容计算宽度
         QString text = tabText(index);
         QFontMetrics fm = fontMetrics();
-        int textWidth = fm.horizontalAdvance(text) + 60; // 文字宽度 + 边距和关闭按钮
 
-        // 限制宽度
-        if (textWidth > m_maxTabWidth) {
-            textWidth = m_maxTabWidth;
-        }
+        // 文字宽度 + 左侧(竖条+关闭按钮+间距) + 右侧留白
+        int textWidth = fm.horizontalAdvance(text) + 60;
 
-        // 确保最小宽度
-        if (textWidth < 100) {
-            textWidth = 100;
-        }
+        if (textWidth > m_maxTabWidth) textWidth = m_maxTabWidth;
+        if (textWidth < 120)            textWidth = 120;   //  100 → 120
 
         size.setWidth(textWidth);
         return size;
@@ -119,40 +136,34 @@ protected:
     void paintEvent(QPaintEvent *event) override
     {
         Q_UNUSED(event)
+
         QPainter painter(this);
-
-        // 绘制背景
-        QStyleOptionTabBarBase option;
-        option.initFrom(this);
-        option.shape = shape();
-        option.documentMode = documentMode();
-
-        // 获取主题颜色
         ThemeManager& tm = ThemeManager::instance();
-        QColor bgColor = tm.color(ThemeManager::UIElement::MainWindowBackground);
-        // 使用ThemeManager的颜色而不是硬编码颜色
-        QColor backgroundColor = tm.color(ThemeManager::UIElement::MainWindowBackground);
-        QColor textColor = tm.color(ThemeManager::UIElement::TextColor);
 
-        // 填充背景
+        // Polaris 令牌
+        const QColor bgColor     = tm.color(ThemeManager::UIElement::MainWindowBackground);  // #212730
+        const QColor borderColor = tm.color(ThemeManager::UIElement::BorderColor);           // #2F3848
+
+        // ---------- 1. 整体背景 ----------
         painter.fillRect(rect(), bgColor);
 
-        // 绘制底部边框线（PyCharm风格）
-        painter.setPen(bgColor.darker(120));
+        // ---------- 2. 底部 1px 极弱分割线 ----------
+        painter.setPen(borderColor);
         painter.drawLine(0, height() - 1, width(), height() - 1);
 
-        // 绘制每个标签
+        // ---------- 3. 逐个绘制标签 ----------
         for (int i = 0; i < count(); ++i) {
             paintTab(&painter, i);
         }
 
-        // 绘制左侧起始位置的边框（让标签栏看起来更完整）
-        painter.setPen(bgColor.darker(120));
+        // ---------- 4. 左侧 1px 竖线（让标签栏视觉更完整） ----------
+        painter.setPen(borderColor);
         painter.drawLine(0, 0, 0, height());
 
-        // 如果标签栏宽度小于窗口宽度，绘制右侧背景
+        // ---------- 5. 标签栏右侧空白区域填充背景 ----------
         if (width() > sizeHint().width()) {
-            QRect rightRect(sizeHint().width(), 0, width() - sizeHint().width(), height());
+            QRect rightRect(sizeHint().width(), 0,
+                            width() - sizeHint().width(), height());
             painter.fillRect(rightRect, bgColor);
         }
     }
@@ -162,279 +173,189 @@ protected:
         QRect rect = tabRect(tabIndex);
         if (!rect.isValid()) return;
 
-        // ========== PyCharm风格颜色方案 ==========
         ThemeManager& tm = ThemeManager::instance();
 
-        // 基础颜色 - 确保有足够的对比度
-        QColor bgColor = tm.color(ThemeManager::UIElement::MainWindowBackground);
-        QColor baseTextColor = tm.color(ThemeManager::UIElement::TextColor);
+        // ---------- Polaris 令牌 ----------
+        const QColor activeBg     = tm.color(ThemeManager::UIElement::ActiveTabBackground);
+        const QColor inactiveBg   = tm.color(ThemeManager::UIElement::MainWindowBackground);
+        const QColor hoverBg      = tm.color(ThemeManager::UIElement::HoverBackground);
+        const QColor activeText   = tm.color(ThemeManager::UIElement::TextColor);
+        const QColor inactiveText = tm.color(ThemeManager::UIElement::SecondaryTextColor);
+        const QColor borderColor  = tm.color(ThemeManager::UIElement::BorderColor);
+        const QColor primaryColor = tm.color(ThemeManager::UIElement::PrimaryColor);
+        const QColor errorColor   = tm.color(ThemeManager::UIElement::ErrorColor);
 
-        // 如果背景和文字颜色太接近，自动调整
-        if (bgColor.lightness() > 128) {
-            // 浅色背景：确保文字是深色的
-            if (baseTextColor.lightness() > 128) {
-                baseTextColor = QColor(30, 30, 30); // 深灰色
-            }
-        } else {
-            // 深色背景：确保文字是浅色的
-            if (baseTextColor.lightness() < 128) {
-                baseTextColor = QColor(220, 220, 220); // 浅灰色
-            }
-        }
+        const bool isCurrent = (currentIndex() == tabIndex);
+        const bool isHovered = (m_hoveredTab == tabIndex);
 
-        // PyCharm风格的标签颜色
-        bool isCurrent = (currentIndex() == tabIndex);
-        bool isHovered = (m_hoveredTab == tabIndex);
-
-        // 活动标签颜色（PyCharm风格）
-        QColor activeTabBg;
-        if (bgColor.lightness() > 128) {
-            activeTabBg = QColor(255, 255, 255); // 浅色主题：白色背景
-        } else {
-            activeTabBg = QColor(50, 50, 60); // 深色主题：深灰色背景
-        }
-
-        QColor activeTabTextClr = baseTextColor;
-        // 活动标签边框颜色
-        QColor activeTabBorder;
-        if (bgColor.lightness() > 128) {
-            // 浅色主题：使用较亮的蓝色
-            activeTabBorder = QColor(74, 144, 226); // #4A90E2
-        } else {
-            // 深色主题：使用较暗的蓝色
-            activeTabBorder = QColor(75, 110, 175); // #4B6EAF
-        }
-
-        // 非活动标签颜色
-        QColor inactiveTabBg;
-        if (bgColor.lightness() > 128) {
-            inactiveTabBg = bgColor.darker(110); // 浅色主题：稍微深一点
-        } else {
-            inactiveTabBg = bgColor.lighter(110); // 深色主题：稍微浅一点
-        }
-
-        QColor inactiveTabTextClr = baseTextColor;
-        QColor inactiveTabBorder;
-        if (bgColor.lightness() > 128) {
-            inactiveTabBorder = QColor(200, 200, 200); // 浅色主题：浅灰色边框
-        } else {
-            inactiveTabBorder = QColor(80, 80, 80); // 深色主题：深灰色边框
-        }
-
-        // 悬停标签颜色
-        QColor hoverTabBg;
+        // ---------- 1. 标签背景 ----------
+        QColor tabBg;
+        QColor tabText;
         if (isCurrent) {
-            hoverTabBg = activeTabBg;
-        } else if (inactiveTabBg.lightness() > 128) {
-            hoverTabBg = inactiveTabBg.darker(105); // 浅色主题：悬停时稍微深一点
-        } else {
-            hoverTabBg = inactiveTabBg.lighter(105); // 深色主题：悬停时稍微浅一点
-        }
-
-        // 根据状态选择颜色 - 使用不同的变量名避免冲突
-        QColor currentTabBg, currentTextClr, currentTabBorder;
-        if (isCurrent) {
-            currentTabBg = activeTabBg;
-            currentTextClr = activeTabTextClr;
-            currentTabBorder = activeTabBorder;
+            tabBg   = activeBg;
+            tabText = activeText;
         } else if (isHovered) {
-            currentTabBg = hoverTabBg;
-            currentTextClr = inactiveTabTextClr;
-            currentTabBorder = inactiveTabBorder;
+            tabBg   = hoverBg;
+            tabText = activeText;
         } else {
-            currentTabBg = inactiveTabBg;
-            currentTextClr = inactiveTabTextClr;
-            currentTabBorder = inactiveTabBorder;
+            tabBg   = inactiveBg;
+            tabText = inactiveText;
         }
+        painter->fillRect(rect, tabBg);
 
-        // 绘制标签背景
-        painter->fillRect(rect, currentTabBg);
-
-        // 绘制边框 - PyCharm风格：活动标签底部蓝色边框，非活动标签有轻微边框
-        painter->setPen(QPen(currentTabBorder, 1));
-
+        // ---------- 2. 左侧活动竖条（Polaris 特征） ----------
+        constexpr int stripeWidth   = 2;
+        constexpr int stripePadding = 4;
         if (isCurrent) {
-            // 活动标签：底部蓝色边框，左右轻微边框
-            painter->drawLine(rect.left(), rect.top(), rect.right(), rect.top());
-            painter->drawLine(rect.left(), rect.top(), rect.left(), rect.bottom());
-            painter->drawLine(rect.right(), rect.top(), rect.right(), rect.bottom());
-
-            // 底部蓝色粗边框
-            painter->setPen(QPen(activeTabBorder, 2));
-            painter->drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom());
-        } else {
-            // 非活动标签：只有右侧边框
-            painter->drawLine(rect.right(), rect.top() + 3, rect.right(), rect.bottom() - 3);
-
-            // 顶部轻微边框（与标签栏背景分隔）
-            painter->setPen(QPen(inactiveTabBorder.lighter(120), 1));
-            painter->drawLine(rect.left(), rect.top(), rect.right(), rect.top());
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(primaryColor);
+            painter->drawRect(rect.left(),
+                              rect.top() + stripePadding,
+                              stripeWidth,
+                              rect.height() - 2 * stripePadding);
+            painter->setBrush(Qt::NoBrush);
         }
 
-        // 绘制标签文本 - 获取标签文本，使用父类的tabText函数
-        painter->setPen(currentTextClr);
-        QString tabTextStr = QTabBar::tabText(tabIndex); // 改名并明确调用父类函数
+        // ---------- 3. 右侧极弱分隔线 ----------
+        painter->setPen(QPen(borderColor, 1));
+        painter->drawLine(rect.right(), rect.top() + 3,
+                          rect.right(), rect.bottom() - 3);
 
-        // 如果标签文本包含*号（表示修改），用不同颜色
-        if (tabTextStr.endsWith("*")) {
-            painter->setPen(QColor(255, 100, 100)); // 红色表示修改
-            tabTextStr = tabTextStr.left(tabTextStr.length() - 1); // 移除*号，因为我们会特殊绘制
+        // ---------- 4. 关闭按钮（ 画在左侧） ----------
+        const QRect closeRect = closeButtonRect(tabIndex);
+        constexpr int closeBtnMargin = 6;
+        constexpr int closeBtnSize   = 14;
+
+        // 悬停 / 活动标签才显示关闭按钮（PyCharm 风格）
+        const bool showClose = m_showCloseButton && (isCurrent || isHovered);
+
+        if (showClose && closeRect.isValid()) {
+            const QPoint center = closeRect.center();
+            const bool hoveringClose = (m_hoveredCloseTab == tabIndex);
+
+            // 悬停时的圆形背景
+            if (hoveringClose) {
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(errorColor);
+                painter->drawEllipse(center, closeBtnSize / 2, closeBtnSize / 2);
+                painter->setBrush(Qt::NoBrush);
+            }
+
+            // X 符号
+            const int lineLen = closeBtnSize / 2 - 3;
+            const QColor xColor = hoveringClose
+                                      ? QColor(Qt::white)
+                                      : (isCurrent ? activeText : inactiveText);
+
+            painter->setPen(QPen(xColor, 1.6));
+            painter->drawLine(center.x() - lineLen, center.y() - lineLen,
+                              center.x() + lineLen, center.y() + lineLen);
+            painter->drawLine(center.x() + lineLen, center.y() - lineLen,
+                              center.x() - lineLen, center.y() + lineLen);
         }
 
-        QRect textRect = rect;
-        // textRect.adjust(12, 0, -30, 0); // 左边距12，右边留出关闭按钮位置
-        textRect.adjust(20, 0, -20, 0);
+        // ---------- 5. 文件名（ 从关闭按钮右侧开始） ----------
+        painter->setPen(tabText);
+
+        QString displayText = QTabBar::tabText(tabIndex);
+        const bool isModified = displayText.endsWith("*");
+        if (isModified) {
+            displayText.chop(1);   // 去掉末尾 *，稍后画成红点
+        }
+
+        // 文字区域：
+        //   left  = 竖条 + 间距 + 关闭按钮 + 间距
+        //   right = 8px 右边距
+        const int textLeft = stripeWidth + closeBtnMargin
+                             + closeBtnSize + closeBtnMargin;
+        const int textRight = 8;
+
+        QRect textRect = rect.adjusted(textLeft, 0, -textRight, 0);
 
         QFont font = painter->font();
-        if (isCurrent) {
-            font.setBold(true);
-        }
+        font.setBold(isCurrent);
         painter->setFont(font);
 
-        // 绘制文字
-        QString displayText = painter->fontMetrics().elidedText(tabTextStr, Qt::ElideRight, textRect.width());
-        painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, displayText);
+        QString elided = painter->fontMetrics().elidedText(
+            displayText, Qt::ElideRight, textRect.width());
 
-        // 如果文件已修改，在文本后面添加红色*
-        if (QTabBar::tabText(tabIndex).endsWith("*")) { // 明确调用父类函数
-            QRect starRect = textRect;
-            starRect.setLeft(textRect.left() + painter->fontMetrics().horizontalAdvance(displayText) + 2);
-            painter->setPen(QColor(255, 100, 100));
-            painter->drawText(starRect, Qt::AlignVCenter | Qt::AlignLeft, "*");
+        painter->drawText(textRect,
+                          Qt::AlignVCenter | Qt::AlignLeft,
+                          elided);
+
+        // ---------- 6. 已修改标记：小圆点 ----------
+        if (isModified) {
+            const int dotX = textRect.left()
+            + painter->fontMetrics().horizontalAdvance(elided)
+                + 6;
+            const int dotY = rect.center().y();
+
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(errorColor);
+            painter->drawEllipse(QPoint(dotX, dotY), 3, 3);
+            painter->setBrush(Qt::NoBrush);
         }
-
-        // ========== 绘制关闭按钮 ==========
-        // if (tabsClosable() || isHovered || isCurrent) {
-        //     // PyCharm风格：只有悬停或活动标签才显示关闭按钮
-        //     // 修改前：rect.top() + (rect.height() - 14) / 2
-        //     // 修改后：使用更精确的垂直居中计算
-
-        //     int closeButtonSize = 12; // 关闭按钮大小
-        //     int closeButtonTop = rect.top() + (rect.height() - closeButtonSize) / 2; // 垂直居中
-
-        //     // 关闭按钮矩形
-        //     QRect closeRect(rect.right() - 22, closeButtonTop, closeButtonSize, closeButtonSize);
-
-        //     // 绘制关闭按钮背景（圆形）
-        //     QColor closeBg;
-        //     if (m_hoveredCloseTab == tabIndex) {
-        //         closeBg = QColor(200, 80, 80); // 悬停时红色背景
-        //     } else {
-        //         closeBg = Qt::transparent; // 非悬停时透明
-        //     }
-
-        //     painter->setBrush(closeBg);
-        //     painter->setPen(Qt::NoPen);
-
-        //     // 使用圆形绘制，确保圆心在矩形的中心
-        //     QPoint center = closeRect.center();
-        //     painter->drawEllipse(center, closeButtonSize/2, closeButtonSize/2); // 以中心点为圆心
-
-        //     // 绘制X符号 - 确保关闭按钮可见
-        //     QColor closeSymbolColor;
-        //     if (m_hoveredCloseTab == tabIndex) {
-        //         closeSymbolColor = Qt::white; // 悬停时白色X
-        //     } else if (isCurrent) {
-        //         closeSymbolColor = currentTextClr; // 活动标签使用文字颜色
-        //     } else {
-        //         // 根据背景亮度决定X的颜色
-        //         if (currentTabBg.lightness() > 128) {
-        //             closeSymbolColor = QColor(120, 120, 120); // 浅色背景：深灰色X
-        //         } else {
-        //             closeSymbolColor = QColor(180, 180, 180); // 深色背景：浅灰色X
-        //         }
-        //     }
-
-        //     painter->setPen(QPen(closeSymbolColor, 2));
-        //     painter->setBrush(Qt::NoBrush);
-        //     int lineLength = closeButtonSize / 2 - 2; // 线的长度
-
-        //     // 从中心点向左上、右下画线
-        //     painter->drawLine(center - QPoint(lineLength, lineLength),
-        //                       center + QPoint(lineLength, lineLength));
-        //     // 从中心点向右上、左下画线
-        //     painter->drawLine(center + QPoint(lineLength, -lineLength),
-        //                       center - QPoint(lineLength, -lineLength));
-        // }
     }
 
     void mousePressEvent(QMouseEvent *event) override
     {
-        // if (event->button() == Qt::LeftButton && tabsClosable()) {
-        //     int tabIndex = tabAt(event->pos());
-        //     if (tabIndex >= 0) {
-        //         QRect tabRect = this->tabRect(tabIndex);
+        //  关键：用 m_showCloseButton 判断，不是 tabsClosable()
+        //   因为 tabsClosable() 被我们强制设成 false（避免 Qt 造内置按钮）
+        if (event->button() == Qt::LeftButton && m_showCloseButton) {
+            const int tabIndex = tabAt(event->pos());
+            if (tabIndex >= 0) {
+                const QRect closeRect = closeButtonRect(tabIndex);
+                if (closeRect.isValid() && closeRect.contains(event->pos())) {
+                    m_closeButtonPressed = true;
+                    update();                       // 视觉反馈（可选）
+                    return;                         // 消费 press，不切换标签
+                }
+            }
+        }
 
-        //         // 计算关闭按钮区域（与paintTab中保持一致）
-        //         int closeButtonSize = 12;
-        //         int closeButtonTop = tabRect.top() + (tabRect.height() - closeButtonSize) / 2;
-
-        //         // 计算圆心位置
-        //         QPoint center(tabRect.right() - 22 + closeButtonSize/2,
-        //                       closeButtonTop + closeButtonSize/2);
-
-        //         // 计算点到圆心的距离，判断是否在圆形区域内
-        //         int distanceX = event->pos().x() - center.x();
-        //         int distanceY = event->pos().y() - center.y();
-        //         int distanceSquared = distanceX*distanceX + distanceY*distanceY;
-
-        //         // 检查是否点击了圆形区域内（半径平方）
-        //         int radiusSquared = (closeButtonSize/2) * (closeButtonSize/2);
-
-        //         if (distanceSquared <= radiusSquared) {
-        //             emit tabCloseRequested(tabIndex);
-        //             return; // 直接返回，不进行标签切换
-        //         }
-        //     }
-        // }
-
-        // 如果不是点击关闭按钮，调用父类处理（用于标签切换等）
+        m_closeButtonPressed = false;
         QTabBar::mousePressEvent(event);
     }
+
     void mouseReleaseEvent(QMouseEvent *event) override
     {
+        if (m_closeButtonPressed) {
+            m_closeButtonPressed = false;
+
+            // 确认 release 位置仍落在同一个关闭按钮内
+            const int tabIndex = tabAt(event->pos());
+            if (event->button() == Qt::LeftButton && tabIndex >= 0) {
+                const QRect closeRect = closeButtonRect(tabIndex);
+                if (closeRect.isValid() && closeRect.contains(event->pos())) {
+                    emit tabCloseRequested(tabIndex);   //  触发关闭
+                }
+            }
+            update();
+            return;   // 不传给 QTabBar
+        }
+
         m_pressedTab = -1;
         QTabBar::mouseReleaseEvent(event);
     }
 
     void mouseMoveEvent(QMouseEvent *event) override
     {
-        int oldHoveredTab = m_hoveredTab;
-        int oldHoveredCloseTab = m_hoveredCloseTab;
+        const int oldHoveredTab      = m_hoveredTab;
+        const int oldHoveredCloseTab = m_hoveredCloseTab;
 
-        m_hoveredTab = tabAt(event->pos());
+        m_hoveredTab      = tabAt(event->pos());
         m_hoveredCloseTab = -1;
 
-        // 检查是否悬停在关闭按钮上
-        // if (m_hoveredTab >= 0) {
-        //     QRect tabRect = this->tabRect(m_hoveredTab);
+        //  同样用 m_showCloseButton，不用 tabsClosable()
+        if (m_hoveredTab >= 0 && m_showCloseButton) {
+            const QRect closeRect = closeButtonRect(m_hoveredTab);
+            if (closeRect.isValid() && closeRect.contains(event->pos())) {
+                m_hoveredCloseTab = m_hoveredTab;
+            }
+        }
 
-        //     // 计算关闭按钮区域（与paintTab中保持一致）
-        //     int closeButtonSize = 12;
-        //     int closeButtonTop = tabRect.top() + (tabRect.height() - closeButtonSize) / 2;
-
-        //     // 计算圆心位置
-        //     QPoint center(tabRect.right() - 22 + closeButtonSize/2,
-        //                   closeButtonTop + closeButtonSize/2);
-
-        //     // 计算点到圆心的距离，判断是否在圆形区域内
-        //     int distanceX = event->pos().x() - center.x();
-        //     int distanceY = event->pos().y() - center.y();
-        //     int distanceSquared = distanceX*distanceX + distanceY*distanceY;
-
-        //     // 检查是否在圆形区域内（半径平方）
-        //     int radiusSquared = (closeButtonSize/2) * (closeButtonSize/2);
-
-        //     if (distanceSquared <= radiusSquared) {
-        //         m_hoveredCloseTab = m_hoveredTab;
-        //     }
-        // }
-
-        // 只有当悬停状态改变时才更新
-        // if (oldHoveredTab != m_hoveredTab || oldHoveredCloseTab != m_hoveredCloseTab) {
-        //     update();
-        // }
-        if (oldHoveredTab != m_hoveredTab) {
+        if (oldHoveredTab != m_hoveredTab ||
+            oldHoveredCloseTab != m_hoveredCloseTab) {
             update();
         }
 
@@ -465,6 +386,8 @@ private:
     int m_pressedTab;
     int m_hoveredCloseTab;
     int m_maxTabWidth;
+    bool m_showCloseButton;
+    bool m_closeButtonPressed = false;
 };
 
 // ==================== TabWidget实现 ====================
@@ -493,7 +416,7 @@ void TabWidget::setupUI()
     m_tabBar = new CustomTabBar(this);
     m_tabBar->setShape(m_shape);
     m_tabBar->setMovable(m_movable);
-    m_tabBar->setTabsClosable(m_tabsClosable);
+    // m_tabBar->setTabsClosable(m_tabsClosable);
 
     // 设置标签最大宽度
     CustomTabBar *customBar = qobject_cast<CustomTabBar*>(m_tabBar);
@@ -772,7 +695,9 @@ QVariant TabWidget::tabData(int index) const
 void TabWidget::setTabsClosable(bool closable)
 {
     m_tabsClosable = closable;
-    m_tabBar->setTabsClosable(closable);
+    if (auto* customBar = qobject_cast<CustomTabBar*>(m_tabBar)) {
+        customBar->setShowCloseButton(closable);
+    }
 }
 
 bool TabWidget::tabsClosable() const

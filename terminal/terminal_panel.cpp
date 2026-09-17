@@ -7,10 +7,12 @@
 #include <QApplication>
 #include <QStyle>
 #include <QProcessEnvironment>
+#include <QRegularExpression>
 
 #include "project_manager.h"
 #include "python/python_virtual_env.h"
 #include "python/python_project_model.h"
+#include "theme_manager.h"
 
 namespace SprintIDE {
 
@@ -22,6 +24,12 @@ TerminalPanel::TerminalPanel(QWidget* parent)
 {
     setupUI();
     setObjectName("TerminalPanel");
+    setMinimumHeight(0);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
+
+    // 主题切换时重染已有输出
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, &TerminalPanel::recolorAllOutput);
 
     // 默认工作目录为当前目录
     m_workingDirectory = QDir::currentPath();
@@ -40,16 +48,16 @@ TerminalPanel::~TerminalPanel()
 
 void TerminalPanel::setupUI()
 {
+    setObjectName("TerminalPanel");
+
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(2, 2, 2, 2);
     layout->setSpacing(2);
 
     m_outputWidget = new QTextEdit(this);
+    m_outputWidget->setObjectName("TerminalOutput");
     m_outputWidget->setReadOnly(true);
-    m_outputWidget->setFont(QFont("Menlo", 10));
-    m_outputWidget->setStyleSheet(
-        "QTextEdit { background-color: #1E1E1E; color: #CCCCCC; border: 1px solid #3C3C3C; }"
-        );
+    m_outputWidget->setFont(QFont("Menlo", 10));   
     m_outputWidget->setMinimumHeight(100);
     m_outputWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(m_outputWidget);
@@ -59,11 +67,12 @@ void TerminalPanel::setupUI()
     inputLayout->setContentsMargins(0, 2, 0, 2);
 
     m_promptLabel = new QLabel("$ ", this);
-    m_promptLabel->setStyleSheet("color: #33CC33; font-weight: bold; background-color: #444444;");
+    m_promptLabel->setObjectName("TerminalPrompt");
     m_promptLabel->setFixedWidth(20);
     inputLayout->addWidget(m_promptLabel);
 
     m_inputWidget = new QLineEdit(this);
+    m_inputWidget->setObjectName("TerminalInput");
     m_inputWidget->setPlaceholderText("输入命令...");
     m_inputWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_inputWidget->setMinimumWidth(200);
@@ -72,15 +81,16 @@ void TerminalPanel::setupUI()
 
     // 停止按钮
     m_stopButton = new QPushButton("■", this);
+    m_stopButton->setObjectName("TerminalStopButton");
     m_stopButton->setMaximumWidth(30);
     m_stopButton->setToolTip("停止当前命令");
     m_stopButton->setEnabled(false);
-    m_stopButton->setStyleSheet("QPushButton { background-color: #FF3333; color: white; border: none; }");
     connect(m_stopButton, &QPushButton::clicked, this, &TerminalPanel::stopCurrentCommand);
     inputLayout->addWidget(m_stopButton);
 
     // 清空按钮
     m_clearButton = new QPushButton("清空", this);
+    m_clearButton->setObjectName("TerminalClearButton");
     m_clearButton->setMaximumWidth(50);
     m_clearButton->setToolTip("清空输出");
     connect(m_clearButton, &QPushButton::clicked, this, &TerminalPanel::onClearClicked);
@@ -98,7 +108,7 @@ void TerminalPanel::setupUI()
     m_inputWidget->setFixedHeight(30);
 }
 
-// ========== 新增：更新当前目录的虚拟环境 ==========
+// ========== 更新当前目录的虚拟环境 ==========
 void TerminalPanel::updateVenvForDirectory(const QString& dir)
 {
     m_currentVenvPath.clear();
@@ -126,10 +136,8 @@ void TerminalPanel::updateVenvDisplay()
     if (!m_currentVenvPath.isEmpty()) {
         QString venvName = QFileInfo(m_currentVenvPath).fileName();
         m_promptLabel->setText("(" + venvName + ") $ ");
-        m_promptLabel->setStyleSheet("color: #33CC33; font-weight: bold; background-color: #444444;");
     } else {
         m_promptLabel->setText("$ ");
-        m_promptLabel->setStyleSheet("color: #33CC33; font-weight: bold; background-color: #444444;");
     }
 }
 
@@ -332,18 +340,74 @@ void TerminalPanel::onClearClicked()
     clearOutput();
 }
 
-void TerminalPanel::appendOutput(const QString& text, bool isError)
+void TerminalPanel::recolorAllOutput()
 {
-    QString color = isError ? "#FF6B6B" : "#CCCCCC";
-    m_outputWidget->append(
-        QString("<span style='color:%1;'>%2</span>")
-        .arg(color)
-        .arg(text.toHtmlEscaped())
-    );
-    QScrollBar* scrollBar = m_outputWidget->verticalScrollBar();
-    if (scrollBar) {
-        scrollBar->setValue(scrollBar->maximum());
+    if (!m_outputWidget) return;
+
+    ThemeManager& tm = ThemeManager::instance();
+    const QColor textColor  = tm.color(ThemeManager::UIElement::TextColor);
+    const QColor errorColor = tm.color(ThemeManager::UIElement::ErrorColor);
+
+    static const QRegularExpression errorRe(
+        R"(\b(error|Error|ERROR|fatal|Fatal|FATAL|失败|错误|无法|not found|cannot|failed)\b)");
+
+    QTextCursor cursor(m_outputWidget->document());
+    cursor.beginEditBlock();
+
+    QTextBlock block = m_outputWidget->document()->firstBlock();
+    while (block.isValid()) {
+        const QString lineText = block.text();
+        const bool isErr = errorRe.match(lineText).hasMatch();
+
+        QTextCursor blockCursor(block);
+        blockCursor.select(QTextCursor::LineUnderCursor);
+
+        QTextCharFormat fmt;
+        fmt.setForeground(isErr ? errorColor : textColor);
+        blockCursor.mergeCharFormat(fmt);   // merge 而非 set，保留其他格式
+
+        block = block.next();
     }
+
+    cursor.endEditBlock();
+}
+
+void TerminalPanel::appendOutput(const QString& text, bool /*isError*/)
+{
+    if (!m_outputWidget || text.isEmpty()) return;
+
+    ThemeManager& tm = ThemeManager::instance();
+
+    qDebug() << "[Terminal] TextColor token ="
+             << tm.color(ThemeManager::UIElement::TextColor).name();
+
+    // 逐行处理：含错误关键词的行用 ErrorColor，其余用 TextColor
+    static const QRegularExpression errorRe(
+        R"(\b(error|Error|ERROR|fatal|Fatal|FATAL|失败|错误|无法|not found|cannot|failed)\b)");
+
+    QTextCursor cursor(m_outputWidget->document());
+    cursor.movePosition(QTextCursor::End);
+
+    const QStringList lines = text.split('\n', Qt::KeepEmptyParts);
+    for (int i = 0; i < lines.size(); ++i) {
+        const QString& line = lines.at(i);
+        const bool isErr = errorRe.match(line).hasMatch();
+
+        QTextCharFormat fmt;
+        fmt.setForeground(isErr
+                              ? tm.color(ThemeManager::UIElement::ErrorColor)
+                              : tm.color(ThemeManager::UIElement::TextColor));
+        cursor.setCharFormat(fmt);
+        cursor.insertText(line);
+
+        // 除最后一行外，插入换行
+        if (i < lines.size() - 1) {
+            cursor.insertText("\n");
+        }
+    }
+
+    QScrollBar* sb = m_outputWidget->verticalScrollBar();
+    if (sb) sb->setValue(sb->maximum());
 }
 
 void TerminalPanel::updatePrompt()
