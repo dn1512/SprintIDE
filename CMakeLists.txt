@@ -679,6 +679,31 @@ message(STATUS "  总源文件数: ${TOTAL_SOURCES_COUNT} 个")
 message(STATUS "==========================================")
 
 # 添加构建后步骤：提示用户下载字体
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMENT "注意: 如需使用JetBrains Mono字体，请从 https://github.com/JetBrains/JetBrainsMono/releases 下载并放置在 resources/ 目录下"
-)
+# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+#     COMMENT "注意: 如需使用JetBrains Mono字体，请从 https://github.com/JetBrains/JetBrainsMono/releases 下载并放置在 resources/ 目录下"
+# )
+
+
+# ============================================================
+# macOS 打包：make deploy → 把 Qt 依赖库塞进 SprintIDE.app
+# ============================================================
+if(APPLE)
+    # 定位 macdeployqt：优先用 Qt6 安装目录下的 bin，其次走 PATH
+    find_program(MACDEPLOYQT_EXECUTABLE
+        NAMES macdeployqt
+        HINTS
+            "${Qt6_DIR}/../../../bin"
+            "${Qt6_DIR}/../../bin"
+        REQUIRED
+    )
+    message(STATUS "macdeployqt: ${MACDEPLOYQT_EXECUTABLE}")
+
+    add_custom_target(deploy
+        COMMAND "${MACDEPLOYQT_EXECUTABLE}"
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+                -verbose=2
+        DEPENDS ${PROJECT_NAME}
+        COMMENT "Deploying Qt frameworks into SprintIDE.app"
+        USES_TERMINAL
+    )
+endif()

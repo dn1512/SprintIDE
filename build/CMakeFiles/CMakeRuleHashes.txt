@@ -1,0 +1,4 @@
+# Hashes of file build rules.
+508212cafb707d46f31bc1c096b88338 CMakeFiles/SprintIDE_autogen
+44c4987203d2aae0dd103bc874236ae6 SprintIDE_autogen/3YJK5W5UP7/qrc_fonts.cpp
+e8f5dfdcde52e7984b76e52d754c7fa9 SprintIDE_autogen/3YJK5W5UP7/qrc_lightide_resources.cpp

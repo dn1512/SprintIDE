@@ -1,19 +1,73 @@
 // src/deps/lldb_dap_provider.cpp
 #include "lldb_dap_provider.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
 #include <QDebug>
-#include <algorithm>   // for std::sort
+#include <algorithm>
 
 namespace SprintIDE {
 
-QList<ToolchainId> LldbDapProvider::supportedIds() const
+// ============================================================
+// 路径辅助：内嵌工具链 / 用户数据工具链
+// ============================================================
+
+/**
+ * @brief 计算内嵌工具链的根目录
+ *
+ * 返回：<bundle>/Contents/Frameworks/lldb（macOS）
+ *      <app>/lldb（Windows）
+ *      <app>/../lib/lldb（Linux）
+ * 若目录不存在（开发期常见），调用方应静默跳过。
+ */
+static QString bundledToolchainRoot()
 {
-    return { ToolchainId::LldbDap };
+    QDir appDir(QCoreApplication::applicationDirPath());
+
+#ifdef Q_OS_MAC
+    // applicationDirPath() = .../SprintIDE.app/Contents/MacOS
+    // 目标：.../SprintIDE.app/Contents/Frameworks/lldb
+    QDir macosDir = appDir;
+    if (macosDir.dirName() == "MacOS") {
+        macosDir.cdUp();          // → Contents
+        return macosDir.absoluteFilePath("Frameworks/lldb");
+    }
+    // 非 bundle 运行（例如 Qt Creator 直接跑）：无内嵌
+    return QString();
+#elif defined(Q_OS_WIN)
+    // applicationDirPath() = .../SprintIDE
+    // 目标：.../SprintIDE/lldb
+    return appDir.absoluteFilePath("lldb");
+#else
+    // Linux：applicationDirPath() = .../SprintIDE/bin
+    // 目标：.../SprintIDE/lib/lldb
+    return appDir.absoluteFilePath("../lib/lldb");
+#endif
+}
+
+/**
+ * @brief 计算用户数据目录下的工具链根目录
+ *
+ * 这是未来"on-demand 下载"的落地点，现在就被 resolve() 读取，
+ * 允许开发者手动放工具链到这里。
+ */
+static QString userDataToolchainRoot()
+{
+    QString base;
+
+#ifdef Q_OS_MAC
+    base = QDir::homePath() + "/Library/Application Support/SprintIDE";
+#elif defined(Q_OS_WIN)
+    base = qEnvironmentVariable("APPDATA") + "/SprintIDE";
+#else
+    base = QDir::homePath() + "/.local/share/SprintIDE";
+#endif
+
+    return base + "/toolchains/lldb";
 }
 
 // ============================================================
@@ -97,6 +151,30 @@ static ToolchainResolution tryCandidatesRelaxed(const QStringList& candidates,
 }
 
 // ============================================================
+// 内部：枚举某个根目录下的候选可执行文件名
+//   顺序（重要）：codelldb → lldb-dap → lldb-vscode
+//   理由：codelldb 是静态二进制，无需处理 dylib 依赖，最适合内嵌/拷贝
+// ============================================================
+static QStringList candidatesUnderRoot(const QString& root)
+{
+    if (root.isEmpty()) return {};
+
+#ifdef Q_OS_WIN
+    const QString exe = ".exe";
+#else
+    const QString exe;
+#endif
+
+    return {
+        root + "/bin/codelldb"    + exe,
+        root + "/bin/lldb-dap"    + exe,
+        root + "/bin/lldb-vscode" + exe,
+        // 兼容：有些用户直接把 codelldb 放在根目录（无 bin 子目录）
+        root + "/codelldb"        + exe,
+    };
+}
+
+// ============================================================
 // 内部：扫描 ~/.vscode/extensions/vadimcn.vscode-lldb-*/
 //   按版本号排序（新 → 旧），返回所有候选（不判断是否存在）
 // ============================================================
@@ -163,13 +241,66 @@ static QStringList enumerateCodeLldbCandidates()
 }
 
 // ============================================================
+// LldbDapProvider::supportedIds
+// ============================================================
+QList<ToolchainId> LldbDapProvider::supportedIds() const
+{
+    return { ToolchainId::LldbDap };
+}
+
+// ============================================================
+// resolveBundled —— 从 app bundle 内嵌目录解析
+// ============================================================
+ToolchainResolution LldbDapProvider::resolveBundled() const
+{
+    const QString root = bundledToolchainRoot();
+    if (root.isEmpty()) return {};
+
+    // 内嵌目录不存在（开发期常见）时静默返回，不产生日志噪音
+    QFileInfo rootInfo(root);
+    if (!rootInfo.exists() || !rootInfo.isDir()) {
+        return {};
+    }
+
+    QStringList candidates = candidatesUnderRoot(root);
+    ToolchainResolution res = tryCandidatesRelaxed(candidates, "bundled");
+    if (res.found) {
+        qDebug() << "[LldbDapProvider] 使用内嵌工具链:" << res.executablePath
+                 << "(root:" << root << ")";
+    }
+    return res;
+}
+
+// ============================================================
+// resolveUserData —— 从用户数据目录解析
+// ============================================================
+ToolchainResolution LldbDapProvider::resolveUserData() const
+{
+    const QString root = userDataToolchainRoot();
+    if (root.isEmpty()) return {};
+
+    QFileInfo rootInfo(root);
+    if (!rootInfo.exists() || !rootInfo.isDir()) {
+        return {};
+    }
+
+    QStringList candidates = candidatesUnderRoot(root);
+    ToolchainResolution res = tryCandidatesRelaxed(candidates, "user-data");
+    if (res.found) {
+        qDebug() << "[LldbDapProvider] 使用用户数据目录工具链:"
+                 << res.executablePath << "(root:" << root << ")";
+    }
+    return res;
+}
+
+// ============================================================
 // 主逻辑：resolve
 // ============================================================
 ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
 {
     Q_UNUSED(id);
 
-    // ---------------- 1. 用户显式配置（环境变量） ----------------
+    // ---------------- 0. 用户显式配置（环境变量） ----------------
     {
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         QString explicitPath = env.value("LLDB_DAP_PATH").trimmed();
@@ -180,7 +311,19 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
         }
     }
 
-    // ---------------- 2. 系统 PATH ----------------
+    // ---------------- 1. 内嵌工具链（打包后才有） ----------------
+    {
+        auto res = resolveBundled();
+        if (res.found) return res;
+    }
+
+    // ---------------- 2. 用户数据目录（为 on-demand 下载预留） ----------------
+    {
+        auto res = resolveUserData();
+        if (res.found) return res;
+    }
+
+    // ---------------- 3. 系统 PATH ----------------
     {
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         QStringList pathDirs = env.value("PATH").split(QDir::listSeparator(),
@@ -196,7 +339,7 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
         if (res.found) return res;
     }
 
-    // ---------------- 3. Homebrew LLVM / LLDB 独立 formula ----------------
+    // ---------------- 4. Homebrew LLVM / LLDB 独立 formula ----------------
 #ifdef Q_OS_MAC
     {
         QStringList brewBases = {
@@ -217,7 +360,7 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
     }
 #endif
 
-    // ---------------- 4. VS Code CodeLLDB 扩展（按版本从新到旧） ----------------
+    // ---------------- 5. VS Code CodeLLDB 扩展（按版本从新到旧） ----------------
     {
         QStringList candidates = enumerateCodeLldbCandidates();
         auto res = tryCandidatesRelaxed(candidates, "vscode-codelldb");
@@ -227,7 +370,7 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
         }
     }
 
-    // ---------------- 5. Xcode / CommandLineTools ----------------
+    // ---------------- 6. Xcode / CommandLineTools ----------------
 #ifdef Q_OS_MAC
     {
         QStringList candidates = {
@@ -241,7 +384,7 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
     }
 #endif
 
-    // ---------------- 6. Linux 常见位置 ----------------
+    // ---------------- 7. Linux 常见位置 ----------------
 #ifdef Q_OS_LINUX
     {
         QStringList candidates = {
@@ -260,6 +403,9 @@ ToolchainResolution LldbDapProvider::resolve(ToolchainId id) const
     return fail;
 }
 
+// ============================================================
+// installHint
+// ============================================================
 ToolchainInstallHint LldbDapProvider::installHint(ToolchainId id) const
 {
     Q_UNUSED(id);

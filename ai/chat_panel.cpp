@@ -232,7 +232,7 @@ QWidget* ChatPanel::createInputArea()
     inputRow->setContentsMargins(12, 8, 12, 12);
     inputRow->setSpacing(8);
     inputRow->addWidget(m_inputEdit, 1);
-    inputRow->addWidget(m_sendButton);   // ★ 不加 Qt::AlignBottom —— 让按钮跟输入框等高
+    inputRow->addWidget(m_sendButton);   // 不加 Qt::AlignBottom —— 让按钮跟输入框等高
 
     QWidget* inputContainer = new QWidget(this);
     inputContainer->setObjectName("inputFrame");
