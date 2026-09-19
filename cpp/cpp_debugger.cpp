@@ -195,6 +195,15 @@ void CppDebugger::onAdapterInitialized()
 void CppDebugger::sendLaunch()
 {
     QJsonObject args;
+    // 把 environment 显式写入 DAP launch 请求的 env 字段
+    if (!m_config.environment.isEmpty()) {
+        QJsonObject envObj;
+        const auto keys = m_config.environment.keys();
+        for (const QString& key : keys) {
+            envObj[key] = m_config.environment.value(key);
+        }
+        args["env"] = envObj;
+    }
     args["program"] = m_config.program;
     args["cwd"] = m_config.workingDirectory.isEmpty()
                       ? QFileInfo(m_config.program).absolutePath()

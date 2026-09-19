@@ -17,6 +17,7 @@ QMap<LanguageType, IBuilder*> BuilderFactory::s_builders;
 
 void BuilderFactory::initializeDefaults() {
     registerBuilder(LanguageType::Cpp, new CppBuilder());
+    registerBuilder(LanguageType::Qt,  new CppBuilder());
     registerBuilder(LanguageType::Python, new PythonBuilder());
     registerBuilder(LanguageType::Java, new JavaBuilder());
     registerBuilder(LanguageType::Go, new GoBuilder());

@@ -86,11 +86,19 @@ public:
     /// 在 CMakeCache.txt 中读取 CMAKE_RUNTIME_OUTPUT_DIRECTORY
     static QString readCMakeRuntimeOutputDir(const QString& buildDir);
 
+    /// 是否识别为 Qt 项目（CMakeLists 含 find_package(Qt5/Qt6，或存在 *.pro）
+    bool isQtProject() const { return m_isQtProject; }
+
+    /// Qt 主版本号（5 / 6），非 Qt 项目为 0
+    int qtMajorVersion() const { return m_qtMajorVersion; }
+
 private:
     void detectBuildSystem();
     void scanCMakeTargets();
     void scanCMakeProjectName();
     void scanSourceFiles();
+    /// 在 load() 末尾调用：扫描 CMakeLists.txt / *.pro，判断是否 Qt
+    void detectQtProject();
 
     QString m_projectPath;
     CppBuildSystem m_buildSystem = CppBuildSystem::Unknown;
@@ -99,6 +107,8 @@ private:
     QString m_projectName;
     QList<CppTarget> m_targets;
     QStringList m_sourceFiles;
+    bool m_isQtProject = false;
+    int  m_qtMajorVersion = 0;
 };
 
 } // namespace SprintIDE

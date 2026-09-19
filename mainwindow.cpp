@@ -191,6 +191,15 @@ static SprintIDE::LanguageType detectProjectLanguage(const QString& projectPath)
         return SprintIDE::LanguageType::Java;
     }
 
+    // Qt（必须在 C++ 之前判定）
+    {
+        SprintIDE::CppProjectModel qtProbe(projectPath);
+        qtProbe.load();
+        if (qtProbe.isQtProject()) {
+            return SprintIDE::LanguageType::Qt;
+        }
+    }
+
     // C++ (CMake 或 Makefile)
     if (dir.exists("CMakeLists.txt") || dir.exists("Makefile") || dir.exists("configure")) {
         return SprintIDE::LanguageType::Cpp;
@@ -1230,7 +1239,7 @@ void MainWindow::setupDockWidgets()
             });
 
     m_bottomTabWidget->addTab(d->outputPanel,
-                              QIcon(":/icons/run_view.svg"),
+                              QIcon(":/icons/icons/run_view.svg"),
                               "输出");
 
     m_bottomDockWidget->setWidget(m_bottomTabWidget);
@@ -3059,6 +3068,33 @@ void MainWindow::onStartDebug() {
 
         // 3. 构建配置
         CppDebugConfig cfg;
+#ifdef Q_OS_MAC
+    // Qt.app 程序需要 DYLD_FRAMEWORK_PATH 才能加载 Qt Framework
+    QString qtDir = task.sdkConfig.value("QT_DIR").toString();
+    if (qtDir.isEmpty()) {
+        ConfigManager* cfgMgr = Application::instance().configManager();
+        if (cfgMgr) {
+            qtDir = cfgMgr->value("Sdk/Environment").toMap()
+                        .value("QT_DIR").toString();
+        }
+    }
+    if (!qtDir.isEmpty()) {
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        #ifdef Q_OS_MAC
+                const QString libDir = qtDir + "/lib";
+                env.insert("DYLD_FRAMEWORK_PATH", libDir);
+                env.insert("DYLD_LIBRARY_PATH", libDir);
+        #elif defined(Q_OS_LINUX)
+                const QString libDir = qtDir + "/lib";
+                env.insert("LD_LIBRARY_PATH",
+                           libDir + ":" + env.value("LD_LIBRARY_PATH"));
+        #elif defined(Q_OS_WIN)
+                env.insert("PATH",
+                           qtDir + "/bin;" + env.value("PATH"));
+        #endif
+        cfg.environment = env;
+    }
+#endif
         cfg.adapterPath = adapterRes.executablePath;
         cfg.program = exePath;
         cfg.workingDirectory = QFileInfo(exePath).absolutePath();
@@ -5462,7 +5498,7 @@ void MainWindow::onBuildProject()
     task.projectPath = projectPath;
 
     //    C++ 项目：不预设 outputName，让 CppBuilder 从 CMakeLists 里取真正的 target 名
-    if (lang == LanguageType::Cpp) {
+    if (lang == LanguageType::Cpp || lang == LanguageType::Qt) {
         task.outputName = QString();
         task.outputDir = "build";
     } else {
@@ -5473,6 +5509,31 @@ void MainWindow::onBuildProject()
     }
     task.enableDebug = projectConfig.enableDebugInfo();
     task.sdkConfig = projectConfig.sdkEnvironment();
+
+    // ========== Qt 特有：把 QT_DIR 注入到 cmake 命令行的 CMAKE_PREFIX_PATH ==========
+    if (lang == LanguageType::Qt) {
+        QString qtDir = task.sdkConfig.value("QT_DIR").toString();
+
+        // 项目配置没写就回退到全局设置
+        if (qtDir.isEmpty()) {
+            ConfigManager* cfg = Application::instance().configManager();
+            if (cfg) {
+                QVariantMap globalSdk = cfg->value("Sdk/Environment").toMap();
+                qtDir = globalSdk.value("QT_DIR").toString();
+            }
+        }
+
+        if (qtDir.isEmpty()) {
+            // 给一个提示但不阻塞：让 CMake 靠系统自动查找，很多机器装在标准路径
+            d->outputPanel->append(
+                "<span style='color:#FFAA00;'>警告：未在设置里配置 QT_DIR，"
+                "CMake 将依赖系统自动探测 Qt。</span>");
+        } else {
+            task.extraArgs << QString("-DCMAKE_PREFIX_PATH=%1").arg(qtDir);
+            d->outputPanel->append(
+                QString("Qt SDK: %1").arg(qtDir));
+        }
+    }
 
     // ============================================================
     // 第四步（前置）：C++ 项目 —— 只做快速探测，避免重复扫描
@@ -5621,6 +5682,17 @@ void MainWindow::onCleanBuild()
 
 void MainWindow::onCompile() {
     TextEditor* editor = currentEditor();
+    // Qt 文件必须走项目构建（AUTOMOC/AUTOUIC 只能由 CMake 处理）
+    if (!d->currentProjectPath.isEmpty()) {
+        SprintIDE::CppProjectModel probe(d->currentProjectPath);
+        probe.load();
+        if (probe.isQtProject()) {
+            d->outputPanel->append("Qt 项目，切换到项目构建模式");
+            onBuildProject();
+            return;
+        }
+    }
+
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件进行编译。");
         return;
@@ -5831,7 +5903,7 @@ void MainWindow::onRun()
 
 
     // ========== C++ / 其他可执行语言：异步运行 ==========
-    if (lang == LanguageType::Cpp) {
+    if (lang == LanguageType::Cpp || lang == LanguageType::Qt) {
         if (editor->isModified()) {
             if (!editor->saveFile()) {
                 QMessageBox::warning(this, "保存错误", "无法保存文件，运行中止。");

@@ -559,11 +559,58 @@ QString EnvironmentSettingsPage::detectSDKPath(const QString& key) const
         if (QFile::exists(path)) return path;
 #endif
     } else if (key == "QT_DIR") {
-        QString appDir = qApp->applicationDirPath();
-        if (appDir.endsWith("/bin") || appDir.endsWith("\\bin")) {
-            return QFileInfo(appDir).absolutePath();
+#ifdef Q_OS_MAC
+        // 1. 扫 ~/Qt/<version>/<kit>/
+        QDir qtBase(QDir::homePath() + "/Qt");
+        if (qtBase.exists()) {
+            QStringList versions = qtBase.entryList(QDir::Dirs | QDir::NoDotAndDotDot,
+                                                    QDir::Name | QDir::Reversed);
+            for (const QString& ver : versions) {
+                QDir verDir(qtBase.absoluteFilePath(ver));
+                // kit 命名：macos / gcc_64 / msvc2019_64 / android_arm64_v8a ...
+                QStringList kits = verDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& kit : kits) {
+                    QString cand = verDir.absoluteFilePath(kit);
+                    if (QFile::exists(cand + "/lib/cmake/Qt6/Qt6Config.cmake") ||
+                        QFile::exists(cand + "/lib/cmake/Qt5/Qt5Config.cmake")) {
+                        qDebug() << "[EnvSettings] 找到 Qt:" << cand;
+                        return cand;
+                    }
+                }
+            }
         }
-        return appDir;
+        // 2. Homebrew
+        for (const QString& p : {QString("/opt/homebrew/opt/qt"),
+                                 QString("/usr/local/opt/qt")}) {
+            if (QFile::exists(p + "/lib/cmake/Qt6/Qt6Config.cmake"))
+                return QFileInfo(p).canonicalFilePath();
+        }
+#elif defined(Q_OS_WIN)
+        QDir qtBase("C:/Qt");
+        if (qtBase.exists()) {
+            QStringList versions = qtBase.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const QString& ver : versions) {
+                QDir verDir(qtBase.absoluteFilePath(ver));
+                QStringList kits = verDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& kit : kits) {
+                    QString cand = verDir.absoluteFilePath(kit);
+                    if (QFile::exists(cand + "/lib/cmake/Qt6/Qt6Config.cmake") ||
+                        QFile::exists(cand + "/lib/cmake/Qt5/Qt5Config.cmake")) {
+                        return cand;
+                    }
+                }
+            }
+        }
+#else
+        // Linux：系统包管理器安装的 Qt
+        for (const QString& p : {QString("/usr/lib/x86_64-linux-gnu/cmake/Qt6"),
+                                 QString("/usr/lib/cmake/Qt6"),
+                                 QString("/usr/lib64/cmake/Qt6")}) {
+            if (QFile::exists(p + "/Qt6Config.cmake"))
+                return QFileInfo(p).absolutePath();
+        }
+#endif
+        return QString();
     } else if (key == "GOROOT") {
         QProcess proc;
         proc.start("go", {"env", "GOROOT"});

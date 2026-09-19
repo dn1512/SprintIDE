@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <algorithm>
 #include <functional>   // for std::greater
+#include <QHash>
 
 namespace SprintIDE {
 
@@ -64,6 +65,9 @@ bool CppProjectModel::load()
         m_projectName = QFileInfo(m_projectPath).fileName();
         break;
     }
+
+    // 在扫描源码之前先探测 Qt（依赖 m_cmakeListsPath 已经设置好）
+    detectQtProject();
 
     scanSourceFiles();
     return true;
@@ -181,38 +185,86 @@ void CppProjectModel::scanCMakeTargets()
     // 移除 # 行注释
     content.replace(QRegularExpression(R"(#[^\n]*)"), "");
 
-    // add_executable(name src1 src2 ...)
+    // ============================================================
+    // 1. 收集简单的 CMake 变量（不做完整解析，只处理常见形态）
+    // ============================================================
+    QHash<QString, QString> vars;
+
+    // project(X ...)  →  PROJECT_NAME = X
+    {
+        static QRegularExpression reProj(R"(project\s*\(\s*([A-Za-z0-9_\-\.]+))");
+        auto m = reProj.match(content);
+        if (m.hasMatch()) {
+            vars["PROJECT_NAME"] = m.captured(1);
+        }
+    }
+
+    // set(VAR value)  →  VAR = value    （单值形式，忽略 list）
+    {
+        static QRegularExpression reSet(
+            R"(set\s*\(\s*([A-Za-z0-9_]+)\s+([A-Za-z0-9_\-\.]+)\s*\))");
+        auto it = reSet.globalMatch(content);
+        while (it.hasNext()) {
+            auto m = it.next();
+            vars[m.captured(1)] = m.captured(2);
+        }
+    }
+
+    // 一层变量展开（迭代两次，处理 a→b, b→c 这种简单链）
+    auto expandVars = [&vars](const QString& in) {
+        QString out = in;
+        for (int pass = 0; pass < 2; ++pass) {
+            bool changed = false;
+            for (auto it = vars.begin(); it != vars.end(); ++it) {
+                const QString token = "${" + it.key() + "}";
+                if (out.contains(token)) {
+                    out.replace(token, it.value());
+                    changed = true;
+                }
+            }
+            if (!changed) break;
+        }
+        return out;
+    };
+
+    // ============================================================
+    // 2. 扫 add_executable / add_library，第一参数允许 ${VAR}
+    //    —— 改用更宽松的字符类 [^\s\)]+，捕获后再展开
+    // ============================================================
     static QRegularExpression reExe(
-        R"(add_executable\s*\(\s*([A-Za-z0-9_\-\.]+)([^\)]*)\))",
+        R"(add_executable\s*\(\s*([^\s\)]+)([^\)]*)\))",
         QRegularExpression::DotMatchesEverythingOption);
     auto it = reExe.globalMatch(content);
     while (it.hasNext()) {
         auto m = it.next();
         CppTarget t;
-        t.name = m.captured(1);
+        t.name = expandVars(m.captured(1));
+        if (t.name.isEmpty()) continue;
         t.type = "executable";
         QString rest = m.captured(2).trimmed();
         if (!rest.isEmpty()) {
-            for (const QString& s : rest.split(QRegularExpression(R"(\s+)"), Qt::SkipEmptyParts)) {
+            for (const QString& s : rest.split(QRegularExpression(R"(\s+)"),
+                                               Qt::SkipEmptyParts)) {
                 t.sources << s;
             }
         }
         m_targets.append(t);
     }
 
-    // add_library(name [STATIC|SHARED|MODULE] srcs...)
     static QRegularExpression reLib(
-        R"(add_library\s*\(\s*([A-Za-z0-9_\-\.]+)\s*(STATIC|SHARED|MODULE)?([^\)]*)\))",
+        R"(add_library\s*\(\s*([^\s\)]+)\s*(STATIC|SHARED|MODULE)?([^\)]*)\))",
         QRegularExpression::DotMatchesEverythingOption);
     auto it2 = reLib.globalMatch(content);
     while (it2.hasNext()) {
         auto m = it2.next();
         CppTarget t;
-        t.name = m.captured(1);
+        t.name = expandVars(m.captured(1));
+        if (t.name.isEmpty()) continue;
         t.type = "library";
         QString rest = m.captured(3).trimmed();
         if (!rest.isEmpty()) {
-            for (const QString& s : rest.split(QRegularExpression(R"(\s+)"), Qt::SkipEmptyParts)) {
+            for (const QString& s : rest.split(QRegularExpression(R"(\s+)"),
+                                               Qt::SkipEmptyParts)) {
                 t.sources << s;
             }
         }
@@ -220,6 +272,7 @@ void CppProjectModel::scanCMakeTargets()
     }
 
     qDebug() << "[CppProjectModel] CMake targets found:" << m_targets.size()
+             << "vars expanded:" << vars
              << "in" << m_cmakeListsPath;
 }
 
@@ -235,6 +288,45 @@ void CppProjectModel::scanSourceFiles()
         // 跳过 build 目录内的产物
         if (path.contains("/build/") || path.contains("/.git/")) continue;
         m_sourceFiles << path;
+    }
+}
+
+void CppProjectModel::detectQtProject()
+{
+    m_isQtProject = false;
+    m_qtMajorVersion = 0;
+
+    // 情况 A：CMake 项目 —— 读 CMakeLists.txt 找 find_package(Qt5 / Qt6
+    if (m_buildSystem == CppBuildSystem::CMake) {
+        QFile f(m_cmakeListsPath);
+        if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+        QTextStream in(&f);
+        const QString content = in.readAll();
+        f.close();
+
+        // 允许 find_package(Qt6 ...)、find_package(Qt5 COMPONENTS ...)
+        static QRegularExpression re(R"(find_package\s*\(\s*Qt([56])\b)");
+        auto m = re.match(content);
+        if (m.hasMatch()) {
+            m_isQtProject   = true;
+            m_qtMajorVersion = m.captured(1).toInt();
+            qDebug() << "[CppProjectModel] 检测到 Qt" << m_qtMajorVersion
+                     << "项目:" << m_projectPath;
+            return;
+        }
+        // 兜底：有些人直接写 target_link_libraries(xxx Qt6::Widgets)
+        if (content.contains(QRegularExpression(R"(Qt[56]::)"))) {
+            m_isQtProject = true;
+            m_qtMajorVersion = content.contains("Qt6::") ? 6 : 5;
+            return;
+        }
+    }
+
+    // 情况 B：qmake 项目 —— 根目录存在 *.pro
+    QDir dir(m_projectPath);
+    if (!dir.entryList({"*.pro"}, QDir::Files).isEmpty()) {
+        m_isQtProject = true;   // 版本未知，保持 0
+        qDebug() << "[CppProjectModel] 检测到 qmake 项目:" << m_projectPath;
     }
 }
 
@@ -281,6 +373,7 @@ QString CppProjectModel::guessExecutablePath(const QString& targetName) const
         runtimeDir = readCMakeRuntimeOutputDir(buildDir);
     }
 
+    // 所有可能藏着产物的目录
     QStringList searchDirs;
     if (!runtimeDir.isEmpty()) {
         searchDirs << runtimeDir;
@@ -292,7 +385,7 @@ QString CppProjectModel::guessExecutablePath(const QString& targetName) const
                << QDir(buildDir).absoluteFilePath("cmake-build-debug")
                << QDir(buildDir).absoluteFilePath("cmake-build-release");
 
-    // 若没有指定 target，扫描所有可执行文件
+    // 若没有指定 target，candidateNames 为空，后续"按名字匹配"会跳过
     QStringList candidateNames;
     if (!targetName.isEmpty()) {
         candidateNames << targetName;
@@ -301,27 +394,80 @@ QString CppProjectModel::guessExecutablePath(const QString& targetName) const
 #endif
     }
 
-    // 先按名字匹配
+    // ============================================================
+    // 第一步：按名字匹配
+    // ============================================================
     for (const QString& dir : searchDirs) {
         QDir d(dir);
         if (!d.exists()) continue;
+
+#ifdef Q_OS_MAC
+        // Qt GUI 应用：<dir>/<target>.app/Contents/MacOS/<target>
+        if (!targetName.isEmpty()) {
+            const QString appBundle = d.absoluteFilePath(targetName + ".app");
+            const QFileInfo bundleInfo(appBundle);
+            if (bundleInfo.isDir()) {
+                const QString inner =
+                    QDir(appBundle).absoluteFilePath("Contents/MacOS/" + targetName);
+                if (QFile::exists(inner) && QFileInfo(inner).isExecutable()) {
+                    qDebug() << "[CppProjectModel] 命中 .app bundle:" << inner;
+                    return inner;
+                }
+            }
+        }
+#endif
+
         for (const QString& name : candidateNames) {
-            QString full = d.absoluteFilePath(name);
+            const QString full = d.absoluteFilePath(name);
             if (QFile::exists(full) && QFileInfo(full).isExecutable()) {
                 return full;
             }
         }
     }
 
-    // 名字没匹配上，扫描构建根目录下的可执行文件
+#ifdef Q_OS_MAC
+    // ============================================================
+    // 第二步（macOS 专属 fallback）：扫描所有 *.app bundle
+    //
+    // 用于 targetName 为空、或 targetName 与 .app 名不一致的场景。
+    // 典型触发：CMakeLists 里写 add_executable(${PROJECT_NAME} ...)，
+    //           target 名无法静态解析 → targetName 为空。
+    // ============================================================
+    {
+        for (const QString& root : searchDirs) {
+            QDir r(root);
+            if (!r.exists()) continue;
+
+            const QFileInfoList bundles = r.entryInfoList(
+                {"*.app"}, QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const QFileInfo& b : bundles) {
+                // "SprintIDE.app" → "SprintIDE"
+                const QString appName = b.completeBaseName();
+                const QString inner =
+                    b.absoluteFilePath() + "/Contents/MacOS/" + appName;
+                if (QFile::exists(inner) && QFileInfo(inner).isExecutable()) {
+                    qDebug() << "[CppProjectModel] fallback 扫到 .app:" << inner;
+                    return inner;
+                }
+            }
+        }
+    }
+#endif
+
+    // ============================================================
+    // 第三步：扫描构建根目录下的裸可执行文件（非 bundle）
+    //   —— Linux / Windows 主路径，macOS 上作为最后兜底
+    // ============================================================
     QDir buildRoot(buildDir);
     if (buildRoot.exists()) {
-        QFileInfoList entries = buildRoot.entryInfoList(QDir::Files | QDir::Executable,
-                                                        QDir::Time | QDir::DirsFirst);
+        const QFileInfoList entries =
+            buildRoot.entryInfoList(QDir::Files | QDir::Executable,
+                                    QDir::Time | QDir::DirsFirst);
         for (const QFileInfo& fi : entries) {
-            // 跳过 .so/.dylib/.a/.o 等
-            QString s = fi.suffix().toLower();
-            if (s == "so" || s == "dylib" || s == "a" || s == "o" || s == "cmake") continue;
+            const QString s = fi.suffix().toLower();
+            if (s == "so" || s == "dylib" || s == "a" || s == "o" || s == "cmake") {
+                continue;
+            }
             if (fi.isExecutable()) {
                 return fi.absoluteFilePath();
             }

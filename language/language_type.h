@@ -12,6 +12,7 @@ namespace SprintIDE {
 enum class LanguageType {
     Unknown,
     Cpp,
+    Qt,
     Python,
     Java,
     Go,
@@ -40,6 +41,7 @@ inline QString languageTypeToString(LanguageType type) {
     switch (type) {
     case LanguageType::Unknown:   return "Unknown";
     case LanguageType::Cpp:       return "Cpp";
+    case LanguageType::Qt:        return "Qt";
     case LanguageType::Python:    return "Python";
     case LanguageType::Java:      return "Java";
     case LanguageType::Go:        return "Go";
