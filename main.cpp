@@ -8,6 +8,7 @@
 #include "debug_manager.h"
 #include "builder/builder_factory.h"
 #include "font_manager.h"
+#include "git/git_manager.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -168,11 +169,15 @@ int main(int argc, char *argv[])
         DebugManager::instance().shutdown();
         qDebug() << "[main] DebugManager 已 shutdown";
 
-        // 3.2 BuilderFactory：纯静态资源，但习惯上一起清理
+        // 3.2 GitManager：持有 QProcess
+        SprintIDE::Git::GitManager::instance().shutdown();
+        qDebug() << "[main] GitManager 已 shutdown";
+
+        // 3.3 BuilderFactory：纯静态资源，但习惯上一起清理
         BuilderFactory::shutdown();
         qDebug() << "[main] BuilderFactory 已 shutdown";
 
-        // 3.3 Application：清理 ConfigManager（QObject 子对象）
+        // 3.4 Application：清理 ConfigManager（QObject 子对象）
         //     注意：Application 单例本身的析构还会在 atexit 阶段跑一次，
         //          但因为内部状态已清空，第二次 shutdown() 是幂等的空操作。
         sprintApp.shutdown();
@@ -185,6 +190,7 @@ int main(int argc, char *argv[])
 
         // 异常路径也要尝试清理
         DebugManager::instance().shutdown();
+        SprintIDE::Git::GitManager::instance().shutdown();
         BuilderFactory::shutdown();
 
         QMessageBox::critical(nullptr, "致命错误",
@@ -197,6 +203,7 @@ int main(int argc, char *argv[])
 
         // 异常路径也要尝试清理
         DebugManager::instance().shutdown();
+        SprintIDE::Git::GitManager::instance().shutdown();
         BuilderFactory::shutdown();
 
         QMessageBox::critical(nullptr, "未知错误",

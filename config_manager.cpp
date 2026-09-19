@@ -56,6 +56,14 @@ bool ConfigManager::initialize()
         d->settings->setValue("Editor/TabWidth", 4);
         d->settings->setValue("Editor/FontFamily", "Monaco");
         d->settings->setValue("Editor/FontSize", 13);
+
+        // AI 默认段（可选）
+        d->settings->setValue("AI/Host",               "127.0.0.1");
+        d->settings->setValue("AI/Port",               9876);
+        d->settings->setValue("AI/AutoStart",          true);
+        d->settings->setValue("AI/AutoFixErrors",      true);
+        d->settings->setValue("AI/AutoIncludeContext", true);
+
         d->settings->sync();
     }
 

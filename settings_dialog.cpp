@@ -3,6 +3,8 @@
 #include "application.h"
 #include "config_manager.h"
 #include "compile_manager.h"
+#include "ai/ai_settings_page.h"
+
 #include <QFileDialog>
 #include <QGroupBox>
 #include <QFormLayout>
@@ -724,6 +726,9 @@ void SettingsDialog::createUI()
     // 添加 Python 设置页
     m_categoryList->addItem(tr("Python"));
 
+    // AI 设置页
+    m_categoryList->addItem(tr("AI"));
+
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
 
@@ -745,8 +750,15 @@ void SettingsDialog::createUI()
     m_stackedWidget->addWidget(pyPage);
     m_pages.append(pyPage);
 
+    AISettingsPage* aiPage = new AISettingsPage(this);
+    m_stackedWidget->addWidget(aiPage);
+    m_pages.append(aiPage);
+
     connect(m_categoryList, &QListWidget::currentRowChanged,
             this, &SettingsDialog::onCategoryChanged);
+    // 转发信号（如果 SettingsDialog 需要向上传递）：
+    connect(aiPage, &AISettingsPage::aiServerRestartRequested,
+            this,   &SettingsDialog::aiServerRestartRequested);
     m_categoryList->setCurrentRow(0);
 
     // 底部按钮

@@ -102,6 +102,10 @@
 #include "deps/toolchain_types.h"
 #include "deps/toolchain_dialog.h"
 
+// Git 模块
+#include "git/git_manager.h"
+#include "git/git_panel.h"
+
 
 using namespace SprintIDE;
 
@@ -338,6 +342,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
     setupDebugPanel();
     setupTerminalPanel();
+    setupGitPanel();
 
     connect(&tm, &ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
@@ -399,7 +404,6 @@ MainWindow::MainWindow(QWidget *parent)
         connect(d->projectPanel, &ProjectPanel::requestFileHistory,
                 this, &MainWindow::showFileHistoryDialog);
     }
-    qDebug() << "[MW-99] 构造结束";
 }
 
 MainWindow::~MainWindow()
@@ -932,6 +936,36 @@ void MainWindow::setupMenuBar()
     m_addBreakpointAction->setShortcut(QKeySequence("Ctrl+F8"));
     connect(m_addBreakpointAction, &QAction::triggered, this, &MainWindow::onAddBreakpoint);
 
+    // ==================== Git 菜单 ====================
+    QMenu *gitMenu = menuBar->addMenu("Git(&G)");
+
+    m_gitInitAction = gitMenu->addAction("初始化仓库(&I)");
+    connect(m_gitInitAction, &QAction::triggered, this, &MainWindow::onGitInit);
+
+    m_gitCommitAction = gitMenu->addAction("提交(&C)...");
+    m_gitCommitAction->setShortcut(QKeySequence("Ctrl+K"));
+    connect(m_gitCommitAction, &QAction::triggered, this, &MainWindow::onGitCommit);
+
+    gitMenu->addSeparator();
+
+    m_gitFetchAction = gitMenu->addAction("获取(&F)");
+    connect(m_gitFetchAction, &QAction::triggered, this, &MainWindow::onGitFetch);
+
+    m_gitPullAction = gitMenu->addAction("拉取(&P)");
+    connect(m_gitPullAction, &QAction::triggered, this, &MainWindow::onGitPull);
+
+    m_gitPushAction = gitMenu->addAction("推送(&U)");
+    connect(m_gitPushAction, &QAction::triggered, this, &MainWindow::onGitPush);
+
+    gitMenu->addSeparator();
+
+    m_gitRefreshAction = gitMenu->addAction("刷新状态(&R)");
+    m_gitRefreshAction->setShortcut(QKeySequence("F5"));
+    connect(m_gitRefreshAction, &QAction::triggered, this, &MainWindow::onGitRefresh);
+
+    m_gitShowHistoryAction = gitMenu->addAction("查看历史(&H)");
+    connect(m_gitShowHistoryAction, &QAction::triggered, this, &MainWindow::onGitShowHistory);
+
     // ==================== 工具菜单 ====================
     QMenu *toolsMenu = menuBar->addMenu("工具(&T)");
 
@@ -1338,6 +1372,48 @@ void MainWindow::setupTerminalPanel()
     }
 }
 
+// ========== Git 面板设置 ==========
+
+void MainWindow::setupGitPanel()
+{
+    // 1. 创建 Dock（右侧）
+    m_gitDock = new QDockWidget("Git", this);
+    m_gitDock->setObjectName("GitDock");
+    m_gitDock->setAllowedAreas(Qt::RightDockWidgetArea | Qt::LeftDockWidgetArea);
+    m_gitDock->setMinimumWidth(280);
+
+    // 2. 创建 Panel
+    m_gitPanel = new Git::GitPanel(m_gitDock);
+    m_gitDock->setWidget(m_gitPanel);
+    addDockWidget(Qt::RightDockWidgetArea, m_gitDock);
+
+    // 3. 默认隐藏（无项目 / 非仓库时不占用屏幕）
+    m_gitDock->setVisible(false);
+
+    // 4. 双击文件 → 打开编辑器
+    connect(m_gitPanel, &Git::GitPanel::fileDoubleClicked,
+            this, &MainWindow::onGitFileDoubleClicked);
+
+    // 5. 仓库/状态变化 → 更新菜单可用性
+    connect(&Git::GitManager::instance(), &Git::GitManager::repositoryChanged,
+            this, [this](const Git::GitRepositoryInfo&) { updateGitActions(); });
+    connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
+            this, [this](const QList<Git::GitFileStatus>&) { updateGitActions(); });
+
+    // 6. 命令失败 → 输出面板
+    connect(&Git::GitManager::instance(), &Git::GitManager::commandFailed,
+            this, [this](const QString& op, const QString& err) {
+                if (d->outputPanel) {
+                    d->outputPanel->append(
+                        QString("<span style='color:#FF6B6B;'>Git %1 失败: %2</span>")
+                            .arg(op, err.toHtmlEscaped()));
+                }
+            });
+
+    updateGitActions();
+    qDebug() << "[MW] setupGitPanel 完成";
+}
+
 void MainWindow::applyTheme()
 {
     // 主题应用留空，后续实现
@@ -1501,7 +1577,9 @@ void MainWindow::openProject(const QString &path) {
         m_localHistory->setProjectRoot(d->currentProjectPath);
     }
 
-    // 加载项目文件列表（可选）
+    // 加载项目文件列表
+    // 注意：loadAllProjectFiles 会深度遍历目录，遇到符号链接可能无限递归。
+    // 已经改为带过滤 + 深度限制的版本，见下方函数实现。
     loadAllProjectFiles(actualRoot);
 
     ProjectModel* model = pm->javaProjectModel();
@@ -1519,15 +1597,30 @@ void MainWindow::openProject(const QString &path) {
     }
 
     d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
+
+    // ========== Git 绑定 ==========
+    if (m_gitPanel) {
+        m_gitPanel->setProjectRoot(d->currentProjectPath);
+        m_gitDock->setVisible(Git::GitManager::instance().isActive());
+        updateGitActions();
+    }
+
     // 延迟恢复上次会话
     // 用 singleShot 确保当前 openProject 流程走完、UI 已就绪后再恢复，
     // 避免在 MainWindow 构造期间被 main.cpp 提前调用导致 tab 错乱。
     QTimer::singleShot(150, this, &MainWindow::restoreSession);
 }
 
+
 void MainWindow::closeProject()
 {
     d->currentProjectPath.clear();
+
+    // Git 解绑
+    Git::GitManager::instance().setProjectRoot(QString());
+    if (m_gitDock) m_gitDock->setVisible(false);
+    updateGitActions();
+
     // updateWindowTitle();
 }
 
@@ -1996,6 +2089,11 @@ void MainWindow::onFileSaved(const QString &filePath)
         if (client && client->isReady()) {
             client->saveDocument(filePath);
         }
+    }
+
+    // Git 状态刷新（文件保存后对应的 git status 可能变化）
+    if (Git::GitManager::instance().isActive()) {
+        Git::GitManager::instance().refreshStatus();
     }
 }
 
@@ -4551,6 +4649,166 @@ void MainWindow::onDebuggerContinued()
     updateDebugActions(); // 这个函数会根据 m_isDebugging 状态更新按钮
 }
 
+// ==================== Git 槽函数实现 ====================
+
+void MainWindow::onGitInit()
+{
+    if (d->currentProjectPath.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先打开一个项目。");
+        return;
+    }
+    if (!m_gitPanel) return;
+
+    m_gitDock->setVisible(true);
+    m_gitPanel->setProjectRoot(d->currentProjectPath);
+
+    // 若已是仓库，这里什么都不做
+    if (Git::GitManager::instance().isActive()) {
+        d->outputPanel->append("当前目录已是 Git 仓库");
+        return;
+    }
+
+    QString err;
+    if (!Git::GitManager::instance().initRepository(d->currentProjectPath, &err)) {
+        QMessageBox::warning(this, "初始化失败",
+                             QString("无法初始化 Git 仓库：\n\n%1").arg(err));
+        return;
+    }
+    d->outputPanel->append(
+        QString("<span style='color:#33CC33;'>Git 仓库已初始化: %1</span>")
+            .arg(d->currentProjectPath));
+    updateGitActions();
+}
+
+void MainWindow::onGitCommit()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    m_gitDock->setVisible(true);
+    // 让面板聚焦到提交消息框，具体由面板自身处理；这里只切显示
+}
+
+void MainWindow::onGitPush()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    if (!Git::GitManager::instance().hasRemote()) {
+        d->outputPanel->append(
+            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法推送。</span>");
+        return;
+    }
+    d->outputPanel->append("正在推送...");
+    Git::GitManager::instance().push();
+}
+
+void MainWindow::onGitPull()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    if (!Git::GitManager::instance().hasRemote()) {
+        d->outputPanel->append(
+            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法拉取。</span>");
+        return;
+    }
+    d->outputPanel->append("正在拉取...");
+    Git::GitManager::instance().pull();
+}
+
+void MainWindow::onGitFetch()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    if (!Git::GitManager::instance().hasRemote()) {
+        d->outputPanel->append(
+            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法获取。</span>");
+        return;
+    }
+    d->outputPanel->append("正在获取远程更新...");
+    Git::GitManager::instance().fetch();
+}
+
+void MainWindow::onGitRefresh()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    Git::GitManager::instance().refreshStatus();
+}
+
+void MainWindow::onGitShowHistory()
+{
+    if (!Git::GitManager::instance().isActive()) return;
+    m_gitDock->setVisible(true);
+    m_gitDock->raise();
+}
+
+void MainWindow::onGitFileDoubleClicked(const QString& absolutePath)
+{
+    if (absolutePath.isEmpty()) return;
+    if (!QFile::exists(absolutePath)) {
+        d->outputPanel->append(
+            QString("<span style='color:#EBB65B;'>文件已被删除或移动: %1</span>")
+                .arg(absolutePath));
+        return;
+    }
+    openFile(absolutePath);
+}
+
+void MainWindow::updateGitActions()
+{
+    const bool active = Git::GitManager::instance().isActive();
+    const bool hasRemote = Git::GitManager::instance().hasRemote();
+    const bool hasProject = !d->currentProjectPath.isEmpty();
+
+    if (m_gitInitAction) {
+        m_gitInitAction->setEnabled(hasProject && !active);
+    }
+    if (m_gitCommitAction) {
+        m_gitCommitAction->setEnabled(active);
+    }
+    if (m_gitPushAction) {
+        m_gitPushAction->setEnabled(active && hasRemote);
+    }
+    if (m_gitPullAction) {
+        m_gitPullAction->setEnabled(active && hasRemote);
+    }
+    if (m_gitFetchAction) {
+        m_gitFetchAction->setEnabled(active && hasRemote);
+    }
+    if (m_gitRefreshAction) {
+        m_gitRefreshAction->setEnabled(active);
+    }
+    if (m_gitShowHistoryAction) {
+        m_gitShowHistoryAction->setEnabled(active);
+    }
+}
+
+void MainWindow::onAIRestartRequested(const QString& host, quint16 port)
+{
+    if (!m_aiServer) {
+        // 极端情况：AI 模块初始化失败，server 为空 → 现场创建一个
+        m_aiServer = new AIServer(this);
+    } else {
+        // 先停旧实例
+        m_aiServer->stopServer();
+    }
+
+    if (!m_aiServer->startServer(port, host)) {
+        QMessageBox::warning(
+            this, tr("AI 服务器"),
+            tr("重启失败：无法在 %1:%2 上监听。\n"
+               "请检查端口是否被占用，或地址是否合法。")
+                .arg(host).arg(port));
+
+        if (d && d->outputPanel) {
+            d->outputPanel->append(
+                QString("<span style='color:#FF5555;'>AI 服务器重启失败：%1:%2</span>")
+                    .arg(host).arg(port));
+        }
+        return;
+    }
+
+    if (d && d->outputPanel) {
+        d->outputPanel->append(
+            QString("<span style='color:#33CC33;'>AI 服务器已重启：%1:%2</span>")
+                .arg(host).arg(port));
+    }
+}
+
 void MainWindow::onComment()
 {
     TextEditor* editor = currentEditor();
@@ -4674,7 +4932,32 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
         return;
     }
 
-    // 定义支持的文件扩展名（可根据需要扩展）
+    // ============================================================
+    // 关键修复（v8.1+Git）：
+    //   1. 排除构建产物 / 元数据目录（build、.git、node_modules …）
+    //   2. QDir::NoSymLinks —— 不跟随符号链接
+    //      原因：macOS .framework 里存在 QtCore ↔ Versions/5/QtCore
+    //            的双向链接，跟随会导致无限递归 → 崩溃
+    //   3. 深度硬限制，防止路径过深的仓库耗尽栈/内存
+    // ============================================================
+    static const QStringList kExcludeDirs = {
+        // 版本控制
+        ".git", ".svn", ".hg",
+        // 构建产物
+        "build", "bin", "obj", "out", "dist", "target",
+        "Debug", "Release", "CMakeFiles",
+        // 依赖 / 缓存
+        "node_modules", "__pycache__", ".venv", "venv",
+        ".gradle", ".mvn", ".cargo", ".rustup",
+        // IDE 元数据
+        ".vs", ".idea", ".vscode",
+        // 打包
+        "dSYM", ".dSYM"
+    };
+
+    constexpr int kMaxDepth = 16;
+    constexpr int kMaxFiles = 20000;   // 硬上限，防止极端仓库拖死 UI
+
     QStringList filters;
     filters << "*.cpp" << "*.c" << "*.cc" << "*.cxx"
             << "*.h" << "*.hpp" << "*.hh" << "*.hxx"
@@ -4682,30 +4965,66 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
             << "*.html" << "*.css" << "*.xml" << "*.json"
             << "*.txt" << "*.md" << "*.cmake" << "*.makefile";
 
-    // 收集所有符合条件的文件路径
     QStringList sourceFiles;
-    QStack<QString> directories;
-    directories.push(projectPath);
+    QStack<QPair<QString, int>> pending;    // (path, depth)
+    pending.push({QDir(projectPath).absolutePath(), 0});
 
-    while (!directories.isEmpty()) {
-        QString currentDir = directories.pop();
-        QDir dir(currentDir);
-
-        // 添加子目录到栈
-        QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString& subdir : subdirs) {
-            directories.push(dir.absoluteFilePath(subdir));
+    while (!pending.isEmpty()) {
+        if (sourceFiles.size() >= kMaxFiles) {
+            qWarning() << "[loadAllProjectFiles] 达到文件数上限，提前结束";
+            break;
         }
 
-        // 添加当前目录中的文件
+        const auto item  = pending.pop();
+        const QString dirPath = item.first;
+        const int depth  = item.second;
+
+        if (depth > kMaxDepth) {
+            continue;
+        }
+
+        QDir dir(dirPath);
+        if (!dir.exists()) continue;
+
+        // ---- 子目录：NoSymLinks + 排除名单 ----
+        const QStringList subdirs = dir.entryList(
+            QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+
+        for (const QString& sub : subdirs) {
+            // 大小写不敏感地检查排除目录
+            bool skip = false;
+            for (const QString& ex : kExcludeDirs) {
+                if (sub.compare(ex, Qt::CaseInsensitive) == 0) {
+                    skip = true;
+                    break;
+                }
+            }
+            // 排除 *.dSYM / *.framework 等
+            if (!skip &&
+                (sub.endsWith(QLatin1String(".dSYM"), Qt::CaseInsensitive) ||
+                 sub.endsWith(QLatin1String(".framework"), Qt::CaseInsensitive) ||
+                 sub.endsWith(QLatin1String(".app"), Qt::CaseInsensitive))) {
+                skip = true;
+            }
+            if (skip) continue;
+
+            pending.push({dir.absoluteFilePath(sub), depth + 1});
+        }
+
+        // ---- 当前目录文件：同样不跟随符号链接 ----
         dir.setNameFilters(filters);
-        QStringList files = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
-        for (const QString& file : files) {
-            sourceFiles.append(dir.absoluteFilePath(file));
+        const QStringList files = dir.entryList(
+            QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+        for (const QString& f : files) {
+            sourceFiles.append(dir.absoluteFilePath(f));
+            if (sourceFiles.size() >= kMaxFiles) break;
         }
     }
 
-    // 逐个打开文件
+    qDebug() << "[loadAllProjectFiles] 扫描完成，共"
+             << sourceFiles.size() << "个文件";
+
+    // 逐个打开文件（默认关闭，避免一次性打开几百个 tab）
     // for (const QString& filePath : sourceFiles) {
     //     openFile(filePath);
     // }
@@ -5569,6 +5888,8 @@ QString MainWindow::findDebugger()
 void MainWindow::onCompileSettings()
 {
     SettingsDialog dialog(this);
+    connect(&dialog, &SettingsDialog::aiServerRestartRequested,
+            this,   &MainWindow::onAIRestartRequested);
     dialog.exec();
 }
 
@@ -5831,3 +6152,4 @@ bool MainWindow::runProject(const QString& projectPath, const QString& projectNa
 }
 
 } // namespace SprintIDE
+

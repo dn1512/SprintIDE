@@ -44,6 +44,9 @@ class ReplaceDialog;
 struct CompileResult;
 class PythonDebugger;
 
+// Git 模块前向声明
+namespace Git { class GitPanel; }
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -198,6 +201,19 @@ public slots:
                       bool caseSensitive, bool wholeWord);
     void onDebuggerContinued();
 
+    void onAIRestartRequested(const QString& host, quint16 port);
+
+    // ========== Git 槽函数 ==========
+    void onGitInit();
+    void onGitCommit();
+    void onGitPush();
+    void onGitPull();
+    void onGitFetch();
+    void onGitRefresh();
+    void onGitShowHistory();
+    void onGitFileDoubleClicked(const QString& absolutePath);
+    void updateGitActions();
+
 private:
     void setupUI();
     void setupMenuBar();
@@ -207,6 +223,7 @@ private:
     void setupConnections();
     void setupDebugPanel(); 
     void setupTerminalPanel();
+    void setupGitPanel();
     void loadAllProjectFiles(const QString& projectPath);
 
     void applyTheme();
@@ -342,6 +359,18 @@ private:
     PythonDebugger* m_pythonDebugger = nullptr;
 
     CppDebugger* m_cppDebugger = nullptr;
+
+    // ========== Git 集成 ==========
+    Git::GitPanel* m_gitPanel = nullptr;
+    QDockWidget*   m_gitDock  = nullptr;
+
+    QAction* m_gitInitAction        = nullptr;
+    QAction* m_gitCommitAction      = nullptr;
+    QAction* m_gitPushAction        = nullptr;
+    QAction* m_gitPullAction        = nullptr;
+    QAction* m_gitFetchAction       = nullptr;
+    QAction* m_gitRefreshAction     = nullptr;
+    QAction* m_gitShowHistoryAction = nullptr;
 
     QAction* m_toggleBottomPanelAction = nullptr;
     QAction* m_toggleProjectPanelAction = nullptr;

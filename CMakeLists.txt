@@ -166,6 +166,7 @@ set(ALL_SOURCES
     ${CPP_SOURCES}
     ${DEPS_SOURCES}
     ${DAP_SOURCES}
+    ${GIT_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -188,6 +189,7 @@ set(ALL_HEADERS
     ${CPP_HEADERS}
     ${DEPS_HEADERS}
     ${DAP_HEADERS}
+    ${GIT_HEADERS}
 )
 
 set(ALL_FORMS
@@ -220,6 +222,7 @@ set(AI_SOURCES
     src/ai/ai_action_executor.cpp
     src/ai/chat_panel.cpp
     src/ai/ai_integration.cpp
+    ai/ai_settings_page.cpp
 )
 
 set(AI_HEADERS
@@ -227,6 +230,7 @@ set(AI_HEADERS
     src/ai/ai_action_executor.h
     src/ai/chat_panel.h
     src/ai/ai_integration.h
+    ai/ai_settings_page.h
 )
 
 set(LANGUAGE_SOURCES
@@ -361,6 +365,19 @@ set(DAP_HEADERS
     src/dap/dap_types.h
 )
 
+set(GIT_SOURCES
+    src/git/git_command.cpp
+    src/git/git_manager.cpp
+    src/git/git_panel.cpp
+)
+
+set(GIT_HEADERS
+    src/git/git_types.h
+    src/git/git_command.h
+    src/git/git_manager.h
+    src/git/git_panel.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME}
     ${ALL_SOURCES}
@@ -482,6 +499,15 @@ add_executable(${PROJECT_NAME}
     editor_settings_page.cpp
     deps/gdb_dap_provider.h
     deps/gdb_dap_provider.cpp
+    ai/ai_settings_page.h
+    ai/ai_settings_page.cpp
+    git/git_types.h
+    git/git_command.h
+    git/git_command.cpp
+    git/git_manager.h
+    git/git_manager.cpp
+    git/git_panel.h
+    git/git_panel.cpp
 
 )
 

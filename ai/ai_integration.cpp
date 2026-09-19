@@ -39,11 +39,32 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     qDebug() << "[AI Integration] 开始初始化 AI 模块...";
 
     // ---- 1. 创建 AI 服务器 ----
+    ConfigManager* cfg = Application::instance().configManager();
+    const QString  aiHost    = cfg
+                               ? cfg->value("AI/Host", "127.0.0.1").toString()
+                               : QStringLiteral("127.0.0.1");
+    const quint16  aiPort    = cfg
+                               ? static_cast<quint16>(cfg->value("AI/Port", 9876).toInt())
+                               : 9876;
+    const bool     autoStart = cfg
+                               ? cfg->value("AI/AutoStart", true).toBool()
+                               : true;
+
     AIServer *server = new AIServer(mainWindow);
-    if (!server->startServer(9876, "127.0.0.1")) {
-        qWarning() << "[AI Integration] AI 服务器启动失败";
-        delete server;
-        return false;
+
+    if (autoStart) {
+        if (!server->startServer(aiPort, aiHost)) {
+            // 注意：这里故意不返回 false，也不 delete server。
+            // 用户可在设置页面里改地址后手动重启；chat panel 也保持可用。
+            qWarning() << "[AI Integration] AI 服务器启动失败:"
+                       << aiHost << ":" << aiPort
+                       << "（可在设置 → AI 中修改后重启）";
+        } else {
+            qDebug() << "[AI Integration] AI 服务器已启动:"
+                     << aiHost << ":" << aiPort;
+        }
+    } else {
+        qDebug() << "[AI Integration] 根据 AI/AutoStart=false，跳过服务器启动";
     }
     outServer = server;
 

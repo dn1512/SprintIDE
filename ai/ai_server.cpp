@@ -61,6 +61,10 @@ bool AIServer::startServer(quint16 port, const QString &bindAddress)
     // 尝试监听指定地址和端口
     // QHostAddress::Any 表示监听所有网卡，但我们限制为 localhost 提高安全性
     QHostAddress address(bindAddress);
+    if (address.isNull()) {
+        qCritical() << "[AI Server] 非法绑定地址:" << bindAddress;
+        return false;
+    }
     if (!m_tcpServer->listen(address, port)) {
         QString errorMsg = QString("监听失败: %1").arg(m_tcpServer->errorString());
         qCritical() << "[AI Server]" << errorMsg;

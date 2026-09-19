@@ -1,0 +1,21 @@
+{
+    "compile": {
+        "compiler": "auto",
+        "cpp_standard": "c++17",
+        "debug_info": true,
+        "optimization": "none",
+        "warnings": "all"
+    },
+    "created_date": "2026-09-20T00:40:37",
+    "display_name": "SprintIDE",
+    "include_paths": [
+        ".",
+        "include"
+    ],
+    "modified_date": "2026-09-20T00:40:37",
+    "project_name": "SprintIDE",
+    "source_files": [
+        "main.cpp"
+    ],
+    "version": "1.0.0"
+}

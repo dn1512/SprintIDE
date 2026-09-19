@@ -12,6 +12,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 
+
 // ========== 设置页面基类 ==========
 class SettingsPage : public QWidget
 {
@@ -84,6 +85,9 @@ class SettingsDialog : public QDialog
     Q_OBJECT
 public:
     explicit SettingsDialog(QWidget *parent = nullptr);
+
+signals:
+    void aiServerRestartRequested(const QString& host, quint16 port);
 
 private slots:
     void onCategoryChanged(int currentRow);
