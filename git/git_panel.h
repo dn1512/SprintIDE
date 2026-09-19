@@ -34,6 +34,10 @@ public:
     void setProjectRoot(const QString& path);
     QString projectRoot() const;
 
+    // 完整刷新：分支 + 历史 + stash + 状态
+    // 供外部（MainWindow 打开窗口时）和内部（刷新按钮）调用
+    void refreshAll();
+
 signals:
     // 双击文件 → 交给 MainWindow 打开编辑器
     void fileDoubleClicked(const QString& absolutePath);

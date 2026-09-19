@@ -4961,9 +4961,9 @@ void MainWindow::showGitDialog()
 {
     if (!m_gitDialog) return;
 
-    // 打开时强制刷新
-    if (Git::GitManager::instance().isActive()) {
-        Git::GitManager::instance().refreshStatus();
+    // 打开时完整刷新（分支、历史、stash、状态）
+    if (Git::GitManager::instance().isActive() && m_gitPanel) {
+        m_gitPanel->refreshAll();
     }
 
     if (m_gitDialog->isMinimized()) {

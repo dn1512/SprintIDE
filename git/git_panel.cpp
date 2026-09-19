@@ -52,6 +52,15 @@ GitPanel::GitPanel(QWidget* parent)
     connect(&gm, &GitManager::stashListUpdated,
             this, &GitPanel::onStashListUpdated);
 
+    // commit 成功后立即刷新分支/历史
+    //   refreshStatus() 只发 statusUpdated，不会触发 populateHistory()
+    //   必须单独监听 commitSucceeded 才能让历史列表实时更新
+    connect(&gm, &GitManager::commitSucceeded,
+            this, [this](const QString&) {
+                populateBranchCombo();
+                populateHistory();
+            });
+
     // 初始状态
     onRepositoryChanged(gm.repositoryInfo());
     onStatusUpdated(gm.currentStatus());
@@ -678,13 +687,18 @@ void GitPanel::onCommandFailed(const QString& op, const QString& err)
 // ============================================================
 // 槽：顶部栏
 // ============================================================
-void GitPanel::onRefreshClicked()
+void GitPanel::refreshAll()
 {
     auto& gm = GitManager::instance();
-    gm.refreshStatus();
-    populateBranchCombo();
-    populateHistory();
-    onStashListUpdated(gm.stashList());
+    gm.refreshStatus();               // 异步：稍后触发 statusUpdated
+    populateBranchCombo();            // 同步
+    populateHistory();                // 同步
+    onStashListUpdated(gm.stashList());// 同步
+}
+
+void GitPanel::onRefreshClicked()
+{
+    refreshAll();
 }
 
 void GitPanel::onInitClicked()
