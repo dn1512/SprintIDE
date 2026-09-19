@@ -397,6 +397,36 @@ GitDiff GitManager::diffFile(const QString& relativePath, bool staged) const
     return parseDiff(r.stdOut, relativePath);
 }
 
+QString GitManager::rawDiff(const QString& relativePath, bool staged) const
+{
+    if (!d->repoInfo.isValid) return QString();
+
+    GitCommand cmd;
+    QStringList args = {"diff", "--no-color", "--unified=3"};
+    if (staged) args << "--cached";
+
+    // relativePath 为空 → 显示全仓库差异
+    if (!relativePath.isEmpty()) {
+        args << "--" << relativePath;
+    }
+
+    auto r = cmd.run(d->repoInfo.rootPath, args, 15000);
+    if (!r.ok()) return r.stdErr;
+    return r.stdOut;
+}
+
+QString GitManager::rawCommitDiff(const QString& hash) const
+{
+    if (!d->repoInfo.isValid || hash.isEmpty()) return QString();
+
+    GitCommand cmd;
+    QStringList args = {"show", "--no-color", "--unified=3", hash};
+
+    auto r = cmd.run(d->repoInfo.rootPath, args, 20000);
+    if (!r.ok()) return r.stdErr;
+    return r.stdOut;
+}
+
 // ============================================================
 // 用户信息
 // ============================================================

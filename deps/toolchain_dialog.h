@@ -1,4 +1,3 @@
-// src/deps/toolchain_dialog.h
 #ifndef TOOLCHAIN_DIALOG_H
 #define TOOLCHAIN_DIALOG_H
 

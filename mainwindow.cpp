@@ -51,6 +51,9 @@
 #include <QDialog>
 #include <QtCore/qjsonarray.h>
 #include <QUuid>
+#include <QMouseEvent>
+#include <QDialog>
+
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
 
@@ -939,6 +942,13 @@ void MainWindow::setupMenuBar()
     // ==================== Git 菜单 ====================
     QMenu *gitMenu = menuBar->addMenu("Git(&G)");
 
+    m_gitToggleAction = gitMenu->addAction("打开 Git 窗口(&O)");
+    m_gitToggleAction->setShortcut(QKeySequence("Ctrl+Shift+G"));
+    m_gitToggleAction->setStatusTip("显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)");
+    connect(m_gitToggleAction, &QAction::triggered, this, &MainWindow::toggleGitDialog);
+
+    gitMenu->addSeparator();
+
     m_gitInitAction = gitMenu->addAction("初始化仓库(&I)");
     connect(m_gitInitAction, &QAction::triggered, this, &MainWindow::onGitInit);
 
@@ -1376,29 +1386,45 @@ void MainWindow::setupTerminalPanel()
 
 void MainWindow::setupGitPanel()
 {
-    // 1. 创建 Dock（右侧）
-    m_gitDock = new QDockWidget("Git", this);
-    m_gitDock->setObjectName("GitDock");
-    m_gitDock->setAllowedAreas(Qt::RightDockWidgetArea | Qt::LeftDockWidgetArea);
-    m_gitDock->setMinimumWidth(280);
+    // ============================================================
+    // 1. 创建非模态独立窗口（GitPanel 不占用右侧停靠区）
+    //     - Qt::Window：作为独立顶层窗口，可单独最小化
+    //     - setModal(false)：不阻塞主窗口编辑
+    //     - WA_DeleteOnClose=false：关闭只是 hide，保留状态
+    // ============================================================
+    m_gitDialog = new QDialog(this);
+    m_gitDialog->setWindowTitle("Git");
+    m_gitDialog->setModal(false);
+    m_gitDialog->setWindowFlag(Qt::Window, true);
+    m_gitDialog->setAttribute(Qt::WA_DeleteOnClose, false);
+    m_gitDialog->resize(760, 820);
 
-    // 2. 创建 Panel
-    m_gitPanel = new Git::GitPanel(m_gitDock);
-    m_gitDock->setWidget(m_gitPanel);
-    addDockWidget(Qt::RightDockWidgetArea, m_gitDock);
+    // 2. Panel 装进 dialog
+    m_gitPanel = new Git::GitPanel(m_gitDialog);
 
-    // 3. 默认隐藏（无项目 / 非仓库时不占用屏幕）
-    m_gitDock->setVisible(false);
+    auto* layout = new QVBoxLayout(m_gitDialog);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(m_gitPanel);
+
+    // 3. 默认隐藏（打开项目且是 git 仓库时才提示存在）
+    m_gitDialog->hide();
 
     // 4. 双击文件 → 打开编辑器
     connect(m_gitPanel, &Git::GitPanel::fileDoubleClicked,
             this, &MainWindow::onGitFileDoubleClicked);
 
-    // 5. 仓库/状态变化 → 更新菜单可用性
+    // 5. 仓库/状态变化 → 更新菜单可用性 + 状态栏指示器
     connect(&Git::GitManager::instance(), &Git::GitManager::repositoryChanged,
-            this, [this](const Git::GitRepositoryInfo&) { updateGitActions(); });
+            this, [this](const Git::GitRepositoryInfo&) {
+                updateGitActions();
+                updateGitStatusIndicator();
+            });
     connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
-            this, [this](const QList<Git::GitFileStatus>&) { updateGitActions(); });
+            this, [this](const QList<Git::GitFileStatus>&) {
+                updateGitActions();
+                updateGitStatusIndicator();
+            });
 
     // 6. 命令失败 → 输出面板
     connect(&Git::GitManager::instance(), &Git::GitManager::commandFailed,
@@ -1410,8 +1436,24 @@ void MainWindow::setupGitPanel()
                 }
             });
 
+    // 7. Git 状态更新 → 转发给项目面板（文件颜色标记）
+    if (d->projectPanel) {
+        connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
+                d->projectPanel, &ProjectPanel::onGitStatusUpdated);
+    }
+
+    // 8. 状态栏 Git 指示器
+    m_gitStatusLabel = new QLabel(this);
+    m_gitStatusLabel->setObjectName("GitStatusIndicator");
+    m_gitStatusLabel->setCursor(Qt::PointingHandCursor);
+    m_gitStatusLabel->setToolTip(QStringLiteral("点击打开 Git 窗口"));
+    m_gitStatusLabel->setTextInteractionFlags(Qt::NoTextInteraction);
+    m_gitStatusLabel->installEventFilter(this);   // 拦截鼠标点击（见下方 eventFilter）
+    m_gitStatusLabel->setVisible(false);
+    statusBar()->addPermanentWidget(m_gitStatusLabel);
+
     updateGitActions();
-    qDebug() << "[MW] setupGitPanel 完成";
+    qDebug() << "[MW] setupGitPanel 完成 (dialog mode)";
 }
 
 void MainWindow::applyTheme()
@@ -1450,6 +1492,19 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 
     event->accept();
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    // 状态栏 Git 指示器：左键点击 → 打开 Git 窗口
+    if (watched == m_gitStatusLabel && event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton) {
+            onGitStatusLabelClicked();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 bool MainWindow::confirmUnsavedChanges()
@@ -1601,8 +1656,8 @@ void MainWindow::openProject(const QString &path) {
     // ========== Git 绑定 ==========
     if (m_gitPanel) {
         m_gitPanel->setProjectRoot(d->currentProjectPath);
-        m_gitDock->setVisible(Git::GitManager::instance().isActive());
         updateGitActions();
+        updateGitStatusIndicator();
     }
 
     // 延迟恢复上次会话
@@ -1618,8 +1673,15 @@ void MainWindow::closeProject()
 
     // Git 解绑
     Git::GitManager::instance().setProjectRoot(QString());
-    if (m_gitDock) m_gitDock->setVisible(false);
+    if (m_gitDialog) m_gitDialog->hide();
+
+    // 清掉项目树上的 git 状态标记
+    if (d->projectPanel) {
+        d->projectPanel->onGitStatusUpdated(QList<Git::GitFileStatus>{});
+    }
+
     updateGitActions();
+    updateGitStatusIndicator();
 
     // updateWindowTitle();
 }
@@ -4659,12 +4721,12 @@ void MainWindow::onGitInit()
     }
     if (!m_gitPanel) return;
 
-    m_gitDock->setVisible(true);
     m_gitPanel->setProjectRoot(d->currentProjectPath);
 
-    // 若已是仓库，这里什么都不做
+    // 若已是仓库，直接打开窗口
     if (Git::GitManager::instance().isActive()) {
         d->outputPanel->append("当前目录已是 Git 仓库");
+        showGitDialog();
         return;
     }
 
@@ -4678,13 +4740,17 @@ void MainWindow::onGitInit()
         QString("<span style='color:#33CC33;'>Git 仓库已初始化: %1</span>")
             .arg(d->currentProjectPath));
     updateGitActions();
+    showGitDialog();
 }
 
 void MainWindow::onGitCommit()
 {
     if (!Git::GitManager::instance().isActive()) return;
-    m_gitDock->setVisible(true);
-    // 让面板聚焦到提交消息框，具体由面板自身处理；这里只切显示
+    showGitDialog();
+    // 让面板聚焦到提交消息框
+    if (m_gitPanel) {
+        // GitPanel 内部可加 focusCommitInput()，这里暂不实现
+    }
 }
 
 void MainWindow::onGitPush()
@@ -4732,8 +4798,7 @@ void MainWindow::onGitRefresh()
 void MainWindow::onGitShowHistory()
 {
     if (!Git::GitManager::instance().isActive()) return;
-    m_gitDock->setVisible(true);
-    m_gitDock->raise();
+    showGitDialog();
 }
 
 void MainWindow::onGitFileDoubleClicked(const QString& absolutePath)
@@ -4775,6 +4840,89 @@ void MainWindow::updateGitActions()
     if (m_gitShowHistoryAction) {
         m_gitShowHistoryAction->setEnabled(active);
     }
+    if (m_gitToggleAction) {
+        m_gitToggleAction->setEnabled(active);
+    }
+}
+
+// ==================== Git 窗口控制 ====================
+
+void MainWindow::showGitDialog()
+{
+    if (!m_gitDialog) return;
+
+    // 打开时强制刷新
+    if (Git::GitManager::instance().isActive()) {
+        Git::GitManager::instance().refreshStatus();
+    }
+
+    if (m_gitDialog->isMinimized()) {
+        m_gitDialog->showNormal();
+    } else {
+        m_gitDialog->show();
+    }
+    m_gitDialog->raise();
+    m_gitDialog->activateWindow();
+}
+
+void MainWindow::toggleGitDialog()
+{
+    if (!m_gitDialog) return;
+    if (m_gitDialog->isVisible() && !m_gitDialog->isMinimized()) {
+        m_gitDialog->hide();
+    } else {
+        showGitDialog();
+    }
+}
+
+void MainWindow::onGitStatusLabelClicked()
+{
+    showGitDialog();
+}
+
+void MainWindow::updateGitStatusIndicator()
+{
+    if (!m_gitStatusLabel) return;
+
+    auto& gm = Git::GitManager::instance();
+
+    if (!gm.isActive()) {
+        m_gitStatusLabel->setVisible(false);
+        return;
+    }
+
+    const auto info = gm.repositoryInfo();
+    const auto status = gm.currentStatus();
+
+    int modified = 0, untracked = 0, staged = 0, conflicted = 0;
+    for (const auto& s : status) {
+        if (s.hasConflict())                    ++conflicted;
+        if (s.isStaged())                       ++staged;
+        if (s.hasUnstagedChanges())             ++modified;
+        if (s.isUntracked())                    ++untracked;
+    }
+
+    QString branch = info.currentBranch;
+    if (info.isDetachedHead) {
+        branch = QStringLiteral("(detached)");
+    }
+    if (info.isEmpty) {
+        branch = QStringLiteral("(空)");
+    }
+
+    QStringList parts;
+    if (modified   > 0) parts << QStringLiteral("<span style='color:#EBB65B;'>M:%1</span>").arg(modified);
+    if (staged     > 0) parts << QStringLiteral("<span style='color:#46C687;'>S:%1</span>").arg(staged);
+    if (untracked  > 0) parts << QStringLiteral("<span style='color:#7A8599;'>U:%1</span>").arg(untracked);
+    if (conflicted > 0) parts << QStringLiteral("<span style='color:#E55B6B;'>C:%1</span>").arg(conflicted);
+
+    QString text = QStringLiteral("Git: %1").arg(branch.toHtmlEscaped());
+    if (!parts.isEmpty()) {
+        text += QStringLiteral("  ") + parts.join(QStringLiteral("  "));
+    }
+
+    m_gitStatusLabel->setText(text);
+    m_gitStatusLabel->setVisible(true);
 }
 
 void MainWindow::onAIRestartRequested(const QString& host, quint16 port)

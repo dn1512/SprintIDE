@@ -1,4 +1,3 @@
-// src/git/git_types.h
 #ifndef SPRINTIDE_GIT_TYPES_H
 #define SPRINTIDE_GIT_TYPES_H
 

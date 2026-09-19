@@ -1,4 +1,3 @@
-// src/git/git_manager.h
 #ifndef SPRINTIDE_GIT_MANAGER_H
 #define SPRINTIDE_GIT_MANAGER_H
 
@@ -62,6 +61,12 @@ public:
     // ---------- 历史 / Diff ----------
     QList<GitCommit> log(int maxCount = 100, const QString& branch = QString()) const;
     GitDiff diffFile(const QString& relativePath, bool staged) const;
+
+    // 原始 diff 字符串（用于 Diff 窗口直接渲染）
+    //   relativePath 为空 → 显示全仓库 diff（含所有改动文件）
+    QString rawDiff(const QString& relativePath, bool staged) const;
+    //   某个 commit 的完整 diff（含 commit header + 多文件 diff）
+    QString rawCommitDiff(const QString& hash) const;
 
     // ---------- 用户信息 ----------
     QString userName() const;

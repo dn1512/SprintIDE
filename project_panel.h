@@ -15,6 +15,7 @@
 #include <QSplitter>
 
 #include "project_config.h"
+#include "git/git_overlay_proxy_model.h"
 
 namespace SprintIDE {
 
@@ -86,6 +87,9 @@ public slots:
     void expandToSelected();
     void showFileHistory();
 
+    // Git 状态更新（由 MainWindow 转发，或直接连 GitManager 信号）
+    void onGitStatusUpdated(const QList<Git::GitFileStatus>& status);
+
 signals:
     void fileOpenRequested(const QString& filePath);
     void fileCreated(const QString& filePath);
@@ -127,12 +131,17 @@ private:
     void addPythonTestNodes(const QString& projectPath);
     QStandardItem* findOrCreateTestRoot();
 
+    // 双段索引映射
+    QModelIndex toProxy(const QModelIndex& sourceIndex) const;
+    QModelIndex toSource(const QModelIndex& proxyIndex) const;
+
     QSplitter* m_splitter;
 
     QTreeView* m_fileTreeView;
     QFileSystemWatcher* m_fileWatcher;
     QFileSystemModel* m_fileModel;
     ExcludeDirProxyModel* m_proxyModel;
+    Git::GitOverlayProxyModel* m_gitOverlay = nullptr;   // 最外层：叠加 git 状态圆点
     QString m_projectPath;
     ProjectConfig* m_projectConfig;
     bool m_showHiddenFiles = false;

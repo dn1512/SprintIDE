@@ -1,4 +1,3 @@
-// src/git/git_command.h
 #ifndef SPRINTIDE_GIT_COMMAND_H
 #define SPRINTIDE_GIT_COMMAND_H
 

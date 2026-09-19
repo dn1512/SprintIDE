@@ -26,6 +26,7 @@
 #include "python/python_test_runner.h"
 #include "project_manager.h"
 #include "python/python_project_model.h"
+#include "git/git_manager.h"
 
 namespace SprintIDE {
 
@@ -180,7 +181,7 @@ bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* 
     connect(m_fileModel, &QFileSystemModel::directoryLoaded,
             this, [this, rootIndex](const QString& loadedPath) {
                 if (loadedPath == m_projectPath) {
-                    QModelIndex proxyRoot = m_proxyModel->mapFromSource(rootIndex);
+                    QModelIndex proxyRoot = toProxy(rootIndex);
                     if (proxyRoot.isValid()) {
                         m_fileTreeView->setRootIndex(proxyRoot);
                         m_fileTreeView->expand(proxyRoot);
@@ -258,7 +259,7 @@ void ProjectPanel::refresh()
         m_fileModel->setRootPath(m_projectPath);
         QModelIndex sourceRoot = m_fileModel->index(m_projectPath);
         if (sourceRoot.isValid()) {
-            QModelIndex proxyRoot = m_proxyModel->mapFromSource(sourceRoot);
+            QModelIndex proxyRoot = toProxy(sourceRoot);
             m_fileTreeView->setRootIndex(proxyRoot);
         }
     }
@@ -270,7 +271,8 @@ void ProjectPanel::locateFile(const QString& filePath)
     if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
     QModelIndex sourceIndex = m_fileModel->index(filePath);
     if (sourceIndex.isValid()) {
-        QModelIndex proxyIndex = m_proxyModel->mapFromSource(sourceIndex);
+        QModelIndex proxyIndex = toProxy(sourceIndex);
+        if (!proxyIndex.isValid()) return;
         m_fileTreeView->setCurrentIndex(proxyIndex);
         m_fileTreeView->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
         QModelIndex parent = proxyIndex.parent();
@@ -309,7 +311,10 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
         QModelIndex idx = m_fileModel->index(fullPath);
         if (idx.isValid()) {
             locateFile(fullPath);
-            m_fileTreeView->edit(m_proxyModel->mapFromSource(idx));
+            QModelIndex proxyIdx = toProxy(idx);
+            if (proxyIdx.isValid()) {
+                m_fileTreeView->edit(proxyIdx);
+            }
         }
     });
 
@@ -402,10 +407,28 @@ QIcon ProjectPanel::getFileIcon(const QString& filePath) const
     return QIcon(iconMap.value(ext, ":/icons/icons/file_default.svg"));
 }
 
+QModelIndex ProjectPanel::toProxy(const QModelIndex& sourceIndex) const
+{
+    if (!sourceIndex.isValid() || !m_proxyModel || !m_gitOverlay) {
+        return QModelIndex();
+    }
+    QModelIndex mid = m_proxyModel->mapFromSource(sourceIndex);
+    return mid.isValid() ? m_gitOverlay->mapFromSource(mid) : QModelIndex();
+}
+
+QModelIndex ProjectPanel::toSource(const QModelIndex& proxyIndex) const
+{
+    if (!proxyIndex.isValid() || !m_proxyModel || !m_gitOverlay) {
+        return QModelIndex();
+    }
+    QModelIndex mid = m_gitOverlay->mapToSource(proxyIndex);
+    return mid.isValid() ? m_proxyModel->mapToSource(mid) : QModelIndex();
+}
+
 QString ProjectPanel::getFilePath(const QModelIndex &index) const
 {
     if (!index.isValid()) return QString();
-    QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
+    QModelIndex sourceIndex = toSource(index);
     return sourceIndex.isValid() ? m_fileModel->filePath(sourceIndex) : QString();
 }
 
@@ -413,7 +436,7 @@ QModelIndex ProjectPanel::findIndexByPath(const QString &path) const
 {
     if (path.isEmpty()) return QModelIndex();
     QModelIndex sourceIndex = m_fileModel->index(path);
-    return sourceIndex.isValid() ? m_proxyModel->mapFromSource(sourceIndex) : QModelIndex();
+    return toProxy(sourceIndex);
 }
 
 // ==================== 公共槽 ====================
@@ -633,7 +656,13 @@ void ProjectPanel::createFileTree()
     m_proxyModel->setExcludeDirs(DEFAULT_EXCLUDE_DIRS);
     m_proxyModel->setAllowedExtensions(SUPPORTED_EXTENSIONS);
 
-    m_fileTreeView->setModel(m_proxyModel);
+    // 最外层：叠加 Git 状态圆点
+    m_gitOverlay = new Git::GitOverlayProxyModel(this);
+    m_gitOverlay->setSourceModel(m_proxyModel);
+    m_gitOverlay->setFileSystemModel(m_fileModel);
+    m_gitOverlay->setIntermediateProxy(m_proxyModel);
+
+    m_fileTreeView->setModel(m_gitOverlay);
 
     // 显式触发一次按第 0 列升序排序
     //   - 表头隐藏时 QTreeView 不会自动排序，必须手动调用
@@ -727,7 +756,7 @@ void ProjectPanel::updateContextMenu()
 bool ProjectPanel::isDirectory(const QModelIndex &index) const
 {
     if (!index.isValid()) return false;
-    QModelIndex src = m_proxyModel->mapToSource(index);
+    QModelIndex src = toSource(index);
     return m_fileModel->isDir(src);
 }
 
@@ -850,6 +879,35 @@ QStandardItem* ProjectPanel::findOrCreateTestRoot()
     newRoot->setEditable(false);
     root->appendRow(newRoot);
     return newRoot;
+}
+
+// ==================== Git 状态叠加 ====================
+
+void ProjectPanel::onGitStatusUpdated(const QList<Git::GitFileStatus>& status)
+{
+    if (!m_gitOverlay) return;
+
+    // 组装 absolutePath → FileStatus 的映射
+    //   优先级：工作区状态 > 暂存区状态（因为用户更关心"当前文件有没有变"）
+    //   注意：map 的 value 是枚举 FileStatus，不是结构体 GitFileStatus
+    QMap<QString, Git::FileStatus> map;
+    for (const Git::GitFileStatus& s : status) {
+        if (s.absolutePath.isEmpty()) continue;
+
+        Git::FileStatus shown = s.workTreeStatus;
+        if (shown == Git::FileStatus::Unmodified) {
+            shown = s.indexStatus;
+        }
+        if (shown == Git::FileStatus::Unmodified) continue;
+
+        map.insert(s.absolutePath, shown);
+    }
+
+    m_gitOverlay->setStatusMap(map);
+    // 触发重绘
+    if (m_fileTreeView) {
+        m_fileTreeView->viewport()->update();
+    }
 }
 
 } // namespace SprintIDE

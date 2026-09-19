@@ -22,8 +22,10 @@
 #include <QDebug>
 #include <QLabel>
 #include <QCoreApplication>
+
 #include "python/python_settings_page.h"
 #include "editor_settings_page.h"
+#include "git/git_settings_page.h"
 
 using namespace SprintIDE;
 
@@ -729,6 +731,9 @@ void SettingsDialog::createUI()
     // AI 设置页
     m_categoryList->addItem(tr("AI"));
 
+    // Git 设置页
+    m_categoryList->addItem(tr("Git"));
+
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
 
@@ -753,6 +758,10 @@ void SettingsDialog::createUI()
     AISettingsPage* aiPage = new AISettingsPage(this);
     m_stackedWidget->addWidget(aiPage);
     m_pages.append(aiPage);
+
+    GitSettingsPage* gitPage = new GitSettingsPage(this);
+    m_stackedWidget->addWidget(gitPage);
+    m_pages.append(gitPage);
 
     connect(m_categoryList, &QListWidget::currentRowChanged,
             this, &SettingsDialog::onCategoryChanged);

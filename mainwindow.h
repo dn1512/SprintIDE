@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QDialog>
 #include <QString>
 #include <QStandardItemModel>
 
@@ -78,6 +79,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
 public slots:
     // 调试菜单槽函数
@@ -213,6 +215,11 @@ public slots:
     void onGitShowHistory();
     void onGitFileDoubleClicked(const QString& absolutePath);
     void updateGitActions();
+    void updateGitStatusIndicator();   // 刷新状态栏的 Git 指示器
+
+    void showGitDialog();          // 打开 Git 窗口
+    void toggleGitDialog();        // 菜单/快捷键：切换显隐
+    void onGitStatusLabelClicked();// 状态栏指示器点击
 
 private:
     void setupUI();
@@ -361,8 +368,9 @@ private:
     CppDebugger* m_cppDebugger = nullptr;
 
     // ========== Git 集成 ==========
-    Git::GitPanel* m_gitPanel = nullptr;
-    QDockWidget*   m_gitDock  = nullptr;
+    // Git 面板改为独立窗口，不再占用右侧停靠区
+    Git::GitPanel* m_gitPanel   = nullptr;
+    QDialog*       m_gitDialog  = nullptr;
 
     QAction* m_gitInitAction        = nullptr;
     QAction* m_gitCommitAction      = nullptr;
@@ -371,6 +379,10 @@ private:
     QAction* m_gitFetchAction       = nullptr;
     QAction* m_gitRefreshAction     = nullptr;
     QAction* m_gitShowHistoryAction = nullptr;
+    QAction* m_gitToggleAction      = nullptr;   // 打开/关闭 Git 窗口
+
+    // 状态栏 Git 指示器
+    QLabel*  m_gitStatusLabel = nullptr;
 
     QAction* m_toggleBottomPanelAction = nullptr;
     QAction* m_toggleProjectPanelAction = nullptr;

@@ -1,5 +1,6 @@
 #include "git_panel.h"
 #include "git_manager.h"
+#include "git_diff_dialog.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -695,15 +696,45 @@ void GitPanel::onCommitClicked()
 void GitPanel::onStagedItemDoubleClicked(QListWidgetItem* item)
 {
     if (!item) return;
+    const QString rel = item->data(Qt::UserRole).toString();
     const QString abs = item->data(Qt::UserRole + 1).toString();
-    if (!abs.isEmpty()) emit fileDoubleClicked(abs);
+
+    // 双击已暂存文件 → 显示暂存区 vs HEAD 的 diff
+    if (rel.isEmpty()) return;
+
+    auto& gm = GitManager::instance();
+    const QString diffText = gm.rawDiff(rel, /*staged=*/true);
+
+    auto* dlg = new GitDiffDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(dlg, &GitDiffDialog::openFileRequested,
+            this, [this](const QString& p) { emit fileDoubleClicked(p); });
+    dlg->showFileDiff(
+        QStringLiteral("已暂存: %1").arg(rel),
+        diffText,
+        abs);
 }
 
 void GitPanel::onUnstagedItemDoubleClicked(QListWidgetItem* item)
 {
     if (!item) return;
+    const QString rel = item->data(Qt::UserRole).toString();
     const QString abs = item->data(Qt::UserRole + 1).toString();
-    if (!abs.isEmpty()) emit fileDoubleClicked(abs);
+
+    // 双击未暂存文件 → 显示工作区 vs 暂存区的 diff
+    if (rel.isEmpty()) return;
+
+    auto& gm = GitManager::instance();
+    const QString diffText = gm.rawDiff(rel, /*staged=*/false);
+
+    auto* dlg = new GitDiffDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(dlg, &GitDiffDialog::openFileRequested,
+            this, [this](const QString& p) { emit fileDoubleClicked(p); });
+    dlg->showFileDiff(
+        QStringLiteral("工作区: %1").arg(rel),
+        diffText,
+        abs);
 }
 
 void GitPanel::onStagedContextMenu(const QPoint& pos)
@@ -712,6 +743,10 @@ void GitPanel::onStagedContextMenu(const QPoint& pos)
     if (!item) return;
 
     QMenu menu(this);
+    menu.addAction(QStringLiteral("查看差异"), this, [this, item]() {
+        onStagedItemDoubleClicked(item);
+    });
+    menu.addSeparator();
     menu.addAction(QStringLiteral("取消暂存"), this, [this, item]() {
         const QString rel = item->data(Qt::UserRole).toString();
         GitManager::instance().unstageFile(rel);
@@ -729,6 +764,10 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
     if (!item) return;
 
     QMenu menu(this);
+    menu.addAction(QStringLiteral("查看差异"), this, [this, item]() {
+        onUnstagedItemDoubleClicked(item);
+    });
+    menu.addSeparator();
     menu.addAction(QStringLiteral("暂存此文件"), this, [this, item]() {
         const QString rel = item->data(Qt::UserRole).toString();
         GitManager::instance().stageFile(rel);
@@ -745,8 +784,31 @@ void GitPanel::onHistoryItemDoubleClicked(QListWidgetItem* item)
     if (!item) return;
     const QString hash = item->data(Qt::UserRole).toString();
     if (hash.isEmpty()) return;
-    // 预留：未来弹出 diff 窗口
-    Q_UNUSED(hash);
+
+    auto& gm = GitManager::instance();
+    const QString diffText = gm.rawCommitDiff(hash);
+    if (diffText.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("提示"),
+                                 QStringLiteral("无法获取该 commit 的 diff。"));
+        return;
+    }
+
+    // 标题：shortHash + message 首行
+    const QString shortHash = hash.left(8);
+    QString firstLine;
+    const auto commits = gm.log(1, hash);
+    if (!commits.isEmpty()) {
+        firstLine = commits.first().message;
+        // 只取首行
+        const int nl = firstLine.indexOf('\n');
+        if (nl >= 0) firstLine = firstLine.left(nl);
+    }
+
+    auto* dlg = new GitDiffDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    dlg->showCommitDiff(
+        QStringLiteral("%1  %2").arg(shortHash, firstLine),
+        diffText);
 }
 
 } // namespace Git

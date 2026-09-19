@@ -1,4 +1,3 @@
-// src/git/git_panel.h
 #ifndef SPRINTIDE_GIT_PANEL_H
 #define SPRINTIDE_GIT_PANEL_H
 
