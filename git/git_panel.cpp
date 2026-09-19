@@ -20,6 +20,12 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QPushButton>
 #include <QDateTime>
 #include <QDebug>
 #include <QShortcut>
@@ -137,6 +143,12 @@ QWidget* GitPanel::createTopBar()
     connect(m_branchCombo, QOverload<int>::of(&QComboBox::activated),
             this, &GitPanel::onBranchActivated);
 
+    m_newBranchBtn = new QToolButton(bar);
+    m_newBranchBtn->setText(QStringLiteral("+"));
+    m_newBranchBtn->setToolTip(QStringLiteral("新建分支"));
+    connect(m_newBranchBtn, &QToolButton::clicked,
+            this, &GitPanel::onNewBranchClicked);
+
     m_refreshBtn = new QToolButton(bar);
     m_refreshBtn->setText(QStringLiteral("⟳"));
     m_refreshBtn->setToolTip(QStringLiteral("刷新状态 (F5)"));
@@ -151,6 +163,7 @@ QWidget* GitPanel::createTopBar()
             this, &GitPanel::onInitClicked);
 
     lay->addWidget(m_branchCombo, 1);
+    lay->addWidget(m_newBranchBtn);
     lay->addWidget(m_refreshBtn);
     lay->addWidget(m_initBtn);
     return bar;
@@ -392,9 +405,13 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
             item->setText(QStringLiteral("[%1] %2")
                               .arg(statusBadge(show), s.path));
             item->setForeground(statusColor(show));
-            item->setToolTip(s.absolutePath);
+            item->setToolTip(s.hasConflict()
+                                 ? QStringLiteral("%1\n（存在冲突）").arg(s.absolutePath)
+                                 : s.absolutePath);
             item->setData(Qt::UserRole,     s.path);
             item->setData(Qt::UserRole + 1, s.absolutePath);
+            // UserRole + 2：是否冲突，供右键菜单判断
+            item->setData(Qt::UserRole + 2, s.hasConflict());
             ++unstagedCount;
         }
     }
@@ -489,6 +506,9 @@ void GitPanel::setBusy(bool busy)
 {
     m_busyBar->setVisible(busy);
     m_refreshBtn->setEnabled(!busy);
+    if (m_newBranchBtn) {
+        m_newBranchBtn->setEnabled(!busy && m_projectRoot.size() > 0);
+    }
     m_commitBtn->setEnabled(!busy && !m_messageEdit->toPlainText().trimmed().isEmpty()
                             && m_stagedList->count() > 0);
 }
@@ -538,7 +558,9 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         m_contentArea->setVisible(true);
         m_emptyRepoHint->setVisible(false);
         m_initBtn->setVisible(false);
+        if (m_newBranchBtn) m_newBranchBtn->setEnabled(true);
     } else {
+        if (m_newBranchBtn) m_newBranchBtn->setEnabled(false);
         m_contentArea->setVisible(false);
         m_emptyRepoHint->setVisible(true);
         // 有项目根但非仓库 → 显示「初始化仓库」按钮
@@ -714,6 +736,134 @@ void GitPanel::onBranchActivated(int index)
 }
 
 // ============================================================
+// 新建分支
+// ============================================================
+void GitPanel::onNewBranchClicked()
+{
+    auto& gm = GitManager::instance();
+    if (!gm.isActive()) return;
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(QStringLiteral("新建分支"));
+    dlg.setMinimumWidth(420);
+
+    auto* root = new QVBoxLayout(&dlg);
+    root->setContentsMargins(14, 14, 14, 14);
+    root->setSpacing(10);
+
+    auto* form = new QFormLayout;
+    form->setSpacing(8);
+
+    // ---- 分支名 ----
+    auto* nameEdit = new QLineEdit(&dlg);
+    nameEdit->setPlaceholderText(QStringLiteral("例如 feature/diff-window"));
+    form->addRow(QStringLiteral("分支名:"), nameEdit);
+
+    // ---- 基点 ----
+    auto* baseCombo = new QComboBox(&dlg);
+    const auto info = gm.repositoryInfo();
+
+    QString headLabel;
+    if (info.isDetachedHead) {
+        headLabel = QStringLiteral("(detached: %1)").arg(info.currentBranch);
+    } else if (info.isEmpty) {
+        headLabel = QStringLiteral("(尚无提交)");
+    } else {
+        headLabel = info.currentBranch;
+    }
+    baseCombo->addItem(QStringLiteral("当前 HEAD（%1）").arg(headLabel),
+                       QString());   // data 为空 → 使用默认（当前 HEAD）
+
+    for (const auto& b : gm.branches()) {
+        if (b.isRemote) continue;
+        if (b.isCurrent) continue;
+        baseCombo->addItem(b.name, b.name);
+    }
+    form->addRow(QStringLiteral("基点:"), baseCombo);
+
+    root->addLayout(form);
+
+    // ---- 立即切换 ----
+    auto* checkoutCheck = new QCheckBox(QStringLiteral("创建后立即切换到新分支"), &dlg);
+    checkoutCheck->setChecked(true);
+    root->addWidget(checkoutCheck);
+
+    // ---- 按钮 ----
+    auto* btnBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    btnBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("创建"));
+    root->addWidget(btnBox);
+
+    connect(btnBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(btnBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    // 默认焦点到分支名输入框
+    nameEdit->setFocus();
+
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    // ---- 校验 ----
+    const QString name = nameEdit->text().trimmed();
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("新建分支"),
+                             QStringLiteral("分支名不能为空。"));
+        return;
+    }
+    // Git 分支名规则（简化版）：
+    //   不能有空格、不能以 - 或 . 开头、不能有连续 ..、不能以 .lock 结尾、
+    //   不能包含 ~ ^ : ? * [ \ 和控制字符
+    auto isInvalidName = [](const QString& n) {
+        if (n.startsWith(QLatin1Char('-')) || n.startsWith(QLatin1Char('.'))
+            || n.startsWith(QLatin1Char('/')))
+            return true;
+        if (n.contains(QLatin1Char(' '))
+            || n.contains(QStringLiteral(".."))
+            || n.contains(QLatin1Char('~'))
+            || n.contains(QLatin1Char('^'))
+            || n.contains(QLatin1Char(':'))
+            || n.contains(QLatin1Char('?'))
+            || n.contains(QLatin1Char('*'))
+            || n.contains(QLatin1Char('['))
+            || n.contains(QLatin1Char('\\')))
+            return true;
+        if (n.endsWith(QLatin1Char('/'))
+            || n.endsWith(QStringLiteral(".lock"))
+            || n.endsWith(QLatin1Char('.')))
+            return true;
+        return false;
+    };
+
+    if (isInvalidName(name)) {
+        QMessageBox::warning(this, QStringLiteral("新建分支"),
+                             QStringLiteral(
+                                 "分支名包含非法字符。<br><br>"
+                                 "不允许：<code>空格 ~ ^ : ? * [ \\ .. </code>，<br>"
+                                 "不允许以 <code>- . /</code> 开头，<br>"
+                                 "不允许以 <code>.lock</code> 或 <code>/</code> 结尾。"));
+        return;
+    }
+
+    // 本地已存在同名分支
+    for (const auto& b : gm.branches()) {
+        if (!b.isRemote && b.name == name) {
+            QMessageBox::warning(this, QStringLiteral("新建分支"),
+                                 QStringLiteral("分支 <b>%1</b> 已存在。").arg(name.toHtmlEscaped()));
+            return;
+        }
+    }
+
+    // ---- 执行 ----
+    const QString base = baseCombo->currentData().toString();
+    if (checkoutCheck->isChecked()) {
+        gm.createBranchAndCheckout(name, base);
+        dlg.close();
+    } else {
+        gm.createBranch(name, base);
+        dlg.close();
+    }
+}
+
+// ============================================================
 // 槽：状态区
 // ============================================================
 void GitPanel::onStageAllClicked()
@@ -849,17 +999,40 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
     auto* item = m_unstagedList->itemAt(pos);
     if (!item) return;
 
+    const bool    isConflict = item->data(Qt::UserRole + 2).toBool();
+    const QString rel        = item->data(Qt::UserRole).toString();
+    const QString abs        = item->data(Qt::UserRole + 1).toString();
+
     QMenu menu(this);
     menu.addAction(QStringLiteral("查看差异"), this, [this, item]() {
         onUnstagedItemDoubleClicked(item);
     });
     menu.addSeparator();
-    menu.addAction(QStringLiteral("暂存此文件"), this, [this, item]() {
-        const QString rel = item->data(Qt::UserRole).toString();
+
+    // ---------- 冲突解决（仅当文件状态为冲突时显示） ----------
+    if (isConflict) {
+        menu.addAction(QStringLiteral("打开编辑器手动解决"), this, [this, abs]() {
+            if (!abs.isEmpty()) emit fileDoubleClicked(abs);
+        });
+        menu.addSeparator();
+
+        menu.addAction(QStringLiteral("接受本地版本（ours）"), this, [this, rel]() {
+            GitManager::instance().acceptOurs(rel);
+        });
+        menu.addAction(QStringLiteral("接受远程版本（theirs）"), this, [this, rel]() {
+            GitManager::instance().acceptTheirs(rel);
+        });
+        menu.addAction(QStringLiteral("标记为已解决（git add）"), this, [this, rel]() {
+            GitManager::instance().markResolved(rel);
+        });
+        menu.addSeparator();
+    }
+
+    // ---------- 常规操作 ----------
+    menu.addAction(QStringLiteral("暂存此文件"), this, [this, rel]() {
         GitManager::instance().stageFile(rel);
     });
-    menu.addAction(QStringLiteral("打开文件"), this, [this, item]() {
-        const QString abs = item->data(Qt::UserRole + 1).toString();
+    menu.addAction(QStringLiteral("打开文件"), this, [this, abs]() {
         if (!abs.isEmpty()) emit fileDoubleClicked(abs);
     });
     menu.exec(m_unstagedList->viewport()->mapToGlobal(pos));

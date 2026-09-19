@@ -50,6 +50,7 @@ public:
     // ---------- 分支 ----------
     QList<GitBranch> branches() const;
     void createBranch(const QString& name, const QString& base = QString());
+    void createBranchAndCheckout(const QString& name, const QString& base = QString());
     void checkoutBranch(const QString& name);
 
     // ---------- 远程 ----------
@@ -88,6 +89,15 @@ public:
     // 同步执行（git rev-parse + git rev-list，都很快）
     // 用于 push 前 / pull 前检查分支与上游的关系
     UpstreamStatus currentUpstreamStatus() const;
+
+    // ---------- 冲突解决 ----------
+    // 注意：ours/theirs 语义在 merge 与 rebase 下相反
+    //   merge  : ours = 当前分支（HEAD）, theirs = 被合入的分支
+    //   rebase : ours = 目标分支（上游）  , theirs = 你正在应用的提交
+    // 目前仅按 merge 语义实现，rebase 场景由用户在终端手动处理
+    void acceptOurs(const QString& relativePath);     // 保留本地方
+    void acceptTheirs(const QString& relativePath);   // 保留远程方
+    void markResolved(const QString& relativePath);   // 已手动解决，标记为已暂存
 
     // ---------- 用户信息 ----------
     QString userName() const;

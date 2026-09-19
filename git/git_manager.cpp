@@ -332,6 +332,15 @@ void GitManager::createBranch(const QString& name, const QString& base)
     runAsync(args, QStringLiteral("createBranch"), 10000);
 }
 
+void GitManager::createBranchAndCheckout(const QString& name, const QString& base)
+{
+    if (!d->repoInfo.isValid || name.isEmpty()) return;
+    QStringList args = {"checkout", "-b", name};
+    if (!base.isEmpty()) args << base;
+    // 用 "checkout" tag 复用现有的重新解析逻辑（分支/HEAD 都会变）
+    runAsync(args, QStringLiteral("checkout"), 30000);
+}
+
 void GitManager::checkoutBranch(const QString& name)
 {
     if (!d->repoInfo.isValid || name.isEmpty()) return;
@@ -575,6 +584,60 @@ UpstreamStatus GitManager::currentUpstreamStatus() const
 }
 
 // ============================================================
+// 冲突解决
+// ============================================================
+void GitManager::acceptOurs(const QString& relativePath)
+{
+    if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
+
+    GitCommand cmd;
+    auto r1 = cmd.run(d->repoInfo.rootPath,
+                      {"checkout", "--ours", "--", relativePath}, 5000);
+    if (!r1.ok()) {
+        emit commandFailed(QStringLiteral("acceptOurs"), r1.stdErr.trimmed());
+        return;
+    }
+    auto r2 = cmd.run(d->repoInfo.rootPath,
+                      {"add", "--", relativePath}, 5000);
+    if (!r2.ok()) {
+        emit commandFailed(QStringLiteral("acceptOurs"),
+                           QStringLiteral("checkout 成功但 git add 失败：")
+                               + r2.stdErr.trimmed());
+        return;
+    }
+    refreshStatus();
+}
+
+void GitManager::acceptTheirs(const QString& relativePath)
+{
+    if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
+
+    GitCommand cmd;
+    auto r1 = cmd.run(d->repoInfo.rootPath,
+                      {"checkout", "--theirs", "--", relativePath}, 5000);
+    if (!r1.ok()) {
+        emit commandFailed(QStringLiteral("acceptTheirs"), r1.stdErr.trimmed());
+        return;
+    }
+    auto r2 = cmd.run(d->repoInfo.rootPath,
+                      {"add", "--", relativePath}, 5000);
+    if (!r2.ok()) {
+        emit commandFailed(QStringLiteral("acceptTheirs"),
+                           QStringLiteral("checkout 成功但 git add 失败：")
+                               + r2.stdErr.trimmed());
+        return;
+    }
+    refreshStatus();
+}
+
+void GitManager::markResolved(const QString& relativePath)
+{
+    if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
+    // 与 stageFile 等价
+    stageFile(relativePath);
+}
+
+// ============================================================
 // 用户信息
 // ============================================================
 QString GitManager::userName() const
@@ -676,6 +739,10 @@ void GitManager::onCommandFinished(const QString& tag, const GitCommand::Result&
                 const QString saved = d->projectRoot;
                 d->projectRoot.clear();
                 setProjectRoot(saved);
+            }
+            // createBranch 不切换分支，但分支列表变了 → 触发 UI 刷新下拉框
+            else if (tag == QStringLiteral("createBranch")) {
+                emit repositoryChanged(d->repoInfo);
             }
         }
         else if (tag == QStringLiteral("stashPush")) {

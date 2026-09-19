@@ -42,6 +42,7 @@ signals:
 
 private slots:
     void onRepositoryChanged(const GitRepositoryInfo& info);
+    void onNewBranchClicked();      // 新建分支按钮
     void onStatusUpdated(const QList<GitFileStatus>& status);
     void onBusyChanged(bool busy);
     void onCommandFailed(const QString& op, const QString& err);
@@ -87,6 +88,7 @@ private:
 
     // ---- 顶部栏 ----
     QComboBox*    m_branchCombo   = nullptr;
+    QToolButton*  m_newBranchBtn  = nullptr;
     QToolButton*  m_refreshBtn    = nullptr;
     QToolButton*  m_initBtn       = nullptr;
     QLabel*       m_repoLabel     = nullptr;
