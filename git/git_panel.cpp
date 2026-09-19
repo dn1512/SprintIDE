@@ -15,17 +15,16 @@
 #include <QProgressBar>
 #include <QStackedWidget>
 #include <QMenu>
+#include <QAction>
 #include <QFileInfo>
 #include <QDir>
+#include <QFile>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QLineEdit>
-#include <QComboBox>
-#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
-#include <QPushButton>
 #include <QDateTime>
 #include <QDebug>
 #include <QShortcut>
@@ -85,6 +84,42 @@ void GitPanel::setupUI()
 
     root->addWidget(createTopBar());
 
+    // ---- 操作状态横幅（merge / rebase 进行中） ----
+    m_operationBanner = new QWidget(this);
+    m_operationBanner->setObjectName("GitOperationBanner");
+    m_operationBanner->setStyleSheet(
+        "QWidget#GitOperationBanner {"
+        "  background-color: #3A2E1A;"
+        "  border-bottom: 1px solid #EBB65B;"
+        "}");
+    {
+        auto* bl = new QHBoxLayout(m_operationBanner);
+        bl->setContentsMargins(8, 6, 8, 6);
+        bl->setSpacing(6);
+
+        m_operationLabel = new QLabel(m_operationBanner);
+        m_operationLabel->setStyleSheet(
+            "QLabel { color: #EBB65B; font-weight: bold; }");
+
+        m_operationContinueBtn = new QPushButton(
+            QStringLiteral("继续"), m_operationBanner);
+        m_operationContinueBtn->setToolTip(
+            QStringLiteral("冲突全部解决后继续当前操作"));
+        connect(m_operationContinueBtn, &QPushButton::clicked,
+                this, &GitPanel::onContinueOperation);
+
+        m_operationAbortBtn = new QPushButton(
+            QStringLiteral("中止"), m_operationBanner);
+        connect(m_operationAbortBtn, &QPushButton::clicked,
+                this, &GitPanel::onAbortOperation);
+
+        bl->addWidget(m_operationLabel, 1);
+        bl->addWidget(m_operationContinueBtn);
+        bl->addWidget(m_operationAbortBtn);
+    }
+    m_operationBanner->setVisible(false);
+    root->addWidget(m_operationBanner);
+
     // 空仓库提示
     m_emptyRepoHint = new QLabel(this);
     m_emptyRepoHint->setAlignment(Qt::AlignCenter);
@@ -143,11 +178,31 @@ QWidget* GitPanel::createTopBar()
     connect(m_branchCombo, QOverload<int>::of(&QComboBox::activated),
             this, &GitPanel::onBranchActivated);
 
-    m_newBranchBtn = new QToolButton(bar);
-    m_newBranchBtn->setText(QStringLiteral("+"));
-    m_newBranchBtn->setToolTip(QStringLiteral("新建分支"));
-    connect(m_newBranchBtn, &QToolButton::clicked,
-            this, &GitPanel::onNewBranchClicked);
+    // ---- 分支操作菜单按钮 ----
+    m_branchMenuBtn = new QToolButton(bar);
+    m_branchMenuBtn->setText(QStringLiteral("⋮"));
+    m_branchMenuBtn->setToolTip(QStringLiteral("分支操作"));
+    m_branchMenuBtn->setPopupMode(QToolButton::InstantPopup);
+
+    {
+        auto* menu = new QMenu(m_branchMenuBtn);
+
+        QAction* newBranchAct = menu->addAction(QStringLiteral("新建分支..."));
+        connect(newBranchAct, &QAction::triggered,
+                this, &GitPanel::onNewBranchClicked);
+
+        menu->addSeparator();
+
+        QAction* mergeAct = menu->addAction(QStringLiteral("合并分支到当前分支..."));
+        connect(mergeAct, &QAction::triggered,
+                this, &GitPanel::onMergeIntoCurrent);
+
+        QAction* rebaseAct = menu->addAction(QStringLiteral("将当前分支 Rebase 到..."));
+        connect(rebaseAct, &QAction::triggered,
+                this, &GitPanel::onRebaseOnto);
+
+        m_branchMenuBtn->setMenu(menu);
+    }
 
     m_refreshBtn = new QToolButton(bar);
     m_refreshBtn->setText(QStringLiteral("⟳"));
@@ -163,7 +218,7 @@ QWidget* GitPanel::createTopBar()
             this, &GitPanel::onInitClicked);
 
     lay->addWidget(m_branchCombo, 1);
-    lay->addWidget(m_newBranchBtn);
+    lay->addWidget(m_branchMenuBtn);
     lay->addWidget(m_refreshBtn);
     lay->addWidget(m_initBtn);
     return bar;
@@ -506,8 +561,8 @@ void GitPanel::setBusy(bool busy)
 {
     m_busyBar->setVisible(busy);
     m_refreshBtn->setEnabled(!busy);
-    if (m_newBranchBtn) {
-        m_newBranchBtn->setEnabled(!busy && m_projectRoot.size() > 0);
+    if (m_branchMenuBtn) {
+        m_branchMenuBtn->setEnabled(!busy && !m_projectRoot.isEmpty());
     }
     m_commitBtn->setEnabled(!busy && !m_messageEdit->toPlainText().trimmed().isEmpty()
                             && m_stagedList->count() > 0);
@@ -553,14 +608,31 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         m_branchCombo->setStyleSheet(QString());
         m_branchCombo->setToolTip(QString());
     }
+    // ---- 操作状态横幅 ----
+    if (m_operationBanner) {
+        if (info.isValid && info.hasOperationInProgress()) {
+            const QString opName = gitOperationName(info.operation);
+            m_operationLabel->setText(
+                QStringLiteral("⚠ 正在进行：%1").arg(opName));
+
+            // 只有 rebase 支持"继续"；merge 冲突解决后直接 commit
+            m_operationContinueBtn->setVisible(
+                info.operation == GitOperation::Rebase);
+
+            m_operationBanner->setVisible(true);
+        } else {
+            m_operationBanner->setVisible(false);
+        }
+    }
+
     // 仓库有效性
     if (info.isValid) {
         m_contentArea->setVisible(true);
         m_emptyRepoHint->setVisible(false);
         m_initBtn->setVisible(false);
-        if (m_newBranchBtn) m_newBranchBtn->setEnabled(true);
+        if (m_branchMenuBtn) m_branchMenuBtn->setEnabled(true);
     } else {
-        if (m_newBranchBtn) m_newBranchBtn->setEnabled(false);
+        if (m_branchMenuBtn) m_branchMenuBtn->setEnabled(false);
         m_contentArea->setVisible(false);
         m_emptyRepoHint->setVisible(true);
         // 有项目根但非仓库 → 显示「初始化仓库」按钮
@@ -856,11 +928,199 @@ void GitPanel::onNewBranchClicked()
     const QString base = baseCombo->currentData().toString();
     if (checkoutCheck->isChecked()) {
         gm.createBranchAndCheckout(name, base);
-        dlg.close();
     } else {
         gm.createBranch(name, base);
-        dlg.close();
     }
+    dlg.accept();
+}
+
+// ============================================================
+// 合并 / Rebase
+// ============================================================
+
+// 弹出分支选择对话框，返回选中的本地分支名（或空表示取消）
+// excludeCurrent=true 时不列出当前分支
+static QString pickBranch(QWidget* parent,
+                          GitManager& gm,
+                          const QString& title,
+                          const QString& prompt)
+{
+    const auto info = gm.repositoryInfo();
+    const QString current = info.currentBranch;
+
+    QDialog dlg(parent);
+    dlg.setWindowTitle(title);
+    dlg.setMinimumWidth(400);
+
+    auto* root = new QVBoxLayout(&dlg);
+    root->setContentsMargins(14, 14, 14, 14);
+    root->setSpacing(10);
+
+    auto* promptLbl = new QLabel(prompt, &dlg);
+    promptLbl->setWordWrap(true);
+    root->addWidget(promptLbl);
+
+    auto* combo = new QComboBox(&dlg);
+    combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    for (const auto& b : gm.branches()) {
+        if (b.isRemote) continue;
+        if (b.name == current) continue;
+        combo->addItem(b.name, b.name);
+    }
+    root->addWidget(combo);
+
+    if (combo->count() == 0) {
+        QMessageBox::information(parent, title,
+                                 QStringLiteral("没有其他可选的本地分支。"));
+        return QString();
+    }
+
+    auto* bb = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    bb->button(QDialogButtonBox::Ok)->setText(QStringLiteral("确定"));
+    QObject::connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    root->addWidget(bb);
+
+    if (dlg.exec() != QDialog::Accepted) return QString();
+    return combo->currentData().toString();
+}
+
+void GitPanel::onMergeIntoCurrent()
+{
+    auto& gm = GitManager::instance();
+    if (!gm.isActive()) return;
+
+    if (gm.repositoryInfo().hasOperationInProgress()) {
+        QMessageBox::information(this, QStringLiteral("合并"),
+                                 QStringLiteral("已有进行中的操作：%1，请先处理。")
+                                     .arg(gitOperationName(gm.repositoryInfo().operation)));
+        return;
+    }
+
+    const QString branch = pickBranch(
+        this, gm,
+        QStringLiteral("合并分支"),
+        QStringLiteral("选择要合并到当前分支 <b>%1</b> 的分支：")
+            .arg(gm.repositoryInfo().currentBranch.toHtmlEscaped()));
+
+    if (branch.isEmpty()) return;
+
+    const auto reply = QMessageBox::question(
+        this, QStringLiteral("确认合并"),
+        QStringLiteral("将把 <b>%1</b> 合并到 <b>%2</b>。<br><br>继续？")
+            .arg(branch.toHtmlEscaped(),
+                 gm.repositoryInfo().currentBranch.toHtmlEscaped()));
+    if (reply != QMessageBox::Yes) return;
+
+    gm.merge(branch);
+}
+
+void GitPanel::onRebaseOnto()
+{
+    auto& gm = GitManager::instance();
+    if (!gm.isActive()) return;
+
+    if (gm.repositoryInfo().hasOperationInProgress()) {
+        QMessageBox::information(this, QStringLiteral("Rebase"),
+                                 QStringLiteral("已有进行中的操作：%1，请先处理。")
+                                     .arg(gitOperationName(gm.repositoryInfo().operation)));
+        return;
+    }
+
+    // 有未提交更改时 rebase 会被拒绝，先提示
+    int dirtyCount = 0;
+    for (const auto& s : gm.currentStatus()) {
+        if (s.isStaged() || s.hasUnstagedChanges()) ++dirtyCount;
+    }
+    if (dirtyCount > 0) {
+        QMessageBox::warning(this, QStringLiteral("Rebase"),
+                             QStringLiteral("工作区有 <b>%1</b> 个未提交的更改。<br><br>"
+                                            "请先提交或 stash，再执行 rebase。")
+                                 .arg(dirtyCount));
+        return;
+    }
+
+    const QString branch = pickBranch(
+        this, gm,
+        QStringLiteral("Rebase"),
+        QStringLiteral("把当前分支 <b>%1</b> rebase 到：")
+            .arg(gm.repositoryInfo().currentBranch.toHtmlEscaped()));
+
+    if (branch.isEmpty()) return;
+
+    // 强警告
+    QMessageBox box(this);
+    box.setWindowTitle(QStringLiteral("确认 Rebase"));
+    box.setIcon(QMessageBox::Warning);
+    box.setTextFormat(Qt::RichText);
+    box.setText(
+        QStringLiteral(
+            "将把当前分支 <b>%1</b> 的所有提交重放到 <b>%2</b> 之上。<br><br>"
+            "⚠ Rebase 会重写当前分支的提交历史。<br>"
+            "⚠ 如果该分支已推送到远程，之后需要 <code>git push --force</code>。<br>"
+            "⚠ 冲突时 ours/theirs 语义与 merge 相反。<br><br>"
+            "确定继续？")
+            .arg(gm.repositoryInfo().currentBranch.toHtmlEscaped(),
+                 branch.toHtmlEscaped()));
+
+    auto* okBtn     = box.addButton(QStringLiteral("开始 Rebase"),
+                                QMessageBox::AcceptRole);
+    auto* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.setDefaultButton(cancelBtn);
+    box.exec();
+
+    if (box.clickedButton() != okBtn) return;
+
+    gm.rebase(branch);
+}
+
+void GitPanel::onAbortOperation()
+{
+    auto& gm = GitManager::instance();
+    const auto info = gm.repositoryInfo();
+    if (!info.hasOperationInProgress()) return;
+
+    const QString opName = gitOperationName(info.operation);
+
+    const auto reply = QMessageBox::question(
+        this, QStringLiteral("中止操作"),
+        QStringLiteral("确定要中止当前的 <b>%1</b> 吗？<br><br>"
+                       "工作区里已解决的改动会保留，未提交的改动不会丢失。")
+            .arg(opName));
+    if (reply != QMessageBox::Yes) return;
+
+    if (info.operation == GitOperation::Merge) {
+        gm.abortMerge();
+    } else if (info.operation == GitOperation::Rebase) {
+        gm.abortRebase();
+    } else {
+        QMessageBox::information(this, QStringLiteral("中止操作"),
+                                 QStringLiteral("暂不支持中止 %1。").arg(opName));
+    }
+}
+
+void GitPanel::onContinueOperation()
+{
+    auto& gm = GitManager::instance();
+    const auto info = gm.repositoryInfo();
+
+    if (info.operation != GitOperation::Rebase) return;
+
+    // 检查是否还有冲突文件
+    bool hasConflict = false;
+    for (const auto& s : gm.currentStatus()) {
+        if (s.hasConflict()) { hasConflict = true; break; }
+    }
+    if (hasConflict) {
+        QMessageBox::information(this, QStringLiteral("继续 Rebase"),
+                                 QStringLiteral("仍有未解决的冲突文件，请先在「更改」列表里全部解决。"));
+        return;
+    }
+
+    gm.continueRebase();
 }
 
 // ============================================================
@@ -1035,6 +1295,58 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
     menu.addAction(QStringLiteral("打开文件"), this, [this, abs]() {
         if (!abs.isEmpty()) emit fileDoubleClicked(abs);
     });
+
+    menu.addSeparator();
+
+    // ---------- 丢弃更改 ----------
+    menu.addAction(QStringLiteral("丢弃更改…"), this, [this, rel, abs, isConflict]() {
+        Q_UNUSED(abs);
+        // 冲突文件不允许直接丢弃（会造成状态混乱）
+        if (isConflict) {
+            QMessageBox::information(
+                this, QStringLiteral("丢弃更改"),
+                QStringLiteral("冲突文件不能直接丢弃，请先用「接受本地 / 接受远程 / 手动解决」处理。"));
+            return;
+        }
+
+        auto& gm = GitManager::instance();
+        const bool isUntracked = [&]() {
+            for (const auto& s : gm.currentStatus()) {
+                if (s.path == rel) return s.isUntracked() && !s.isStaged();
+            }
+            return false;
+        }();
+
+        const QString title = isUntracked
+                                  ? QStringLiteral("删除文件")
+                                  : QStringLiteral("丢弃更改");
+        const QString question = isUntracked
+                                     ? QStringLiteral("确定要删除以下未跟踪文件吗？<br><br>"
+                                                      "<code>%1</code><br><br>此操作不可恢复。")
+                                           .arg(rel.toHtmlEscaped())
+                                     : QStringLiteral("确定要丢弃对该文件的所有未提交更改吗？<br><br>"
+                                                      "<code>%1</code><br><br>此操作不可恢复。")
+                                           .arg(rel.toHtmlEscaped());
+
+        QMessageBox box(this);
+        box.setWindowTitle(title);
+        box.setIcon(QMessageBox::Warning);
+        box.setTextFormat(Qt::RichText);
+        box.setText(question);
+
+        const QString okText = isUntracked
+                                   ? QStringLiteral("删除")
+                                   : QStringLiteral("丢弃更改");
+        auto* okBtn     = box.addButton(okText, QMessageBox::AcceptRole);
+        auto* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        box.setDefaultButton(cancelBtn);
+        box.exec();
+
+        if (box.clickedButton() == okBtn) {
+            gm.discardFileChanges(rel);
+        }
+    });
+
     menu.exec(m_unstagedList->viewport()->mapToGlobal(pos));
 }
 

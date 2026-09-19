@@ -33,6 +33,10 @@ public:
     void setProjectRoot(const QString& path);
     QString projectRoot() const;
 
+    // 强制重新检测仓库信息（分支、远程、操作状态）
+    //   merge / rebase / checkout / pull 等改变仓库状态的操作后调用
+    void refreshRepositoryInfo();
+
     // ---------- 状态 ----------
     void refreshStatus();
     QList<GitFileStatus> currentStatus() const;
@@ -98,6 +102,22 @@ public:
     void acceptOurs(const QString& relativePath);     // 保留本地方
     void acceptTheirs(const QString& relativePath);   // 保留远程方
     void markResolved(const QString& relativePath);   // 已手动解决，标记为已暂存
+
+    // ---------- 丢弃更改 ----------
+    // 对未跟踪文件 → 删除文件
+    // 对已跟踪文件 → git checkout -- <path>（从索引恢复）
+    void discardFileChanges(const QString& relativePath);
+
+    // ---------- 合并 / Rebase ----------
+    // 合并 branch 到当前分支
+    void merge(const QString& branch);
+    // 把当前分支 rebase 到 ontoBranch 上
+    void rebase(const QString& ontoBranch);
+    // 中止进行中的合并 / rebase
+    void abortMerge();
+    void abortRebase();
+    // 继续 rebase（冲突解决后调用）
+    void continueRebase();
 
     // ---------- 用户信息 ----------
     QString userName() const;

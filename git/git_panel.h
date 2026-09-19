@@ -42,8 +42,14 @@ signals:
 
 private slots:
     void onRepositoryChanged(const GitRepositoryInfo& info);
-    void onNewBranchClicked();      // 新建分支按钮
+    void onNewBranchClicked();       // 保留（由菜单调用）
     void onStatusUpdated(const QList<GitFileStatus>& status);
+
+    // 合并 / Rebase / 操作横幅
+    void onMergeIntoCurrent();       // 选择分支 → merge
+    void onRebaseOnto();             // 选择分支 → rebase
+    void onAbortOperation();         // 中止当前操作
+    void onContinueOperation();      // 继续 rebase
     void onBusyChanged(bool busy);
     void onCommandFailed(const QString& op, const QString& err);
     void onStashListUpdated(const QList<GitStash>& stashes);
@@ -87,11 +93,17 @@ private:
     static QColor  statusColor(Git::FileStatus s);
 
     // ---- 顶部栏 ----
-    QComboBox*    m_branchCombo   = nullptr;
-    QToolButton*  m_newBranchBtn  = nullptr;
-    QToolButton*  m_refreshBtn    = nullptr;
-    QToolButton*  m_initBtn       = nullptr;
-    QLabel*       m_repoLabel     = nullptr;
+    QComboBox*    m_branchCombo    = nullptr;
+    QToolButton*  m_branchMenuBtn  = nullptr;   // 分支菜单（新建 / 合并 / rebase）
+    QToolButton*  m_refreshBtn     = nullptr;
+    QToolButton*  m_initBtn        = nullptr;
+    QLabel*       m_repoLabel      = nullptr;
+
+    // ---- 操作状态横幅（merge / rebase 进行中） ----
+    QWidget*      m_operationBanner       = nullptr;
+    QLabel*       m_operationLabel        = nullptr;
+    QPushButton*  m_operationContinueBtn  = nullptr;
+    QPushButton*  m_operationAbortBtn     = nullptr;
 
     // ---- 状态区 ----
     QLabel*       m_stagedHeader   = nullptr;

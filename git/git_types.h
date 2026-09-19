@@ -80,6 +80,28 @@ struct GitBranch {
 };
 
 // ============================================================
+// 进行中的 Git 操作（merge / rebase / cherry-pick / revert）
+// ============================================================
+enum class GitOperation {
+    None,
+    Merge,        // 正在合并（.git/MERGE_HEAD 存在）
+    Rebase,       // 正在 rebase（.git/rebase-merge 或 .git/rebase-apply 存在）
+    CherryPick,   // 正在 cherry-pick（.git/CHERRY_PICK_HEAD 存在）
+    Revert        // 正在 revert（.git/REVERT_HEAD 存在）
+};
+
+inline QString gitOperationName(GitOperation op)
+{
+    switch (op) {
+    case GitOperation::Merge:      return QStringLiteral("合并");
+    case GitOperation::Rebase:     return QStringLiteral("Rebase");
+    case GitOperation::CherryPick: return QStringLiteral("Cherry-pick");
+    case GitOperation::Revert:     return QStringLiteral("Revert");
+    default:                       return QString();
+    }
+}
+
+// ============================================================
 // 仓库信息
 // ============================================================
 struct GitRepositoryInfo {
@@ -91,6 +113,14 @@ struct GitRepositoryInfo {
     bool isEmpty        = false;   // 还没有任何提交
     QString remoteName;            // origin / upstream
     QString remoteUrl;
+
+    // 进行中的操作（merge / rebase 等）
+    GitOperation operation = GitOperation::None;
+    QString      operationDetail;  // 例如 "main ← feature/xxx"，可留空
+
+    bool hasOperationInProgress() const {
+        return operation != GitOperation::None;
+    }
 };
 
 // ============================================================

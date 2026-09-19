@@ -174,6 +174,47 @@ void GitManager::setProjectRoot(const QString& path)
         }
     }
 
+    // ---- 检测进行中的操作（merge / rebase） ----
+    {
+        GitCommand c;
+        auto checkRef = [&](const QString& ref) -> bool {
+            auto r = c.run(d->repoInfo.rootPath,
+                           {"rev-parse", "--verify", "--quiet", ref},
+                           3000);
+            return r.ok();
+        };
+
+        if (checkRef(QStringLiteral("MERGE_HEAD"))) {
+            d->repoInfo.operation = GitOperation::Merge;
+        } else if (checkRef(QStringLiteral("CHERRY_PICK_HEAD"))) {
+            d->repoInfo.operation = GitOperation::CherryPick;
+        } else if (checkRef(QStringLiteral("REVERT_HEAD"))) {
+            d->repoInfo.operation = GitOperation::Revert;
+        } else {
+            // rebase：检查 rebase-merge / rebase-apply 目录是否存在
+            auto rM = c.run(d->repoInfo.rootPath,
+                            {"rev-parse", "--git-path", "rebase-merge"}, 3000);
+            auto rA = c.run(d->repoInfo.rootPath,
+                            {"rev-parse", "--git-path", "rebase-apply"}, 3000);
+
+            auto pathExists = [&](const QString& rel) -> bool {
+                if (rel.isEmpty()) return false;
+                QFileInfo fi(rel);
+                const QString abs = fi.isAbsolute()
+                                        ? rel
+                                        : QDir(d->repoInfo.rootPath).absoluteFilePath(rel);
+                return QDir(abs).exists();
+            };
+
+            if ((rM.ok() && pathExists(rM.stdOut.trimmed())) ||
+                (rA.ok() && pathExists(rA.stdOut.trimmed()))) {
+                d->repoInfo.operation = GitOperation::Rebase;
+            } else {
+                d->repoInfo.operation = GitOperation::None;
+            }
+        }
+    }
+
     emit repositoryChanged(d->repoInfo);
     emit stashListUpdated(stashList());
     refreshStatus();
@@ -182,6 +223,13 @@ void GitManager::setProjectRoot(const QString& path)
 QString GitManager::projectRoot() const
 {
     return d->projectRoot;
+}
+
+void GitManager::refreshRepositoryInfo()
+{
+    const QString saved = d->projectRoot;
+    d->projectRoot.clear();       // 让 setProjectRoot 内部的 if (same) return 不早退
+    setProjectRoot(saved);
 }
 
 // ============================================================
@@ -638,6 +686,105 @@ void GitManager::markResolved(const QString& relativePath)
 }
 
 // ============================================================
+// 丢弃更改
+// ============================================================
+void GitManager::discardFileChanges(const QString& relativePath)
+{
+    if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
+
+    // 查找该文件当前的 git 状态
+    bool isUntracked = false;
+    for (const auto& s : d->status) {
+        if (s.path == relativePath) {
+            isUntracked = s.isUntracked() && !s.isStaged();
+            break;
+        }
+    }
+
+    // ---- 未跟踪文件：直接删除 ----
+    if (isUntracked) {
+        const QString abs = QDir(d->repoInfo.rootPath).absoluteFilePath(relativePath);
+        QFileInfo fi(abs);
+        bool ok = false;
+        if (fi.isDir()) {
+            ok = QDir(abs).removeRecursively();
+        } else {
+            ok = QFile::remove(abs);
+        }
+        if (!ok) {
+            emit commandFailed(QStringLiteral("discard"),
+                               QStringLiteral("无法删除文件: ") + abs);
+            return;
+        }
+        refreshStatus();
+        return;
+    }
+
+    // ---- 已跟踪文件：从索引恢复 ----
+    // 用 "checkout --" 而非 "checkout HEAD --"：这样已暂存的修改会被保留，
+    // 只丢弃工作区未暂存的部分，语义更精确。
+    runAsync({"checkout", "--", relativePath},
+             QStringLiteral("discardFile"), 10000);
+}
+
+// ============================================================
+// 合并 / Rebase
+// ============================================================
+void GitManager::merge(const QString& branch)
+{
+    if (!d->repoInfo.isValid || branch.isEmpty()) return;
+    if (d->repoInfo.hasOperationInProgress()) {
+        emit commandFailed(QStringLiteral("merge"),
+                           QStringLiteral("已有进行中的操作：")
+                               + gitOperationName(d->repoInfo.operation));
+        return;
+    }
+    runAsync({"merge", branch}, QStringLiteral("merge"), 120000);
+}
+
+void GitManager::rebase(const QString& ontoBranch)
+{
+    if (!d->repoInfo.isValid || ontoBranch.isEmpty()) return;
+    if (d->repoInfo.hasOperationInProgress()) {
+        emit commandFailed(QStringLiteral("rebase"),
+                           QStringLiteral("已有进行中的操作：")
+                               + gitOperationName(d->repoInfo.operation));
+        return;
+    }
+    runAsync({"rebase", ontoBranch}, QStringLiteral("rebase"), 120000);
+}
+
+void GitManager::abortMerge()
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"merge", "--abort"}, QStringLiteral("abortMerge"), 30000);
+}
+
+void GitManager::abortRebase()
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"rebase", "--abort"}, QStringLiteral("abortRebase"), 30000);
+}
+
+void GitManager::continueRebase()
+{
+    if (!d->repoInfo.isValid) return;
+    // 只有没有冲突文件时才允许继续
+    for (const auto& s : d->status) {
+        if (s.hasConflict()) {
+            emit commandFailed(QStringLiteral("continueRebase"),
+                               QStringLiteral("仍有未解决的冲突文件，请先全部解决。"));
+            return;
+        }
+    }
+    // rebase 默认可能会弹编辑器（--continue 会打开 commit message editor）
+    // 用 GIT_EDITOR=true 避免交互（已在 GitCommand::buildEnvironment 里设了 GIT_TERMINAL_PROMPT=0，
+    // 但 GitCommand 没设 GIT_EDITOR，这里通过环境变量兜底用默认 commit message）
+    runAsync({"rebase", "--continue"},
+             QStringLiteral("continueRebase"), 60000);
+}
+
+// ============================================================
 // 用户信息
 // ============================================================
 QString GitManager::userName() const
@@ -763,6 +910,36 @@ void GitManager::onCommandFinished(const QString& tag, const GitCommand::Result&
                  || tag == QStringLiteral("stashDrop")
                  || tag == QStringLiteral("stashClear")) {
             emit stashListUpdated(stashList());
+            refreshStatus();
+        }
+        else if (tag == QStringLiteral("merge")
+                 || tag == QStringLiteral("rebase")) {
+            // merge/rebase 非零退出且输出含 CONFLICT 时是"预期内冲突"，不算失败
+            const QString combined = result.stdOut + result.stdErr;
+            const bool isConflict =
+                combined.contains(QLatin1String("CONFLICT"))
+                || combined.contains(QLatin1String("Automatic merge failed"))
+                || combined.contains(QLatin1String("could not apply"))
+                || combined.contains(QLatin1String("Failed to merge"));
+
+            if (!result.ok() && !isConflict) {
+                emit commandFailed(tag, result.stdErr.trimmed());
+            }
+            // 无论成功失败都重新检测操作状态
+            refreshRepositoryInfo();
+        }
+        else if (tag == QStringLiteral("abortMerge")
+                 || tag == QStringLiteral("abortRebase")
+                 || tag == QStringLiteral("continueRebase")) {
+            if (!result.ok()) {
+                emit commandFailed(tag, result.stdErr.trimmed());
+            }
+            refreshRepositoryInfo();
+        }
+        else if (tag == QStringLiteral("discardFile")) {
+            if (!result.ok()) {
+                emit commandFailed(tag, result.stdErr.trimmed());
+            }
             refreshStatus();
         }
     }
