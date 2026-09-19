@@ -472,6 +472,18 @@ void GitPanel::updateCommitButton()
 // ============================================================
 void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
 {
+    // 游离 HEAD 时给个视觉提醒
+    if (info.isValid && info.isDetachedHead && m_branchCombo) {
+        m_branchCombo->setStyleSheet(
+            "QComboBox { color: #EBB65B; font-weight: bold; }");
+        m_branchCombo->setToolTip(
+            QStringLiteral("游离 HEAD（%1）\n"
+                           "当前不在任何分支上。建议创建一个分支以保存提交。")
+                .arg(info.currentBranch));
+    } else if (m_branchCombo) {
+        m_branchCombo->setStyleSheet(QString());
+        m_branchCombo->setToolTip(QString());
+    }
     // 仓库有效性
     if (info.isValid) {
         m_contentArea->setVisible(true);
@@ -557,18 +569,96 @@ void GitPanel::onBranchActivated(int index)
     const QString name = m_branchCombo->itemData(index).toString();
     if (name.isEmpty()) return;
 
-    const auto current = GitManager::instance().repositoryInfo().currentBranch;
-    if (name == current) return;
+    auto& gm = GitManager::instance();
+    const auto info = gm.repositoryInfo();
 
-    const auto reply = QMessageBox::question(
-        this, QStringLiteral("切换分支"),
-        QStringLiteral("切换到分支：%1 ？").arg(name),
-        QMessageBox::Yes | QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
-        populateBranchCombo();   // 撤销 UI 上的切换
+    // 已经是当前分支（且不是 detached HEAD）→ 什么都不做
+    if (!info.isDetachedHead && name == info.currentBranch) return;
+
+    // ---- 1. 统计脏文件数量 ----
+    int dirtyCount = 0;
+    int untrackedCount = 0;
+    for (const auto& s : gm.currentStatus()) {
+        if (s.isUntracked()) {
+            ++untrackedCount;
+            ++dirtyCount;
+        } else if (s.isStaged() || s.hasUnstagedChanges() || s.hasConflict()) {
+            ++dirtyCount;
+        }
+    }
+
+    // ---- 2. 拼装风险提示 ----
+    QStringList warnings;
+    bool hasRisk = false;
+
+    if (info.isDetachedHead) {
+        hasRisk = true;
+        warnings << QStringLiteral(
+            "⚠ 当前处于 <b>游离 HEAD</b> 状态（%1）。<br>"
+            "切走后，此处的提交将不属于任何分支，<b>可能难以找回</b>。")
+            .arg(info.currentBranch.toHtmlEscaped());
+    }
+    if (dirtyCount > 0) {
+        hasRisk = true;
+        warnings << QStringLiteral(
+            "⚠ 当前有 <b>%1</b> 个未提交的更改（含 %2 个未跟踪文件）。<br>"
+            "切换分支时可能产生冲突或被合并到其他基线。")
+            .arg(dirtyCount).arg(untrackedCount);
+    }
+
+    // ---- 3. 无风险 → 简单确认 ----
+    if (!hasRisk) {
+        const auto reply = QMessageBox::question(
+            this, QStringLiteral("切换分支"),
+            QStringLiteral("切换到分支：%1 ？").arg(name),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            populateBranchCombo();
+            return;
+        }
+        gm.checkoutBranch(name);
         return;
     }
-    GitManager::instance().checkoutBranch(name);
+
+    // ---- 4. 有风险 → 三按钮对话框 ----
+    QMessageBox box(this);
+    box.setWindowTitle(QStringLiteral("切换分支"));
+    box.setIcon(QMessageBox::Warning);
+    box.setTextFormat(Qt::RichText);
+    box.setText(warnings.join(QStringLiteral("<br><br>"))
+                + QStringLiteral("<br><br>确认切换到分支：<b>%1</b> ？")
+                      .arg(name.toHtmlEscaped()));
+
+    auto* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    auto* stashBtn  = box.addButton(QStringLiteral("先暂存(stash)再切换"),
+                                    QMessageBox::ActionRole);
+    auto* forceBtn  = box.addButton(QStringLiteral("仍然直接切换"),
+                                    QMessageBox::DestructiveRole);
+    box.setDefaultButton(cancelBtn);
+    box.exec();
+
+    auto* clicked = box.clickedButton();
+
+    if (clicked == cancelBtn) {
+        populateBranchCombo();
+        return;
+    }
+
+    if (clicked == stashBtn) {
+        // 尚未实现 GitManager::stash，先引导用户手动操作
+        QMessageBox::information(
+            this, QStringLiteral("手动暂存"),
+            QStringLiteral(
+                "自动 stash 尚未实现，请先在终端执行：\n\n"
+                "    git stash push -u -m \"切换分支前暂存\"\n\n"
+                "然后回来再次点击切换分支。\n\n"
+                "切换成功后可用 <code>git stash pop</code> 恢复。"));
+        populateBranchCombo();
+        return;
+    }
+
+    // forceBtn：用户明确知情，直接切
+    gm.checkoutBranch(name);
 }
 
 // ============================================================
