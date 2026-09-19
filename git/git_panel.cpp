@@ -469,9 +469,19 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
             item->setText(QStringLiteral("[%1] %2")
                               .arg(statusBadge(show), s.path));
             item->setForeground(statusColor(show));
-            item->setToolTip(s.hasConflict()
-                                 ? QStringLiteral("%1\n（存在冲突）").arg(s.absolutePath)
-                                 : s.absolutePath);
+            if (s.hasConflict()) {
+                const bool rebaseMode =
+                    GitManager::instance().isRebaseInProgress();
+                item->setToolTip(
+                    QStringLiteral("%1\n\n  存在冲突\n"
+                                   "右键「打开编辑器手动解决」或选择接受某一侧\n"
+                                   "（当前为 %2 冲突，右键菜单会相应调整语义）")
+                        .arg(s.absolutePath,
+                             rebaseMode ? QStringLiteral("Rebase")
+                                        : QStringLiteral("Merge")));
+            } else {
+                item->setToolTip(s.absolutePath);
+            }
             item->setData(Qt::UserRole,     s.path);
             item->setData(Qt::UserRole + 1, s.absolutePath);
             // UserRole + 2：是否冲突，供右键菜单判断
@@ -621,8 +631,15 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
     if (m_operationBanner) {
         if (info.isValid && info.hasOperationInProgress()) {
             const QString opName = gitOperationName(info.operation);
-            m_operationLabel->setText(
-                QStringLiteral("⚠ 正在进行：%1").arg(opName));
+
+            // Rebase 场景额外提示 ours/theirs 语义反转，避免用户按 merge 直觉操作
+            QString banner = QStringLiteral("  正在进行：%1").arg(opName);
+            if (info.operation == GitOperation::Rebase) {
+                banner += QStringLiteral(
+                    "（提示：本模式下「接受我的提交 / 目标分支」"
+                    "已自动按 rebase 语义处理）");
+            }
+            m_operationLabel->setText(banner);
 
             // 只有 rebase 支持"继续"；merge 冲突解决后直接 commit
             m_operationContinueBtn->setVisible(
@@ -753,14 +770,14 @@ void GitPanel::onBranchActivated(int index)
     if (info.isDetachedHead) {
         hasRisk = true;
         warnings << QStringLiteral(
-            "⚠ 当前处于 <b>游离 HEAD</b> 状态（%1）。<br>"
+            "  当前处于 <b>游离 HEAD</b> 状态（%1）。<br>"
             "切走后，此处的提交将不属于任何分支，<b>可能难以找回</b>。")
             .arg(info.currentBranch.toHtmlEscaped());
     }
     if (dirtyCount > 0) {
         hasRisk = true;
         warnings << QStringLiteral(
-            "⚠ 当前有 <b>%1</b> 个未提交的更改（含 %2 个未跟踪文件）。<br>"
+            "  当前有 <b>%1</b> 个未提交的更改（含 %2 个未跟踪文件）。<br>"
             "切换分支时可能产生冲突或被合并到其他基线。")
             .arg(dirtyCount).arg(untrackedCount);
     }
@@ -1073,9 +1090,9 @@ void GitPanel::onRebaseOnto()
     box.setText(
         QStringLiteral(
             "将把当前分支 <b>%1</b> 的所有提交重放到 <b>%2</b> 之上。<br><br>"
-            "⚠ Rebase 会重写当前分支的提交历史。<br>"
-            "⚠ 如果该分支已推送到远程，之后需要 <code>git push --force</code>。<br>"
-            "⚠ 冲突时 ours/theirs 语义与 merge 相反。<br><br>"
+            "  Rebase 会重写当前分支的提交历史。<br>"
+            "  如果该分支已推送到远程，之后需要 <code>git push --force</code>。<br>"
+            "  冲突时 ours/theirs 语义与 merge 相反。<br><br>"
             "确定继续？")
             .arg(gm.repositoryInfo().currentBranch.toHtmlEscaped(),
                  branch.toHtmlEscaped()));
@@ -1290,12 +1307,64 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
         });
         menu.addSeparator();
 
-        menu.addAction(QStringLiteral("接受本地版本（ours）"), this, [this, rel]() {
-            GitManager::instance().acceptOurs(rel);
-        });
-        menu.addAction(QStringLiteral("接受远程版本（theirs）"), this, [this, rel]() {
-            GitManager::instance().acceptTheirs(rel);
-        });
+        // ============================================================
+        // ours / theirs 在 merge 与 rebase 下语义相反：
+        //   merge  : ours   = 当前分支（HEAD）, theirs = 被合入的分支
+        //   rebase : "ours" = 目标分支（base）  , "theirs" = 你正在重放的提交
+        //
+        // 用户直觉里的"我的版本"= 我自己写的代码：
+        //   merge 时 → --ours
+        //   rebase 时 → --theirs
+        //
+        // 因此这里不暴露 ours/theirs 术语，直接用行为描述标签，
+        // 并根据当前 operation 选择正确的底层命令。
+        // ============================================================
+        const bool isRebase = GitManager::instance().isRebaseInProgress();
+
+        if (isRebase) {
+            // ---- Rebase 场景 ----
+            QAction* mineAct = menu.addAction(
+                QStringLiteral("接受我的提交（正在重放的版本）"));
+            mineAct->setToolTip(QStringLiteral(
+                "Rebase 冲突时，保留你正在重放的提交的内容\n"
+                "底层执行：git checkout --theirs"));
+            QObject::connect(mineAct, &QAction::triggered,
+                             this, [this, rel]() {
+                                 GitManager::instance().acceptTheirs(rel);
+                             });
+
+            QAction* baseAct = menu.addAction(
+                QStringLiteral("接受目标分支（base 上的版本）"));
+            baseAct->setToolTip(QStringLiteral(
+                "Rebase 冲突时，保留目标分支（base）的内容\n"
+                "底层执行：git checkout --ours"));
+            QObject::connect(baseAct, &QAction::triggered,
+                             this, [this, rel]() {
+                                 GitManager::instance().acceptOurs(rel);
+                             });
+        } else {
+            // ---- Merge 场景（或无进行中操作，按 merge 处理） ----
+            QAction* mineAct = menu.addAction(
+                QStringLiteral("接受当前分支（本地的版本）"));
+            mineAct->setToolTip(QStringLiteral(
+                "保留当前分支（HEAD）的内容\n"
+                "底层执行：git checkout --ours"));
+            QObject::connect(mineAct, &QAction::triggered,
+                             this, [this, rel]() {
+                                 GitManager::instance().acceptOurs(rel);
+                             });
+
+            QAction* otherAct = menu.addAction(
+                QStringLiteral("接受被合入的分支（外来的版本）"));
+            otherAct->setToolTip(QStringLiteral(
+                "保留被合入分支的内容\n"
+                "底层执行：git checkout --theirs"));
+            QObject::connect(otherAct, &QAction::triggered,
+                             this, [this, rel]() {
+                                 GitManager::instance().acceptTheirs(rel);
+                             });
+        }
+
         menu.addAction(QStringLiteral("标记为已解决（git add）"), this, [this, rel]() {
             GitManager::instance().markResolved(rel);
         });

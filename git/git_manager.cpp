@@ -232,6 +232,11 @@ void GitManager::refreshRepositoryInfo()
     setProjectRoot(saved);
 }
 
+bool GitManager::isRebaseInProgress() const
+{
+    return d->repoInfo.operation == GitOperation::Rebase;
+}
+
 // ============================================================
 // 状态
 // ============================================================
@@ -636,6 +641,10 @@ UpstreamStatus GitManager::currentUpstreamStatus() const
 // ============================================================
 void GitManager::acceptOurs(const QString& relativePath)
 {
+    //  语义取决于当前操作：
+    //  merge  → 保留当前分支（HEAD）
+    //  rebase → 保留目标分支（base）
+    //  调用方必须根据 operation 决定是否调用本函数
     if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
 
     GitCommand cmd;
@@ -658,6 +667,10 @@ void GitManager::acceptOurs(const QString& relativePath)
 
 void GitManager::acceptTheirs(const QString& relativePath)
 {
+    //  语义取决于当前操作：
+    //  merge  → 保留被合入的分支
+    //  rebase → 保留你正在重放的提交
+    //  调用方必须根据 operation 决定是否调用本函数
     if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
 
     GitCommand cmd;

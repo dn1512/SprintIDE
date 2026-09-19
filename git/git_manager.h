@@ -95,13 +95,22 @@ public:
     UpstreamStatus currentUpstreamStatus() const;
 
     // ---------- 冲突解决 ----------
-    // 注意：ours/theirs 语义在 merge 与 rebase 下相反
-    //   merge  : ours = 当前分支（HEAD）, theirs = 被合入的分支
-    //   rebase : ours = 目标分支（上游）  , theirs = 你正在应用的提交
-    // 目前仅按 merge 语义实现，rebase 场景由用户在终端手动处理
-    void acceptOurs(const QString& relativePath);     // 保留本地方
-    void acceptTheirs(const QString& relativePath);   // 保留远程方
+    // 这两个方法只做 git 层面的 --ours/--theirs，语义取决于仓库当前操作：
+    //   merge  : --ours   = 当前分支（HEAD）
+    //            --theirs = 被合入的分支
+    //   rebase : --ours   = 目标分支（base）
+    //            --theirs = 你正在重放的提交
+    //
+    // 调用方（UI）必须根据 repositoryInfo().operation 正确选择，
+    // 否则会给用户"点了保留我的，结果保留了别人的"的误导。
+    // 便捷判断见 isRebaseInProgress()。
+    void acceptOurs(const QString& relativePath);     // 保留 ours 一侧
+    void acceptTheirs(const QString& relativePath);   // 保留 theirs 一侧
     void markResolved(const QString& relativePath);   // 已手动解决，标记为已暂存
+
+    // 当前是否处于 rebase 冲突中
+    // UI 用它决定 ours/theirs 的语义方向
+    bool isRebaseInProgress() const;
 
     // ---------- 丢弃更改 ----------
     // 对未跟踪文件 → 删除文件
