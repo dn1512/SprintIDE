@@ -86,6 +86,9 @@ class SettingsDialog : public QDialog
 public:
     explicit SettingsDialog(QWidget *parent = nullptr);
 
+    // 外部调用：跳转到指定名字的设置页（例如 "Git"）
+    void showCategory(const QString& name);
+
 signals:
     void aiServerRestartRequested(const QString& host, quint16 port);
 

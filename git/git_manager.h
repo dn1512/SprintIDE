@@ -68,6 +68,27 @@ public:
     //   某个 commit 的完整 diff（含 commit header + 多文件 diff）
     QString rawCommitDiff(const QString& hash) const;
 
+    // ---------- Stash ----------
+    QList<GitStash> stashList() const;   // 同步（很快），立即返回当前 stash 列表
+
+    // 创建 stash
+    //   includeUntracked = true  → 走 git stash push -u
+    //   thenCheckout 非空 → stash 完成后自动 checkout 该分支
+    //                       （用于"先暂存再切分支"流程）
+    void stashPush(const QString& message,
+                   bool includeUntracked = true,
+                   const QString& thenCheckout = QString());
+
+    void stashPop(int index);
+    void stashApply(int index);
+    void stashDrop(int index);
+    void stashClear();
+
+    // ---------- 上游状态 ----------
+    // 同步执行（git rev-parse + git rev-list，都很快）
+    // 用于 push 前 / pull 前检查分支与上游的关系
+    UpstreamStatus currentUpstreamStatus() const;
+
     // ---------- 用户信息 ----------
     QString userName() const;
     QString userEmail() const;
@@ -79,6 +100,7 @@ signals:
     void commitSucceeded(const QString& hash);
     void commandFailed(const QString& operation, const QString& error);
     void busyChanged(bool busy);
+    void stashListUpdated(const QList<GitStash>& stashes);
 
 private:
     explicit GitManager(QObject* parent = nullptr);

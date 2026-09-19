@@ -18,6 +18,8 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QDateTime>
 #include <QDebug>
 #include <QShortcut>
@@ -42,6 +44,8 @@ GitPanel::GitPanel(QWidget* parent)
             this, &GitPanel::onBusyChanged);
     connect(&gm, &GitManager::commandFailed,
             this, &GitPanel::onCommandFailed);
+    connect(&gm, &GitManager::stashListUpdated,
+            this, &GitPanel::onStashListUpdated);
 
     // 初始状态
     onRepositoryChanged(gm.repositoryInfo());
@@ -99,11 +103,13 @@ void GitPanel::setupUI()
 
     m_splitter->addWidget(createStatusSection());
     m_splitter->addWidget(createCommitSection());
+    m_splitter->addWidget(createStashSection());
     m_splitter->addWidget(createHistorySection());
 
     m_splitter->setStretchFactor(0, 5);
     m_splitter->setStretchFactor(1, 0);
-    m_splitter->setStretchFactor(2, 4);
+    m_splitter->setStretchFactor(2, 0);
+    m_splitter->setStretchFactor(3, 4);
 
     contentLayout->addWidget(m_splitter);
     root->addWidget(m_contentArea, 1);
@@ -254,6 +260,48 @@ QWidget* GitPanel::createCommitSection()
 
     return w;
 }
+
+QWidget* GitPanel::createStashSection()
+{
+    auto* w = new QWidget(this);
+    auto* lay = new QVBoxLayout(w);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setSpacing(0);
+
+    // ---- 标题栏 ----
+    auto* bar = new QWidget(w);
+    auto* hl = new QHBoxLayout(bar);
+    hl->setContentsMargins(6, 4, 6, 2);
+
+    m_stashHeader = new QLabel(QStringLiteral("Stash (0)"), bar);
+    m_stashHeader->setStyleSheet("font-weight: bold;");
+
+    m_stashBtn = new QToolButton(bar);
+    m_stashBtn->setText(QStringLiteral("+"));
+    m_stashBtn->setToolTip(QStringLiteral("创建 stash（暂存当前改动）"));
+    connect(m_stashBtn, &QToolButton::clicked,
+            this, &GitPanel::onStashClicked);
+
+    hl->addWidget(m_stashHeader, 1);
+    hl->addWidget(m_stashBtn);
+    lay->addWidget(bar);
+
+    // ---- 列表 ----
+    m_stashList = new QListWidget(w);
+    m_stashList->setObjectName("GitStashList");
+    m_stashList->setAlternatingRowColors(false);
+    m_stashList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_stashList->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_stashList->setMaximumHeight(150);
+    connect(m_stashList, &QListWidget::itemDoubleClicked,
+            this, &GitPanel::onStashItemDoubleClicked);
+    connect(m_stashList, &QListWidget::customContextMenuRequested,
+            this, &GitPanel::onStashContextMenu);
+    lay->addWidget(m_stashList);
+
+    return w;
+}
+
 
 QWidget* GitPanel::createHistorySection()
 {
@@ -538,9 +586,11 @@ void GitPanel::onCommandFailed(const QString& op, const QString& err)
 // ============================================================
 void GitPanel::onRefreshClicked()
 {
-    GitManager::instance().refreshStatus();
+    auto& gm = GitManager::instance();
+    gm.refreshStatus();
     populateBranchCombo();
     populateHistory();
+    onStashListUpdated(gm.stashList());
 }
 
 void GitPanel::onInitClicked()
@@ -646,14 +696,15 @@ void GitPanel::onBranchActivated(int index)
     }
 
     if (clicked == stashBtn) {
-        // 尚未实现 GitManager::stash，先引导用户手动操作
-        QMessageBox::information(
-            this, QStringLiteral("手动暂存"),
-            QStringLiteral(
-                "自动 stash 尚未实现，请先在终端执行：\n\n"
-                "    git stash push -u -m \"切换分支前暂存\"\n\n"
-                "然后回来再次点击切换分支。\n\n"
-                "切换成功后可用 <code>git stash pop</code> 恢复。"));
+        // 自动 stash → 切换；GitManager 内部会在 stash 完成后 checkout
+        gm.stashPush(
+            QStringLiteral("切换分支 %1 → %2 前自动暂存")
+                .arg(info.currentBranch.isEmpty()
+                         ? QStringLiteral("(detached)")
+                         : info.currentBranch,
+                     name),
+            /*includeUntracked=*/true,
+            /*thenCheckout=*/name);
         populateBranchCombo();
         return;
     }
@@ -677,6 +728,42 @@ void GitPanel::onUnstageAllClicked()
 
 void GitPanel::onCommitClicked()
 {
+    auto& gm = GitManager::instance();
+
+    // ============================================================
+    // 提交前检查 1：Git 身份是否已配置
+    // ------------------------------------------------------------
+    // git commit 在没有 user.name / user.email 时会失败，
+    // 但报错文案不友好（"Please tell me who you are"）。
+    // 提前拦截，给出可操作的中文提示。
+    // ============================================================
+    if (gm.userName().isEmpty() || gm.userEmail().isEmpty()) {
+        QMessageBox box(this);
+        box.setWindowTitle(QStringLiteral("Git 身份未配置"));
+        box.setIcon(QMessageBox::Warning);
+        box.setTextFormat(Qt::RichText);
+        box.setText(
+            QStringLiteral(
+                "提交前需要先配置 Git 身份。<br><br>"
+                "在终端运行以下命令：<br>"
+                "<code>git config --global user.name \"你的名字\"</code><br>"
+                "<code>git config --global user.email \"你的邮箱\"</code><br><br>"
+                "或打开设置对话框，在 <b>Git</b> 页填写并保存。"));
+
+        auto* openBtn = box.addButton(QStringLiteral("打开设置"),
+                                      QMessageBox::AcceptRole);
+        box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        box.exec();
+
+        if (box.clickedButton() == openBtn) {
+            emit openSettingsRequested();
+        }
+        return;
+    }
+
+    // ============================================================
+    // 提交前检查 2：消息 + 暂存区
+    // ============================================================
     const QString msg = m_messageEdit->toPlainText().trimmed();
     if (msg.isEmpty()) return;
     if (m_stagedList->count() == 0) {
@@ -685,10 +772,9 @@ void GitPanel::onCommitClicked()
         return;
     }
 
-    // 提交前缓存，成功后再清空
-    GitManager::instance().commit(msg, m_amendCheck->isChecked());
+    // 通过检查 → 提交
+    gm.commit(msg, m_amendCheck->isChecked());
 
-    // 简单做法：直接清空输入框（失败也不影响，用户可重输）
     m_messageEdit->clear();
     m_amendCheck->setChecked(false);
 }
@@ -809,6 +895,117 @@ void GitPanel::onHistoryItemDoubleClicked(QListWidgetItem* item)
     dlg->showCommitDiff(
         QStringLiteral("%1  %2").arg(shortHash, firstLine),
         diffText);
+}
+
+// ============================================================
+// Stash
+// ============================================================
+
+void GitPanel::onStashListUpdated(const QList<GitStash>& stashes)
+{
+    if (!m_stashList) return;
+
+    m_stashList->clear();
+    m_stashHeader->setText(QStringLiteral("Stash (%1)").arg(stashes.size()));
+
+    for (const GitStash& s : stashes) {
+        const QString when = s.timestamp.toString("MM-dd hh:mm");
+        QString label = QStringLiteral("%1  %2").arg(when, s.message);
+        if (label.length() > 80) label = label.left(77) + QStringLiteral("...");
+
+        auto* item = new QListWidgetItem(m_stashList);
+        item->setText(label);
+        item->setData(Qt::UserRole, s.index);
+        item->setToolTip(QStringLiteral("%1\n分支: %2\n消息: %3\n时间: %4")
+                             .arg(s.ref,
+                                  s.branch.isEmpty() ? QStringLiteral("(未知)") : s.branch,
+                                  s.message,
+                                  s.timestamp.toString(Qt::ISODate)));
+    }
+
+    m_stashBtn->setEnabled(m_projectRoot.size() > 0);
+}
+
+void GitPanel::onStashClicked()
+{
+    auto& gm = GitManager::instance();
+    if (!gm.isActive()) return;
+
+    bool ok = false;
+    const QString msg = QInputDialog::getText(
+        this,
+        QStringLiteral("创建 Stash"),
+        QStringLiteral("Stash 消息（可留空，默认 WIP）:"),
+        QLineEdit::Normal, QString(), &ok);
+    if (!ok) return;
+
+    gm.stashPush(msg.isEmpty() ? QStringLiteral("WIP") : msg,
+                 /*includeUntracked=*/true);
+}
+
+void GitPanel::onStashItemDoubleClicked(QListWidgetItem* item)
+{
+    if (!item) return;
+    const int idx = item->data(Qt::UserRole).toInt();
+
+    QMessageBox box(this);
+    box.setWindowTitle(QStringLiteral("Stash 操作"));
+    box.setText(QStringLiteral("对 %1 执行什么操作？").arg(item->text()));
+    auto* popBtn   = box.addButton(QStringLiteral("应用并删除 (pop)"),
+                                 QMessageBox::AcceptRole);
+    auto* applyBtn = box.addButton(QStringLiteral("仅应用 (apply)"),
+                                   QMessageBox::ActionRole);
+    box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.exec();
+
+    auto* c = box.clickedButton();
+    if (c == popBtn)         GitManager::instance().stashPop(idx);
+    else if (c == applyBtn)  GitManager::instance().stashApply(idx);
+}
+
+void GitPanel::onStashContextMenu(const QPoint& pos)
+{
+    auto* item = m_stashList->itemAt(pos);
+
+    // 空白处右键 → 清空所有 stash
+    if (!item) {
+        QMenu menu(this);
+        QAction* clearAll = menu.addAction(QStringLiteral("清空所有 Stash"));
+        clearAll->setEnabled(m_stashList->count() > 0);
+        connect(clearAll, &QAction::triggered, this, [this]() {
+            if (QMessageBox::question(
+                    this, QStringLiteral("清空 Stash"),
+                    QStringLiteral("确定要清空所有 stash 吗？此操作不可恢复。"))
+                == QMessageBox::Yes) {
+                GitManager::instance().stashClear();
+            }
+        });
+        menu.exec(m_stashList->viewport()->mapToGlobal(pos));
+        return;
+    }
+
+    const int idx = item->data(Qt::UserRole).toInt();
+
+    QMenu menu(this);
+    connect(menu.addAction(QStringLiteral("应用并删除 (pop)")),
+            &QAction::triggered, this, [idx]() {
+                GitManager::instance().stashPop(idx);
+            });
+    connect(menu.addAction(QStringLiteral("仅应用 (apply)")),
+            &QAction::triggered, this, [idx]() {
+                GitManager::instance().stashApply(idx);
+            });
+    menu.addSeparator();
+    connect(menu.addAction(QStringLiteral("删除此 Stash")),
+            &QAction::triggered, this, [this, idx]() {
+                if (QMessageBox::question(
+                        this, QStringLiteral("删除 Stash"),
+                        QStringLiteral("确定要删除此 stash 吗？此操作不可恢复。"))
+                    == QMessageBox::Yes) {
+                    GitManager::instance().stashDrop(idx);
+                }
+            });
+    menu.exec(m_stashList->viewport()->mapToGlobal(pos));
 }
 
 } // namespace Git

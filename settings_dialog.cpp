@@ -788,6 +788,17 @@ void SettingsDialog::onCategoryChanged(int currentRow)
     }
 }
 
+void SettingsDialog::showCategory(const QString& name)
+{
+    if (!m_categoryList) return;
+    for (int i = 0; i < m_categoryList->count(); ++i) {
+        if (m_categoryList->item(i)->text() == name) {
+            m_categoryList->setCurrentRow(i);
+            return;
+        }
+    }
+}
+
 void SettingsDialog::loadAllSettings()
 {
     for (SettingsPage *page : m_pages) {

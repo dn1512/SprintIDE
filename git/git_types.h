@@ -94,6 +94,31 @@ struct GitRepositoryInfo {
 };
 
 // ============================================================
+// Stash
+// ============================================================
+struct GitStash {
+    int       index      = 0;         // stash@{N} 里的 N
+    QString   ref;                    // "stash@{0}"
+    QString   branch;                 // 原分支名（从 reflog subject 解析）
+    QString   message;                // stash 消息
+    QString   commitHash;
+    QDateTime timestamp;
+};
+
+// ============================================================
+// 当前分支与上游的关系
+// ============================================================
+struct UpstreamStatus {
+    bool    hasUpstream = false;   // 是否配置了 @{u}
+    QString branch;                // 本地分支名
+    QString upstream;              // 例如 origin/main
+    int     ahead  = 0;            // 本地领先上游的提交数（待 push）
+    int     behind = 0;            // 本地落后上游的提交数（待 pull）
+
+    bool isDiverge() const { return ahead > 0 && behind > 0; }
+};
+
+// ============================================================
 // Diff
 // ============================================================
 struct GitDiffLine {

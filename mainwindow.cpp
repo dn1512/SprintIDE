@@ -1414,7 +1414,11 @@ void MainWindow::setupGitPanel()
     connect(m_gitPanel, &Git::GitPanel::fileDoubleClicked,
             this, &MainWindow::onGitFileDoubleClicked);
 
-    // 5. 仓库/状态变化 → 更新菜单可用性 + 状态栏指示器
+    // 5 提交前身份检查失败 → 打开设置（定位到 Git 页）
+    connect(m_gitPanel, &Git::GitPanel::openSettingsRequested,
+            this, &MainWindow::onOpenGitSettingsFromPanel);
+
+    // 6. 仓库/状态变化 → 更新菜单可用性 + 状态栏指示器
     connect(&Git::GitManager::instance(), &Git::GitManager::repositoryChanged,
             this, [this](const Git::GitRepositoryInfo&) {
                 updateGitActions();
@@ -1426,7 +1430,7 @@ void MainWindow::setupGitPanel()
                 updateGitStatusIndicator();
             });
 
-    // 6. 命令失败 → 输出面板
+    // 7. 命令失败 → 输出面板
     connect(&Git::GitManager::instance(), &Git::GitManager::commandFailed,
             this, [this](const QString& op, const QString& err) {
                 if (d->outputPanel) {
@@ -1436,13 +1440,13 @@ void MainWindow::setupGitPanel()
                 }
             });
 
-    // 7. Git 状态更新 → 转发给项目面板（文件颜色标记）
+    // 8. Git 状态更新 → 转发给项目面板（文件颜色标记）
     if (d->projectPanel) {
         connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
                 d->projectPanel, &ProjectPanel::onGitStatusUpdated);
     }
 
-    // 8. 状态栏 Git 指示器
+    // 9. 状态栏 Git 指示器
     m_gitStatusLabel = new QLabel(this);
     m_gitStatusLabel->setObjectName("GitStatusIndicator");
     m_gitStatusLabel->setCursor(Qt::PointingHandCursor);
@@ -4755,26 +4759,132 @@ void MainWindow::onGitCommit()
 
 void MainWindow::onGitPush()
 {
-    if (!Git::GitManager::instance().isActive()) return;
-    if (!Git::GitManager::instance().hasRemote()) {
+    auto& gm = Git::GitManager::instance();
+    if (!gm.isActive()) return;
+
+    if (!gm.hasRemote()) {
         d->outputPanel->append(
             "<span style='color:#EBB65B;'>没有可用的远程仓库，无法推送。</span>");
         return;
     }
-    d->outputPanel->append("正在推送...");
-    Git::GitManager::instance().push();
+
+    // ============================================================
+    // Push 前状态检查
+    //   1. 没有配置上游 → 引导用户先 push -u
+    //   2. behind > 0 → 落后远程，必须先 pull
+    //   3. 分叉（ahead>0 && behind>0）→ 需要 pull 后 merge/rebase
+    //   4. ahead == 0 → 没有新提交可推
+    //   5. 一切正常 → 放行
+    // ============================================================
+    const auto st = gm.currentUpstreamStatus();
+
+    // 分支未设置上游
+    if (!st.hasUpstream) {
+        QMessageBox box(this);
+        box.setWindowTitle(QStringLiteral("推送"));
+        box.setIcon(QMessageBox::Information);
+        box.setTextFormat(Qt::RichText);
+        box.setText(QStringLiteral(
+            "当前分支 <b>%1</b> 没有设置上游分支。<br><br>"
+            "先在终端运行：<br>"
+            "<code>git push -u origin %1</code><br><br>"
+            "之后就可以用本窗口推送了。")
+            .arg(st.branch.toHtmlEscaped()));
+        box.exec();
+        return;
+    }
+
+    // 分叉（同时 ahead 和 behind）
+    if (st.isDiverge()) {
+        const auto reply = QMessageBox::warning(
+            this, QStringLiteral("推送警告"),
+            QStringLiteral(
+                "本地与远程已分叉：<br><br>"
+                "&nbsp;&nbsp;本地领先：<b>%1</b> 个提交<br>"
+                "&nbsp;&nbsp;本地落后：<b>%2</b> 个提交<br><br>"
+                "直接推送会被拒绝。<br>"
+                "建议先「拉取」并解决冲突，再推送。")
+                .arg(st.ahead).arg(st.behind),
+            QMessageBox::Cancel | QMessageBox::Yes);
+        if (reply != QMessageBox::Yes) return;
+        // 用户坚持要 push，交给 git 处理
+    }
+    // 纯落后
+    else if (st.behind > 0) {
+        QMessageBox::warning(
+            this, QStringLiteral("推送警告"),
+            QStringLiteral(
+                "本地落后远程 <b>%1</b> 个提交。<br><br>"
+                "请先「拉取」更新，再推送。").arg(st.behind));
+        return;
+    }
+    // 没有新提交
+    else if (st.ahead == 0) {
+        QMessageBox::information(
+            this, QStringLiteral("推送"),
+            QStringLiteral("本地没有需要推送的提交（已与 %1 同步）。")
+                .arg(st.upstream.toHtmlEscaped()));
+        return;
+    }
+
+    d->outputPanel->append(
+        QStringLiteral("正在推送 %1 个提交到 %2 ...")
+            .arg(st.ahead).arg(st.upstream));
+    gm.push();
 }
 
 void MainWindow::onGitPull()
 {
-    if (!Git::GitManager::instance().isActive()) return;
-    if (!Git::GitManager::instance().hasRemote()) {
+    auto& gm = Git::GitManager::instance();
+    if (!gm.isActive()) return;
+
+    if (!gm.hasRemote()) {
         d->outputPanel->append(
             "<span style='color:#EBB65B;'>没有可用的远程仓库，无法拉取。</span>");
         return;
     }
-    d->outputPanel->append("正在拉取...");
-    Git::GitManager::instance().pull();
+
+    const auto st = gm.currentUpstreamStatus();
+
+    // 没有上游
+    if (!st.hasUpstream) {
+        QMessageBox::information(
+            this, QStringLiteral("拉取"),
+            QStringLiteral(
+                "当前分支 <b>%1</b> 没有设置上游分支，无法拉取。<br><br>"
+                "先在终端运行：<br>"
+                "<code>git branch --set-upstream-to=origin/%1</code>")
+                .arg(st.branch.toHtmlEscaped()));
+        return;
+    }
+
+    // 已经在最新状态
+    if (st.behind == 0) {
+        // 但 working tree 可能脏 → pull 会失败
+        int dirtyCount = 0;
+        for (const auto& s : gm.currentStatus()) {
+            if (s.isStaged() || s.hasUnstagedChanges()) ++dirtyCount;
+        }
+        if (dirtyCount > 0) {
+            QMessageBox::information(
+                this, QStringLiteral("拉取"),
+                QStringLiteral(
+                    "已与 %1 同步，无需拉取。<br><br>"
+                    "（注意：当前有 %2 个未提交的更改，即使拉取也会失败，请先处理）")
+                    .arg(st.upstream.toHtmlEscaped()).arg(dirtyCount));
+        } else {
+            QMessageBox::information(
+                this, QStringLiteral("拉取"),
+                QStringLiteral("已与 %1 同步，无需拉取。")
+                    .arg(st.upstream.toHtmlEscaped()));
+        }
+        return;
+    }
+
+    d->outputPanel->append(
+        QStringLiteral("正在拉取 %1 个提交（%2）...")
+            .arg(st.behind).arg(st.upstream));
+    gm.pull();
 }
 
 void MainWindow::onGitFetch()
@@ -4878,6 +4988,15 @@ void MainWindow::toggleGitDialog()
 void MainWindow::onGitStatusLabelClicked()
 {
     showGitDialog();
+}
+
+void MainWindow::onOpenGitSettingsFromPanel()
+{
+    SettingsDialog dlg(this);
+    connect(&dlg, &SettingsDialog::aiServerRestartRequested,
+            this, &MainWindow::onAIRestartRequested);
+    dlg.showCategory(QStringLiteral("Git"));
+    dlg.exec();
 }
 
 void MainWindow::updateGitStatusIndicator()

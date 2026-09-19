@@ -22,6 +22,9 @@ public:
     GitCommand*          cmd = nullptr;
     bool                 busy = false;
     mutable QMap<QString, QString> userInfoCache;   // "name" / "email"
+
+    // stashPush 完成后待切换的分支；空表示不切换
+    QString pendingCheckout;
 };
 
 // ============================================================
@@ -118,6 +121,7 @@ void GitManager::setProjectRoot(const QString& path)
     if (path.isEmpty() || !QDir(path).exists()) {
         emit repositoryChanged(d->repoInfo);
         emit statusUpdated(d->status);
+        emit stashListUpdated({});
         return;
     }
 
@@ -129,6 +133,7 @@ void GitManager::setProjectRoot(const QString& path)
         d->repoInfo.isValid = false;
         emit repositoryChanged(d->repoInfo);
         emit statusUpdated(d->status);
+        emit stashListUpdated({});
         return;
     }
 
@@ -170,6 +175,7 @@ void GitManager::setProjectRoot(const QString& path)
     }
 
     emit repositoryChanged(d->repoInfo);
+    emit stashListUpdated(stashList());
     refreshStatus();
 }
 
@@ -428,6 +434,147 @@ QString GitManager::rawCommitDiff(const QString& hash) const
 }
 
 // ============================================================
+// Stash
+// ============================================================
+QList<GitStash> GitManager::stashList() const
+{
+    QList<GitStash> result;
+    if (!d->repoInfo.isValid) return result;
+
+    GitCommand cmd;
+    // %gd reflog selector = "stash@{0}"
+    // %gs reflog subject = "WIP on <branch>: ..." 或 "On <branch>: <msg>"
+    // %ct committer date（UNIX 秒）
+    // %H  commit hash
+    auto r = cmd.run(d->repoInfo.rootPath,
+                     {"stash", "list",
+                      "--format=%gd%x1f%gs%x1f%ct%x1f%H"},
+                     5000);
+    if (!r.ok() || r.stdOut.trimmed().isEmpty()) return result;
+
+    static const QRegularExpression reIdx("stash@\\{(\\d+)\\}");
+    static const QRegularExpression reWip("^WIP on ([^:]+):\\s*(.*)$");
+    static const QRegularExpression reOn ("^On ([^:]+):\\s*(.*)$");
+
+    const QStringList records = r.stdOut.split('\n', Qt::SkipEmptyParts);
+    for (const QString& line : records) {
+        const QStringList parts = line.split(QChar(0x1f));
+        if (parts.size() < 4) continue;
+
+        GitStash s;
+        s.ref        = parts.at(0).trimmed();      // stash@{0}
+        const QString subject = parts.at(1).trimmed();
+        s.timestamp  = QDateTime::fromSecsSinceEpoch(parts.at(2).toLongLong());
+        s.commitHash = parts.at(3).trimmed();
+
+        auto mi = reIdx.match(s.ref);
+        if (mi.hasMatch()) s.index = mi.captured(1).toInt();
+
+        auto m1 = reWip.match(subject);
+        auto m2 = reOn.match(subject);
+        if (m1.hasMatch()) {
+            s.branch  = m1.captured(1);
+            s.message = m1.captured(2);
+        } else if (m2.hasMatch()) {
+            s.branch  = m2.captured(1);
+            s.message = m2.captured(2);
+        } else {
+            s.message = subject;
+        }
+        result.append(s);
+    }
+    return result;
+}
+
+void GitManager::stashPush(const QString& message,
+                           bool includeUntracked,
+                           const QString& thenCheckout)
+{
+    if (!d->repoInfo.isValid) return;
+
+    QStringList args = {"stash", "push"};
+    if (includeUntracked) args << "-u";
+    if (!message.isEmpty()) {
+        args << "-m" << message;
+    }
+
+    d->pendingCheckout = thenCheckout;
+    runAsync(args, QStringLiteral("stashPush"), 60000);
+}
+
+void GitManager::stashPop(int index)
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"stash", "pop", QStringLiteral("stash@{%1}").arg(index)},
+             QStringLiteral("stashPop"), 30000);
+}
+
+void GitManager::stashApply(int index)
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"stash", "apply", QStringLiteral("stash@{%1}").arg(index)},
+             QStringLiteral("stashApply"), 30000);
+}
+
+void GitManager::stashDrop(int index)
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"stash", "drop", QStringLiteral("stash@{%1}").arg(index)},
+             QStringLiteral("stashDrop"), 10000);
+}
+
+void GitManager::stashClear()
+{
+    if (!d->repoInfo.isValid) return;
+    runAsync({"stash", "clear"}, QStringLiteral("stashClear"), 10000);
+}
+
+// ============================================================
+// 上游状态
+// ============================================================
+UpstreamStatus GitManager::currentUpstreamStatus() const
+{
+    UpstreamStatus st;
+    if (!d->repoInfo.isValid || d->repoInfo.isEmpty) return st;
+
+    st.branch = d->repoInfo.currentBranch;
+
+    GitCommand cmd;
+
+    // ---- 1. 获取上游分支名（@{u}） ----
+    auto rUp = cmd.run(d->repoInfo.rootPath,
+                       {"rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"},
+                       5000);
+    if (!rUp.ok()) {
+        // 没有配置上游（或 detached HEAD）
+        return st;
+    }
+    st.upstream = rUp.stdOut.trimmed();
+    if (st.upstream.isEmpty() || st.upstream.startsWith(QLatin1Char('@'))) {
+        return st;
+    }
+    st.hasUpstream = true;
+
+    // ---- 2. 获取 ahead / behind ----
+    //   rev-list --left-right --count A...B
+    //     左计数 = A 独有 = B 缺失 = 本地落后 A 的数量（A = upstream）
+    //     右计数 = B 独有 = A 缺失 = 本地领先 A 的数量
+    //   输出格式："<behind>\t<ahead>"
+    auto rCnt = cmd.run(d->repoInfo.rootPath,
+                        {"rev-list", "--left-right", "--count",
+                         st.upstream + "...HEAD"},
+                        10000);
+    if (!rCnt.ok()) return st;
+
+    const QStringList parts = rCnt.stdOut.trimmed().split('\t');
+    if (parts.size() >= 2) {
+        st.behind = parts.at(0).toInt();
+        st.ahead  = parts.at(1).toInt();
+    }
+    return st;
+}
+
+// ============================================================
 // 用户信息
 // ============================================================
 QString GitManager::userName() const
@@ -530,6 +677,26 @@ void GitManager::onCommandFinished(const QString& tag, const GitCommand::Result&
                 d->projectRoot.clear();
                 setProjectRoot(saved);
             }
+        }
+        else if (tag == QStringLiteral("stashPush")) {
+            // 若有待切换分支，优先切换；切换完成后会自动 refreshStatus
+            const QString pending = d->pendingCheckout;
+            d->pendingCheckout.clear();
+
+            emit stashListUpdated(stashList());
+
+            if (!pending.isEmpty()) {
+                checkoutBranch(pending);
+            } else {
+                refreshStatus();
+            }
+        }
+        else if (tag == QStringLiteral("stashPop")
+                 || tag == QStringLiteral("stashApply")
+                 || tag == QStringLiteral("stashDrop")
+                 || tag == QStringLiteral("stashClear")) {
+            emit stashListUpdated(stashList());
+            refreshStatus();
         }
     }
 

@@ -37,12 +37,15 @@ public:
 signals:
     // 双击文件 → 交给 MainWindow 打开编辑器
     void fileDoubleClicked(const QString& absolutePath);
+    // 提交前检查失败 → 引导用户去设置页
+    void openSettingsRequested();
 
 private slots:
     void onRepositoryChanged(const GitRepositoryInfo& info);
     void onStatusUpdated(const QList<GitFileStatus>& status);
     void onBusyChanged(bool busy);
     void onCommandFailed(const QString& op, const QString& err);
+    void onStashListUpdated(const QList<GitStash>& stashes);
 
     void onRefreshClicked();
     void onInitClicked();
@@ -58,11 +61,17 @@ private slots:
     void onUnstagedContextMenu(const QPoint& pos);
     void onHistoryItemDoubleClicked(QListWidgetItem* item);
 
+    // Stash 相关
+    void onStashClicked();                          // 创建 stash
+    void onStashItemDoubleClicked(QListWidgetItem* item);
+    void onStashContextMenu(const QPoint& pos);
+
 private:
     void setupUI();
     QWidget* createTopBar();
     QWidget* createStatusSection();
     QWidget* createCommitSection();
+    QWidget* createStashSection();
     QWidget* createHistorySection();
 
     void populateBranchCombo();
@@ -94,6 +103,11 @@ private:
     QPlainTextEdit* m_messageEdit = nullptr;
     QCheckBox*      m_amendCheck  = nullptr;
     QPushButton*    m_commitBtn   = nullptr;
+
+    // ---- Stash 区 ----
+    QLabel*         m_stashHeader = nullptr;
+    QListWidget*    m_stashList   = nullptr;
+    QToolButton*    m_stashBtn    = nullptr;
 
     // ---- 历史区 ----
     QListWidget*    m_historyList = nullptr;

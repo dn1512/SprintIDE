@@ -220,6 +220,7 @@ public slots:
     void showGitDialog();          // 打开 Git 窗口
     void toggleGitDialog();        // 菜单/快捷键：切换显隐
     void onGitStatusLabelClicked();// 状态栏指示器点击
+    void onOpenGitSettingsFromPanel();  // GitPanel 请求打开设置页
 
 private:
     void setupUI();
