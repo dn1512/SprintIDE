@@ -99,6 +99,11 @@ static const ElementNameEntry kElementNames[] = {
     { UIElement::AIChatAIBorder,         "AIChatAIBorder"         },
     { UIElement::TerminalBackground,     "TerminalBackground"     },
     { UIElement::OutputPanelBackground,  "OutputPanelBackground"  },
+
+    // Git 面板
+    { UIElement::GitOperationBannerBackground, "GitOperationBannerBackground" },
+    { UIElement::GitOperationBannerBorder,     "GitOperationBannerBorder"     },
+    { UIElement::GitOperationBannerText,       "GitOperationBannerText"       },
     };
 
 static QString elementToKey(UIElement e)
@@ -199,6 +204,12 @@ public:
         colors[UIElement::AIChatAIBorder]         = QColor("#2BC0BD");
         colors[UIElement::TerminalBackground]     = QColor("#1A1F26");
         colors[UIElement::OutputPanelBackground]  = QColor("#1A1F26");
+
+        // Git 面板
+        // 深色下：琥珀色带 8% 透明度的深底 + 琥珀边框 + 琥珀文字
+        colors[UIElement::GitOperationBannerBackground] = QColor(58, 46, 26, 255);
+        colors[UIElement::GitOperationBannerBorder]     = QColor("#6B5A38");
+        colors[UIElement::GitOperationBannerText]       = QColor("#EBB65B");
     }
 
     // ------------------------------------------------------------
@@ -304,6 +315,12 @@ public:
         colors[UIElement::AIChatAIBorder]         = QColor("#159E9B");
         colors[UIElement::TerminalBackground]     = QColor("#EBF3F0");   // 与树一致
         colors[UIElement::OutputPanelBackground]  = QColor("#EBF3F0");
+
+        // Git 面板
+        // 浅色下：暖米色底 + 橙棕边框 + 深橙文字，与 Solar Flare 家族同源
+        colors[UIElement::GitOperationBannerBackground] = QColor("#FDF3DC");
+        colors[UIElement::GitOperationBannerBorder]     = QColor("#E0BE6E");
+        colors[UIElement::GitOperationBannerText]       = QColor("#8A5A0A");
     }
 };
 
@@ -1230,6 +1247,33 @@ QString ThemeManager::buildStyleSheet() const
 
     // ---------- 滚动区域 ----------
     qss += "QScrollArea { border: none; background: transparent; } ";
+
+    // ---------- Git 面板 ----------
+    qss += QString(
+               "QWidget#GitOperationBanner {"
+               "  background-color: %1;"
+               "  border-bottom: 1px solid %2;"
+               "} "
+               "QWidget#GitOperationBanner QLabel {"
+               "  color: %3; font-weight: 600; padding: 0 4px;"
+               "} "
+               "QWidget#GitOperationBanner QPushButton {"
+               "  background-color: transparent;"
+               "  color: %3;"
+               "  border: 1px solid %2;"
+               "  border-radius: 3px;"
+               "  padding: 3px 12px;"
+               "  min-height: 18px;"
+               "} "
+               "QWidget#GitOperationBanner QPushButton:hover {"
+               "  background-color: %4;"
+               "  border-color: %3;"
+               "} "
+               )
+               .arg(c(UIElement::GitOperationBannerBackground))
+               .arg(c(UIElement::GitOperationBannerBorder))
+               .arg(c(UIElement::GitOperationBannerText))
+               .arg(a(UIElement::GitOperationBannerText, 40));
 
     return qss;
 }

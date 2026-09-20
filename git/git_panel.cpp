@@ -28,6 +28,7 @@
 #include <QFormLayout>
 #include <QDateTime>
 #include <QDebug>
+#include <QIcon>
 #include <QShortcut>
 
 namespace SprintIDE {
@@ -97,19 +98,12 @@ void GitPanel::setupUI()
     // ---- 操作状态横幅（merge / rebase 进行中） ----
     m_operationBanner = new QWidget(this);
     m_operationBanner->setObjectName("GitOperationBanner");
-    m_operationBanner->setStyleSheet(
-        "QWidget#GitOperationBanner {"
-        "  background-color: #3A2E1A;"
-        "  border-bottom: 1px solid #EBB65B;"
-        "}");
     {
         auto* bl = new QHBoxLayout(m_operationBanner);
         bl->setContentsMargins(8, 6, 8, 6);
         bl->setSpacing(6);
 
         m_operationLabel = new QLabel(m_operationBanner);
-        m_operationLabel->setStyleSheet(
-            "QLabel { color: #EBB65B; font-weight: bold; }");
 
         m_operationContinueBtn = new QPushButton(
             QStringLiteral("继续"), m_operationBanner);
@@ -167,6 +161,7 @@ void GitPanel::setupUI()
 
     // 忙碌进度条
     m_busyBar = new QProgressBar(this);
+    m_busyBar->setObjectName("GitBusyBar");
     m_busyBar->setRange(0, 0);          // 不确定进度
     m_busyBar->setMaximumHeight(4);
     m_busyBar->setTextVisible(false);
@@ -177,27 +172,33 @@ void GitPanel::setupUI()
 QWidget* GitPanel::createTopBar()
 {
     auto* bar = new QWidget(this);
-    bar->setObjectName("GitTopBar");
     auto* lay = new QHBoxLayout(bar);
-    lay->setContentsMargins(6, 6, 6, 4);
+    lay->setContentsMargins(8, 6, 8, 6);
     lay->setSpacing(4);
 
+    // ---- 分支下拉 ----
     m_branchCombo = new QComboBox(bar);
     m_branchCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_branchCombo->setMinimumWidth(120);
+    m_branchCombo->setMinimumWidth(140);
+    m_branchCombo->setIconSize(QSize(14, 14));
+    m_branchCombo->setEditable(false);
     connect(m_branchCombo, QOverload<int>::of(&QComboBox::activated),
             this, &GitPanel::onBranchActivated);
 
-    // ---- 分支操作菜单按钮 ----
+    // ---- 分支操作菜单按钮（⋮）----
     m_branchMenuBtn = new QToolButton(bar);
     m_branchMenuBtn->setText(QStringLiteral("⋮"));
     m_branchMenuBtn->setToolTip(QStringLiteral("分支操作"));
     m_branchMenuBtn->setPopupMode(QToolButton::InstantPopup);
+    m_branchMenuBtn->setCursor(Qt::PointingHandCursor);
+    m_branchMenuBtn->setFixedSize(28, 28);
 
     {
         auto* menu = new QMenu(m_branchMenuBtn);
 
-        QAction* newBranchAct = menu->addAction(QStringLiteral("新建分支..."));
+        QAction* newBranchAct = menu->addAction(
+            QIcon(QStringLiteral(":/icons/icons/git_branch.svg")),
+            QStringLiteral("新建分支..."));
         connect(newBranchAct, &QAction::triggered,
                 this, &GitPanel::onNewBranchClicked);
 
@@ -214,15 +215,24 @@ QWidget* GitPanel::createTopBar()
         m_branchMenuBtn->setMenu(menu);
     }
 
+    // ---- 刷新 ----
     m_refreshBtn = new QToolButton(bar);
-    m_refreshBtn->setText(QStringLiteral("⟳"));
+    m_refreshBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_refresh.svg")));
+    m_refreshBtn->setIconSize(QSize(16, 16));
     m_refreshBtn->setToolTip(QStringLiteral("刷新状态 (F5)"));
+    m_refreshBtn->setCursor(Qt::PointingHandCursor);
+    m_refreshBtn->setFixedSize(28, 28);
     connect(m_refreshBtn, &QToolButton::clicked,
             this, &GitPanel::onRefreshClicked);
 
+    // ---- 初始化仓库 ----
     m_initBtn = new QToolButton(bar);
-    m_initBtn->setText(QStringLiteral("初始化仓库"));
+    m_initBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_init.svg")));
+    m_initBtn->setIconSize(QSize(16, 16));
+    m_initBtn->setText(QStringLiteral(" 初始化仓库"));
+    m_initBtn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     m_initBtn->setToolTip(QStringLiteral("在当前项目根目录执行 git init"));
+    m_initBtn->setCursor(Qt::PointingHandCursor);
     m_initBtn->setVisible(false);
     connect(m_initBtn, &QToolButton::clicked,
             this, &GitPanel::onInitClicked);
@@ -241,52 +251,71 @@ QWidget* GitPanel::createStatusSection()
     lay->setContentsMargins(0, 0, 0, 0);
     lay->setSpacing(0);
 
-    // ---- 已暂存 ----
+    // ============================================================
+    // 已暂存
+    // ============================================================
     auto* stagedBar = new QWidget(w);
     auto* sl = new QHBoxLayout(stagedBar);
-    sl->setContentsMargins(6, 4, 6, 2);
+    sl->setContentsMargins(8, 6, 6, 2);
+
     m_stagedHeader = new QLabel(QStringLiteral("已暂存的更改 (0)"), stagedBar);
-    m_stagedHeader->setStyleSheet("font-weight: bold;");
+    QFont headerFont = m_stagedHeader->font();
+    headerFont.setBold(true);
+    headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
+    m_stagedHeader->setFont(headerFont);
+
     m_unstageAllBtn = new QToolButton(stagedBar);
     m_unstageAllBtn->setText(QStringLiteral("−"));
     m_unstageAllBtn->setToolTip(QStringLiteral("全部取消暂存"));
+    m_unstageAllBtn->setCursor(Qt::PointingHandCursor);
+    m_unstageAllBtn->setFixedSize(22, 22);
     connect(m_unstageAllBtn, &QToolButton::clicked,
             this, &GitPanel::onUnstageAllClicked);
+
     sl->addWidget(m_stagedHeader, 1);
     sl->addWidget(m_unstageAllBtn);
     lay->addWidget(stagedBar);
 
     m_stagedList = new QListWidget(w);
-    m_stagedList->setObjectName("GitStagedList");
     m_stagedList->setAlternatingRowColors(false);
     m_stagedList->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_stagedList->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_stagedList->setIconSize(QSize(14, 14));
+    m_stagedList->setSpacing(1);
     connect(m_stagedList, &QListWidget::itemDoubleClicked,
             this, &GitPanel::onStagedItemDoubleClicked);
     connect(m_stagedList, &QListWidget::customContextMenuRequested,
             this, &GitPanel::onStagedContextMenu);
     lay->addWidget(m_stagedList, 1);
 
-    // ---- 未暂存 ----
+    // ============================================================
+    // 未暂存 / 更改
+    // ============================================================
     auto* unstagedBar = new QWidget(w);
     auto* ul = new QHBoxLayout(unstagedBar);
-    ul->setContentsMargins(6, 4, 6, 2);
+    ul->setContentsMargins(8, 6, 6, 2);
+
     m_unstagedHeader = new QLabel(QStringLiteral("更改 (0)"), unstagedBar);
-    m_unstagedHeader->setStyleSheet("font-weight: bold;");
+    m_unstagedHeader->setFont(headerFont);
+
     m_stageAllBtn = new QToolButton(unstagedBar);
     m_stageAllBtn->setText(QStringLiteral("+"));
     m_stageAllBtn->setToolTip(QStringLiteral("全部暂存"));
+    m_stageAllBtn->setCursor(Qt::PointingHandCursor);
+    m_stageAllBtn->setFixedSize(22, 22);
     connect(m_stageAllBtn, &QToolButton::clicked,
             this, &GitPanel::onStageAllClicked);
+
     ul->addWidget(m_unstagedHeader, 1);
     ul->addWidget(m_stageAllBtn);
     lay->addWidget(unstagedBar);
 
     m_unstagedList = new QListWidget(w);
-    m_unstagedList->setObjectName("GitUnstagedList");
     m_unstagedList->setAlternatingRowColors(false);
     m_unstagedList->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_unstagedList->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_unstagedList->setIconSize(QSize(14, 14));
+    m_unstagedList->setSpacing(1);
     connect(m_unstagedList, &QListWidget::itemDoubleClicked,
             this, &GitPanel::onUnstagedItemDoubleClicked);
     connect(m_unstagedList, &QListWidget::customContextMenuRequested,
@@ -300,25 +329,33 @@ QWidget* GitPanel::createCommitSection()
 {
     auto* w = new QWidget(this);
     auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(6, 4, 6, 6);
-    lay->setSpacing(4);
+    lay->setContentsMargins(8, 6, 8, 8);
+    lay->setSpacing(6);
 
     m_messageEdit = new QPlainTextEdit(w);
     m_messageEdit->setPlaceholderText(QStringLiteral("提交信息 (Ctrl+Enter 提交)"));
-    m_messageEdit->setMaximumHeight(80);
-    m_messageEdit->setMinimumHeight(56);
+    m_messageEdit->setMaximumHeight(88);
+    m_messageEdit->setMinimumHeight(60);
     connect(m_messageEdit, &QPlainTextEdit::textChanged,
             this, &GitPanel::updateCommitButton);
     lay->addWidget(m_messageEdit);
 
     auto* btnRow = new QHBoxLayout;
-    btnRow->setSpacing(6);
+    btnRow->setSpacing(8);
 
     m_amendCheck = new QCheckBox(QStringLiteral("修正上次提交"), w);
+    m_amendCheck->setCursor(Qt::PointingHandCursor);
     btnRow->addWidget(m_amendCheck);
     btnRow->addStretch();
 
-    m_commitBtn = new QPushButton(QStringLiteral("提交"), w);
+    m_commitBtn = new QPushButton(w);
+    // 复用全局 QSS 中的 "主按钮" 样式（QPushButton#sendButton）
+    //   —— 与 AI 面板发送按钮共用同一主色，不重复定义
+    m_commitBtn->setObjectName("sendButton");
+    m_commitBtn->setText(QStringLiteral("提交"));
+    m_commitBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_commit.svg")));
+    m_commitBtn->setIconSize(QSize(14, 14));
+    m_commitBtn->setCursor(Qt::PointingHandCursor);
     m_commitBtn->setEnabled(false);
     connect(m_commitBtn, &QPushButton::clicked,
             this, &GitPanel::onCommitClicked);
@@ -326,7 +363,7 @@ QWidget* GitPanel::createCommitSection()
 
     lay->addLayout(btnRow);
 
-    // Ctrl+Enter 提交
+    // Ctrl+Enter / Ctrl+Return 提交
     auto* submitShortcut = new QShortcut(QKeySequence("Ctrl+Return"), m_messageEdit);
     connect(submitShortcut, &QShortcut::activated, this, [this]() {
         if (m_commitBtn->isEnabled()) onCommitClicked();
@@ -349,14 +386,19 @@ QWidget* GitPanel::createStashSection()
     // ---- 标题栏 ----
     auto* bar = new QWidget(w);
     auto* hl = new QHBoxLayout(bar);
-    hl->setContentsMargins(6, 4, 6, 2);
+    hl->setContentsMargins(8, 6, 6, 2);
 
     m_stashHeader = new QLabel(QStringLiteral("Stash (0)"), bar);
-    m_stashHeader->setStyleSheet("font-weight: bold;");
+    QFont headerFont = m_stashHeader->font();
+    headerFont.setBold(true);
+    headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
+    m_stashHeader->setFont(headerFont);
 
     m_stashBtn = new QToolButton(bar);
     m_stashBtn->setText(QStringLiteral("+"));
     m_stashBtn->setToolTip(QStringLiteral("创建 stash（暂存当前改动）"));
+    m_stashBtn->setCursor(Qt::PointingHandCursor);
+    m_stashBtn->setFixedSize(22, 22);
     connect(m_stashBtn, &QToolButton::clicked,
             this, &GitPanel::onStashClicked);
 
@@ -366,11 +408,11 @@ QWidget* GitPanel::createStashSection()
 
     // ---- 列表 ----
     m_stashList = new QListWidget(w);
-    m_stashList->setObjectName("GitStashList");
     m_stashList->setAlternatingRowColors(false);
     m_stashList->setSelectionMode(QAbstractItemView::SingleSelection);
     m_stashList->setContextMenuPolicy(Qt::CustomContextMenu);
     m_stashList->setMaximumHeight(150);
+    m_stashList->setSpacing(1);
     connect(m_stashList, &QListWidget::itemDoubleClicked,
             this, &GitPanel::onStashItemDoubleClicked);
     connect(m_stashList, &QListWidget::customContextMenuRequested,
@@ -390,17 +432,22 @@ QWidget* GitPanel::createHistorySection()
 
     auto* headerBar = new QWidget(w);
     auto* hl = new QHBoxLayout(headerBar);
-    hl->setContentsMargins(6, 4, 6, 2);
+    hl->setContentsMargins(8, 6, 6, 2);
+
     auto* header = new QLabel(QStringLiteral("提交历史"), headerBar);
-    header->setStyleSheet("font-weight: bold;");
+    QFont headerFont = header->font();
+    headerFont.setBold(true);
+    headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
+    header->setFont(headerFont);
+
     hl->addWidget(header, 1);
     lay->addWidget(headerBar);
 
     m_historyList = new QListWidget(w);
-    m_historyList->setObjectName("GitHistoryList");
     m_historyList->setAlternatingRowColors(false);
     m_historyList->setSelectionMode(QAbstractItemView::SingleSelection);
     m_historyList->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_historyList->setSpacing(1);
     connect(m_historyList, &QListWidget::itemDoubleClicked,
             this, &GitPanel::onHistoryItemDoubleClicked);
     lay->addWidget(m_historyList, 1);
@@ -429,17 +476,43 @@ QString GitPanel::statusBadge(Git::FileStatus s)
 
 QColor GitPanel::statusColor(Git::FileStatus s)
 {
-    auto& tm = ThemeManager::instance();
-    using UE = ThemeManager::UIElement;
+    // 复用 ThemeManager 的语义色，跟随主题切换
+    using UI = ThemeManager::UIElement;
+    const auto& tm = ThemeManager::instance();
+
     switch (s) {
-    case FileStatus::Added:       return tm.color(UE::SuccessColor);
-    case FileStatus::Modified:    return tm.color(UE::WarningColor);
-    case FileStatus::Deleted:     return tm.color(UE::ErrorColor);
-    case FileStatus::Renamed:     return tm.color(UE::PrimaryColor);
-    case FileStatus::Copied:      return tm.color(UE::PrimaryColor);
-    case FileStatus::Untracked:   return tm.color(UE::SecondaryTextColor);
-    case FileStatus::Conflicted:  return tm.color(UE::ErrorColor);
-    default:                      return tm.color(UE::TextColor);
+    case FileStatus::Added:       return tm.color(UI::SuccessColor);
+    case FileStatus::Modified:    return tm.color(UI::WarningColor);
+    case FileStatus::Deleted:     return tm.color(UI::ErrorColor);
+    case FileStatus::Renamed:     return tm.color(UI::PrimaryColor);
+    case FileStatus::Copied:      return tm.color(UI::PrimaryColor);
+    case FileStatus::Untracked:   return tm.color(UI::SecondaryTextColor);
+    case FileStatus::Conflicted:  return tm.color(UI::ErrorColor);
+    case FileStatus::TypeChanged: return tm.color(UI::PrimaryColor);
+    default:                      return tm.color(UI::TextColor);
+    }
+}
+
+QIcon GitPanel::statusIcon(Git::FileStatus s)
+{
+    switch (s) {
+    case FileStatus::Added:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_added.svg"));
+    case FileStatus::Modified:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_modified.svg"));
+    case FileStatus::Deleted:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_deleted.svg"));
+    case FileStatus::Conflicted:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_conflict.svg"));
+    case FileStatus::Untracked:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_untracked.svg"));
+    case FileStatus::Renamed:
+    case FileStatus::TypeChanged:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_modified.svg"));
+    case FileStatus::Copied:
+        return QIcon(QStringLiteral(":/icons/icons/git_status_added.svg"));
+    default:
+        return QIcon();
     }
 }
 
@@ -455,28 +528,31 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
         // ---- 已暂存 ----
         if (s.isStaged()) {
             auto* item = new QListWidgetItem(m_stagedList);
-            item->setText(QStringLiteral("[%1] %2")
-                              .arg(statusBadge(s.indexStatus), s.path));
-            item->setForeground(statusColor(s.indexStatus));
-            item->setToolTip(s.absolutePath);
+            item->setText(s.path);                                       // 不再带 [M] 前缀
+            item->setIcon(statusIcon(s.indexStatus));                    // 状态图标
+            item->setForeground(statusColor(s.indexStatus));             // 文件名着色
+            item->setToolTip(QStringLiteral("%1\n[已暂存] %2")
+                                 .arg(s.absolutePath, statusBadge(s.indexStatus)));
             item->setData(Qt::UserRole,     s.path);
             item->setData(Qt::UserRole + 1, s.absolutePath);
             ++stagedCount;
         }
 
-        // ---- 未暂存 / 未跟踪 ----
+        // ---- 未暂存 / 未跟踪 / 冲突 ----
         if (s.hasUnstagedChanges() || s.isUntracked() || s.hasConflict()) {
             FileStatus show = s.hasConflict() ? FileStatus::Conflicted
                                               : s.workTreeStatus;
+
             auto* item = new QListWidgetItem(m_unstagedList);
-            item->setText(QStringLiteral("[%1] %2")
-                              .arg(statusBadge(show), s.path));
+            item->setText(s.path);
+            item->setIcon(statusIcon(show));
             item->setForeground(statusColor(show));
+
             if (s.hasConflict()) {
                 const bool rebaseMode =
                     GitManager::instance().isRebaseInProgress();
                 item->setToolTip(
-                    QStringLiteral("%1\n\n  存在冲突\n"
+                    QStringLiteral("%1\n\n 存在冲突\n"
                                    "右键「打开编辑器手动解决」或选择接受某一侧\n"
                                    "（当前为 %2 冲突，右键菜单会相应调整语义）")
                         .arg(s.absolutePath,
@@ -485,9 +561,9 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
             } else {
                 item->setToolTip(s.absolutePath);
             }
+
             item->setData(Qt::UserRole,     s.path);
             item->setData(Qt::UserRole + 1, s.absolutePath);
-            // UserRole + 2：是否冲突，供右键菜单判断
             item->setData(Qt::UserRole + 2, s.hasConflict());
             ++unstagedCount;
         }
@@ -528,6 +604,8 @@ void GitPanel::populateBranchCombo()
 
     m_branchCombo->setEnabled(true);
 
+    const QIcon branchIcon(QStringLiteral(":/icons/icons/branch.svg"));
+
     const auto branches = gm.branches();
     int currentIdx = -1;
     for (const GitBranch& b : branches) {
@@ -538,13 +616,14 @@ void GitPanel::populateBranchCombo()
             if (b.ahead  > 0) label += QStringLiteral("↑%1").arg(b.ahead);
             if (b.behind > 0) label += QStringLiteral("↓%1").arg(b.behind);
         }
-        m_branchCombo->addItem(label, b.name);
+        m_branchCombo->addItem(branchIcon, label, b.name);
         if (b.isCurrent) currentIdx = m_branchCombo->count() - 1;
     }
 
     if (currentIdx < 0 && info.isDetachedHead) {
         // detached HEAD：单独加一条
         m_branchCombo->insertItem(0,
+                                  QIcon(QStringLiteral(":/icons/icons/git_branch.svg")),
                                   QStringLiteral("(detached: %1)").arg(info.currentBranch),
                                   QString());
         m_branchCombo->setCurrentIndex(0);

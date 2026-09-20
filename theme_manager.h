@@ -83,6 +83,11 @@ public:
         AIChatAIBorder,         // AI 左侧竖条      #2BC0BD
         TerminalBackground,     // 终端背景        #1A1F26
         OutputPanelBackground,  // 输出面板背景    #1A1F26
+
+        // ---- Git 面板 ----
+        GitOperationBannerBackground,  // merge/rebase 警告横幅背景
+        GitOperationBannerBorder,      // 警告横幅边框
+        GitOperationBannerText,        // 警告横幅文字（含按钮）
     };
 
     static ThemeManager& instance();

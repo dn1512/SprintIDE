@@ -1,4 +1,5 @@
 #include "git_diff_dialog.h"
+#include "theme_manager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -83,15 +84,11 @@ void GitDiffDialog::setupUI()
     m_diffView = new QTextEdit(this);
     m_diffView->setReadOnly(true);
     m_diffView->setLineWrapMode(QTextEdit::NoWrap);
-    m_diffView->setObjectName("GitDiffView");
-    m_diffView->setStyleSheet(
-        "QTextEdit#GitDiffView {"
-        "  background-color: #1A1F26;"
-        "  color: #D4DCE8;"
-        "  border: 1px solid #2F3848;"
-        "  font-family: Menlo, Consolas, 'JetBrains Mono', monospace;"
-        "  font-size: 11pt;"
-        "}");
+    // 样式由全局 QTextEdit 规则提供；等宽字体通过 setFont 局部指定（字体不算 UI 风格）
+    QFont monoFont = m_diffView->font();
+    monoFont.setStyleHint(QFont::Monospace);
+    monoFont.setFamily(QStringLiteral("Menlo"));
+    m_diffView->setFont(monoFont);
     root->addWidget(m_diffView, 1);
 }
 
@@ -147,10 +144,13 @@ void GitDiffDialog::renderDiff(const QString& diffText)
     // ---- 空 diff ----
     if (diffText.trimmed().isEmpty()) {
         m_statsLabel->setText(QStringLiteral("无差异"));
+        using UI = ThemeManager::UIElement;
+        const QString dim = ThemeManager::instance()
+                                .color(UI::SecondaryTextColor).name();
         m_diffView->setHtml(
-            "<div style='color:#7A8599; padding:20px; "
-            "font-family:Menlo,Consolas,monospace;'>"
-            "此文件没有任何差异。</div>");
+            QStringLiteral("<div style='color:%1; padding:20px; "
+                           "font-family:Menlo,Consolas,monospace;'>"
+                           "此文件没有任何差异。</div>").arg(dim));
         return;
     }
 
@@ -179,17 +179,37 @@ void GitDiffDialog::renderDiff(const QString& diffText)
     QString html;
     html.reserve(limit * 80);
 
-    html += "<html><body style='"
-            "font-family: Menlo, Consolas, \"JetBrains Mono\", monospace;"
-            "font-size: 11pt;"
-            "background-color: #1A1F26;"
-            "color: #D4DCE8;"
-            "margin: 0; padding: 6px;"
-            "'>";
+    using UI = ThemeManager::UIElement;
+    const auto& tm = ThemeManager::instance();
+    const QString bodyBg = tm.color(UI::EditorBackground).name();
+    const QString bodyFg = tm.color(UI::TextColor).name();
+
+    html += QStringLiteral(
+                "<html><body style='"
+                "font-family: Menlo, Consolas, \"JetBrains Mono\", monospace;"
+                "font-size: 11pt;"
+                "background-color: %1;"
+                "color: %2;"
+                "margin: 0; padding: 6px;"
+                "'>").arg(bodyBg, bodyFg);
 
     for (int i = 0; i < limit; ++i) {
         const QString& line = lines.at(i);
         const QString escaped = line.toHtmlEscaped();
+
+        // 从 ThemeManager 拿颜色，随主题变化
+        using UI = ThemeManager::UIElement;
+        const auto& tm = ThemeManager::instance();
+        const QString cPrimary    = tm.color(UI::PrimaryColor).name();
+        const QString cSecondary  = tm.color(UI::SecondaryTextColor).name();
+        const QString cText       = tm.color(UI::TextColor).name();
+        const QString cWarning    = tm.color(UI::WarningColor).name();
+        const QString cSuccess    = tm.color(UI::SuccessColor).name();
+        const QString cError      = tm.color(UI::ErrorColor).name();
+        const QString cBg         = tm.color(UI::EditorBackground).name();
+        const QString cBgAlt      = tm.color(UI::MainWindowBackground).name();
+        const QString cAddedBg    = tm.color(UI::SuccessColor).darker(350).name();
+        const QString cRemovedBg  = tm.color(UI::ErrorColor).darker(350).name();
 
         QString style;
         if (line.startsWith("diff --git")
@@ -201,27 +221,28 @@ void GitDiffDialog::renderDiff(const QString& diffText)
             || line.startsWith("rename from")
             || line.startsWith("rename to")
             || line.startsWith("similarity index")) {
-            // 文件头
-            style = "color:#7A9EFF; background-color:#222A35; font-weight:bold;";
+            style = QStringLiteral("color:%1; background-color:%2; font-weight:bold;")
+            .arg(cPrimary, cBgAlt);
         } else if (line.startsWith("@@")) {
-            // hunk header
-            style = "color:#7A9EFF; background-color:#2A3340;";
+            style = QStringLiteral("color:%1; background-color:%2;")
+            .arg(cPrimary, cBgAlt);
         } else if (line.startsWith("+++") || line.startsWith("---")) {
-            // 文件名
-            style = "color:#8A95A8; background-color:#222A35;";
+            style = QStringLiteral("color:%1; background-color:%2;")
+            .arg(cSecondary, cBgAlt);
         } else if (line.startsWith("commit ")) {
-            // commit header（git show）
-            style = "color:#EBB65B; background-color:#2A3340; font-weight:bold;";
+            style = QStringLiteral("color:%1; background-color:%2; font-weight:bold;")
+            .arg(cWarning, cBgAlt);
         } else if (line.startsWith("Author:") || line.startsWith("Date:")
                    || line.startsWith("Merge:") || line.startsWith("    ")) {
-            // git show 的元信息 + 缩进的 message
-            style = "color:#8A95A8;";
+            style = QStringLiteral("color:%1;").arg(cSecondary);
         } else if (line.startsWith('+')) {
-            style = "color:#A5D6A5; background-color:#1A3A1A;";
+            style = QStringLiteral("color:%1; background-color:%2;")
+            .arg(cSuccess, cAddedBg);
         } else if (line.startsWith('-')) {
-            style = "color:#E07A85; background-color:#3A1A1A;";
+            style = QStringLiteral("color:%1; background-color:%2;")
+            .arg(cError, cRemovedBg);
         } else {
-            style = "color:#D4DCE8;";
+            style = QStringLiteral("color:%1;").arg(cText);
         }
 
         // white-space:pre 保留空格；空行用 &nbsp; 撑起高度

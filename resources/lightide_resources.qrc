@@ -98,5 +98,18 @@
         <file>icons/branch-open-dark.svg</file>
         <file>icons/branch-closed-light.svg</file>
         <file>icons/branch-open-light.svg</file>
+
+        <!-- git相关 -->
+        <file>icons/git_init.svg</file>
+        <file>icons/git_commit.svg</file>
+        <file>icons/git_push.svg</file>
+        <file>icons/git_pull.svg</file>
+        <file>icons/git_branch.svg</file>
+        <file>icons/git_refresh.svg</file>
+        <file>icons/status_modified.svg</file>
+        <file>icons/status_added.svg</file>
+        <file>icons/status_deleted.svg</file>
+        <file>icons/status_untracked.svg</file>
+        <file>icons/status_conflict.svg</file>
     </qresource>
 </RCC>

@@ -5092,7 +5092,10 @@ void MainWindow::updateGitStatusIndicator()
     if (untracked  > 0) parts << QStringLiteral("<span style='color:#7A8599;'>U:%1</span>").arg(untracked);
     if (conflicted > 0) parts << QStringLiteral("<span style='color:#E55B6B;'>C:%1</span>").arg(conflicted);
 
-    QString text = QStringLiteral("Git: %1").arg(branch.toHtmlEscaped());
+    QString text = QStringLiteral(
+            "<img src=':/icons/icons/git_branch.svg' width='12' height='12' "
+            "style='vertical-align:middle'> ");
+        text += QStringLiteral("Git: <b>%1</b>").arg(branch.toHtmlEscaped());
     if (!parts.isEmpty()) {
         text += QStringLiteral("  ") + parts.join(QStringLiteral("  "));
     }

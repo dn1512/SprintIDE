@@ -94,7 +94,8 @@ private:
     void updateCommitButton();
 
     static QString statusBadge(Git::FileStatus s);
-    static QColor  statusColor(Git::FileStatus s);
+    static QColor  statusColor(Git::FileStatus s);   // 内部从 ThemeManager 取色
+    static QIcon   statusIcon(Git::FileStatus s);
 
     // ---- 顶部栏 ----
     QComboBox*    m_branchCombo    = nullptr;

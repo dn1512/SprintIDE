@@ -1,4 +1,5 @@
 #include "git_overlay_proxy_model.h"
+#include "theme_manager.h"
 
 #include <QFileSystemModel>
 #include <QSortFilterProxyModel>
@@ -79,18 +80,21 @@ void GitOverlayProxyModel::sort(int column, Qt::SortOrder order)
 
 QColor GitOverlayProxyModel::statusColor(FileStatus s)
 {
-    // 这些颜色在深色主题下与原文字色 #D4DCE8 有足够反差；
-    // 饱和度略高于圆点方案，因为文字面积大、需要更柔和
+    // 复用 ThemeManager 的语义色，随主题切换
+    // ProjectPanel 的文件名染色和 GitPanel 的列表项染色保持一致
+    using UI = ThemeManager::UIElement;
+    const auto& tm = ThemeManager::instance();
+
     switch (s) {
-    case FileStatus::Added:       return QColor("#6BCC8E");   // 柔和绿
-    case FileStatus::Modified:    return QColor("#E0B45C");   // 琥珀
-    case FileStatus::Deleted:     return QColor("#E07A85");   // 柔和红
-    case FileStatus::Renamed:     return QColor("#6AACEF");   // 蓝
-    case FileStatus::Copied:      return QColor("#6AACEF");
-    case FileStatus::Untracked:   return QColor("#8A95A8");   // 略亮于默认次要文字
-    case FileStatus::Conflicted:  return QColor("#E55B6B");   // 冲突：突出红
-    case FileStatus::TypeChanged: return QColor("#6AACEF");
-    default:                      return QColor("#D4DCE8");
+    case FileStatus::Added:       return tm.color(UI::SuccessColor);
+    case FileStatus::Modified:    return tm.color(UI::WarningColor);
+    case FileStatus::Deleted:     return tm.color(UI::ErrorColor);
+    case FileStatus::Renamed:     return tm.color(UI::PrimaryColor);
+    case FileStatus::Copied:      return tm.color(UI::PrimaryColor);
+    case FileStatus::Untracked:   return tm.color(UI::SecondaryTextColor);
+    case FileStatus::Conflicted:  return tm.color(UI::ErrorColor);
+    case FileStatus::TypeChanged: return tm.color(UI::PrimaryColor);
+    default:                      return tm.color(UI::TextColor);
     }
 }
 
