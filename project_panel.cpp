@@ -697,11 +697,11 @@ void ProjectPanel::createFileTree()
 void ProjectPanel::createTestTree()
 {
     m_testTreeView = new QTreeView(this);
+    m_testTreeView->setObjectName("TestTreeView");
     m_testTreeView->setHeaderHidden(true);
     m_testTreeView->setIndentation(15);
     m_testTreeView->setSelectionMode(QAbstractItemView::SingleSelection);
     m_testTreeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_testTreeView->setStyleSheet("QTreeView { background-color: #2b2b2b; color: #cccccc; }");
 
     // 默认隐藏
     m_testTreeView->setVisible(false);

@@ -1,6 +1,7 @@
 #include "git_panel.h"
 #include "git_manager.h"
 #include "git_diff_dialog.h"
+#include "theme_manager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -428,15 +429,17 @@ QString GitPanel::statusBadge(Git::FileStatus s)
 
 QColor GitPanel::statusColor(Git::FileStatus s)
 {
+    auto& tm = ThemeManager::instance();
+    using UE = ThemeManager::UIElement;
     switch (s) {
-    case FileStatus::Added:       return QColor("#46C687");
-    case FileStatus::Modified:    return QColor("#EBB65B");
-    case FileStatus::Deleted:     return QColor("#E55B6B");
-    case FileStatus::Renamed:     return QColor("#4A9EFF");
-    case FileStatus::Copied:      return QColor("#4A9EFF");
-    case FileStatus::Untracked:   return QColor("#7A8599");
-    case FileStatus::Conflicted:  return QColor("#E55B6B");
-    default:                      return QColor("#D4DCE8");
+    case FileStatus::Added:       return tm.color(UE::SuccessColor);
+    case FileStatus::Modified:    return tm.color(UE::WarningColor);
+    case FileStatus::Deleted:     return tm.color(UE::ErrorColor);
+    case FileStatus::Renamed:     return tm.color(UE::PrimaryColor);
+    case FileStatus::Copied:      return tm.color(UE::PrimaryColor);
+    case FileStatus::Untracked:   return tm.color(UE::SecondaryTextColor);
+    case FileStatus::Conflicted:  return tm.color(UE::ErrorColor);
+    default:                      return tm.color(UE::TextColor);
     }
 }
 

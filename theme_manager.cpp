@@ -809,6 +809,7 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::PrimaryColor));         // 活动竖条色
 
     // ---------- 树 / 列表 ----------
+    // ---------- 树 / 列表 ----------
     qss += QString(
                "QTreeView, QListView, QListWidget, QTreeWidget {"
                "  background-color: %1; color: %2;"
@@ -828,14 +829,48 @@ QString ThemeManager::buildStyleSheet() const
                "  border: none; border-bottom: 1px solid %6;"
                "  padding: 4px 8px;"
                "} "
-               "QTreeView::branch { background: transparent; } "
+
+               // 显式指定 branch 三角图标 macOS上必须这么做，因为branch 三角在 macOS 上默认不可见
+               "QTreeView::branch:has-children:!has-siblings:closed,"
+               "QTreeView::branch:closed:has-children:has-siblings {"
+               "  border-image: none;"
+               "  image: url(:/icons/icons/branch-closed.svg);"
+               "}"
+               "QTreeView::branch:open:has-children:!has-siblings,"
+               "QTreeView::branch:open:has-children:has-siblings {"
+               "  border-image: none;"
+               "  image: url(:/icons/icons/branch-open.svg);"
+               "}"
                )
-               .arg(c(UIElement::EditorBackground))
+               .arg(c(UIElement::TreeBackground))
                .arg(c(UIElement::TextColor))
                .arg(c(UIElement::TreeHoverBackground))
                .arg(c(UIElement::TreeSelectedBackground))
                .arg(c(UIElement::SecondaryTextColor))
                .arg(c(UIElement::BorderColor));
+
+    // ---------- 文件夹展开/关闭 ----------
+    {
+        const QString closedIcon = isDarkTheme()
+                                    ? ":/icons/icons/branch-closed-dark.svg"
+                                    : ":/icons/icons/branch-closed-light.svg";
+        const QString openIcon = isDarkTheme()
+                                     ? ":/icons/icons/branch-open-dark.svg"
+                                     : ":/icons/icons/branch-open-light.svg";
+
+        qss += QString(
+                   "QTreeView::branch:has-children:!has-siblings:closed,"
+                   "QTreeView::branch:closed:has-children:has-siblings {"
+                   "  border-image: none;"
+                   "  image: url(%1);"
+                   "}"
+                   "QTreeView::branch:open:has-children:!has-siblings,"
+                   "QTreeView::branch:open:has-children:has-siblings {"
+                   "  border-image: none;"
+                   "  image: url(%2);"
+                   "}"
+                   ).arg(closedIcon, openIcon);
+    }
 
     // ---------- 滚动条 ----------
     qss += QString(

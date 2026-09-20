@@ -647,15 +647,35 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # macOS特定设置
 if(APPLE)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER "org.sprintide.app"
-        MACOSX_BUNDLE_BUNDLE_NAME "${APP_NAME}"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${APP_VERSION}"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${APP_VERSION}"
-    )
+    set(MACOSX_ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.icns")
 
-    # 为macOS添加额外的框架
+    if(EXISTS "${MACOSX_ICON_FILE}")
+        # 关键：告诉 CMake 用哪个图标 + 把它拷进 .app/Contents/Resources/
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_GUI_IDENTIFIER "org.sprintide.app"
+            MACOSX_BUNDLE_BUNDLE_NAME "${APP_NAME}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${APP_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${APP_VERSION}"
+            MACOSX_BUNDLE_ICON_FILE "app_icon.icns"    # ★ 新增
+        )
+        # 把 icns 加到 bundle 资源列表
+        target_sources(${PROJECT_NAME} PRIVATE "${MACOSX_ICON_FILE}")
+        set_source_files_properties("${MACOSX_ICON_FILE}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+        )
+    else()
+        message(WARNING "resources/app_icon.icns 不存在，.app 将显示默认图标")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_GUI_IDENTIFIER "org.sprintide.app"
+            MACOSX_BUNDLE_BUNDLE_NAME "${APP_NAME}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${APP_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${APP_VERSION}"
+        )
+    endif()
+
+    # 原有的额外框架
     target_link_libraries(${PROJECT_NAME} PRIVATE
         "-framework AppKit"
         "-framework Foundation"

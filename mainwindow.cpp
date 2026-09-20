@@ -422,6 +422,12 @@ MainWindow::~MainWindow()
 {
     qDebug() << "[MainWindow] 析构开始";
 
+    // 防止 LSP shutdown 期间嵌套事件循环把队列里的旧事件重新投递
+        this->blockSignals(true);
+
+    // 把当前线程队列里给 this 的事件全部取消（安全，不会漏掉正在派发的）
+    QCoreApplication::removePostedEvents(this);
+
     // ========== 1. 断开可能产生回调的信号 ==========
     if (m_compileManager) {
         disconnect(m_compileManager, nullptr, this, nullptr);
@@ -460,6 +466,15 @@ MainWindow::~MainWindow()
             QWidget* w = d->editorTabs->widget(0);
             d->editorTabs->removeTab(0);
             if (w) {
+                // 先解除它对外部对象（LSPClient 等）的监听，避免析构期间被调用
+                disconnect(w, nullptr, nullptr, nullptr);
+                // 也断开外部对象对它的信号
+                //   （对 QObject 的接收者版本：断开所有 source→w 的连接）
+                if (auto* te = qobject_cast<TextEditor*>(w)) {
+                    if (te->document()) {
+                        disconnect(te->document(), nullptr, nullptr, nullptr);
+                    }
+                }
                 delete w;
             }
         }
@@ -1497,6 +1512,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
         }
     }
 
+    if (m_lspManager) {
+        m_lspManager->shutdownAll();
+    }
+
     saveSession();
 
     // 保存 AI 面板状态
@@ -1724,28 +1743,30 @@ void MainWindow::openFile(const QString &path)
     // 2. 创建编辑器并加载文件
     TextEditor* editor = new TextEditor(this);
 
-    // ---- 代码补全信号（保持不变） ----
+    QPointer<TextEditor> editorPtr = editor;
     connect(editor, &TextEditor::completionRequested,
-            this, [this, editor](const QString& filePath, int line, int column) {
-                if (!m_lspManager) return;
-                QString projectRoot = d->currentProjectPath.isEmpty() ?
-                                          QFileInfo(filePath).absolutePath() :
-                                          d->currentProjectPath;
+            editor,
+            [this, editorPtr](const QString& filePath, int line, int column) {
+                if (!editorPtr || !m_lspManager) return;
+                const QString projectRoot = d->currentProjectPath.isEmpty()
+                    ? QFileInfo(filePath).absolutePath()
+                    : d->currentProjectPath;
                 LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
-                if (client) {
-                    static QSet<LSPClient*> connectedClients;
-                    if (!connectedClients.contains(client)) {
-                        connect(client, &LSPClient::completionReceived,
-                                this, [this, editor](const QString& filePath,
-                                               const QList<LSPCompletionItem>& items) {
-                                    if (editor && editor->filePath() == filePath) {
-                                        editor->updateCompletionItems(items);
-                                    }
-                                });
-                        connectedClients.insert(client);
-                    }
-                    client->requestCompletion(filePath, line, column);
-                }
+                if (!client) return;
+
+                // 用 unique connection 保证同一个 editor + client 只连一次
+                connect(client, &LSPClient::completionReceived,
+                        editorPtr.data(),                 // context = editor
+                        [editorPtr](const QString& fp,
+                                    const QList<LSPCompletionItem>& items) {
+                            if (!editorPtr) return;
+                            if (editorPtr->filePath() == fp) {
+                                editorPtr->updateCompletionItems(items);
+                            }
+                        },
+                        Qt::UniqueConnection);            // 防止重复连接
+
+                client->requestCompletion(filePath, line, column);
             });
 
     // 跳转定义连接
