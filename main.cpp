@@ -17,6 +17,7 @@
 #include <QIcon>
 #include <QDir>
 #include <memory>   // std::make_unique
+#include <QStandardPaths>
 
 // 使用命名空间SprintIDE
 using namespace SprintIDE;
@@ -80,22 +81,43 @@ int main(int argc, char *argv[])
         }
 
         if (projectPath.isEmpty()) {
-            ProjectSelectionDialog dialog(projectManager->recentProjects());
+            while (true) {
+                // ---------- 弹"选择项目"对话框 ----------
+                ProjectSelectionDialog selDlg(projectManager->recentProjects());
 
-            if (dialog.exec() == QDialog::Accepted) {
-                if (dialog.isCreateNewProject()) {
-                    qDebug() << "User chose to create new project";
-                    projectPath = "create_new";
-                } else {
-                    projectPath = dialog.selectedProjectPath();
+                if (selDlg.exec() != QDialog::Accepted) {
+                    // 用户取消选择 → 退出程序
+                    sprintApp.shutdown();
+                    return 0;
+                }
+
+                if (!selDlg.isCreateNewProject()) {
+                    // 用户选了已有项目
+                    projectPath = selDlg.selectedProjectPath();
                     if (!projectPath.isEmpty()) {
                         projectManager->openProject(projectPath);
+                        break;   // 选定 → 离开循环
                     }
+                    continue;    // 空路径 → 回到选择对话框
                 }
-            } else {
-                // 用户取消，走正常清理流程（避免直接 return 0 跳过清理）
-                sprintApp.shutdown();
-                return 0;
+
+                // ---------- 用户选了"创建新项目" → 弹"创建项目"对话框 ----------
+                ProjectCreationDialog createDlg;
+                createDlg.setDefaultProjectPath(
+                    QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+
+                if (createDlg.exec() != QDialog::Accepted) {
+                    // ★ 用户取消创建 → continue 回到"选择项目"对话框
+                    continue;
+                }
+
+                ProjectCreationResult result = createDlg.getResult();
+                if (result.success && !result.projectPath.isEmpty()) {
+                    projectPath = result.projectPath;
+                    projectManager->openProject(projectPath);
+                    break;   // 创建成功 → 离开循环
+                }
+                // 创建失败 → 回到"选择项目"对话框
             }
         } else {
             projectManager->openProject(projectPath);
@@ -108,8 +130,6 @@ int main(int argc, char *argv[])
             QString projectName = projectManager->currentProjectName();
             mainWindow->setWindowTitle(QString("SprintIDE - %1").arg(projectName));
             mainWindow->openProject(projectManager->currentProjectPath());
-        } else if (projectPath == "create_new") {
-            mainWindow->onNewProject();
         }
 
         {

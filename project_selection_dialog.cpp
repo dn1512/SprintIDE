@@ -1,4 +1,3 @@
-// project_selection_dialog.cpp
 #include "project_selection_dialog.h"
 
 #include <QFileInfo>
@@ -15,6 +14,7 @@
 #include <QKeySequence>
 
 #include "project_manager.h"   // 用于持久化移除操作
+#include "theme_manager.h"
 
 namespace SprintIDE {
 
@@ -29,10 +29,6 @@ ProjectSelectionDialog::ProjectSelectionDialog(const QMap<QString, QDateTime>& r
     setWindowTitle("选择或创建项目");
     setMinimumSize(600, 400);
     setModal(true);
-    setStyleSheet("QDialog { background-color: #1e1e1e; } "
-                  "QLabel { color: #ffffff; } "
-                  "QPushButton { color: #ffffff; } "
-                  "QComboBox { color: #ffffff; }");
 
     initUI();
     loadRecentProjects(recentProjects);
@@ -200,6 +196,7 @@ void ProjectSelectionDialog::initUI()
 
     // ---------- 标题 ----------
     QLabel* titleLabel = new QLabel("请选择要打开的项目，或创建新项目", this);
+    titleLabel->setObjectName("DialogTitleLabel");
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(14);
     titleFont.setBold(true);
@@ -212,11 +209,12 @@ void ProjectSelectionDialog::initUI()
 
     // ---------- 最近项目标签 ----------
     QLabel* recentProjectsLabel = new QLabel("最近使用的项目：", this);
-    recentProjectsLabel->setStyleSheet("QLabel { color: #ffffff; }");
+    recentProjectsLabel->setObjectName("DialogSubtitleLabel");
     mainLayout->addWidget(recentProjectsLabel);
 
     // ---------- 列表 ----------
     m_projectList = new QListWidget(this);
+    m_projectList->setObjectName("ProjectListWidget");
     m_projectList->setSelectionMode(QAbstractItemView::SingleSelection);
     m_projectList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_projectList->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -224,35 +222,12 @@ void ProjectSelectionDialog::initUI()
     // 启用自定义右键菜单
     m_projectList->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    m_projectList->setStyleSheet(
-        "QListWidget { "
-        "    background-color: #2c2c2c; "
-        "    border: 1px solid #444444; "
-        "    border-radius: 4px; "
-        "    padding: 4px; "
-        "}"
-        "QListWidget::item { "
-        "    padding: 8px; "
-        "    border-bottom: 1px solid #444444; "
-        "    color: #ffffff; "
-        "}"
-        "QListWidget::item:hover { "
-        "    background-color: #3a3a3a; "
-        "}"
-        "QListWidget::item:selected { "
-        "    background-color: #1890ff; "
-        "    color: #ffffff; "
-        "}"
-        );
-
     mainLayout->addWidget(m_projectList);
 
     // ---------- 项目信息面板 ----------
     m_infoLabel = new QLabel(this);
+    m_infoLabel->setObjectName("ProjectInfoLabel");
     m_infoLabel->setWordWrap(true);
-    m_infoLabel->setStyleSheet("QLabel { background-color: #2c2c2c; "
-                               "color: #ffffff; padding: 8px; "
-                               "border: 1px solid #444444; border-radius: 4px; }");
     mainLayout->addWidget(m_infoLabel);
 
     mainLayout->addSpacing(20);
@@ -373,7 +348,8 @@ void ProjectSelectionDialog::ensureEmptyPlaceholder()
 
     QListWidgetItem* emptyItem = new QListWidgetItem("没有最近使用的项目");
     emptyItem->setFlags(Qt::NoItemFlags);   // 禁用选择
-    emptyItem->setForeground(QBrush(QColor("#888888")));
+    emptyItem->setForeground(QBrush(
+        ThemeManager::instance().color(ThemeManager::UIElement::SecondaryTextColor)));
     m_projectList->addItem(emptyItem);
 }
 

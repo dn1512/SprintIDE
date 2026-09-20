@@ -826,7 +826,6 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::PrimaryColor));         // 活动竖条色
 
     // ---------- 树 / 列表 ----------
-    // ---------- 树 / 列表 ----------
     qss += QString(
                "QTreeView, QListView, QListWidget, QTreeWidget {"
                "  background-color: %1; color: %2;"
@@ -1115,6 +1114,49 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::SuccessColor))             // %8
                .arg(c(UIElement::DisabledTextColor))        // %9
                .arg(c(UIElement::ErrorColor));              // %10
+
+    // ---------- 项目选择对话框 ----------
+    qss += QString(
+               "QDialog#ProjectSelectionDialog { background-color: %1; }\n"
+               "QLabel#DialogTitleLabel {"
+               "  color: %2; font-size: 15px; font-weight: 600;"
+               "}\n"
+               "QLabel#DialogSubtitleLabel {"
+               "  color: %3; font-size: 12px;"
+               "}\n"
+               "QListWidget#ProjectListWidget {"
+               "  background-color: %4;"
+               "  color: %2;"
+               "  border: 1px solid %5;"
+               "  border-radius: 4px;"
+               "  padding: 4px;"
+               "}\n"
+               "QListWidget#ProjectListWidget::item {"
+               "  padding: 8px;"
+               "  border-bottom: 1px solid %5;"
+               "}\n"
+               "QListWidget#ProjectListWidget::item:hover {"
+               "  background-color: %6;"
+               "}\n"
+               "QListWidget#ProjectListWidget::item:selected {"
+               "  background-color: %7;"
+               "  color: %2;"
+               "}\n"
+               "QLabel#ProjectInfoLabel {"
+               "  background-color: %4;"
+               "  color: %2;"
+               "  border: 1px solid %5;"
+               "  border-radius: 4px;"
+               "  padding: 8px;"
+               "}\n"
+               )
+               .arg(c(UIElement::MainWindowBackground))   // %1
+               .arg(c(UIElement::TextColor))              // %2
+               .arg(c(UIElement::SecondaryTextColor))     // %3
+               .arg(c(UIElement::EditorBackground))       // %4
+               .arg(c(UIElement::BorderColor))            // %5
+               .arg(c(UIElement::HoverBackground))        // %6
+               .arg(c(UIElement::PrimaryColor));          // %7
 
     // ---------- 终端 ----------
     qss += QString(

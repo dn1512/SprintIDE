@@ -1153,31 +1153,34 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
     m_languageSpecificForm  = new QFormLayout(m_languageSpecificGroup);
     m_languageSpecificForm->setLabelAlignment(Qt::AlignRight);
 
+    // ★ 所有子控件的 parent 都指向 m_languageSpecificGroup
+    //   这样它们跟随 group 一起隐藏，不会在布局外"漏出"到对话框左上角
+
     // ---- Python ----
-    m_pythonVenvCheckBox = new QCheckBox("创建虚拟环境 (.venv)", this);
+    m_pythonVenvCheckBox = new QCheckBox("创建虚拟环境 (.venv)", m_languageSpecificGroup);
     m_pythonVenvCheckBox->setChecked(true);
-    m_pythonInterpreterEdit = new QLineEdit(this);
+    m_pythonInterpreterEdit = new QLineEdit(m_languageSpecificGroup);
     m_pythonInterpreterEdit->setPlaceholderText("留空则自动探测 python3 / py");
-    m_pythonEntryLabel = new QLabel("main.py", this);
+    m_pythonEntryLabel = new QLabel("main.py", m_languageSpecificGroup);
 
     // ---- Go ----
-    m_goModuleEdit = new QLineEdit(this);
+    m_goModuleEdit = new QLineEdit(m_languageSpecificGroup);
     m_goModuleEdit->setPlaceholderText("例如 example.com/myapp");
 
     // ---- Rust ----
-    m_rustKindCombo = new QComboBox(this);
+    m_rustKindCombo = new QComboBox(m_languageSpecificGroup);
     m_rustKindCombo->addItem("可执行程序 (bin)", "bin");
     m_rustKindCombo->addItem("库 (lib)",         "lib");
 
     // ---- Node ----
-    m_nodeVariantCombo = new QComboBox(this);
+    m_nodeVariantCombo = new QComboBox(m_languageSpecificGroup);
     m_nodeVariantCombo->addItem("JavaScript", "js");
     m_nodeVariantCombo->addItem("TypeScript", "ts");
 
-    m_nodePmCombo = new QComboBox(this);
+    m_nodePmCombo = new QComboBox(m_languageSpecificGroup);
     m_nodePmCombo->addItems({"npm", "pnpm", "yarn"});
 
-    m_nodeEntryEdit = new QLineEdit("index.js", this);
+    m_nodeEntryEdit = new QLineEdit("index.js", m_languageSpecificGroup);
     connect(m_nodeVariantCombo,
             static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, [this](int) {
@@ -1186,15 +1189,14 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
             });
 
     // ---- GenericAI ----
-    m_genericBuildEdit = new QLineEdit(this);
+    m_genericBuildEdit = new QLineEdit(m_languageSpecificGroup);
     m_genericBuildEdit->setPlaceholderText("例如 make -j4");
-    m_genericRunEdit = new QLineEdit(this);
+    m_genericRunEdit = new QLineEdit(m_languageSpecificGroup);
     m_genericRunEdit->setPlaceholderText("例如 ./my_app");
-    m_genericCleanEdit = new QLineEdit(this);
+    m_genericCleanEdit = new QLineEdit(m_languageSpecificGroup);
     m_genericCleanEdit->setPlaceholderText("例如 rm -rf build/");
 
-    // ---- 把 group 插到对话框里 ----
-    // 优先插到 templateFilesLabel 之后，否则插到 templateDescriptionLabel 之后
+    // ---- 把 group 插到对话框里（逻辑不变） ----
     QWidget* anchor = ui->templateFilesLabel;
     if (!anchor) anchor = ui->templateDescriptionLabel;
 
@@ -1208,7 +1210,6 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
                 inserted = true;
             }
         } else if (QFormLayout* form = qobject_cast<QFormLayout*>(lay)) {
-            // 如果锚点在 QFormLayout 里，直接 addRow
             form->addRow(m_languageSpecificGroup);
             inserted = true;
         }
@@ -1218,14 +1219,11 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
         if (layout()) {
             layout()->addWidget(m_languageSpecificGroup);
         } else {
-            // 极端情况：连对话框都没有布局，就直接挂在 this 上
             m_languageSpecificGroup->setParent(this);
         }
-        qWarning() << "[ProjectCreationDialog] 未能确定语言特有选项组的插入点，"
-                      "将作为顶层控件独立存在。";
+        qWarning() << "[ProjectCreationDialog] 未能确定语言特有选项组的插入点";
     }
 
-    // 初始隐藏，语言为 C++ 时不显示
     m_languageSpecificGroup->setVisible(false);
 }
 
