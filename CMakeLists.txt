@@ -372,6 +372,7 @@ set(GIT_SOURCES
     src/git/git_overlay_proxy_model.cpp
     src/git/git_settings_page.cpp
     src/git/git_diff_dialog.cpp
+    src/git/git_file_history_dialog.cpp
 )
 
 set(GIT_HEADERS
@@ -382,6 +383,7 @@ set(GIT_HEADERS
     src/git/git_overlay_proxy_model.h
     src/git/git_settings_page.h
     src/git/git_diff_dialog.h
+    src/git/git_file_history_dialog.h
 )
 
 # 创建可执行文件
@@ -518,6 +520,9 @@ add_executable(${PROJECT_NAME}
     git/git_overlay_proxy_model.cpp
     git/git_settings_page.h git/git_settings_page.cpp
     git/git_diff_dialog.h git/git_diff_dialog.cpp
+    git/git_file_history_dialog.h
+    git/git_file_history_dialog.cpp
+
 
 )
 

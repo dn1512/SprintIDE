@@ -426,6 +426,56 @@ bool GitManager::hasRemote() const
     return d->repoInfo.hasRemote;
 }
 
+QList<GitCommit> GitManager::fileLog(const QString& relativePath, int maxCount) const
+{
+    QList<GitCommit> result;
+    if (!d->repoInfo.isValid || relativePath.isEmpty()) return result;
+    if (d->repoInfo.isEmpty) return result;
+
+    GitCommand cmd;
+    QStringList args = {"log",
+                        QString("--max-count=%1").arg(maxCount),
+                        "--follow",
+                        "--pretty=format:%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%D%x1e",
+                        "--",
+                        relativePath};
+
+    auto r = cmd.run(d->repoInfo.rootPath, args, 15000);
+    if (!r.ok()) return result;
+    return parseLog(r.stdOut);
+}
+
+GitCommit GitManager::fileRevision(const QString& relativePath) const
+{
+    GitCommit c;
+    if (!d->repoInfo.isValid) return c;
+    if (d->repoInfo.isEmpty) return c;
+
+    GitCommand cmd;
+    QStringList args = {"log", "-1",
+                        "--pretty=format:%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%D"};
+    if (!relativePath.isEmpty()) {
+        args << "--" << relativePath;
+    }
+
+    auto r = cmd.run(d->repoInfo.rootPath, args, 10000);
+    if (!r.ok()) return c;
+
+    const QStringList parts = r.stdOut.split(QChar(0x1f));
+    if (parts.size() < 6) return c;
+
+    c.hash      = parts.at(0);
+    c.shortHash = parts.at(1);
+    c.author    = parts.at(2);
+    c.email     = parts.at(3);
+    c.timestamp = QDateTime::fromSecsSinceEpoch(parts.at(4).toLongLong());
+    c.message   = parts.at(5);
+    if (parts.size() > 6) {
+        c.refs = parts.at(6).split(", ", Qt::SkipEmptyParts);
+    }
+    return c;
+}
+
 // ============================================================
 // 历史 / Diff
 // ============================================================

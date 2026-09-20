@@ -222,6 +222,9 @@ public slots:
     void onGitStatusLabelClicked();// 状态栏指示器点击
     void onOpenGitSettingsFromPanel();  // GitPanel 请求打开设置页
 
+    // ProjectPanel 右键 Git 子菜单分发
+    void onProjectPanelGitAction(int action, const QStringList& filePaths);
+
 private:
     void setupUI();
     void setupMenuBar();

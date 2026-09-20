@@ -19,6 +19,36 @@
 
 namespace SprintIDE {
 
+// ============================================================
+// 项目面板右键 Git 子菜单的动作
+// ============================================================
+enum class GitContextAction {
+    // ---- 文件级（需要 filePath） ----
+    Add,                   // 添加（暂存）
+    ShowDiff,              // 显示差异
+    ShowHistory,           // 显示历史记录
+    ShowCurrentRevision,   // 显示当前修订
+    Rollback,              // 回滚（丢弃更改）
+    Annotate,              // 使用 Git 追溯注解（占位）
+    CompareWithRevision,   // 与修订比较（占位）
+    CompareWithBranch,     // 与分支比较（占位）
+
+    // ---- 仓库级 ----
+    Commit,                // 提交
+    Push,                  // 推送
+    Pull,                  // 拉取
+    Fetch,                 // 提取
+    Merge,                 // 合并（占位）
+    Rebase,                // 变基（占位）
+    Branches,              // 分支管理（占位）
+    NewBranch,             // 新建分支
+    NewTag,                // 新建标记（占位）
+    ResetHead,             // 重置 HEAD（占位）
+    StashChanges,          // 存储变更
+    UnstashChanges,        // 取消存储变更（占位）
+    ManageRemotes,         // 管理远程（占位）
+};
+
 // 代理模型（原样保留）
 class ExcludeDirProxyModel : public QSortFilterProxyModel
 {
@@ -93,6 +123,13 @@ public slots:
 signals:
     void fileOpenRequested(const QString& filePath);
     void fileCreated(const QString& filePath);
+
+    // 右键 Git 子菜单动作
+    //   action : 用户选择的动作
+    //   filePaths : 当前选中的文件（绝对路径列表）
+    //               仓库级动作用空列表
+    void gitActionRequested(SprintIDE::GitContextAction action,
+                            const QStringList& filePaths);
     void fileDeleted(const QString& filePath);
     void fileRenamed(const QString& oldPath, const QString& newPath);
     void projectClosed();
@@ -126,6 +163,11 @@ private:
     void startRename(const QModelIndex &index);
     bool validateFileName(const QString& fileName) const;
     QString getNewFileName(const QString& parentDir, const QString& baseName, const QString& extension) const;
+
+    // 构建 Git 子菜单（只在 createContextMenu() 里调用一次）
+    void buildGitSubMenu();
+    // 根据当前选中项刷新 Git 子菜单的启用/禁用
+    void updateGitSubMenuState();
 
     void refreshTestTree();
     void addPythonTestNodes(const QString& projectPath);
@@ -161,6 +203,33 @@ private:
     QAction* m_refreshAction;
     QAction* m_expandAction;
     QAction* m_historyAction;
+
+    // ---- Git 子菜单 ----
+    QMenu*   m_gitSubMenu          = nullptr;
+    QAction* m_gitCommitAct        = nullptr;
+    QAction* m_gitAddAct           = nullptr;
+    QAction* m_gitAnnotateAct      = nullptr;
+    QAction* m_gitShowDiffAct      = nullptr;
+    QAction* m_gitCompareRevAct    = nullptr;
+    QAction* m_gitCompareBranchAct = nullptr;
+    QAction* m_gitShowHistoryAct   = nullptr;
+    QAction* m_gitShowRevisionAct  = nullptr;
+    QAction* m_gitRollbackAct      = nullptr;
+    QAction* m_gitPushAct          = nullptr;
+    QAction* m_gitPullAct          = nullptr;
+    QAction* m_gitFetchAct         = nullptr;
+    QAction* m_gitMergeAct         = nullptr;
+    QAction* m_gitRebaseAct        = nullptr;
+    QAction* m_gitBranchesAct      = nullptr;
+    QAction* m_gitNewBranchAct     = nullptr;
+    QAction* m_gitNewTagAct        = nullptr;
+    QAction* m_gitResetHeadAct     = nullptr;
+    QAction* m_gitStashChangesAct  = nullptr;
+    QAction* m_gitUnstashAct       = nullptr;
+    QAction* m_gitManageRemotesAct = nullptr;
+    
+    // 记录最近一次右键选中的文件路径（供菜单项回调使用）
+    QStringList m_lastSelectedPaths;
 };
 
 } // namespace SprintIDE

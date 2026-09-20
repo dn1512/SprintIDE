@@ -27,6 +27,9 @@
 #include "project_manager.h"
 #include "python/python_project_model.h"
 #include "git/git_manager.h"
+#include "git/git_diff_dialog.h"
+#include "git/git_file_history_dialog.h"
+#include "theme_manager.h"
 
 namespace SprintIDE {
 
@@ -728,10 +731,124 @@ void ProjectPanel::createContextMenu()
     m_copyPathAction = m_contextMenu->addAction("复制路径", this, &ProjectPanel::copyFilePath);
     m_showInExplorerAction = m_contextMenu->addAction("在文件管理器中显示", this, &ProjectPanel::showInFileManager);
     m_contextMenu->addSeparator();
-    m_historyAction = m_contextMenu->addAction("查看历史", this, &ProjectPanel::showFileHistory);
+    m_historyAction = m_contextMenu->addAction("查看本地历史", this, &ProjectPanel::showFileHistory);
+
+    // ---- Git 子菜单（插在"刷新"之前，与 PyCharm 位置一致） ----
+    buildGitSubMenu();
+
     m_contextMenu->addSeparator();
     m_refreshAction = m_contextMenu->addAction("刷新", this, &ProjectPanel::refreshSelected);
     m_expandAction  = m_contextMenu->addAction("展开", this, &ProjectPanel::expandToSelected);
+}
+
+void ProjectPanel::buildGitSubMenu()
+{
+    m_gitSubMenu = m_contextMenu->addMenu(QStringLiteral("Git"));
+    m_gitSubMenu->setIcon(
+        QIcon(QStringLiteral(":/icons/icons/git_branch.svg")));
+
+    // 辅助：创建菜单项并连接动作
+    auto addItem = [this](QAction*& out,
+                          const QString& text,
+                          GitContextAction action,
+                          const QString& iconPath = QString(),
+                          bool enabled = true) {
+        if (iconPath.isEmpty()) {
+            out = m_gitSubMenu->addAction(text);
+        } else {
+            out = m_gitSubMenu->addAction(QIcon(iconPath), text);
+        }
+        out->setEnabled(enabled);
+        if (enabled) {
+            QObject::connect(out, &QAction::triggered, this, [this, action]() {
+                // 触发时用最近一次右键选中的路径
+                emit gitActionRequested(action, m_lastSelectedPaths);
+            });
+        } else {
+            out->setToolTip(QStringLiteral("将在后续版本实现"));
+        }
+        return out;
+    };
+
+    // ---------- 文件操作 ----------
+    addItem(m_gitCommitAct,        QStringLiteral("提交..."),
+            GitContextAction::Commit,
+            QStringLiteral(":/icons/icons/git_commit.svg"));
+
+    addItem(m_gitAddAct,           QStringLiteral("添加"),
+            GitContextAction::Add);
+
+    m_gitSubMenu->addSeparator();
+
+    addItem(m_gitAnnotateAct,      QStringLiteral("使用 Git 追溯注解"),
+            GitContextAction::Annotate, QString(), /*enabled=*/false);
+
+    addItem(m_gitShowDiffAct,      QStringLiteral("显示差异"),
+            GitContextAction::ShowDiff);
+
+    addItem(m_gitCompareRevAct,    QStringLiteral("与修订比较..."),
+            GitContextAction::CompareWithRevision, QString(), /*enabled=*/false);
+
+    addItem(m_gitCompareBranchAct, QStringLiteral("与分支比较..."),
+            GitContextAction::CompareWithBranch, QString(), /*enabled=*/false);
+
+    addItem(m_gitShowHistoryAct,   QStringLiteral("显示历史记录"),
+            GitContextAction::ShowHistory);
+
+    addItem(m_gitShowRevisionAct,  QStringLiteral("显示当前修订"),
+            GitContextAction::ShowCurrentRevision);
+
+    addItem(m_gitRollbackAct,      QStringLiteral("回滚..."),
+            GitContextAction::Rollback);
+
+    m_gitSubMenu->addSeparator();
+
+    // ---------- 仓库操作 ----------
+    addItem(m_gitPushAct,          QStringLiteral("推送..."),
+            GitContextAction::Push,
+            QStringLiteral(":/icons/icons/git_push.svg"));
+
+    addItem(m_gitPullAct,          QStringLiteral("拉取..."),
+            GitContextAction::Pull,
+            QStringLiteral(":/icons/icons/git_pull.svg"));
+
+    addItem(m_gitFetchAct,         QStringLiteral("提取"),
+            GitContextAction::Fetch,
+            QStringLiteral(":/icons/icons/git_refresh.svg"));
+
+    m_gitSubMenu->addSeparator();
+
+    addItem(m_gitMergeAct,         QStringLiteral("合并..."),
+            GitContextAction::Merge, QString(), /*enabled=*/false);
+
+    addItem(m_gitRebaseAct,        QStringLiteral("变基..."),
+            GitContextAction::Rebase, QString(), /*enabled=*/false);
+
+    addItem(m_gitBranchesAct,      QStringLiteral("分支..."),
+            GitContextAction::Branches, QString(), /*enabled=*/false);
+
+    addItem(m_gitNewBranchAct,     QStringLiteral("新建分支..."),
+            GitContextAction::NewBranch,
+            QStringLiteral(":/icons/icons/git_branch.svg"));
+
+    addItem(m_gitNewTagAct,        QStringLiteral("新建标记..."),
+            GitContextAction::NewTag, QString(), /*enabled=*/false);
+
+    addItem(m_gitResetHeadAct,     QStringLiteral("重置 HEAD..."),
+            GitContextAction::ResetHead, QString(), /*enabled=*/false);
+
+    m_gitSubMenu->addSeparator();
+
+    addItem(m_gitStashChangesAct,  QStringLiteral("存储变更..."),
+            GitContextAction::StashChanges);
+
+    addItem(m_gitUnstashAct,       QStringLiteral("取消存储变更..."),
+            GitContextAction::UnstashChanges, QString(), /*enabled=*/false);
+
+    m_gitSubMenu->addSeparator();
+
+    addItem(m_gitManageRemotesAct, QStringLiteral("管理远程..."),
+            GitContextAction::ManageRemotes, QString(), /*enabled=*/false);
 }
 
 void ProjectPanel::updateContextMenu()
@@ -751,6 +868,97 @@ void ProjectPanel::updateContextMenu()
     m_refreshAction->setEnabled(hasSel);
     m_expandAction->setEnabled(hasSel && isDir);
     m_historyAction->setEnabled(hasSel && isFil);
+
+    updateGitSubMenuState();
+}
+
+void ProjectPanel::updateGitSubMenuState()
+{
+    if (!m_gitSubMenu) return;
+
+    // 整个 Git 子菜单只在当前项目是 Git 仓库时显示
+    const auto& gm = Git::GitManager::instance();
+    if (!gm.isActive()) {
+        m_gitSubMenu->menuAction()->setVisible(false);
+        m_lastSelectedPaths.clear();
+        return;
+    }
+    m_gitSubMenu->menuAction()->setVisible(true);
+
+    // 记录当前选中的文件（绝对路径）
+    m_lastSelectedPaths = selectedFilePaths();
+
+    // 状态判定
+    const QModelIndex idx = m_fileTreeView->currentIndex();
+    const bool hasSel  = idx.isValid();
+    const bool isDir   = hasSel && isDirectory(idx);
+    const bool isFile  = hasSel && !isDir;
+
+    // 判断选中文件是否已被 git 跟踪
+    bool isTracked = false;
+    bool isUntracked = false;
+    if (isFile && !m_lastSelectedPaths.isEmpty()) {
+        const QString absPath = m_lastSelectedPaths.first();
+        for (const auto& s : gm.currentStatus()) {
+            if (s.absolutePath == absPath) {
+                if (s.isUntracked()) isUntracked = true;
+                else isTracked = true;
+                break;
+            }
+        }
+        // 未出现在 status 里 → 已跟踪但当前干净（已提交）
+        if (!isUntracked && !isTracked) isTracked = true;
+    }
+
+    // ---- 文件级动作 ----
+    if (m_gitAddAct) {
+        // 目录也可"添加"（git add <dir>）
+        m_gitAddAct->setEnabled(hasSel);
+    }
+    if (m_gitShowDiffAct) {
+        // 目录 / 未跟踪文件无 diff
+        m_gitShowDiffAct->setEnabled(isFile && isTracked);
+    }
+    if (m_gitShowHistoryAct) {
+        m_gitShowHistoryAct->setEnabled(isFile && isTracked);
+    }
+    if (m_gitShowRevisionAct) {
+        m_gitShowRevisionAct->setEnabled(isFile && isTracked);
+    }
+    if (m_gitRollbackAct) {
+        // 有未提交的更改才允许回滚
+        bool hasChanges = false;
+        if (isFile && !m_lastSelectedPaths.isEmpty()) {
+            const QString absPath = m_lastSelectedPaths.first();
+            for (const auto& s : gm.currentStatus()) {
+                if (s.absolutePath == absPath
+                    && (s.isStaged() || s.hasUnstagedChanges() || s.isUntracked())) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+        }
+        m_gitRollbackAct->setEnabled(hasChanges);
+    }
+
+    // ---- 仓库级动作 ----
+    const bool hasRemote = gm.hasRemote();
+    if (m_gitCommitAct)   m_gitCommitAct->setEnabled(true);
+    if (m_gitPushAct)     m_gitPushAct->setEnabled(hasRemote);
+    if (m_gitPullAct)     m_gitPullAct->setEnabled(hasRemote);
+    if (m_gitFetchAct)    m_gitFetchAct->setEnabled(hasRemote);
+    if (m_gitNewBranchAct) m_gitNewBranchAct->setEnabled(true);
+    if (m_gitStashChangesAct) {
+        // 有未提交更改才允许 stash
+        bool dirty = false;
+        for (const auto& s : gm.currentStatus()) {
+            if (s.isStaged() || s.hasUnstagedChanges() || s.isUntracked()) {
+                dirty = true;
+                break;
+            }
+        }
+        m_gitStashChangesAct->setEnabled(dirty);
+    }
 }
 
 bool ProjectPanel::isDirectory(const QModelIndex &index) const

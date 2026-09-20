@@ -63,8 +63,16 @@ public:
     void push();
     bool hasRemote() const;
 
-    // ---------- 历史 / Diff ----------
+        // ---------- 历史 / Diff ----------
     QList<GitCommit> log(int maxCount = 100, const QString& branch = QString()) const;
+
+    // 单个文件的提交历史（带 --follow，跟踪重命名）
+    QList<GitCommit> fileLog(const QString& relativePath, int maxCount = 200) const;
+
+    // 文件当前所在的 commit（HEAD 上的最新相关提交）
+    //   relativePath 为空时返回 HEAD
+    GitCommit fileRevision(const QString& relativePath) const;
+
     GitDiff diffFile(const QString& relativePath, bool staged) const;
 
     // 原始 diff 字符串（用于 Diff 窗口直接渲染）

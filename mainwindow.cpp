@@ -108,6 +108,9 @@
 // Git 模块
 #include "git/git_manager.h"
 #include "git/git_panel.h"
+#include "git/git_diff_dialog.h"
+#include "git/git_file_history_dialog.h"
+#include "git/git_settings_page.h"
 
 
 using namespace SprintIDE;
@@ -1455,14 +1458,18 @@ void MainWindow::setupGitPanel()
             });
 
     // 7. 命令失败 → 输出面板
-    connect(&Git::GitManager::instance(), &Git::GitManager::commandFailed,
-            this, [this](const QString& op, const QString& err) {
-                if (d->outputPanel) {
-                    d->outputPanel->append(
-                        QString("<span style='color:#FF6B6B;'>Git %1 失败: %2</span>")
-                            .arg(op, err.toHtmlEscaped()));
-                }
-            });
+    if (d->projectPanel) {
+        connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
+                d->projectPanel, &ProjectPanel::onGitStatusUpdated);
+
+        // 7.5 ProjectPanel 右键 Git 子菜单动作 → MainWindow 分发
+        //     用 lambda 中转，避免 signal 参数类型跨头文件的 moc 问题
+        connect(d->projectPanel, &ProjectPanel::gitActionRequested,
+                this, [this](SprintIDE::GitContextAction action,
+                             const QStringList& paths) {
+            onProjectPanelGitAction(static_cast<int>(action), paths);
+        });
+    }
 
     // 8. Git 状态更新 → 转发给项目面板（文件颜色标记）
     if (d->projectPanel) {
@@ -5054,6 +5061,259 @@ void MainWindow::onOpenGitSettingsFromPanel()
             this, &MainWindow::onAIRestartRequested);
     dlg.showCategory(QStringLiteral("Git"));
     dlg.exec();
+}
+
+// ==================== ProjectPanel 右键 Git 动作分发 ====================
+
+void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePaths)
+{
+    using GA = SprintIDE::GitContextAction;
+    const GA act = static_cast<GA>(action);
+
+    auto& gm = Git::GitManager::instance();
+    if (!gm.isActive()) return;
+
+    const QString repoRoot = gm.repositoryInfo().rootPath;
+
+    // 把绝对路径转成相对仓库根的路径
+    auto toRel = [&](const QString& abs) -> QString {
+        if (abs.isEmpty() || repoRoot.isEmpty()) return QString();
+        return QDir(repoRoot).relativeFilePath(abs);
+    };
+
+    const QString firstAbs = filePaths.isEmpty() ? QString() : filePaths.first();
+    const QString firstRel = toRel(firstAbs);
+
+    switch (act) {
+
+    // ============================================================
+    // 文件级
+    // ============================================================
+
+    case GA::Add: {
+        if (filePaths.isEmpty()) return;
+        for (const QString& abs : filePaths) {
+            const QString rel = toRel(abs);
+            if (!rel.isEmpty()) gm.stageFile(rel);
+        }
+        d->outputPanel->append(
+            QStringLiteral("已暂存 %1 个文件").arg(filePaths.size()));
+        break;
+    }
+
+    case GA::ShowDiff: {
+        if (firstRel.isEmpty()) return;
+        // 判断是已暂存还是工作区
+        bool staged = false;
+        for (const auto& s : gm.currentStatus()) {
+            if (s.absolutePath == firstAbs) {
+                // 有工作区改动 → 显示 worktree diff；否则显示 staged diff
+                staged = !s.hasUnstagedChanges() && s.isStaged();
+                break;
+            }
+        }
+        const QString diffText = gm.rawDiff(firstRel, staged);
+        auto* dlg = new Git::GitDiffDialog(this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+        connect(dlg, &Git::GitDiffDialog::openFileRequested,
+                this, &MainWindow::openFile);
+        dlg->showFileDiff(
+            QStringLiteral("%1: %2")
+                .arg(staged ? QStringLiteral("已暂存") : QStringLiteral("工作区"),
+                     firstRel),
+            diffText,
+            firstAbs);
+        break;
+    }
+
+    case GA::ShowHistory: {
+        if (firstRel.isEmpty()) return;
+        auto* dlg = new Git::GitFileHistoryDialog(firstAbs, firstRel, this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+        dlg->show();
+        break;
+    }
+
+    case GA::ShowCurrentRevision: {
+        const Git::GitCommit c = gm.fileRevision(firstRel);
+        if (c.hash.isEmpty()) {
+            QMessageBox::information(
+                this, QStringLiteral("当前修订"),
+                QStringLiteral("该文件尚未有任何提交。"));
+            return;
+        }
+        QMessageBox box(this);
+        box.setWindowTitle(QStringLiteral("当前修订"));
+        box.setTextFormat(Qt::RichText);
+        box.setIcon(QMessageBox::Information);
+        box.setText(QStringLiteral(
+            "<b>文件：</b> %1<br><br>"
+            "<b>Commit：</b> <code>%2</code><br>"
+            "<b>作者：</b> %3 &lt;%4&gt;<br>"
+            "<b>时间：</b> %5<br><br>"
+            "<b>消息：</b><br>%6")
+            .arg(QFileInfo(firstAbs).fileName().toHtmlEscaped(),
+                 c.hash,
+                 c.author.toHtmlEscaped(),
+                 c.email.toHtmlEscaped(),
+                 c.timestamp.toString(Qt::ISODate),
+                 c.message.toHtmlEscaped().replace('\n', "<br>")));
+        box.exec();
+        break;
+    }
+
+    case GA::Rollback: {
+        if (firstRel.isEmpty()) return;
+
+        // 判断是未跟踪还是已跟踪
+        bool isUntracked = false;
+        for (const auto& s : gm.currentStatus()) {
+            if (s.absolutePath == firstAbs) {
+                isUntracked = s.isUntracked() && !s.isStaged();
+                break;
+            }
+        }
+
+        const QString title = isUntracked
+                                  ? QStringLiteral("删除文件")
+                                  : QStringLiteral("回滚更改");
+        const QString question = isUntracked
+            ? QStringLiteral("确定要删除以下未跟踪文件吗？<br><br>"
+                             "<code>%1</code><br><br>此操作不可恢复。")
+                  .arg(firstRel.toHtmlEscaped())
+            : QStringLiteral("确定要回滚对该文件的所有未提交更改吗？<br><br>"
+                             "<code>%1</code><br><br>此操作不可恢复。")
+                  .arg(firstRel.toHtmlEscaped());
+
+        QMessageBox box(this);
+        box.setWindowTitle(title);
+        box.setIcon(QMessageBox::Warning);
+        box.setTextFormat(Qt::RichText);
+        box.setText(question);
+        auto* okBtn     = box.addButton(
+            isUntracked ? QStringLiteral("删除") : QStringLiteral("回滚"),
+            QMessageBox::AcceptRole);
+        auto* cancelBtn = box.addButton(QStringLiteral("取消"),
+                                        QMessageBox::RejectRole);
+        box.setDefaultButton(cancelBtn);
+        box.exec();
+
+        if (box.clickedButton() == okBtn) {
+            gm.discardFileChanges(firstRel);
+            d->outputPanel->append(
+                QStringLiteral("<span style='color:#EBB65B;'>已回滚: %1</span>")
+                    .arg(firstRel));
+        }
+        break;
+    }
+
+    // ============================================================
+    // 仓库级
+    // ============================================================
+
+    case GA::Commit:
+        // 打开 Git 窗口，用户可以在里面暂存 / 提交
+        showGitDialog();
+        break;
+
+    case GA::Push:
+        onGitPush();
+        break;
+
+    case GA::Pull:
+        onGitPull();
+        break;
+
+    case GA::Fetch:
+        onGitFetch();
+        break;
+
+    case GA::NewBranch: {
+        // 简单版：直接输入名字，从当前 HEAD 创建
+        bool ok = false;
+        const QString name = QInputDialog::getText(
+            this, QStringLiteral("新建分支"),
+            QStringLiteral("分支名（将从当前 HEAD 创建）："),
+            QLineEdit::Normal, QString(), &ok);
+        if (!ok || name.trimmed().isEmpty()) return;
+
+        const QString branchName = name.trimmed();
+
+        // 简单校验
+        static const QRegularExpression invalid(
+            "[\\s~^:?*\\[\\\\]|^\\.|^-|/\\.|\\.lock$|\\.$");
+        if (invalid.match(branchName).hasMatch()) {
+            QMessageBox::warning(
+                this, QStringLiteral("新建分支"),
+                QStringLiteral("分支名包含非法字符或格式。"));
+            return;
+        }
+
+        // 是否已存在
+        for (const auto& b : gm.branches()) {
+            if (!b.isRemote && b.name == branchName) {
+                QMessageBox::warning(
+                    this, QStringLiteral("新建分支"),
+                    QStringLiteral("分支 <b>%1</b> 已存在。")
+                        .arg(branchName.toHtmlEscaped()));
+                return;
+            }
+        }
+
+        // 是否立即切换
+        const auto reply = QMessageBox::question(
+            this, QStringLiteral("新建分支"),
+            QStringLiteral("从当前 HEAD 创建分支 <b>%1</b>，<br>"
+                           "是否立即切换过去？")
+                .arg(branchName.toHtmlEscaped()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+        if (reply == QMessageBox::Yes) {
+            gm.createBranchAndCheckout(branchName);
+        } else {
+            gm.createBranch(branchName);
+        }
+        d->outputPanel->append(
+            QStringLiteral("<span style='color:#33CC33;'>分支已创建: %1</span>")
+                .arg(branchName));
+        break;
+    }
+
+    case GA::StashChanges: {
+        // 简单版：输入消息，默认包含未跟踪文件
+        bool ok = false;
+        const QString msg = QInputDialog::getText(
+            this, QStringLiteral("存储变更"),
+            QStringLiteral("Stash 消息（可留空）："),
+            QLineEdit::Normal, QString(), &ok);
+        if (!ok) return;
+
+        gm.stashPush(msg.isEmpty() ? QStringLiteral("WIP") : msg,
+                     /*includeUntracked=*/true);
+        d->outputPanel->append(QStringLiteral("已创建 stash"));
+        break;
+    }
+
+    // ============================================================
+    // 尚未实现（占位）
+    // ============================================================
+    case GA::Annotate:
+    case GA::CompareWithRevision:
+    case GA::CompareWithBranch:
+    case GA::Merge:
+    case GA::Rebase:
+    case GA::Branches:
+    case GA::NewTag:
+    case GA::ResetHead:
+    case GA::UnstashChanges:
+    case GA::ManageRemotes:
+    default:
+        QMessageBox::information(
+            this, QStringLiteral("尚未实现"),
+            QStringLiteral("该功能将在后续版本提供，<br>"
+                           "请使用「Git → 打开 Git 窗口」进行相关操作。"));
+        break;
+    }
 }
 
 void MainWindow::updateGitStatusIndicator()
