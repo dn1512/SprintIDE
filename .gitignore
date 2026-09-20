@@ -1,0 +1,11 @@
+# 忽略 .cache 文件夹及其下所有文件
+.cache/
+
+# 忽略 .cache 文件夹及其下所有文件
+.qtcreator/
+
+# 忽略 .SprintIDE 文件夹及其下所有文件
+.SprintIDE/
+
+# 忽略 build 文件夹及其下所有文件
+build/
