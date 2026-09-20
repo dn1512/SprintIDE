@@ -1,4 +1,3 @@
-// debug_manager.cpp
 #include "debug_manager.h"
 #include "text_editor.h"
 #include "process_manager.h"

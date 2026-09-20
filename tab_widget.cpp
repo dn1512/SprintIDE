@@ -24,7 +24,7 @@ public:
         , m_hoveredTab(-1)
         , m_pressedTab(-1)
         , m_hoveredCloseTab(-1)
-        , m_maxTabWidth(400)
+        , m_maxTabWidth(200)
         , m_showCloseButton(true)
     {
         setMouseTracking(true);
@@ -77,15 +77,12 @@ protected:
     QSize tabSizeHint(int index) const override
     {
         QSize size = QTabBar::tabSizeHint(index);
-
         QString text = tabText(index);
         QFontMetrics fm = fontMetrics();
-
-        // 文字宽度 + 左侧(竖条+关闭按钮+间距) + 右侧留白
         int textWidth = fm.horizontalAdvance(text) + 60;
 
         if (textWidth > m_maxTabWidth) textWidth = m_maxTabWidth;
-        if (textWidth < 120)            textWidth = 120;   //  100 → 120
+        if (textWidth < 100)            textWidth = 100;
 
         size.setWidth(textWidth);
         return size;
@@ -94,32 +91,18 @@ protected:
     // 重写sizeHint，让标签栏根据内容确定宽度
     QSize sizeHint() const override
     {
-        int totalWidth = 0;
-        for (int i = 0; i < count(); ++i) {
-            totalWidth += tabSizeHint(i).width();
-        }
-
-        // 加上一些边距
-        totalWidth += 5;
-
-        QSize size = QTabBar::sizeHint();
-        size.setWidth(totalWidth);
-        return size;
+        // 不再累加所有标签宽度，也不硬限制成某个数字。
+        // 标签栏宽度交给布局（Expanding）决定，实际会等于编辑区宽度。
+        // 这里只提供一个"基准宽度"，不会成为最小约束（minimumSizeHint 才是）。
+        return QSize(400, QTabBar::sizeHint().height());
     }
 
     // 重写minimumSizeHint
     QSize minimumSizeHint() const override
     {
-        int totalWidth = 0;
-        for (int i = 0; i < count(); ++i) {
-            totalWidth += tabSizeHint(i).width();
-        }
-
-        // 加上一些边距
-        totalWidth += 5;
-
+        //   标签放不下时会自动出现左右滚动按钮。
         QSize size = QTabBar::minimumSizeHint();
-        size.setWidth(totalWidth);
+        size.setWidth(100);
         return size;
     }
 
@@ -161,11 +144,11 @@ protected:
         painter.drawLine(0, 0, 0, height());
 
         // ---------- 5. 标签栏右侧空白区域填充背景 ----------
-        if (width() > sizeHint().width()) {
-            QRect rightRect(sizeHint().width(), 0,
-                            width() - sizeHint().width(), height());
-            painter.fillRect(rightRect, bgColor);
-        }
+        // if (width() > sizeHint().width()) {
+        //     QRect rightRect(sizeHint().width(), 0,
+        //                     width() - sizeHint().width(), height());
+        //     painter.fillRect(rightRect, bgColor);
+        // }
     }
 
     void paintTab(QPainter *painter, int tabIndex)
@@ -441,8 +424,8 @@ void TabWidget::setupUI()
     tabBarLayout->addWidget(m_tabBar);
 
     // 添加一个拉伸弹簧，确保标签左对齐
-    QSpacerItem *spacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    tabBarLayout->addSpacerItem(spacer);
+    // QSpacerItem *spacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    // tabBarLayout->addSpacerItem(spacer);
 
     // 将容器添加到主布局
     mainLayout->addWidget(tabBarContainer);

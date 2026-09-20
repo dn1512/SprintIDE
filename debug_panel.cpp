@@ -1,4 +1,3 @@
-// debug_panel.cpp
 #include "debug_panel.h"
 #include <QAction>
 #include <QPushButton>

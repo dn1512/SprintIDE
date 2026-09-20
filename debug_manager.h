@@ -1,4 +1,3 @@
-// debug_manager.h
 #ifndef DEBUG_MANAGER_H
 #define DEBUG_MANAGER_H
 
