@@ -9,8 +9,26 @@
 #include <QMenu>
 #include <QDebug>
 #include <QRect>
+#include <QProxyStyle>
 
 namespace SprintIDE {
+
+// ==================== 强制标签左对齐的样式 ====================
+class LeftAlignedTabBarStyle : public QProxyStyle
+{
+public:
+    int styleHint(StyleHint hint,
+                  const QStyleOption* option = nullptr,
+                  const QWidget* widget = nullptr,
+                  QStyleHintReturn* returnData = nullptr) const override
+    {
+        // macOS 上 QMacStyle 默认返回 AlignCenter，这里强制改成左对齐
+        if (hint == QStyle::SH_TabBar_Alignment) {
+            return Qt::AlignLeft;
+        }
+        return QProxyStyle::styleHint(hint, option, widget, returnData);
+    }
+};
 
 // ==================== 自定义TabBar类 ====================
 
@@ -27,6 +45,8 @@ public:
         , m_maxTabWidth(200)
         , m_showCloseButton(true)
     {
+        setStyle(new LeftAlignedTabBarStyle);
+
         setMouseTracking(true);
         setFocusPolicy(Qt::NoFocus);
         setDrawBase(false);

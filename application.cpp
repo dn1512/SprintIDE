@@ -92,6 +92,20 @@ bool Application::initialize(int argc, char *argv[])
         const int clampedSize = qBound(8, fontSize, 24);
 
         d->themeManager->setEditorFont(fontFamily, clampedSize);
+
+
+        {
+            const QString savedTheme = d->configManager->value(
+                                                           "General/Theme", "Dark").toString();
+
+            if (savedTheme.compare(QLatin1String("Light"), Qt::CaseInsensitive) == 0) {
+                d->themeManager->setTheme(ThemeManager::ThemeType::Light);
+                qDebug() << "[Application] 已恢复主题: Light";
+            } else {
+                d->themeManager->setTheme(ThemeManager::ThemeType::Dark);
+                qDebug() << "[Application] 已恢复主题: Dark";
+            }
+        }
         qDebug() << "[Application] 编辑器字体已从配置加载:"
                  << fontFamily << clampedSize << "pt";
     }

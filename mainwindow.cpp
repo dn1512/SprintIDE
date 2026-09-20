@@ -327,20 +327,20 @@ MainWindow::MainWindow(QWidget *parent)
     connectCompileManagerSignals();
 
     // 从配置读取上次的主题
-    ThemeManager& tm = ThemeManager::instance();
-    {
-        ConfigManager* cfg = Application::instance().configManager();
-        QString savedTheme = cfg ? cfg->value("General/Theme", "Dark").toString()
-                                 : QStringLiteral("Dark");
+    // ThemeManager& tm = ThemeManager::instance();
+    // {
+    //     ConfigManager* cfg = Application::instance().configManager();
+    //     QString savedTheme = cfg ? cfg->value("General/Theme", "Dark").toString()
+    //                              : QStringLiteral("Dark");
 
-        if (savedTheme == QLatin1String("Light")) {
-            tm.setTheme(ThemeManager::ThemeType::Light);
-            qDebug() << "[MW] 从配置恢复浅色主题";
-        } else {
-            tm.setTheme(ThemeManager::ThemeType::Dark);
-            qDebug() << "[MW] 使用深色主题（默认或配置）";
-        }
-    }
+    //     if (savedTheme == QLatin1String("Light")) {
+    //         tm.setTheme(ThemeManager::ThemeType::Light);
+    //         qDebug() << "[MW] 从配置恢复浅色主题";
+    //     } else {
+    //         tm.setTheme(ThemeManager::ThemeType::Dark);
+    //         qDebug() << "[MW] 使用深色主题（默认或配置）";
+    //     }
+    // }
 
     // 设置深色主题
     // ThemeManager& tm = ThemeManager::instance();
@@ -356,12 +356,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupTerminalPanel();
     setupGitPanel();
 
-    connect(&tm, &ThemeManager::themeChanged,
-            this, &MainWindow::onThemeChanged);
-    connect(&tm, &ThemeManager::fontChanged, this, [this]() {
-        // 字体或字号变化 → 遍历所有编辑器重新应用
-        applyCurrentTheme();
-    });
+    // connect(&tm, &ThemeManager::themeChanged,
+    //         this, &MainWindow::onThemeChanged);
+    // connect(&tm, &ThemeManager::fontChanged, this, [this]() {
+    //     // 字体或字号变化 → 遍历所有编辑器重新应用
+    //     applyCurrentTheme();
+    // });
     applyCurrentTheme();
 
     // 初始化 LSP 管理器
