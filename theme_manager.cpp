@@ -213,113 +213,134 @@ public:
     }
 
     // ------------------------------------------------------------
-    //  Polaris: Solar Flare
+    //  Polaris: Solar Flare 5.0 —— 淡汝瓷
+    //
+    //  设计哲学：
+    //    • 整体明度上调：编辑器 96%、工具窗 87%、高亮 84%
+    //    • 项目面板逆势加深到 88%，与编辑器形成清晰分区
+    //    • 色相统一在 H 172~174，去绿、温润、含蓄
+    //    • 全程无纯白——编辑器是极淡汝瓷青
+    //    • 明度序列：编辑器 > 输出 > 行号 > AI气泡 > 树 > 工具窗 > 高亮
     // ------------------------------------------------------------
     void setupLightTheme()
     {
         // ============================================================
-        //  Solar Flare 3.0 —— Mint Milk（薄荷牛奶）
-        //
-        //  设计哲学：
-        //    • 编辑器是"牛奶"——白得有温度，带一丝薄荷，不刺眼
-        //    • 工具区是"薄荷"——比编辑器更青更深，形成层次
-        //    • 色相轴：H 150° → H 170°，逐级过渡
-        //    • 饱和度控制在 16~29%（低饱和，"是色不是艳"）
+        //  L1 编辑器层 —— 最浅（极淡汝瓷青，不是白色）
         // ============================================================
+        colors[UIElement::EditorBackground]       = QColor("#F1F7F6");   // H 174 L 96%
+        colors[UIElement::MenuBackground]         = QColor("#F1F7F6");
 
-        // ------------------------------------------------------------
-        //  编辑器层：牛奶白带薄荷
-        // ------------------------------------------------------------
-        colors[UIElement::EditorBackground]       = QColor("#F3FAF8");   // 薄荷牛奶
-        colors[UIElement::MenuBackground]         = QColor("#F3FAF8");
+        // ============================================================
+        //  L2 输出 / 终端 —— 只比编辑器深一点点，保持"浅"
+        // ============================================================
+        colors[UIElement::OutputPanelBackground]  = QColor("#E8F1F0");   // H 174 L 94%
+        colors[UIElement::TerminalBackground]     = QColor("#E8F1F0");
 
-        // ------------------------------------------------------------
-        //  树 / 列表层：比编辑器明显一点薄荷
-        //  —— 这是你要求的"project_panel 带一点颜色"
-        // ------------------------------------------------------------
-        colors[UIElement::TreeBackground]         = QColor("#E8F2EF");   // 浅薄荷奶油
+        // ============================================================
+        //  L3 行号区 —— 比编辑器深一档，做区域划分
+        // ============================================================
+        colors[UIElement::LineNumberAreaBackground] = QColor("#E5EFEE"); // H 174 L 93%
 
-        // ------------------------------------------------------------
-        //  工具窗层：中薄荷青
-        // ------------------------------------------------------------
-        colors[UIElement::MainWindowBackground]   = QColor("#CAD8CF");
-        colors[UIElement::StatusBarBackground]    = QColor("#CAD8CF");
-        colors[UIElement::ButtonBackground]       = QColor("#D8E4E1");
+        // ============================================================
+        //  L4 AI 面板 —— 气泡都很浅，与编辑器几乎同层次
+        // ============================================================
+        colors[UIElement::AIChatAIBubble]         = QColor("#E2EEED");   // H 174 L 92%
+        colors[UIElement::AIChatUserBubble]       = QColor("#D8E7E5");   // H 174 L 89%
 
-        // ------------------------------------------------------------
-        //  高亮层：深薄荷青
-        // ------------------------------------------------------------
-        colors[UIElement::ActiveTabBackground]    = QColor("#CDDDD8");
-        colors[UIElement::HoverBackground]        = QColor("#CDDDD8");
-        colors[UIElement::TreeHoverBackground]    = QColor("#CDDDD8");
+        // ============================================================
+        //  L5 项目面板 / 树 —— 比编辑器深一档（用户要求加深一点点）
+        // ============================================================
+        colors[UIElement::TreeBackground]         = QColor("#D6E4E3");   // H 174 L 88%
 
-        // ------------------------------------------------------------
-        //  边框：薄荷青，清晰但柔和
-        // ------------------------------------------------------------
-        colors[UIElement::BorderColor]            = QColor("#B9CCC6");
+        // ============================================================
+        //  L6 工具窗 / 状态栏 / 菜单栏 —— 中青瓷
+        // ============================================================
+        colors[UIElement::MainWindowBackground]   = QColor("#D2E1DF");   // H 172 L 87%
+        colors[UIElement::StatusBarBackground]    = QColor("#D2E1DF");
 
-        // ------------------------------------------------------------
-        //  文字：青黑 —— 与整体薄荷家族同源
-        // ------------------------------------------------------------
-        colors[UIElement::TextColor]              = QColor("#1A2B28");   // 青黑
-        colors[UIElement::SecondaryTextColor]     = QColor("#556661");   // 青灰
-        colors[UIElement::DisabledTextColor]      = QColor("#93A3A0");   // 浅青灰
+        // ============================================================
+        //  L7 按钮背景 —— 比工具窗深一档，能区分出来
+        // ============================================================
+        colors[UIElement::ButtonBackground]       = QColor("#CCDCDA");   // H 172 L 85%
 
-        // ------------------------------------------------------------
-        //  强调色
-        // ------------------------------------------------------------
+        // ============================================================
+        //  L8 高亮 / 活动标签 / 悬停 —— 最深
+        // ============================================================
+        colors[UIElement::ActiveTabBackground]    = QColor("#C9D9D7");   // H 172 L 84%
+        colors[UIElement::HoverBackground]        = QColor("#C9D9D7");
+        colors[UIElement::TreeHoverBackground]    = QColor("#C9D9D7");
+
+        // ============================================================
+        //  选中态 —— 比高亮再深一档，形成"选中"vs"悬停"的区别
+        // ============================================================
+        colors[UIElement::TreeSelectedBackground] = QColor("#B9CDCA");   // H 173 L 82%
+        colors[UIElement::SelectionBackground]    = QColor("#B9CDCA");
+
+        // ============================================================
+        //  边框 —— 青瓷边，清晰但不抢眼
+        // ============================================================
+        colors[UIElement::BorderColor]            = QColor("#AEC0BE");   // H 174 L 76%
+
+        // ============================================================
+        //  文字 —— 保持青黑 / 青灰
+        // ============================================================
+        colors[UIElement::TextColor]              = QColor("#1A2B28");
+        colors[UIElement::SecondaryTextColor]     = QColor("#556661");
+        colors[UIElement::DisabledTextColor]      = QColor("#8FA09D");
+
+        // ============================================================
+        //  强调色 —— 保持
+        // ============================================================
         colors[UIElement::PrimaryColor]           = QColor("#0D6EFD");
         colors[UIElement::SuccessColor]           = QColor("#2FA668");
         colors[UIElement::WarningColor]           = QColor("#D18A28");
         colors[UIElement::ErrorColor]             = QColor("#D94858");
-        colors[UIElement::AIColor]                = QColor("#159E9B");   // 与主题同源
+        colors[UIElement::AIColor]                = QColor("#159E9B");
         colors[UIElement::RunButtonColor]         = QColor("#DD8438");
 
-        // ------------------------------------------------------------
-        //  语法高亮：暖色系与冷青背景形成对比
-        // ------------------------------------------------------------
+        // ============================================================
+        //  语法高亮 —— 保持
+        // ============================================================
         colors[UIElement::KeywordColor]           = QColor("#0D6EFD");
         colors[UIElement::ControlFlowColor]       = QColor("#C0392B");
         colors[UIElement::ModifierColor]          = QColor("#B8770E");
         colors[UIElement::ConstantColor]          = QColor("#0E8B8B");
         colors[UIElement::StringColor]            = QColor("#3E8E4E");
         colors[UIElement::NumberColor]            = QColor("#A8721E");
-        colors[UIElement::CommentColor]           = QColor("#7C8B88");   // 青灰
+        colors[UIElement::CommentColor]           = QColor("#5E7370");
         colors[UIElement::FunctionColor]          = QColor("#B8770E");
         colors[UIElement::PreprocessorColor]      = QColor("#5E7A96");
         colors[UIElement::ClassColor]             = QColor("#0D6EFD");
         colors[UIElement::VariableColor]          = QColor("#1A2B28");
 
-        // ------------------------------------------------------------
+        // ============================================================
         //  编辑器装饰
-        // ------------------------------------------------------------
-        colors[UIElement::LineNumberAreaBackground] = QColor("#EDF4F2");
-        colors[UIElement::LineNumberColor]        = QColor("#7C8B88");
+        // ============================================================
+        colors[UIElement::LineNumberColor]        = QColor("#5E7370");
         colors[UIElement::CurrentLineNumberColor] = QColor("#1A2B28");
-        colors[UIElement::CurrentLineHighlight]   = QColor("#ECF3F1");   // 极浅薄荷
-        colors[UIElement::SelectionBackground]    = QColor("#B8D5DB");   // 冰蓝
+        colors[UIElement::CurrentLineHighlight]   = QColor("#E3EFED");   // 比编辑器深一档，极淡
         colors[UIElement::BreakpointColor]        = QColor("#D94858");
         colors[UIElement::DebugLineColor]         = QColor(21, 158, 155, 38);
         colors[UIElement::ErrorMarkerColor]       = QColor("#D94858");
         colors[UIElement::WarningMarkerColor]     = QColor("#D18A28");
         colors[UIElement::InlineValueColor]       = QColor("#556661");
 
-        // ------------------------------------------------------------
-        //  面板
-        // ------------------------------------------------------------
-        colors[UIElement::TreeSelectedBackground] = QColor("#B8D5DB");
+        // ============================================================
+        //  AI 边框
+        // ============================================================
+        colors[UIElement::AIChatAIBorder]         = QColor("#159E9B");
+
+        // ============================================================
+        //  滚动条
+        // ============================================================
         colors[UIElement::ScrollHandleColor]      = QColor(13, 110, 253, 90);
         colors[UIElement::ScrollHandleHoverColor] = QColor(13, 110, 253, 180);
-        colors[UIElement::AIChatUserBubble]       = QColor("#D8E4E1");
-        colors[UIElement::AIChatAIBubble]         = QColor("#D9E8E5");
-        colors[UIElement::AIChatAIBorder]         = QColor("#159E9B");
-        colors[UIElement::TerminalBackground]     = QColor("#EBF3F0");   // 与树一致
-        colors[UIElement::OutputPanelBackground]  = QColor("#EBF3F0");
 
-        // Git 面板
-        // 浅色下：暖米色底 + 橙棕边框 + 深橙文字，与 Solar Flare 家族同源
-        colors[UIElement::GitOperationBannerBackground] = QColor("#FDF3DC");
-        colors[UIElement::GitOperationBannerBorder]     = QColor("#E0BE6E");
+        // ============================================================
+        //  Git 面板 —— 暖米色系
+        // ============================================================
+        colors[UIElement::GitOperationBannerBackground] = QColor("#F7EDD8");
+        colors[UIElement::GitOperationBannerBorder]     = QColor("#D9BE80");
         colors[UIElement::GitOperationBannerText]       = QColor("#8A5A0A");
     }
 };
