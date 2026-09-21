@@ -216,6 +216,9 @@ signals:
                                     const QString& condition);
 protected:
     void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void leaveEvent(QEvent *event) override; 
     void resizeEvent(QResizeEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;  // 处理行号区域点击
@@ -302,6 +305,17 @@ private:
     int findBraceInBlock(const QTextBlock &block, bool opening) const;
 
     void applyLineHeight();
+    
+    // ★ 跳转定义的视觉反馈
+    bool         m_ctrlHeldForDefinition = false;
+    QPoint       m_lastMousePos;
+    bool         m_hasValidMousePos = false;
+    QTextCursor  m_definitionCursor;
+
+    // ★ 辅助方法
+    QTextCursor  getIdentifierAt(const QPoint& pos) const;
+    void         updateDefinitionHighlight();
+    void         clearDefinitionHighlight();
 
     // 存储已折叠的行号（行号为 1-based）
     QSet<int> m_foldedLines;

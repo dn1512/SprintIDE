@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QRect>
 #include <QHBoxLayout>
+#include <QGuiApplication> 
 
 namespace SprintIDE {
 
@@ -1774,6 +1775,159 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
     QPlainTextEdit::mousePressEvent(event);
 }
 
+void TextEditor::mouseMoveEvent(QMouseEvent *event)
+{
+    m_lastMousePos = event->pos();
+    m_hasValidMousePos = true;
+
+    // ★ 实时读取修饰键状态（Cmd/Ctrl）—— 不依赖 keyPress 事件
+    const bool ctrlHeld = (QGuiApplication::keyboardModifiers()
+                           & (Qt::ControlModifier | Qt::MetaModifier));
+
+    if (ctrlHeld) {
+        QTextCursor ident = getIdentifierAt(event->pos());
+
+        if (!ident.isNull()) {
+            // ---- 命中标识符：手型 + 高亮 ----
+            if (cursor().shape() != Qt::PointingHandCursor) {
+                setCursor(Qt::PointingHandCursor);
+            }
+
+            // 只在标识符变化时才更新高亮，避免重复 setExtraSelections
+            const bool changed =
+                m_definitionCursor.isNull()
+                || m_definitionCursor.selectionStart() != ident.selectionStart()
+                || m_definitionCursor.selectionEnd()   != ident.selectionEnd();
+
+            if (changed) {
+                m_definitionCursor = ident;
+                m_ctrlHeldForDefinition = true;
+                updateDefinitionHighlight();
+            }
+        } else {
+            // ---- 未命中：恢复光标 + 清高亮 ----
+            if (cursor().shape() == Qt::PointingHandCursor) {
+                unsetCursor();
+            }
+            if (!m_definitionCursor.isNull()) {
+                clearDefinitionHighlight();
+            }
+        }
+    } else {
+        // ---- 未按 Cmd：恢复一切 ----
+        if (cursor().shape() == Qt::PointingHandCursor) {
+            unsetCursor();
+        }
+        if (!m_definitionCursor.isNull()) {
+            clearDefinitionHighlight();
+        }
+    }
+
+    QPlainTextEdit::mouseMoveEvent(event);
+}
+
+void TextEditor::keyReleaseEvent(QKeyEvent *event)
+{
+    // ★ Cmd/Ctrl 松开 → 立即撤销视觉反馈
+    if (event->key() == Qt::Key_Meta || event->key() == Qt::Key_Control) {
+        m_ctrlHeldForDefinition = false;
+        if (cursor().shape() == Qt::PointingHandCursor) {
+            unsetCursor();
+        }
+        clearDefinitionHighlight();
+    }
+
+    QPlainTextEdit::keyReleaseEvent(event);
+}
+
+void TextEditor::leaveEvent(QEvent *event)
+{
+    // ★ 鼠标离开编辑器 → 撤销一切
+    if (cursor().shape() == Qt::PointingHandCursor) {
+        unsetCursor();
+    }
+    clearDefinitionHighlight();
+
+    QPlainTextEdit::leaveEvent(event);
+}
+
+// ============================================================================
+//  获取鼠标位置下的标识符（字母/数字/下划线组成）
+//  - 返回一个选中该标识符的 QTextCursor
+//  - 若鼠标不在标识符上，返回空 QTextCursor
+// ============================================================================
+QTextCursor TextEditor::getIdentifierAt(const QPoint& pos) const
+{
+    QTextCursor cursor = cursorForPosition(pos);
+    const int position = cursor.position();
+    const QString text = toPlainText();
+
+    if (position < 0 || position > text.length()) {
+        return QTextCursor();
+    }
+
+    // 向前找标识符起始
+    int start = position;
+    while (start > 0
+           && (text[start-1].isLetterOrNumber() || text[start-1] == '_')) {
+        --start;
+    }
+
+    // 向后找标识符结束
+    int end = position;
+    while (end < text.length()
+           && (text[end].isLetterOrNumber() || text[end] == '_')) {
+        ++end;
+    }
+
+    if (end == start) return QTextCursor();   // 无标识符
+
+    QTextCursor sel(document());
+    sel.setPosition(start);
+    sel.setPosition(end, QTextCursor::KeepAnchor);
+    return sel;
+}
+
+// ============================================================================
+//  应用/更新"可跳转标识符"高亮
+//  - 使用 QTextEdit::ExtraSelection 机制，避免修改文档内容
+//  - 用 UserProperty 打标记，方便下一次清理
+// ============================================================================
+void TextEditor::updateDefinitionHighlight()
+{
+    QList<QTextEdit::ExtraSelection> all = extraSelections();
+
+    // 移除所有旧的"可跳转"高亮
+    static const QString kDefLinkTag = QStringLiteral("definitionLink");
+    for (int i = all.size() - 1; i >= 0; --i) {
+        if (all[i].format.property(QTextFormat::UserProperty).toString() == kDefLinkTag) {
+            all.removeAt(i);
+        }
+    }
+
+    // 添加新高亮
+    if (m_ctrlHeldForDefinition && !m_definitionCursor.isNull()) {
+        ThemeManager& tm = ThemeManager::instance();
+
+        QTextEdit::ExtraSelection sel;
+        sel.cursor = m_definitionCursor;
+        sel.format.setFontUnderline(true);
+        sel.format.setUnderlineColor(tm.color(ThemeManager::UIElement::PrimaryColor));
+        sel.format.setForeground(tm.color(ThemeManager::UIElement::PrimaryColor));
+        sel.format.setProperty(QTextFormat::UserProperty, kDefLinkTag);
+        all.append(sel);
+    }
+
+    setExtraSelections(all);
+}
+
+void TextEditor::clearDefinitionHighlight()
+{
+    if (m_definitionCursor.isNull()) return;
+    m_definitionCursor = QTextCursor();
+    updateDefinitionHighlight();
+}
+
 // ========== 悬停提示 ==========
 bool TextEditor::event(QEvent *event)
 {
@@ -2260,6 +2414,20 @@ int TextEditor::lineCount() const
 
 void TextEditor::keyPressEvent(QKeyEvent *event)
 {
+    // 新增：Cmd/Ctrl 按下时立刻更新视觉（鼠标可能没动） ★★★
+    if ((event->key() == Qt::Key_Meta || event->key() == Qt::Key_Control)
+        && !m_ctrlHeldForDefinition) {
+        m_ctrlHeldForDefinition = true;
+
+        if (m_hasValidMousePos) {
+            m_definitionCursor = getIdentifierAt(m_lastMousePos);
+            if (!m_definitionCursor.isNull()) {
+                setCursor(Qt::PointingHandCursor);
+            }
+            updateDefinitionHighlight();
+        }
+    }
+
     // ========== 第一步：补全弹窗的键盘导航（优先级最高） ==========
     if (m_completionActive) {
         if (event->key() == Qt::Key_Escape) {
@@ -2617,26 +2785,30 @@ void TextEditor::updateLineNumberAreaWidth()
 
 void TextEditor::highlightCurrentLine()
 {
-    if (!m_highlightCurrentLine) {
-        return;
-    }
+    if (!m_highlightCurrentLine) return;
 
-    QList<QTextEdit::ExtraSelection> extraSelections;
+    // ★ 读取现有 selection（不清空！）
+    QList<QTextEdit::ExtraSelection> all = extraSelections();
+
+    // 移除旧的"当前行高亮"（带 FullWidthSelection 属性的）
+    for (int i = all.size() - 1; i >= 0; --i) {
+        if (all[i].format.boolProperty(QTextFormat::FullWidthSelection)) {
+            all.removeAt(i);
+        }
+    }
 
     if (!textCursor().hasSelection()) {
         QTextEdit::ExtraSelection selection;
-
-        QColor lineColor = QColor(240, 248, 255);
-
+        QColor lineColor = ThemeManager::instance().color(
+            ThemeManager::UIElement::CurrentLineHighlight);
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
         selection.cursor = textCursor();
         selection.cursor.clearSelection();
-
-        extraSelections.append(selection);
+        all.append(selection);
     }
 
-    setExtraSelections(extraSelections);
+    setExtraSelections(all);
 }
 
 void TextEditor::updateLineNumberArea(const QRect &rect, int dy)

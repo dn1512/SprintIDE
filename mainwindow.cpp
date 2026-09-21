@@ -890,6 +890,12 @@ void MainWindow::setupMenuBar()
     settingsAction->setMenuRole(QAction::PreferencesRole);  // 关键：让其在 macOS 下进入应用程序菜单
     connect(settingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
 
+    // ---------- 跳转到行 ----------
+    QAction *gotoLineAction = editMenu->addAction("跳转到行(&L)...");
+    gotoLineAction->setShortcut(QKeySequence("Ctrl+G"));   // macOS 上 = Cmd+G
+    connect(gotoLineAction, &QAction::triggered, this, &MainWindow::onGotoLine);
+
+    editMenu->addSeparator();
 
     QAction *findAction = editMenu->addAction("查找(&F)");
     findAction->setShortcut(QKeySequence::Find);
