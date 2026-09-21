@@ -50,7 +50,7 @@ bool ProjectSelectionDialog::isCreateNewProject() const
     return m_createNewProject;
 }
 
-// ==================== 槽函数：原有交互 ====================
+// ==================== 槽函数 ====================
 
 void ProjectSelectionDialog::onProjectItemDoubleClicked(QListWidgetItem* item)
 {
