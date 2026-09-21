@@ -105,27 +105,60 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
 
     // ================= 1. 配置阶段 =================
     const QString cacheFile = QDir(buildDir).absoluteFilePath("CMakeCache.txt");
-    if (!QFile::exists(cacheFile)) {
+    const QString wantedBuildType = task.enableDebug ? "Debug" : "Release";
+
+    // 检查是否需要重新 configure
+    bool needConfigure = !QFile::exists(cacheFile);
+    QString cachedBuildType;
+
+    if (!needConfigure) {
+        // 读 CMakeCache.txt 里现有的 CMAKE_BUILD_TYPE
+        QFile cache(cacheFile);
+        if (cache.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&cache);
+            while (!in.atEnd()) {
+                const QString line = in.readLine();
+                if (line.startsWith("CMAKE_BUILD_TYPE:")) {
+                    int eq = line.indexOf('=');
+                    if (eq > 0) {
+                        cachedBuildType = line.mid(eq + 1).trimmed();
+                        break;
+                    }
+                }
+            }
+            cache.close();
+        }
+
+        if (cachedBuildType != wantedBuildType) {
+            qDebug() << "[CppBuilder] build type 不匹配: cache ="
+                     << (cachedBuildType.isEmpty() ? QString("<empty>") : cachedBuildType)
+                     << "期望 =" << wantedBuildType
+                     << "→ 强制重新 configure";
+            needConfigure = true;
+        } else {
+            qDebug() << "[CppBuilder] build type 匹配 (" << wantedBuildType
+                     << ")，跳过 configure";
+        }
+    }
+
+    if (needConfigure) {
         QStringList configArgs;
         configArgs << "-S" << workDir
                    << "-B" << buildDir
-                   << "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON";
-
-        if (task.enableDebug) {
-            configArgs << "-DCMAKE_BUILD_TYPE=Debug";
-        } else {
-            configArgs << "-DCMAKE_BUILD_TYPE=Release";
-        }
+                   << "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+                   << "-DCMAKE_BUILD_TYPE=" + wantedBuildType;   // 统一传，不再 if-else
 
         // 生成器：优先 Ninja，不传 -DCMAKE_MAKE_PROGRAM
         const QString ninja = CppProjectModel::findNinjaExecutable();
         if (!ninja.isEmpty()) {
             configArgs << "-G" << "Ninja";
+            configArgs << "-DCMAKE_MAKE_PROGRAM=" + ninja;   // 关键修复
             qDebug() << "[CppBuilder] 使用 Ninja 生成器（系统 ninja:" << ninja << "）";
         } else {
             const QString make = CppProjectModel::findMakeExecutable();
             if (!make.isEmpty()) {
                 configArgs << "-G" << "Unix Makefiles";
+                configArgs << "-DCMAKE_MAKE_PROGRAM=" + make;   // 同样处理 make
                 qDebug() << "[CppBuilder] 使用 Unix Makefiles 生成器";
             } else {
                 qWarning() << "[CppBuilder] 未找到 Ninja / Make";

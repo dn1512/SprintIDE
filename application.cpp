@@ -1,6 +1,7 @@
 #include "application.h"
 #include "config_manager.h"
 #include "theme_manager.h"
+#include "core/log_buffer.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -17,6 +18,7 @@ class Application::Private
 public:
     ConfigManager* configManager = nullptr;
     ThemeManager* themeManager = nullptr;
+    LogBuffer*     logBuffer     = nullptr;
     bool initialized = false;
     Application::AppState state = Application::AppState::Starting;
     QDateTime startTime;
@@ -37,6 +39,12 @@ Application::Application()
 Application::~Application()
 {
     qDebug() << "[Application] 析构开始";
+
+    // （LogBuffer 不是 QObject，不会被 Qt parent 机制自动清理）
+    if (d->logBuffer) {
+        delete d->logBuffer;
+        d->logBuffer = nullptr;
+    }
 
     // 清理 BuilderFactory（纯静态资源，必须在 Qt 基础设施还存在时清理）
     SprintIDE::BuilderFactory::shutdown();
@@ -66,6 +74,14 @@ bool Application::initialize(int argc, char *argv[])
         qCritical() << "Failed to initialize ConfigManager";
         d->state = AppState::Error;
         return false;
+    }
+
+    // 初始化日志缓冲区（N1：AI 上下文总线）
+    {
+        const int cfgCap = d->configManager->value("AI/LogBufferSize", 2000).toInt();
+        const int cap    = qBound(200, cfgCap, 100000);
+        d->logBuffer = new LogBuffer(cap);
+        qDebug() << "[Application] LogBuffer 已创建，容量:" << cap;
     }
 
     // 设置应用程序信息（如果还没有设置）
@@ -125,6 +141,13 @@ void Application::shutdown()
     qDebug() << "Shutting down Application";
 
     // 清理资源
+    if (d->logBuffer) {
+        delete d->logBuffer;
+        d->logBuffer = nullptr;
+        qDebug() << "[Application] LogBuffer 已释放";
+    }
+
+    // 清理资源
     if (d->configManager) {
         delete d->configManager;
         d->configManager = nullptr;
@@ -140,6 +163,11 @@ void Application::shutdown()
 ConfigManager* Application::configManager() const
 {
     return d->configManager;
+}
+
+LogBuffer* Application::logBuffer() const
+{
+    return d->logBuffer;
 }
 
 Application::AppState Application::currentState() const

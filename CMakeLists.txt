@@ -386,6 +386,14 @@ set(GIT_HEADERS
     src/git/git_file_history_dialog.h
 )
 
+set(CORE_SOURCES
+    core/log_buffer.cpp
+)
+
+set(CORE_HEADERS
+    core/log_buffer.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME}
     ${ALL_SOURCES}
@@ -522,8 +530,8 @@ add_executable(${PROJECT_NAME}
     git/git_diff_dialog.h git/git_diff_dialog.cpp
     git/git_file_history_dialog.h
     git/git_file_history_dialog.cpp
-
-
+    core/log_buffer.h
+    core/log_buffer.cpp
 )
 
 

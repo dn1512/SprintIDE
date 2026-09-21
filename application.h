@@ -16,6 +16,7 @@ class ConfigManager;
 class PluginManager;
 class ThemeManager;
 class MainWindow;
+class LogBuffer;
 
 /**
  * @class Application
@@ -75,6 +76,12 @@ public:
      * @return ConfigManager指针
      */
     ConfigManager* configManager() const;
+
+    /**
+     * @brief 获取全局日志缓冲区（N1：AI 上下文总线）
+     * @return LogBuffer指针；未初始化时返回 nullptr
+     */
+    LogBuffer*     logBuffer() const; 
 
     /**
      * @brief 获取插件管理器

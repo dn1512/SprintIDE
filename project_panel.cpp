@@ -858,8 +858,8 @@ void ProjectPanel::updateContextMenu()
     bool isDir = hasSel && isDirectory(idx);
     bool isFil = hasSel && !isDir;
 
-    m_newFileAction->setEnabled(hasSel && isDir);
-    m_newDirAction->setEnabled(hasSel && isDir);
+    m_newFileAction->setEnabled(hasSel);
+    m_newDirAction->setEnabled(hasSel);
     m_openFileAction->setEnabled(hasSel && isFil);
     m_renameAction->setEnabled(hasSel);
     m_deleteAction->setEnabled(hasSel);

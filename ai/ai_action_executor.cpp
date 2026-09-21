@@ -10,6 +10,8 @@
 #include "project_manager.h"
 #include "path_utils.h"
 #include "terminal/terminal_panel.h"
+#include "application.h"
+#include "core/log_buffer.h"
 
 #include <QDebug>
 #include <QFile>
@@ -122,6 +124,8 @@ AIActionResult AIActionExecutor::executeAction(const QJsonObject &action)
         return executeExecuteCommand(params);
     } else if (type == "getContext") {
         return executeGetContext(params);
+    } else if (type == "getLogs") {
+        return executeGetLogs(params);
     } else {
         return AIActionResult(false, QString("不支持的操作类型: %1").arg(type));
     }
@@ -1257,6 +1261,52 @@ AIActionResult AIActionExecutor::executeGetContext(const QJsonObject &params)
     return AIActionResult(true, "上下文已获取", context);
 }
 
+AIActionResult AIActionExecutor::executeGetLogs(const QJsonObject &params)
+{
+    LogBuffer* buf = Application::instance().logBuffer();
+    if (!buf) {
+        return AIActionResult(false, "日志缓冲区未初始化");
+    }
+
+    const QString kindStr  = params.value("kind").toString();
+    const QString levelStr = params.value("level").toString();
+    const int     limit    = qBound(1, params.value("limit").toInt(50), 1000);
+    const qint64  sinceTs  = static_cast<qint64>(params.value("since").toDouble(0));
+
+    QList<LogEntry> entries;
+    if (!kindStr.isEmpty()) {
+        entries = buf->byKind(LogBuffer::stringToKind(kindStr), limit);
+    } else if (levelStr.compare("error", Qt::CaseInsensitive) == 0) {
+        entries = buf->onlyErrors(limit);
+    } else if (sinceTs > 0) {
+        entries = buf->since(sinceTs);
+        if (entries.size() > limit) entries = entries.mid(entries.size() - limit);
+    } else {
+        entries = buf->recent(limit);
+    }
+
+    QJsonArray arr;
+    for (const auto& e : entries) {
+        QJsonObject o;
+        o["timestamp"] = static_cast<double>(e.timestamp);
+        o["kind"]      = LogBuffer::kindToString(e.kind);
+        o["level"]     = LogBuffer::levelToString(e.level);
+        o["source"]    = e.source;
+        o["message"]   = e.message;
+        if (!e.filePath.isEmpty())      o["filePath"]   = e.filePath;
+        if (e.lineNumber > 0)           o["lineNumber"] = e.lineNumber;
+        if (!e.attachments.isEmpty())   o["attachments"] = QJsonArray::fromStringList(e.attachments);
+        arr.append(o);
+    }
+
+    QJsonObject data;
+    data["entries"]  = arr;
+    data["count"]    = arr.size();
+    data["capacity"] = buf->capacity();
+    data["total"]    = buf->size();
+
+    return AIActionResult(true, QString("已返回 %1 条日志").arg(arr.size()), data);
+}
 // ============================================================
 // ==================== 辅助方法 ====================
 // ============================================================

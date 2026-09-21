@@ -261,6 +261,9 @@ void CppDebugger::applyBreakpoints()
     }
 
     for (auto it = byFile.begin(); it != byFile.end(); ++it) {
+        qDebug() << "[CppDebugger] 准备设断点，文件路径 ="
+                 << it.key()
+                 << " 文件存在 =" << QFile::exists(it.key());
         m_dap->setBreakpoints(it.key(), it.value());
         qDebug() << "[CppDebugger] setBreakpoints" << it.key()
                  << "count=" << it.value().size();
@@ -368,16 +371,27 @@ void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
     // 判断是否是"启动阶段的伪停止"（dyld / 系统加载器）
     // macOS LLDB 启动时会在 dyld/startup 阶段收到一次 exception，
     // 这不是用户关心的停止，应自动 continue 直到真正的断点。
-    bool isStartupStop = m_currentFile.isEmpty() &&
-                         (top.name == "_dyld_start" ||
-                          top.name == "start" ||
-                          top.name == "__start" ||
-                          top.name == "__libc_start_main" ||   // GDB
-                          top.name == "_start" ||              // GDB
-                          top.name.startsWith("dyld", Qt::CaseInsensitive) ||
-                          top.name.contains("dyld", Qt::CaseInsensitive) ||
-                          top.name.contains("libdyld", Qt::CaseInsensitive) ||
-                          top.name.contains("libsystem", Qt::CaseInsensitive));
+    const QString funcLower = top.name.toLower();
+    const QString fileLower = m_currentFile.toLower();
+
+    bool isStartupStop =
+        // 函数名命中
+        funcLower == "_dyld_start" ||
+        funcLower == "start" ||
+        funcLower == "__start" ||
+        funcLower == "_start" ||
+        funcLower == "__libc_start_main" ||
+        funcLower.contains("dyld") ||
+        funcLower.contains("libdyld") ||
+        funcLower.contains("libsystem") ||
+        // 路径命中（lldb 的 dyld 符号是 "xxx`yyy" 语法）
+        fileLower.startsWith("/usr/lib/dyld") ||
+        fileLower.startsWith("/usr/lib/system") ||
+        fileLower.contains("dyld") ||
+        // 路径根本不存在 → 一定是系统符号
+        (!m_currentFile.isEmpty() && !QFile::exists(m_currentFile)) ||
+        // 路径为空
+        m_currentFile.isEmpty();
 
     if (isStartupStop) {
         qDebug() << "[CppDebugger] 检测到 startup 停止（" << top.name

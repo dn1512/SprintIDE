@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QFileInfo>
 
 #include "config_manager.h"
 #include "python/python_project_model.h"
@@ -13,6 +14,97 @@
 #include "python/python_dependency_manager.h"
 
 namespace SprintIDE {
+
+// ============================================================
+// 内部辅助：解析 Python 解释器路径
+//   顺序：
+//     1. task.sdkConfig["pythonInterpreter"]
+//     2. PythonProjectModel::interpreterPath()
+//     3. PYTHON_HOME/bin/python3（或 Windows 的 python.exe）
+//     4. 兜底：python3
+// ============================================================
+static QString resolvePythonInterpreter(const BuildTask& task)
+{
+    // ---- 1. task.sdkConfig ----
+    QString python = task.sdkConfig.value("pythonInterpreter").toString();
+    if (!python.isEmpty()) return python;
+
+    // ---- 2. PythonProjectModel ----
+    auto model = ProjectManager::instance()->pythonProjectModel();
+    if (model) {
+        QString p = model->interpreterPath();
+        if (!p.isEmpty()) return p;
+    }
+
+    // ---- 3. PYTHON_HOME ----
+    QString pythonHome = task.sdkConfig.value("PYTHON_HOME").toString();
+    if (pythonHome.isEmpty()) {
+        ConfigManager* cfg = Application::instance().configManager();
+        if (cfg) {
+            QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+            pythonHome = sdkEnv.value("PYTHON_HOME").toString();
+        }
+    }
+    if (!pythonHome.isEmpty()) {
+        // 兼容两种填法：
+        //   A. 填目录（如 /usr/local）       → 拼 /bin/python3
+        //   B. 填可执行文件（如 /usr/local/bin/python3）→ 直接用
+        QFileInfo homeInfo(pythonHome);
+        if (homeInfo.isFile() && homeInfo.isExecutable()) {
+            // 情况 B：已经是解释器可执行文件
+            return pythonHome;
+        }
+        // 情况 A：当目录处理
+#ifdef Q_OS_WIN
+        QString candidate = pythonHome + "/python.exe";
+#else
+        QString candidate = pythonHome + "/bin/python3";
+#endif
+        if (QFile::exists(candidate)) return candidate;
+    }
+
+    // ---- 4. 兜底 ----
+    return "python3";
+}
+
+// ============================================================
+// 内部辅助：为项目级编译解析 Python 入口文件
+// ============================================================
+static QString resolveProjectEntry(const QString& projectPath)
+{
+    if (projectPath.isEmpty()) return QString();
+
+    // ---- 1. 项目根目录的常见入口 ----
+    QDir projDir(projectPath);
+    const QStringList entryNames = {"main.py", "__main__.py", "app.py", "run.py"};
+    for (const QString& name : entryNames) {
+        QString p = projDir.absoluteFilePath(name);
+        if (QFile::exists(p)) return p;
+    }
+
+    // ---- 2. src/ 下的入口 ----
+    QDir srcDir(projDir.absoluteFilePath("src"));
+    if (srcDir.exists()) {
+        for (const QString& name : {"main.py", "__main__.py"}) {
+            QString p = srcDir.absoluteFilePath(name);
+            if (QFile::exists(p)) return p;
+        }
+    }
+
+    // ---- 3. 兜底：扫第一个 .py，跳过虚拟环境和缓存 ----
+    QDirIterator it(projectPath, {"*.py"}, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString p = it.next();
+        if (p.contains("/.venv/")      || p.contains("/venv/") ||
+            p.contains("/env/")        || p.contains("/__pycache__/") ||
+            p.contains("/.git/")) {
+            continue;
+        }
+        return p;
+    }
+
+    return QString();
+}
 
 QProcessEnvironment PythonBuilder::prepareEnvironment(const BuildTask& task) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -58,61 +150,77 @@ QProcessEnvironment PythonBuilder::prepareEnvironment(const BuildTask& task) {
     return env;
 }
 
-bool PythonBuilder::build(const BuildTask& task, BuildResult& result) {
-    if (task.sourceFiles.isEmpty()) {
-        result.errorMessage = "No Python source file provided.";
-        result.builderName = "PythonBuilder";
-        return false;
-    }
-    QString src = PathUtils::absolutePath(task.sourceFiles.first(), task.projectPath);
-    if (!QFile::exists(src)) {
-        result.errorMessage = "Source file not found: " + src;
-        result.builderName = "PythonBuilder";
-        return false;
-    }
-
-    bool installDeps = task.aiCustomPayload.value("installDeps", false).toBool();
-    if (installDeps) {
-        QString interpreter = task.sdkConfig.value("pythonInterpreter").toString();
-        if (interpreter.isEmpty()) {
-            auto model = ProjectManager::instance()->pythonProjectModel();
-            if (model) interpreter = model->interpreterPath();
-        }
-        if (interpreter.isEmpty()) interpreter = "python3";
-        PythonDependencyManager::installDependencies(task.projectPath, interpreter,
-                                                     [&](const QString& output) { result.fullOutput += output + "\n"; });
-    }
-
-    // 执行语法检查：python -m py_compile
-    ProcessManager pm;
-    pm.setEnvironment(prepareEnvironment(task));
-    ProcessManager::ProcessResult pr = pm.executeSync("python",
-                                                      {"-m", "py_compile", src},
-                                                      task.projectPath,
-                                                      10000);
-    result.exitCode = pr.exitCode;
-    result.fullOutput = pr.standardOutput + "\n" + pr.standardError;
-    result.elapsedMs = pr.executionTime;
-    result.success = pr.success && pr.exitCode == 0;
+bool PythonBuilder::build(const BuildTask& task, BuildResult& result)
+{
     result.builderName = "PythonBuilder";
 
-    // 提取错误行（简单方式）
+    // ========== 1. 确定要检查的源文件 ==========
+    QString src;
+    if (!task.sourceFiles.isEmpty()) {
+        src = PathUtils::absolutePath(task.sourceFiles.first(), task.projectPath);
+    } else {
+        src = resolveProjectEntry(task.projectPath);
+    }
+
+    if (src.isEmpty()) {
+        result.errorMessage = "No Python source file provided "
+                              "and no entry file could be found in the project.";
+        result.errorLines << result.errorMessage;
+        return false;
+    }
+    if (!QFile::exists(src)) {
+        result.errorMessage = "Source file not found: " + src;
+        result.errorLines << result.errorMessage;
+        return false;
+    }
+
+    // ========== 2. 依赖安装（可选） ==========
+    bool installDeps = task.aiCustomPayload.value("installDeps", false).toBool();
+    if (installDeps) {
+        QString interpreter = resolvePythonInterpreter(task);
+        PythonDependencyManager::installDependencies(
+            task.projectPath, interpreter,
+            [&](const QString& output) { result.fullOutput += output + "\n"; });
+    }
+
+    // ========== 3. 语法检查 ==========
+    // ★ 关键修复：用解析出的解释器，而不是硬编码 "python"
+    QString python = resolvePythonInterpreter(task);
+
+    ProcessManager pm;
+    pm.setEnvironment(prepareEnvironment(task));
+    ProcessManager::ProcessResult pr = pm.executeSync(
+        python,
+        {"-m", "py_compile", src},
+        task.projectPath,
+        10000);
+
+    result.exitCode   = pr.exitCode;
+    result.fullOutput = QString("使用解释器: %1\n").arg(python)
+                      + pr.standardOutput + "\n" + pr.standardError;
+    result.elapsedMs  = pr.executionTime;
+    result.success    = pr.success && pr.exitCode == 0;
+
+    // 提取错误行
     if (!result.success) {
         result.errorLines = pr.standardError.split('\n', Qt::SkipEmptyParts);
+        if (result.errorLines.isEmpty()) {
+            // 进程根本没启动（FailedToStart）——补一条明确的错误
+            result.errorLines << QString("无法启动 Python 解释器: %1").arg(python);
+            result.errorLines << QString("错误信息: %1").arg(pr.errorMessage);
+        }
     }
-    // 可执行文件路径设为源文件路径，用于 run
+
     result.executablePath = src;
     return true;
 }
 
 bool PythonBuilder::clean(const BuildTask& task, BuildResult& result) {
-    // 删除 __pycache__ 目录和 .pyc 文件
     QString cacheDir = PathUtils::absolutePath("__pycache__", task.projectPath);
     bool ok = true;
     if (QDir(cacheDir).exists()) {
         if (!QDir(cacheDir).removeRecursively()) ok = false;
     }
-    // 删除所有 .pyc 文件（递归扫描）
     QDirIterator it(task.projectPath, QStringList() << "*.pyc",
                     QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
@@ -124,20 +232,9 @@ bool PythonBuilder::clean(const BuildTask& task, BuildResult& result) {
 }
 
 bool PythonBuilder::run(const BuildTask& task, const BuildResult& buildResult, QString& output) {
-    // 获取解释器
-    QString python = task.sdkConfig.value("pythonInterpreter").toString();
-    if (python.isEmpty()) {
-        // 如果未设置，尝试从模型获取（但模型可能在外部未传递，这里作为备选）
-        auto model = ProjectManager::instance()->pythonProjectModel();
-        if (model) {
-            python = model->interpreterPath();
-        }
-    }
-    if (python.isEmpty()) {
-        python = "python3";
-    }
+    // ★ 复用同一个解释器解析逻辑
+    QString python = resolvePythonInterpreter(task);
 
-    // 诊断日志（输出到 output，也会显示在面板）
     output = QString("使用 Python: %1\n").arg(python);
 
     // 获取入口
@@ -174,7 +271,6 @@ bool PythonBuilder::run(const BuildTask& task, const BuildResult& buildResult, Q
 
 QString PythonBuilder::getExecutablePath(const BuildTask& task)
 {
-    // Python 是解释型语言，直接返回源文件路径
     if (!task.sourceFiles.isEmpty()) {
         return PathUtils::absolutePath(task.sourceFiles.first(), task.projectPath);
     }

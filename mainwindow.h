@@ -33,6 +33,7 @@
 #include "python/python_debugger.h"
 
 #include "cpp/cpp_debugger.h"
+#include "core/log_buffer.h"
 
 class TextEditor;
 
@@ -335,6 +336,8 @@ private:
     void runExecutableAsync(const QString& executablePath);
 
     bool isCppDebugging() const;
+    // entry 必填（结构化）；html 为空时退化为纯文本渲染
+    void appendLog(const LogEntry& entry, const QString& html = QString());
 private:
     MainWindowPrivate *d;
     // 底部面板相关

@@ -216,6 +216,7 @@ private:
 
     // 上下文操作
     AIActionResult executeGetContext(const QJsonObject &params);
+    AIActionResult executeGetLogs(const QJsonObject &params);
 
     // ========== 辅助方法 ==========
 

@@ -419,11 +419,13 @@ MainWindow::MainWindow(QWidget *parent)
         connect(d->projectPanel, &ProjectPanel::requestFileHistory,
                 this, &MainWindow::showFileHistoryDialog);
     }
+
+    qDebug() << "[MW] LogBuffer ready:"
+         << (Application::instance().logBuffer() != nullptr);
 }
 
 MainWindow::~MainWindow()
 {
-    qDebug() << "[MainWindow] 析构开始";
 
     // 防止 LSP shutdown 期间嵌套事件循环把队列里的旧事件重新投递
         this->blockSignals(true);
@@ -459,11 +461,7 @@ MainWindow::~MainWindow()
         m_lspManager->shutdownAll();
     }
 
-    // ========== 4.    不要在 MainWindow 析构里 shutdown DebugManager    ==========
-    // 因为此时可能已经晚于 QApplication 的清理时机。
-    // 全部移到 main.cpp 里做。
-
-    // ========== 5. 清理编辑器标签 ==========
+    // ========== 4. 清理编辑器标签 ==========
     if (d && d->editorTabs) {
         while (d->editorTabs->count() > 0) {
             QWidget* w = d->editorTabs->widget(0);
@@ -483,7 +481,7 @@ MainWindow::~MainWindow()
         }
     }
 
-    // ========== 6. 断开 definition 连接 ==========
+    // ========== 5. 断开 definition 连接 ==========
     for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
         disconnect(it.value());
     }
@@ -494,7 +492,7 @@ MainWindow::~MainWindow()
     }
     m_pendingDefinitionConnections.clear();
 
-    // ========== 7. 删除私有实现 ==========
+    // ========== 6. 删除私有实现 ==========
     delete d;
     d = nullptr;
 
@@ -2345,7 +2343,11 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
     QString htmlMessage = QString("<span style='color:#3399FF;'>[%1] 开始编译: %2</span>")
                               .arg(timeStr)
                               .arg(sourceFile);
-    d->outputPanel->append(htmlMessage);
+    appendLog(LogEntry::make(
+                  LogKind::Compile, LogLevel::Info, "Compile",
+                  QStringLiteral("开始编译: %1").arg(sourceFile),
+                  sourceFile),
+              htmlMessage);
 
     m_statusLabel->setText(QString("正在编译 %1...").arg(QFileInfo(sourceFile).fileName()));
 
@@ -2410,24 +2412,29 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
     for (const QString& line : lines) {
         const QString trimmed = line.trimmed();
         if (trimmed.isEmpty()) continue;
-
+    
         QString color;
+        LogLevel level = LogLevel::Info;
         if (errorRegex.match(trimmed).hasMatch()) {
             color = "#FF5555";
+            level = LogLevel::Error;
         } else if (warningRegex.match(trimmed).hasMatch()) {
             color = "#FFAA00";
+            level = LogLevel::Warning;
         } else if (noteRegex.match(trimmed).hasMatch()) {
             color = "#9999FF";
         } else if (progressRegex.match(trimmed).hasMatch()) {
             color = "#88DDFF";
         } else if (isError) {
-            color = "#FF5555";   // 编译失败时，所有输出默认红色
+            color = "#FF5555";
+            level = LogLevel::Error;
         } else {
-            color = "#CCCCCC";   // 正常输出：浅灰
+            color = "#CCCCCC";
         }
-
-        d->outputPanel->append(QString("<span style='color:%1;'>%2</span>")
-                                   .arg(color, line.toHtmlEscaped()));
+    
+        appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line),
+                  QString("<span style='color:%1;'>%2</span>")
+                      .arg(color, line.toHtmlEscaped()));
     }
 }
 
@@ -2446,7 +2453,9 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         QString htmlMessage = QString("<span style='color:#33CC33;'>[%1] 编译成功! 耗时: %2ms</span>")
                                   .arg(timeStr)
                                   .arg(elapsedMs);
-        d->outputPanel->append(htmlMessage);
+        appendLog(LogEntry::make(LogKind::Compile, LogLevel::Info, "Compile",
+                         QStringLiteral("编译成功，耗时 %1ms").arg(elapsedMs)),
+          htmlMessage);
 
         if (!result.executablePath.isEmpty()) {
             d->outputPanel->append(QString("<span style='color:#33CC33;'>可执行文件: %1</span>")
@@ -2499,6 +2508,17 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         }
 
     } else {
+        appendLog(LogEntry::make(
+                      LogKind::Compile, LogLevel::Error, "Compile",
+                      QStringLiteral("编译失败，耗时 %1ms，错误 %2，警告 %3")
+                          .arg(elapsedMs).arg(result.errors.size()).arg(result.warnings.size())),
+                  QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
+                      .arg(timeStr).arg(elapsedMs));
+        
+        for (int i = 0; i < result.errors.size(); ++i) {
+            appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
+                                     result.errors[i]));
+        }
         QString htmlMessage = QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
                                   .arg(timeStr)
                                   .arg(elapsedMs);
@@ -2627,7 +2647,8 @@ void MainWindow::onCompileError(const QString& taskId, const QString& errorMessa
     QString htmlMessage = QString("<span style='color:#FF3333;font-weight:bold;'>[%1] 编译错误: %2</span>")
                               .arg(timeStr)
                               .arg(errorMessage.toHtmlEscaped());
-    d->outputPanel->append(htmlMessage);
+    
+    appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",errorMessage),htmlMessage);
 
     m_statusLabel->setText("编译错误");
 
@@ -4338,6 +4359,22 @@ bool MainWindow::isPythonDebugging() const
 bool MainWindow::isCppDebugging() const
 {
     return m_cppDebugger != nullptr && m_isDebugging;
+}
+
+void MainWindow::appendLog(const LogEntry& entry, const QString& html)
+{
+    // 1. 结构化写入 LogBuffer（AI 用）
+    if (auto* buf = Application::instance().logBuffer()) {
+        buf->append(entry);
+    }
+
+    // 2. 渲染到 outputPanel（人看）
+    if (!d || !d->outputPanel) return;
+    if (html.isEmpty()) {
+        d->outputPanel->append(entry.message.toHtmlEscaped());
+    } else {
+        d->outputPanel->append(html);
+    }
 }
 
 void MainWindow::runExecutableAsync(const QString& executablePath)
