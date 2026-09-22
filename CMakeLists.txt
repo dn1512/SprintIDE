@@ -14,8 +14,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # 查找Qt组件
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui)
-find_package(Qt6 REQUIRED COMPONENTS Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent)
 
 # 应用程序信息
 set(APP_NAME "SprintIDE")
@@ -535,12 +534,13 @@ add_executable(${PROJECT_NAME}
 )
 
 
-target_link_libraries(SprintIDE PRIVATE Qt6::Network)
 # 链接Qt库
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Widgets
     Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
 )
 
 # ========== 使用source_group创建设计文档中的模块结构 ==========

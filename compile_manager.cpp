@@ -1,6 +1,8 @@
 #include "compile_manager.h"
 #include "path_utils.h"
 #include "project_config.h"
+
+#include <utility>   // for std::pair
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -1247,7 +1249,29 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
              << static_cast<int>(task.language)
              << ", projectPath:" << task.projectPath;
 
-    //  立即发出 compileStarted 信号
+    // ============================================================
+    // 1. 防并发：同一时刻只允许一个编译任务
+    //    （Builder 是单例，多线程同时用会有数据竞争）
+    // ============================================================
+    if (m_runningTaskCount.load() > 0) {
+        QString err = "已有编译任务正在运行，请等待完成后再试。";
+        qWarning() << "[CompileManager]" << err;
+
+        emit compileStarted(task.taskId,
+                            task.sourceFiles.isEmpty() ? "unknown"
+                                                       : task.sourceFiles.first());
+        emit compileError(task.taskId, err);
+
+        CompileResult dummy;
+        dummy.success = false;
+        dummy.errorMessage = err;
+        emit compileFinished(task.taskId, dummy);
+        return task.taskId;
+    }
+
+    // ============================================================
+    // 2. 立即发 compileStarted（让 UI 立刻切换到"编译中"状态）
+    // ============================================================
     QString sourceDesc;
     if (!task.sourceFiles.isEmpty()) {
         sourceDesc = task.sourceFiles.first();
@@ -1258,7 +1282,9 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     }
     emit compileStarted(task.taskId, sourceDesc);
 
-    // 获取对应的 Builder
+    // ============================================================
+    // 3. 获取 Builder
+    // ============================================================
     IBuilder* builder = BuilderFactory::createBuilder(task.language);
     if (!builder) {
         qWarning() << "[CompileManager] No builder for language:"
@@ -1277,13 +1303,51 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     }
 
     // ============================================================
-    // 2. 执行构建
+    // 4. 关键改动：把 builder->build() 丢到后台线程
+    //
+    //    - QtConcurrent::run 用全局线程池，不创建新线程，开销小
+    //    - lambda 捕获 task 和 builder 的拷贝（Builder 是指针，本身
+    //      是单例，不拷贝对象本身）
+    //    - 返回值是 std::pair<bool, BuildResult>
     // ============================================================
-    BuildResult result;
-    bool started = builder->build(task, result);
+    m_runningTaskCount.fetch_add(1);
 
+    using BuildFutureResult = std::pair<bool, BuildResult>;
+
+    auto future = QtConcurrent::run([builder, task]() -> BuildFutureResult {
+        BuildResult r;
+        bool ok = builder->build(task, r);
+        return std::make_pair(ok, r);
+    });
+
+    auto* watcher = new QFutureWatcher<BuildFutureResult>(this);
+
+    connect(watcher, &QFutureWatcher<BuildFutureResult>::finished,
+            this, [this, watcher, task]() {
+        BuildFutureResult pair = watcher->result();
+        watcher->deleteLater();
+
+        // 回到 UI 线程分发信号
+        handleBuildFinished(task, pair.first, pair.second);
+
+        m_runningTaskCount.fetch_sub(1);
+    });
+
+    watcher->setFuture(future);
+
+    return task.taskId;
+}
+
+// ============================================================
+// 处理异步构建完成：原 executeBuildTask 中"同步执行完 builder->build()
+// 之后"的所有信号发射逻辑都搬到这里，在 UI 线程执行
+// ============================================================
+void CompileManager::handleBuildFinished(const BuildTask& task,
+                                         bool started,
+                                         const BuildResult& result)
+{
+    // ---- 4.1 启动失败（如命令不可用）----
     if (!started) {
-        // 启动失败（如命令不可用）
         emit compileOutput(task.taskId, result.errorMessage, true);
 
         CompileResult oldResult;
@@ -1295,22 +1359,17 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
 
         emit compileError(task.taskId, result.errorMessage);
         emit compileFinished(task.taskId, oldResult);
-        return task.taskId;
+        return;
     }
 
-    // ============================================================
-    //    把构建器产生的完整输出逐行发出去
-    //    这样 MainWindow 就能在输出面板显示 CMake configure/build 的细节
-    // ============================================================
+    // ---- 4.2 把完整输出逐行发给 UI（保留原有分批逻辑）----
     if (!result.fullOutput.isEmpty()) {
-        // 逐行发，避免一次性把一大段塞给 UI
         const QStringList lines = result.fullOutput.split('\n');
         QString chunk;
+        int batchCounter = 0;
         for (const QString& line : lines) {
             chunk += line;
             chunk += '\n';
-            // 每 20 行发一批
-            static int batchCounter = 0;
             if (++batchCounter >= 20) {
                 emit compileOutput(task.taskId, chunk, !result.success);
                 chunk.clear();
@@ -1322,30 +1381,25 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
         }
     }
 
-    // ============================================================
-    // 4. 转换为旧的 CompileResult 以兼容现有信号槽
-    // ============================================================
+    // ---- 4.3 转换为 CompileResult ----
     CompileResult oldResult;
-    oldResult.success = result.success;
-    oldResult.exitCode = result.exitCode;
-    oldResult.output = result.fullOutput;
+    oldResult.success        = result.success;
+    oldResult.exitCode       = result.exitCode;
+    oldResult.output         = result.fullOutput;
     oldResult.executablePath = result.executablePath;
-    oldResult.errors = result.errorLines;
-    oldResult.warnings = result.warningLines;
-    oldResult.compileTime = result.elapsedMs;
-    oldResult.errorMessage = result.errorMessage;
+    oldResult.errors         = result.errorLines;
+    oldResult.warnings       = result.warningLines;
+    oldResult.compileTime    = result.elapsedMs;
+    oldResult.errorMessage   = result.errorMessage;
 
-    // ============================================================
-    // 5. 发出完成信号
-    // ============================================================
+    // ---- 4.4 发送完成信号 ----
     emit compileFinished(task.taskId, oldResult);
+
     if (!result.success) {
         emit compileError(task.taskId,
                           result.errorMessage.isEmpty() ? "Build failed"
                                                         : result.errorMessage);
     }
-
-    return task.taskId;
 }
 
 // ==================== 私有槽函数 ====================

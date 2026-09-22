@@ -8,6 +8,9 @@
 #include <QMutex>
 #include <QWaitCondition>
 #include <QElapsedTimer>
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
+#include <atomic>
 
 #include "project_config.h"
 #include "process_manager.h"
@@ -448,9 +451,19 @@ private:
      * @brief 将旧的 CompileResult 转换为 BuildResult（用于兼容）
      */
     BuildResult convertOldResultToNew(const CompileResult& oldResult) const;
+    
+    /**
+     * @brief 处理异步编译完成后的信号分发
+     * 从工作线程的 QFutureWatcher 回到 UI 线程后调用
+     */
+    void handleBuildFinished(const BuildTask& task,
+                             bool started,
+                             const BuildResult& result);
 
     class Private;
     QScopedPointer<Private> d;
+    /// 正在运行的编译任务数（防并发）
+    std::atomic<int> m_runningTaskCount{0};
 };
 
 } // namespace SprintIDE
