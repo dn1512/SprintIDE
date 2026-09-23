@@ -9,11 +9,46 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QDebug>
+#include <QCoreApplication> 
 #include <algorithm>
-#include <functional>   // for std::greater
+#include <functional>    // for std::greater
 #include <QHash>
 
 namespace SprintIDE {
+
+// ====================================================================
+// 内嵌工具链根目录（cmake / ninja 打包后落点）
+//
+// 打包结构：
+//   macOS: SprintIDE.app/Contents/Frameworks/toolchain/
+//   Win:   SprintIDE/toolchain/
+//   Linux: SprintIDE/bin/../lib/toolchain/
+//
+// 与 lldb_dap_provider.cpp 的 bundledToolchainRoot() 保持一致风格，
+// 但目标目录不同（lldb 单独放 Frameworks/lldb，构建工具放 Frameworks/toolchain）。
+// ====================================================================
+static QString bundledToolchainRoot()
+{
+    if (!QCoreApplication::instance()) return QString();
+
+    QDir appDir(QCoreApplication::applicationDirPath());
+    if (appDir.path().isEmpty()) return QString();
+
+#ifdef Q_OS_MAC
+    // applicationDirPath() = .../SprintIDE.app/Contents/MacOS
+    QDir macosDir = appDir;
+    if (macosDir.dirName() == "MacOS") {
+        macosDir.cdUp();          // → Contents
+        return macosDir.absoluteFilePath("Frameworks/toolchain");
+    }
+    // 非 bundle 运行（Qt Creator 直接跑）：没有内嵌路径
+    return QString();
+#elif defined(Q_OS_WIN)
+    return appDir.absoluteFilePath("toolchain");
+#else
+    return appDir.absoluteFilePath("../lib/toolchain");
+#endif
+}
 
 // ====================================================================
 // 构造
@@ -545,7 +580,43 @@ QString CppProjectModel::findCMakeExecutable()
     }
 
     // ================================================================
-    // 1. 收集候选（PATH + well-known 目录）
+    // 1. 内嵌工具链（app bundle 内的 Frameworks/toolchain，打包后可用）
+    //    开发期目录不存在，直接跳过
+    // ================================================================
+    {
+        const QString bundledRoot = bundledToolchainRoot();
+        if (!bundledRoot.isEmpty()) {
+            QString bundled = bundledRoot + "/bin/cmake";
+#ifdef Q_OS_WIN
+            bundled += ".exe";
+#endif
+            QFileInfo fi(bundled);
+            if (fi.exists() && fi.isExecutable() && fi.isFile()) {
+                // 快速验证一次（防止文件被截断/损坏）
+                QProcess proc;
+                proc.setProgram(bundled);
+                proc.setArguments({"--version"});
+                proc.setProcessChannelMode(QProcess::MergedChannels);
+                proc.start();
+                if (proc.waitForStarted(3000) && proc.waitForFinished(5000)) {
+                    QString out = QString::fromLocal8Bit(proc.readAllStandardOutput());
+                    if (out.contains("cmake version", Qt::CaseInsensitive)) {
+                        qDebug() << "[CppProjectModel] ✓ 使用内嵌 cmake:" << bundled;
+                        return bundled;
+                    }
+                    qWarning() << "[CppProjectModel] 内嵌 cmake 输出异常:"
+                               << out.left(120);
+                } else {
+                    proc.kill();
+                    proc.waitForFinished(500);
+                    qWarning() << "[CppProjectModel] 内嵌 cmake 启动/运行失败:" << bundled;
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // 2. 收集候选（PATH + well-known 目录）
     // ================================================================
     QStringList candidates;
 
@@ -589,7 +660,7 @@ QString CppProjectModel::findCMakeExecutable()
         }
     }
 
-    // ---- 去重（保持顺序） ----
+    // ---- 去重 ----
     QStringList uniqueCandidates;
     for (const QString& c : candidates) {
         if (!uniqueCandidates.contains(c)) {
@@ -598,7 +669,7 @@ QString CppProjectModel::findCMakeExecutable()
     }
 
     // ================================================================
-    // 2. 逐个验证
+    // 3. 逐个验证
     // ================================================================
     for (const QString& cand : uniqueCandidates) {
 
@@ -670,6 +741,19 @@ QString CppProjectModel::findNinjaExecutable()
 #endif
 
     QStringList candidates;
+
+    // ---------------- 0. 内嵌工具链（app bundle 内） ----------------
+    //   打包后优先使用，开发期路径不存在则自动跳过
+    {
+        const QString bundledRoot = bundledToolchainRoot();
+        if (!bundledRoot.isEmpty()) {
+            QString bundled = bundledRoot + "/bin/ninja";
+#ifdef Q_OS_WIN
+            bundled += ".exe";
+#endif
+            candidates << bundled;
+        }
+    }
 
     // ---------------- 1. Homebrew 标准路径（最稳） ----------------
 #ifdef Q_OS_MAC

@@ -4513,7 +4513,7 @@ void MainWindow::onOpenFile()
         this,
         "打开文件",
         "",
-        "C++ 文件 (*.cpp *.h *.hpp *.c *.cc);;所有文件 (*.*)"
+        "所有文件 (*.*)"
         );
 
     if (!fileName.isEmpty()) {
