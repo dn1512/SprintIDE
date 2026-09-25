@@ -26,6 +26,9 @@
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
 #include "lsp/lsp_client.h"
+#include "language/editor_rules.h"
+#include "editor/completion_model.h"
+#include "editor/completion_popup.h"
 
 
 namespace SprintIDE {
@@ -189,6 +192,22 @@ public:
      */
     void updateCompletionItems(const QList<LSPCompletionItem>& items);
 
+    /**
+     * @brief LSP 补全响应槽（供 MainWindow 连接 LSPClient::completionReceived）
+     * @param filePath 触发补全的文件路径
+     * @param items LSP 返回的补全项
+     *
+     * 为什么需要这个槽而不是直接用 lambda：
+     *   Qt 6 的 Qt::UniqueConnection 只接受成员函数指针，
+     *   用 lambda 会触发 "Unique connection requires the slot to be
+     *   a pointer to a member function of a QObject subclass" 断言。
+     */
+    void onLSPCompletionReceived(const QString& filePath,
+                                 const QList<LSPCompletionItem>& items);
+
+    void onLSPDefinitionReceived(const QString& filePath,
+                                 int line, int column);
+
     void highlightLine(int line);
 
     void setBreakpointWithCondition(int line, bool enabled, bool hasCondition);
@@ -214,6 +233,12 @@ signals:
 
     void breakpointConditionChanged(const QString& filePath, int line,
                                     const QString& condition);
+
+    void definitionJumpRequested(const QString& file, int line, int column);
+
+    // 当用户输入 a-z 时，把上下文发给 LSP 补全（不同于 completionRequested）
+    void completionRequestedAt(const QString& filePath, int line, int column,
+                               const QString& prefix);
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -250,8 +275,8 @@ private slots:
     void onCloseFindBar();
 
     // ========== 代码补全 ==========
-    void onCompletionItemClicked(QListWidgetItem* item);
-    void onCompletionItemDoubleClicked(QListWidgetItem* item);
+    // void onCompletionItemClicked(QListWidgetItem* item);
+    // void onCompletionItemDoubleClicked(QListWidgetItem* item);
 
 private:
     void initEditor();
@@ -260,7 +285,6 @@ private:
     void setupFindBar();
     void matchParentheses();
     int lineNumberAreaWidth() const;
-    void autoIndent();
     void indentSelection(bool increase);
     int findMatchingParenthesis(int position, QChar parenthesis, bool backward);  // 添加函数声明
     void applyDefaultPalette();  // 添加默认调色板设置
@@ -304,15 +328,17 @@ private:
      */
     int findBraceInBlock(const QTextBlock &block, bool opening) const;
 
+    bool tryExpandPairOnReturn();
+
     void applyLineHeight();
     
-    // ★ 跳转定义的视觉反馈
+    // 跳转定义的视觉反馈
     bool         m_ctrlHeldForDefinition = false;
     QPoint       m_lastMousePos;
     bool         m_hasValidMousePos = false;
     QTextCursor  m_definitionCursor;
 
-    // ★ 辅助方法
+    // 辅助方法
     QTextCursor  getIdentifierAt(const QPoint& pos) const;
     void         updateDefinitionHighlight();
     void         clearDefinitionHighlight();
@@ -353,15 +379,54 @@ private:
      */
     void insertCompletion(const QString& insertText);
 
+
+    // ========== 代码补全 ==========
+    void setupCompletion();
+    void requestLocalCompletions(const QString& prefix);
+    void requestLspCompletions(const QString& prefix);
+    void rebuildCompletionList();
+    void commitCompletion(int row);
+    void closeCompletion();
+    bool isCompletionTriggerChar(QChar c) const;
+    bool isWordChar(QChar c) const;
+    QString currentWordPrefix() const;   // 光标前连续 word 字符
+
+    // ========== 语言相关的编辑辅助 ==========
+    bool  isInsideString(int position) const;
+    bool  isInsideLineComment(int position) const;
+    bool  isInsideStringOrComment(int position) const;
+
+    void  autoIndentAfterReturn();       // 回车后调用
+    bool  tryAutoPair(const QString& input);      // 返回 true 表示已处理
+    bool  tryBraceNewline(const QString& input);  // 返回 true 表示已处理
+
+    QString indentUnit() const;          // 返回一个缩进单元（"    " 或 "\t"）
+    QString leadingWhitespace(const QString& line) const;
+
+    void  applyEditorRulesForLanguage(const QString& languageId);
+
     // 保存/恢复 modified 状态的辅助函数
     void beginSilentModification();
     void endSilentModification();
 
     // 补全相关成员
-    QList<LSPCompletionItem> m_completionItems;
+    /*QList<LSPCompletionItem> m_completionItems;
     QListWidget* m_completionPopup;      // 补全下拉列表
     bool m_completionActive = false;
-    QString m_completionTriggerText;     // 触发补全的前缀（例如 "System." 中的 "System."）
+    QString m_completionTriggerText;*/     // 触发补全的前缀（例如 "System." 中的 "System."）
+    CompletionModel*  m_completionModel  = nullptr;
+    CompletionPopup*  m_completionPopup  = nullptr;
+    bool              m_completionActive = false;
+
+    // 触发位置：光标在此位置之前的前缀才是补全前缀
+    int               m_completionAnchor = -1;   // 文档绝对位置
+    QString           m_completionPrefix;        // 当前前缀（已输入的部分）
+
+    QTimer*           m_lspDebounceTimer = nullptr;   // LSP 请求防抖
+
+    // 已收到的 LSP 原始结果（未合并本地符号时缓存）
+    QList<LSPCompletionItem> m_pendingLspItems;
+    bool              m_lspResponseWaiting = false;
 
 
     // 菜单动作
@@ -414,6 +479,9 @@ private:
 
     bool m_suppressModificationFlag = false;    // 静默修改守卫：在这些操作期间不允许 modified 被置 true
     QSet<int> m_conditionalBreakpoints;   // 存储带条件的断点行号
+
+    // ========== 语言编辑规则（打开文件时确定一次）==========
+    EditorRules m_editorRules;
 };
 
 /**

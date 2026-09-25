@@ -11,6 +11,8 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QLabel>
+#include <QPlainTextEdit>
 
 
 // ========== 设置页面基类 ==========
@@ -79,6 +81,25 @@ private:
     QComboBox *m_sdkPresetCombo;
 };
 
+// ========== LSP 诊断设置页面 ==========
+class LspSettingsPage : public SettingsPage
+{
+    Q_OBJECT
+public:
+    explicit LspSettingsPage(QWidget* parent = nullptr);
+    void loadSettings() override;
+    void saveSettings() override;
+
+private slots:
+    void onModeChanged(int index);
+
+private:
+    QComboBox*      m_modeCombo  = nullptr;
+    QPlainTextEdit* m_rulesEdit  = nullptr;
+    QLabel*         m_rulesLabel = nullptr;
+    QLabel*         m_rulesHint  = nullptr;
+};
+
 // ========== 主设置对话框 ==========
 class SettingsDialog : public QDialog
 {
@@ -91,6 +112,7 @@ public:
 
 signals:
     void aiServerRestartRequested(const QString& host, quint16 port);
+    void lspSettingsChanged();
 
 private slots:
     void onCategoryChanged(int currentRow);

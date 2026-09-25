@@ -141,6 +141,11 @@ public slots:
     void runProgram(const QString& executablePath, bool inTerminal = false);
     void syncBreakpointsToDebugger();
     void onLSPDiagnostics(const QString& filePath, const QList<LSPDiagnostic>& diagnostics);
+
+    // LSP 跳转到定义
+    void onDefinitionReceived(const QString& file, int line, int column);
+
+    void onQuickOpen();
     // void generateCompileCommands(const QString& projectPath);   // 生成 compile_commands.json
 
     // 菜单槽函数
@@ -226,6 +231,8 @@ public slots:
     // ProjectPanel 右键 Git 子菜单分发
     void onProjectPanelGitAction(int action, const QStringList& filePaths);
 
+
+
 private:
     void setupUI();
     void setupMenuBar();
@@ -237,6 +244,7 @@ private:
     void setupTerminalPanel();
     void setupGitPanel();
     void loadAllProjectFiles(const QString& projectPath);
+    void reloadLspFilterSettings();
 
     void applyTheme();
 

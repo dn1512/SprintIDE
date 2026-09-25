@@ -53,6 +53,7 @@
 #include <QUuid>
 #include <QMouseEvent>
 #include <QDialog>
+#include <QSet>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -79,6 +80,7 @@
 //LSP服务
 // #include "lsp/lsp_client.h"
 #include "lsp/lsp_manager.h"
+#include "lsp/diagnostic_filter.h"
 
 //ai
 #include "ai/ai_action_executor.h"
@@ -111,6 +113,8 @@
 #include "git/git_diff_dialog.h"
 #include "git/git_file_history_dialog.h"
 #include "git/git_settings_page.h"
+
+#include "quick_open_dialog.h"
 
 
 using namespace SprintIDE;
@@ -230,6 +234,88 @@ static SprintIDE::LanguageType detectProjectLanguage(const QString& projectPath)
 
     // 无法识别，返回 Unknown
     return SprintIDE::LanguageType::Unknown;
+}
+
+// ====================================================================
+// 快速打开：扫描项目目录下的文件（不含构建产物 / 二进制）
+// ====================================================================
+static QStringList scanFilesForQuickOpen(const QString& root, int maxFiles = 20000)
+{
+    QStringList out;
+    if (root.isEmpty() || !QDir(root).exists()) return out;
+
+    // 与 loadAllProjectFiles 保持一致的排除名单
+    static const QStringList kExcludeDirs = {
+        ".git", ".svn", ".hg",
+        ".cache", ".SprintIDE",
+        "build", "bin", "obj", "out", "dist", "target",
+        "Debug", "Release", "CMakeFiles",
+        "node_modules", "__pycache__", ".venv", "venv",
+        ".gradle", ".mvn", ".cargo", ".rustup",
+        ".vs", ".idea", ".vscode",
+        ".dSYM"
+    };
+
+    // 明显是二进制/构建产物 → 不列入快速打开
+    static const QSet<QString> kSkipExt = {
+        "o", "a", "so", "dylib", "dll", "exe", "d", "obj", "lib",
+        "class", "jar", "war", "pyc", "pyo", "pdb", "ilk", "exp",
+        "png", "jpg", "jpeg", "gif", "ico", "bmp", "webp",
+        "ttf", "otf", "woff", "woff2",
+        "zip", "tar", "gz", "bz2", "xz", "7z", "rar",
+        "mp3", "mp4", "mov", "avi", "mkv", "wav",
+        "pdf"
+    };
+
+    constexpr int kMaxDepth = 16;
+    QStack<QPair<QString, int>> pending;      // (dirPath, depth)
+    pending.push({QDir(root).absolutePath(), 0});
+
+    while (!pending.isEmpty()) {
+        if (out.size() >= maxFiles) break;
+
+        const auto item = pending.pop();
+        const QString dirPath = item.first;
+        const int depth = item.second;
+        if (depth > kMaxDepth) continue;
+
+        QDir dir(dirPath);
+        if (!dir.exists()) continue;
+
+        // ---- 子目录 ----
+        const QStringList subdirs = dir.entryList(
+            QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+        for (const QString& sub : subdirs) {
+            bool skip = false;
+            for (const QString& ex : kExcludeDirs) {
+                if (sub.compare(ex, Qt::CaseInsensitive) == 0) { skip = true; break; }
+            }
+            if (!skip && (sub.endsWith(".dSYM", Qt::CaseInsensitive) ||
+                          sub.endsWith(".framework", Qt::CaseInsensitive) ||
+                          sub.endsWith(".app", Qt::CaseInsensitive))) {
+                skip = true;
+            }
+            if (skip) continue;
+            pending.push({dir.absoluteFilePath(sub), depth + 1});
+        }
+
+        // ---- 当前目录文件 ----
+        const QStringList files = dir.entryList(
+            QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+        for (const QString& f : files) {
+            if (f.startsWith('.'))  continue;   // 隐藏文件
+            if (f.startsWith("._")) continue;   // macOS 元数据
+
+            const QString ext = QFileInfo(f).suffix().toLower();
+            if (!ext.isEmpty() && kSkipExt.contains(ext)) continue;
+
+            out.append(dir.absoluteFilePath(f));
+            if (out.size() >= maxFiles) break;
+        }
+    }
+
+    qDebug() << "[QuickOpen] 收集文件数:" << out.size() << "root:" << root;
+    return out;
 }
 
 // ========== Diff 辅助函数（用于历史差异对比） ==========
@@ -420,6 +506,9 @@ MainWindow::MainWindow(QWidget *parent)
                 this, &MainWindow::showFileHistoryDialog);
     }
 
+    // 加载 LSP 过滤配置（模式 + 自定义规则）
+    reloadLspFilterSettings();
+
     qDebug() << "[MW] LogBuffer ready:"
          << (Application::instance().logBuffer() != nullptr);
 }
@@ -482,15 +571,15 @@ MainWindow::~MainWindow()
     }
 
     // ========== 5. 断开 definition 连接 ==========
-    for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
-        disconnect(it.value());
-    }
-    m_definitionConnections.clear();
+    // for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
+    //     disconnect(it.value());
+    // }
+    // m_definitionConnections.clear();
 
-    for (auto it = m_pendingDefinitionConnections.begin(); it != m_pendingDefinitionConnections.end(); ++it) {
-        disconnect(it.value());
-    }
-    m_pendingDefinitionConnections.clear();
+    // for (auto it = m_pendingDefinitionConnections.begin(); it != m_pendingDefinitionConnections.end(); ++it) {
+    //     disconnect(it.value());
+    // }
+    // m_pendingDefinitionConnections.clear();
 
     // ========== 6. 删除私有实现 ==========
     delete d;
@@ -743,11 +832,20 @@ void MainWindow::setupMenuBar()
 
     QMenu *openMenu = fileMenu->addMenu(QIcon(":/icons/icons/open_file.svg"), "打开(&O)");
 
-    QAction *openFileAction = openMenu->addAction(QIcon(":/icons/icons/open_file.svg"), "文件");
-    openFileAction->setShortcut(QKeySequence::Open);
+    // 快速打开（Ctrl+O）—— 搜索文件名快速打开
+    QAction *quickOpenAction = openMenu->addAction("快速打开文件...");
+    quickOpenAction->setShortcut(QKeySequence::Open);          // Ctrl+O / Cmd+O
+    quickOpenAction->setStatusTip("输入文件名快速打开 (Ctrl+O)");
+    connect(quickOpenAction, &QAction::triggered, this, &MainWindow::onQuickOpen);
+
+    // 传统打开对话框（改为 Ctrl+Alt+O，避免与快速打开冲突）
+    QAction *openFileAction = openMenu->addAction(
+        QIcon(":/icons/icons/open_file.svg"), "打开文件...");
+    openFileAction->setShortcut(QKeySequence("Ctrl+Alt+O"));
     connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
 
-    QAction *openProjectAction = openMenu->addAction(QIcon(":/icons/icons/open_project.svg"), "项目");
+    QAction *openProjectAction = openMenu->addAction(
+        QIcon(":/icons/icons/open_project.svg"), "项目");
     openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
     connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
 
@@ -1767,75 +1865,54 @@ void MainWindow::openFile(const QString &path)
 
                 // 用 unique connection 保证同一个 editor + client 只连一次
                 connect(client, &LSPClient::completionReceived,
-                        editorPtr.data(),                 // context = editor
-                        [editorPtr](const QString& fp,
-                                    const QList<LSPCompletionItem>& items) {
-                            if (!editorPtr) return;
-                            if (editorPtr->filePath() == fp) {
-                                editorPtr->updateCompletionItems(items);
-                            }
-                        },
-                        Qt::UniqueConnection);            // 防止重复连接
+                        editorPtr.data(),                          // 接收者 = 编辑器
+                        &TextEditor::onLSPCompletionReceived,      // 成员函数指针
+                        Qt::UniqueConnection);                     // 现在合法了
 
                 client->requestCompletion(filePath, line, column);
             });
-
-    // 跳转定义连接
+    // 跳转定义：编辑器的 definitionRequested → 找 client → 发请求
+    // client 的 definitionReceived → MainWindow::onDefinitionReceived
     connect(editor, &TextEditor::definitionRequested,
-            this, [this, editor](const QString& filePath, int line, int column) {
+            this, [this](const QString& filePath, int line, int column) {
 
-                if (!m_lspManager) return;
-                QString projectRoot = d->currentProjectPath.isEmpty() ?
-                                          QFileInfo(filePath).absolutePath() :
-                                          d->currentProjectPath;
-                LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
-                if (!client) {
-                    qWarning() << "[MainWindow] No LSP client for" << filePath;
-                    return;
-                }
+        if (!m_lspManager) return;
 
-                // ---- 关键修改：只建立一次连接，之后复用 ----
-                if (!m_definitionConnections.contains(client)) {
-                    QMetaObject::Connection conn = connect(client, &LSPClient::definitionReceived,
-                                                           this, [this](const QString& targetFile, int targetLine, int targetColumn) {
-                                                               openFile(targetFile);
-                                                               TextEditor* targetEditor = currentEditor();
-                                                               if (targetEditor) {
-                                                                   targetEditor->gotoLine(targetLine);
-                                                                   targetEditor->setFocus();
-                                                                   targetEditor->highlightLine(targetLine);
-                                                               }
-                                                           });
-                    m_definitionConnections[client] = conn;
-                } else {
-                    qDebug() << "[MainWindow] definitionReceived connection already exists for client" << client;
-                }
+        const QString projectRoot = d->currentProjectPath.isEmpty()
+                                        ? QFileInfo(filePath).absolutePath()
+                                        : d->currentProjectPath;
 
-                // ---- 等待 LSP 就绪（如果有） ----
-                if (!client->isReady()) {
-                    QPointer<LSPClient> clientPtr = client;
-                    auto connPtr = std::make_shared<QMetaObject::Connection>();
-                    *connPtr = connect(client, &LSPClient::serverReady, this,
-                                       [this, clientPtr, filePath, line, column, connPtr]() {
-                                           if (!clientPtr) {
-                                               qWarning() << "[MainWindow] client destroyed before serverReady";
-                                               return;
-                                           }
-                                           clientPtr->requestDefinition(filePath, line, column);
-                                           disconnect(*connPtr);
-                                       });
-                    QTimer::singleShot(5000, this, [connPtr]() {
-                        if (*connPtr) {
-                            qWarning() << "[MainWindow] LSP ready timeout";
-                            disconnect(*connPtr);
-                        }
-                    });
-                    return;
-                }
+        LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
+        if (!client) {
+            qWarning() << "[Def] 无 LSP client:" << filePath;
+            return;
+        }
 
-                // ---- 客户端已就绪，直接发送请求 ----
-                client->requestDefinition(filePath, line, column);
-            });
+        // 用成员函数槽 + UniqueConnection：
+        //    - 满足 Qt6 UniqueConnection 约束（不能是 lambda）
+        //    - 同一 client 只连接一次（四元组去重）
+        //    - MainWindow 析构时 Qt 自动断开，无需手动管理
+        connect(client, &LSPClient::definitionReceived,
+                this, &MainWindow::onDefinitionReceived,
+                Qt::UniqueConnection);
+
+        // ---- 客户端未就绪：等 serverReady 后再发请求 ----
+        if (!client->isReady()) {
+            QPointer<LSPClient> clientPtr = client;
+            auto connPtr = std::make_shared<QMetaObject::Connection>();
+            *connPtr = connect(client, &LSPClient::serverReady, this,
+                               [clientPtr, filePath, line, column, connPtr]() {
+                                   if (clientPtr && clientPtr->isReady()) {
+                                       clientPtr->requestDefinition(filePath, line, column);
+                                   }
+                                   QObject::disconnect(*connPtr);
+                               });
+            return;
+        }
+
+        // ---- 客户端就绪：直接发请求 ----
+        client->requestDefinition(filePath, line, column);
+    });
 
     // ---- 本地历史（原有代码） ----
     if (m_localHistory) {
@@ -2788,23 +2865,59 @@ void MainWindow::syncBreakpointsToDebugger()
 }
 
 
-void MainWindow::onLSPDiagnostics(const QString& filePath, const QList<LSPDiagnostic>& diagnostics)
+void MainWindow::onLSPDiagnostics(const QString& filePath,
+                                  const QList<LSPDiagnostic>& diagnostics)
 {
-    qDebug() << "MainWindow: onLSPDiagnostics called, file:" << filePath << "count:" << diagnostics.size();
-    // 查找对应的编辑器
     TextEditor* editor = findEditorByFilePath(filePath);
     if (!editor) return;
 
-    // 清除旧的 LSP 标记（不删除编译标记）
     editor->clearAllMarkers();
-    // 需要 TextEditor 支持区分标记类型
+
+    DiagnosticFilter& filter = DiagnosticFilter::instance();
+
+    int keptErrors = 0;
+    int keptWarnings = 0;
+    int filtered = 0;
+
     for (const LSPDiagnostic& diag : diagnostics) {
+        if (!filter.shouldKeep(diag)) {
+            ++filtered;
+            continue;
+        }
         if (diag.severity == "error") {
             editor->setErrorMarker(filePath, diag.line, diag.column, diag.message);
+            ++keptErrors;
         } else if (diag.severity == "warning") {
             editor->setWarningMarker(filePath, diag.line, diag.column, diag.message);
+            ++keptWarnings;
         }
     }
+
+    if (filtered > 0 || keptWarnings > 0) {
+        qDebug() << "[LSP]" << filePath
+                 << "error:" << keptErrors
+                 << "warning:" << keptWarnings
+                 << "filtered:" << filtered;
+    }
+}
+
+void MainWindow::onDefinitionReceived(const QString& file, int line, int column)
+{
+    if (file.isEmpty() || line <= 0) {
+        qDebug() << "[Def] 无效跳转目标:" << file << line << column;
+        return;
+    }
+
+    qDebug() << "[Def] 跳转:" << file << ":" << line;
+
+    openFile(file);
+
+    TextEditor* te = currentEditor();
+    if (!te) return;
+
+    te->gotoLine(line);
+    te->setFocus();
+    te->highlightLine(line);
 }
 
 // 辅助方法
@@ -4521,6 +4634,66 @@ void MainWindow::onOpenFile()
     }
 }
 
+// ==================== 快速打开（Ctrl+O） ====================
+
+void MainWindow::onQuickOpen()
+{
+    // -------- 1. 确定项目根目录 --------
+    // 没有显式打开项目时，尝试从当前编辑器向上推导
+    if (d->currentProjectPath.isEmpty()) {
+        TextEditor* editor = currentEditor();
+        if (editor && !editor->filePath().isEmpty()) {
+            QDir dir = QFileInfo(editor->filePath()).absoluteDir();
+            while (!dir.isRoot()) {
+                if (dir.exists(".git")           ||
+                    dir.exists("CMakeLists.txt") ||
+                    dir.exists("pom.xml")        ||
+                    dir.exists("package.json")   ||
+                    dir.exists("pyproject.toml") ||
+                    dir.exists("Cargo.toml")     ||
+                    dir.exists("go.mod")) {
+                    d->currentProjectPath = dir.absolutePath();
+                    break;
+                }
+                dir.cdUp();
+            }
+        }
+    }
+
+    // -------- 2. 完全没有项目上下文 → 退化为系统文件对话框 --------
+    if (d->currentProjectPath.isEmpty()) {
+        qDebug() << "[QuickOpen] 无项目上下文，回退到系统文件对话框";
+        onOpenFile();
+        return;
+    }
+
+    // -------- 3. 扫描项目文件 --------
+    const QStringList files = scanFilesForQuickOpen(d->currentProjectPath);
+    if (files.isEmpty()) {
+        QMessageBox::information(this, "快速打开",
+                                 "项目中没有可打开的文件。");
+        return;
+    }
+
+    // -------- 4. 弹出搜索对话框 --------
+    QuickOpenDialog dlg(this);
+    dlg.setFileList(files, d->currentProjectPath);
+
+    connect(&dlg, &QuickOpenDialog::fileChosen,
+            this, [this](const QString& path) {
+                if (path.isEmpty()) return;
+                if (!QFile::exists(path)) {
+                    d->outputPanel->append(
+                        QString("<span style='color:#EBB65B;'>文件不存在: %1</span>")
+                            .arg(path));
+                    return;
+                }
+                openFile(path);
+            });
+
+    dlg.exec();
+}
+
 void MainWindow::onSaveFile()
 {
     TextEditor* editor = currentEditor();
@@ -5102,6 +5275,8 @@ void MainWindow::onOpenGitSettingsFromPanel()
     SettingsDialog dlg(this);
     connect(&dlg, &SettingsDialog::aiServerRestartRequested,
             this, &MainWindow::onAIRestartRequested);
+    connect(&dlg, &SettingsDialog::lspSettingsChanged,
+            this, &MainWindow::reloadLspFilterSettings);
     dlg.showCategory(QStringLiteral("Git"));
     dlg.exec();
 }
@@ -5658,6 +5833,27 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
     // for (const QString& filePath : sourceFiles) {
     //     openFile(filePath);
     // }
+}
+
+void MainWindow::reloadLspFilterSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    const QString modeStr = cfg->value("Lsp/WarningMode", "errors-only").toString();
+
+    DiagnosticFilter::Mode mode = DiagnosticFilter::Mode::ErrorsOnly;
+    if (modeStr == "show-all") {
+        mode = DiagnosticFilter::Mode::ShowAll;
+    } else if (modeStr == "custom") {
+        mode = DiagnosticFilter::Mode::Custom;
+    }
+    DiagnosticFilter::instance().setMode(mode);
+
+    const QStringList rules = cfg->value("Lsp/IgnoreWarnings").toStringList();
+    DiagnosticFilter::instance().loadUserRules(rules);
+
+    qDebug() << "[LSP] 过滤模式:" << modeStr << "自定义规则数:" << rules.size();
 }
 
 void MainWindow::onNewProject()
@@ -6556,6 +6752,8 @@ void MainWindow::onCompileSettings()
     SettingsDialog dialog(this);
     connect(&dialog, &SettingsDialog::aiServerRestartRequested,
             this,   &MainWindow::onAIRestartRequested);
+    connect(&dialog, &SettingsDialog::lspSettingsChanged,
+            this,   &MainWindow::reloadLspFilterSettings);   // 设置变化后立即生效
     dialog.exec();
 }
 

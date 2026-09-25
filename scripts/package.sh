@@ -156,6 +156,120 @@ LIB_SIZE="$(du -sh "$BUNDLE_APP/Contents/Frameworks/lldb/lib" 2>/dev/null | cut 
 info "  已内嵌 $LIB_COUNT 个 dylib，共 $LIB_SIZE"
 
 # ------------------------------------------------------------
+# 6.5 内嵌 cmake + ninja 到 Frameworks/toolchain
+# ------------------------------------------------------------
+info "内嵌 cmake + ninja 到 app bundle..."
+
+TOOLCHAIN_DIR="$BUNDLE_APP/Contents/Frameworks/toolchain"
+rm -rf "$TOOLCHAIN_DIR"
+mkdir -p "$TOOLCHAIN_DIR/bin" "$TOOLCHAIN_DIR/share"
+
+# --- ninja（单文件，无第三方依赖）---
+NINJA_SRC=""
+for P in \
+    "$BREW_PREFIX/bin/ninja" \
+    "/usr/local/bin/ninja" \
+    "/opt/homebrew/bin/ninja" \
+    "/usr/bin/ninja"
+do
+    if [ -x "$P" ]; then
+        NINJA_SRC="$P"
+        break
+    fi
+done
+
+if [ -z "$NINJA_SRC" ] && command -v ninja >/dev/null 2>&1; then
+    NINJA_SRC="$(command -v ninja)"
+fi
+
+if [ -z "$NINJA_SRC" ]; then
+    err "未找到 ninja"
+    err "安装：brew install ninja"
+    exit 1
+fi
+info "ninja: $NINJA_SRC"
+
+# 跟随符号链接，直接拷真实文件（ninja 本身是静态单文件）
+cp -L "$NINJA_SRC" "$TOOLCHAIN_DIR/bin/ninja"
+chmod +x "$TOOLCHAIN_DIR/bin/ninja"
+
+NINJA_VER="$("$TOOLCHAIN_DIR/bin/ninja" --version 2>&1 | head -1)"
+NINJA_SIZE="$(du -sh "$TOOLCHAIN_DIR/bin/ninja" | cut -f1)"
+info "  ninja 版本: $NINJA_VER  大小: $NINJA_SIZE"
+
+# --- cmake（二进制 + share/cmake 数据目录）---
+# 优先使用 brew 的独立命令行 formula（/usr/local/opt/cmake），
+# 不要用 /Applications/CMake.app（GUI bundle，结构复杂且升级不受 brew 控制）
+CMAKE_SRC=""
+for P in \
+    "$BREW_PREFIX/opt/cmake/bin/cmake" \
+    "/usr/local/opt/cmake/bin/cmake" \
+    "/opt/homebrew/opt/cmake/bin/cmake"
+do
+    if [ -x "$P" ]; then
+        CMAKE_SRC="$P"
+        break
+    fi
+done
+
+if [ -z "$CMAKE_SRC" ]; then
+    err "未找到 brew 版 cmake"
+    err "安装：brew install cmake"
+    err "（不要用 /Applications/CMake.app 内嵌，升级不可控）"
+    exit 1
+fi
+info "cmake: $CMAKE_SRC"
+
+cp -L "$CMAKE_SRC" "$TOOLCHAIN_DIR/bin/cmake"
+chmod +x "$TOOLCHAIN_DIR/bin/cmake"
+
+# --- cmake 数据目录 ---
+# cmake 会从 <binary_dir>/../share/cmake 推断 CMAKE_ROOT，
+# 所以内嵌结构必须保持 bin/ 与 share/ 同级。
+CMAKE_SHARE=""
+for CAND in \
+    "$BREW_PREFIX/opt/cmake/share/cmake" \
+    "/usr/local/opt/cmake/share/cmake" \
+    "/opt/homebrew/opt/cmake/share/cmake"
+do
+    if [ -d "$CAND" ]; then
+        CMAKE_SHARE="$CAND"
+        break
+    fi
+done
+
+if [ -z "$CMAKE_SHARE" ]; then
+    err "找不到 cmake 的 share/cmake 数据目录"
+    err "已尝试：\$BREW_PREFIX/opt/cmake/share/cmake 等"
+    exit 1
+fi
+info "cmake share: $CMAKE_SHARE"
+
+# 实测大小（交接文档留的待办）
+CMAKE_SHARE_SIZE_RAW="$(du -sh "$CMAKE_SHARE" | cut -f1)"
+info "  share/cmake 大小: $CMAKE_SHARE_SIZE_RAW"
+
+cp -R "$CMAKE_SHARE" "$TOOLCHAIN_DIR/share/cmake"
+
+# 只保留 cmake 一个可执行，ccmake/cpack/ctest 省略（省约 45 MB）
+# （本脚本本来就只拷了 cmake）
+
+# --- 验证内嵌结果 ---
+if ! "$TOOLCHAIN_DIR/bin/cmake" --version >/dev/null 2>&1; then
+    err "内嵌 cmake 无法运行（CMAKE_ROOT 推断可能失败）"
+    err "检查：ls $TOOLCHAIN_DIR/share/cmake/Modules"
+    exit 1
+fi
+
+CMAKE_IN_BUNDLE_VER="$("$TOOLCHAIN_DIR/bin/cmake" --version | head -1)"
+info "  $CMAKE_IN_BUNDLE_VER"
+
+TOOLCHAIN_SIZE="$(du -sh "$TOOLCHAIN_DIR" | cut -f1)"
+info "  toolchain 总大小: $TOOLCHAIN_SIZE"
+info "  结构:"
+(cd "$TOOLCHAIN_DIR" && find . -maxdepth 2 -type d | sed 's|^|    |' | head -10)
+
+# ------------------------------------------------------------
 # 7. 签名
 # ------------------------------------------------------------
 info "清理扩展属性..."

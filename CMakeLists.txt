@@ -166,6 +166,7 @@ set(ALL_SOURCES
     ${DEPS_SOURCES}
     ${DAP_SOURCES}
     ${GIT_SOURCES}
+    ${COMPLETION_SOURCES}
 )
 
 set(ALL_HEADERS
@@ -189,6 +190,7 @@ set(ALL_HEADERS
     ${DEPS_HEADERS}
     ${DAP_HEADERS}
     ${GIT_HEADERS}
+    ${COMPLETION_HEADERS}
 )
 
 set(ALL_FORMS
@@ -200,11 +202,13 @@ set(ALL_FORMS
 set(LSP_SOURCES
     src/lsp/lsp_client.cpp
     src/lsp/lsp_manager.cpp
+    src/lsp/diagnostic_filter.cpp
 )
 
 set(LSP_HEADERS
     src/lsp/lsp_client.h
     src/lsp/lsp_manager.h
+    src/lsp/diagnostic_filter.h
 )
 
 # TERMINA  模块
@@ -235,12 +239,15 @@ set(AI_HEADERS
 set(LANGUAGE_SOURCES
     src/language/language_detector.cpp
     src/language/language_highlighter.cpp
+    src/language/editor_rules.cpp
 )
 
 set(LANGUAGE_HEADERS
     src/language/language_detector.h
     src/language/language_highlighter.h
     src/language/language_type.h
+    src/language/editor_rules.h
+
 )
 
 set(HISTORY_HEADERS
@@ -393,6 +400,18 @@ set(CORE_HEADERS
     core/log_buffer.h
 )
 
+set(COMPLETION_SOURCES
+    editor/completion_model.cpp
+    editor/completion_popup.cpp
+    editor/completion_delegate.cpp
+)
+
+set(COMPLETION_HEADERS
+    editor/completion_model.h
+    editor/completion_popup.h
+    editor/completion_delegate.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME}
     ${ALL_SOURCES}
@@ -531,6 +550,19 @@ add_executable(${PROJECT_NAME}
     git/git_file_history_dialog.cpp
     core/log_buffer.h
     core/log_buffer.cpp
+    language/editor_rules.h
+    language/editor_rules.cpp
+    editor/completion_model.h
+    editor/completion_model.cpp
+    editor/completion_popup.h
+    editor/completion_popup.cpp
+    editor/completion_delegate.h
+    editor/completion_delegate.cpp
+    lsp/diagnostic_filter.h
+    lsp/diagnostic_filter.cpp
+    quick_open_dialog.h
+    quick_open_dialog.cpp
+
 )
 
 

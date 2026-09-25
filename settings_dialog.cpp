@@ -223,6 +223,113 @@ EnvironmentSettingsPage::EnvironmentSettingsPage(QWidget *parent)
     setupTable();
 }
 
+// ====================================================================
+// LspSettingsPage 实现
+// ====================================================================
+
+LspSettingsPage::LspSettingsPage(QWidget* parent)
+    : SettingsPage(parent)
+{
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+    // ---------- 说明 ----------
+    QLabel* infoLabel = new QLabel(
+        tr("控制 LSP 服务器返回的诊断信息如何显示。\n"
+           "错误（error）始终显示，不受此设置影响。"),
+        this);
+    infoLabel->setWordWrap(true);
+    infoLabel->setStyleSheet("QLabel { color: #888888; font-size: 10pt; margin-bottom: 8px; }");
+    mainLayout->addWidget(infoLabel);
+
+    // ---------- 模式选择 ----------
+    QGroupBox* modeGroup = new QGroupBox(tr("警告显示模式"), this);
+    QVBoxLayout* modeLayout = new QVBoxLayout(modeGroup);
+
+    m_modeCombo = new QComboBox(this);
+    m_modeCombo->addItem(tr("只显示错误（推荐）"), "errors-only");
+    m_modeCombo->addItem(tr("显示所有警告和错误"), "show-all");
+    m_modeCombo->addItem(tr("自定义忽略规则"), "custom");
+    modeLayout->addWidget(m_modeCombo);
+
+    QLabel* modeHint = new QLabel(
+        tr("• 只显示错误：隐藏所有 warning，编辑器最干净\n"
+           "• 显示所有警告和错误：使用 LSP 服务器的全部诊断\n"
+           "• 自定义忽略规则：按下方黑名单过滤 warning"),
+        this);
+    modeHint->setStyleSheet("QLabel { color: #888888; font-size: 10pt; }");
+    modeHint->setWordWrap(true);
+    modeLayout->addWidget(modeHint);
+
+    mainLayout->addWidget(modeGroup);
+
+    // ---------- 自定义规则 ----------
+    m_rulesLabel = new QLabel(tr("忽略规则（每行一条，支持正则）:"), this);
+    mainLayout->addWidget(m_rulesLabel);
+
+    m_rulesEdit = new QPlainTextEdit(this);
+    m_rulesEdit->setPlaceholderText(
+        tr("imported but unused\n"
+           "line too long\n"
+           "^missing-.*docstring"));
+    mainLayout->addWidget(m_rulesEdit);
+
+    m_rulesHint = new QLabel(
+        tr("匹配 warning 消息中的子串，不区分大小写。支持 QRegularExpression 语法。"),
+        this);
+    m_rulesHint->setStyleSheet("QLabel { color: #888888; font-size: 10pt; }");
+    m_rulesHint->setWordWrap(true);
+    mainLayout->addWidget(m_rulesHint);
+
+    mainLayout->addStretch();
+
+    connect(m_modeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &LspSettingsPage::onModeChanged);
+
+    onModeChanged(0);
+}
+
+void LspSettingsPage::onModeChanged(int index)
+{
+    const QString mode = m_modeCombo->itemData(index).toString();
+    const bool customMode = (mode == "custom");
+
+    m_rulesLabel->setEnabled(customMode);
+    m_rulesEdit->setEnabled(customMode);
+    m_rulesHint->setEnabled(customMode);
+}
+
+void LspSettingsPage::loadSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    const QString modeStr = cfg->value("Lsp/WarningMode", "errors-only").toString();
+    int idx = m_modeCombo->findData(modeStr);
+    if (idx < 0) idx = 0;
+    m_modeCombo->setCurrentIndex(idx);
+
+    const QStringList rules = cfg->value("Lsp/IgnoreWarnings").toStringList();
+    m_rulesEdit->setPlainText(rules.join('\n'));
+
+    onModeChanged(idx);
+}
+
+void LspSettingsPage::saveSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    cfg->setValue("Lsp/WarningMode", m_modeCombo->currentData().toString());
+
+    QStringList rules;
+    const QString text = m_rulesEdit->toPlainText();
+    for (const QString& line : text.split('\n')) {
+        const QString trimmed = line.trimmed();
+        if (!trimmed.isEmpty()) rules.append(trimmed);
+    }
+    cfg->setValue("Lsp/IgnoreWarnings", rules);
+}
+
 void EnvironmentSettingsPage::setupTable()
 {
     m_tableWidget->setColumnWidth(0, 200);
@@ -781,6 +888,8 @@ void SettingsDialog::createUI()
     // Git 设置页
     m_categoryList->addItem(tr("Git"));
 
+    m_categoryList->addItem(tr("LSP 诊断"));
+
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
 
@@ -809,6 +918,10 @@ void SettingsDialog::createUI()
     GitSettingsPage* gitPage = new GitSettingsPage(this);
     m_stackedWidget->addWidget(gitPage);
     m_pages.append(gitPage);
+
+    LspSettingsPage* lspPage = new LspSettingsPage(this);
+    m_stackedWidget->addWidget(lspPage);
+    m_pages.append(lspPage);
 
     connect(m_categoryList, &QListWidget::currentRowChanged,
             this, &SettingsDialog::onCategoryChanged);
@@ -858,6 +971,7 @@ void SettingsDialog::saveAllSettings()
     for (SettingsPage *page : m_pages) {
         page->saveSettings();
     }
+    emit lspSettingsChanged();
 }
 
 void SettingsDialog::onApply()
