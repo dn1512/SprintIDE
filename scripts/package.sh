@@ -287,6 +287,116 @@ else
 fi
 
 # ------------------------------------------------------------
+# 7.5 打包 DMG
+# ------------------------------------------------------------
+APP_NAME_FOR_DMG="SprintIDE"
+APP_VERSION="1.0.0"                      # 与 CMakeLists 保持一致
+DMG_NAME="${APP_NAME_FOR_DMG}-${APP_VERSION}.dmg"
+DMG_PATH="$PROJECT_ROOT/build/$DMG_NAME"
+DMG_TMP="$PROJECT_ROOT/build/${APP_NAME_FOR_DMG}-${APP_VERSION}.tmp.dmg"
+STAGING="$PROJECT_ROOT/build/dmg-staging"
+MOUNT_POINT="/Volumes/$APP_NAME_FOR_DMG"
+
+info "准备 DMG 打包..."
+info "  产物: $DMG_PATH"
+
+# ---- 清理可能残留的挂载 ----
+if [ -d "$MOUNT_POINT" ]; then
+    info "  发现残留挂载点，先卸载: $MOUNT_POINT"
+    hdiutil detach "$MOUNT_POINT" -force -quiet 2>/dev/null || true
+fi
+
+# ---- staging ----
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+
+# 必须 cp -R：保留 .app 内 Framework 的符号链接
+cp -R "$BUNDLE_APP" "$STAGING/"
+
+# Applications 快捷方式（拖拽安装）
+ln -s /Applications "$STAGING/Applications"
+
+# 清理 macOS 元数据
+find "$STAGING" -name '.DS_Store' -delete 2>/dev/null || true
+find "$STAGING" -name '._*'       -delete 2>/dev/null || true
+
+# ---- 生成可读写临时 dmg ----
+rm -f "$DMG_TMP"
+info "  生成临时 DMG..."
+hdiutil create \
+    -volname "$APP_NAME_FOR_DMG" \
+    -srcfolder "$STAGING" \
+    -ov -format UDRW \
+    -quiet \
+    "$DMG_TMP"
+
+# ---- Finder 窗口布局（CI 里设 SKIP_DMG_LAYOUT=1 跳过）----
+if [ "${SKIP_DMG_LAYOUT:-0}" != "1" ]; then
+    info "  挂载并设置窗口布局..."
+
+    if hdiutil attach "$DMG_TMP" -mountpoint "$MOUNT_POINT" -nobrowse -quiet; then
+        osascript <<EOT || info "  (AppleScript 布局跳过：可能无 Finder 会话)"
+tell application "Finder"
+    tell disk "$APP_NAME_FOR_DMG"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {400, 100, 900, 420}
+        set viewOptions to the icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 128
+        set position of item "${APP_NAME_FOR_DMG}.app" of container window to {150, 170}
+        set position of item "Applications"            of container window to {400, 170}
+        close
+        open
+        update without registering applications
+        delay 1
+    end tell
+end tell
+EOT
+        sync
+
+        # detach 有时 busy → 重试 3 次，最后强制
+        for i in 1 2 3; do
+            if hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null; then
+                break
+            fi
+            info "  卸载失败，重试 ($i/3)..."
+            sleep 2
+        done
+        if [ -d "$MOUNT_POINT" ]; then
+            hdiutil detach "$MOUNT_POINT" -force -quiet || true
+        fi
+    else
+        info "  attach 失败，跳过布局（dmg 内容仍正常）"
+    fi
+else
+    info "  跳过 Finder 布局（SKIP_DMG_LAYOUT=1）"
+fi
+
+# ---- 压缩为只读 dmg ----
+info "  压缩为只读 DMG（zlib-level=9）..."
+rm -f "$DMG_PATH"
+hdiutil convert "$DMG_TMP" \
+    -format UDZO \
+    -imagekey zlib-level=9 \
+    -o "$DMG_PATH" \
+    -quiet
+
+# ---- 清理 ----
+rm -f "$DMG_TMP"
+rm -rf "$STAGING"
+
+if [ -f "$DMG_PATH" ]; then
+    DMG_SIZE="$(du -sh "$DMG_PATH" | cut -f1)"
+    info "  DMG 已生成: $DMG_PATH  大小: $DMG_SIZE"
+else
+    err "DMG 生成失败"
+    exit 1
+fi
+
+# ------------------------------------------------------------
 # 8. 完成
 # ------------------------------------------------------------
 TOTAL_SIZE="$(du -sh "$BUNDLE_APP" | cut -f1)"
@@ -295,6 +405,8 @@ echo ""
 echo "[package] ========== 完成 =========="
 echo "[package]  产物:   $BUNDLE_APP"
 echo "[package]  体积:   $TOTAL_SIZE"
+echo "[package]  DMG:    $DMG_PATH"
+echo "[package]  DMG 大小: $DMG_SIZE"
 echo "[package]  架构:   $ARCH"
 echo "[package]  LLVM:   $LLVM_VERSION"
 echo "[package] =========================="
