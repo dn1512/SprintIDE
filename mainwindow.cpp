@@ -116,6 +116,7 @@
 #include "git/git_settings_page.h"
 
 #include "quick_open_dialog.h"
+#include "breakpoint_list_panel.h"
 
 
 using namespace SprintIDE;
@@ -480,6 +481,8 @@ MainWindow::MainWindow(QWidget *parent)
                 this, &MainWindow::onFileRenamed);
     }
 
+    // 断点列表面板：必须在 m_debugManager 初始化之后
+    setupBreakpointListPanel();
     // 连接调试管理器信号
     connect(m_debugManager, &DebugManager::stateChanged,
             this, &MainWindow::onDebugStateChanged);
@@ -635,6 +638,35 @@ void MainWindow::applyCurrentTheme()
     // 性能标签用内联 HTML 颜色，主题切换需要主动重刷
     if (m_performanceMonitor && m_performanceLabel) {
         onPerformanceSnapshot(m_performanceMonitor->lastSnapshot());
+    }
+
+    // 窄条按钮样式跟随主题
+    if (m_viewBreakpointsButton) {
+        QWidget* strip = m_viewBreakpointsButton->parentWidget();
+        if (strip) {
+            ThemeManager& tm2 = ThemeManager::instance();
+            strip->setStyleSheet(QString(
+                "QWidget#BottomStrip {"
+                "  background-color: %1;"
+                "  border-right: 1px solid %2;"
+                "}"
+                "QWidget#BottomStrip QToolButton {"
+                "  background: transparent; border: none; border-radius: 3px;"
+                "  color: %3; font-size: 14px; font-weight: 700;"
+                "}"
+                "QWidget#BottomStrip QToolButton:hover { background-color: %4; }"
+                "QWidget#BottomStrip QToolButton:checked {"
+                "  background-color: %5; color: %6;"
+                "}"
+            ).arg(
+                tm2.colorString(ThemeManager::UIElement::MainWindowBackground),
+                tm2.colorString(ThemeManager::UIElement::BorderColor),
+                tm2.colorString(ThemeManager::UIElement::SecondaryTextColor),
+                tm2.colorString(ThemeManager::UIElement::HoverBackground),
+                tm2.colorString(ThemeManager::UIElement::ActiveTabBackground),
+                tm2.colorString(ThemeManager::UIElement::PrimaryColor)
+            ));
+        }
     }
 
     update();
@@ -1393,7 +1425,93 @@ void MainWindow::setupDockWidgets()
                               QIcon(":/icons/icons/run_view.svg"),
                               "输出");
 
-    m_bottomDockWidget->setWidget(m_bottomTabWidget);
+    // ============================================================
+    //  底部容器：左侧窄条 + 右侧 Tab
+    // ============================================================
+    QWidget* bottomContainer = new QWidget(m_bottomDockWidget);
+    QHBoxLayout* bottomLayout = new QHBoxLayout(bottomContainer);
+    bottomLayout->setContentsMargins(0, 0, 0, 0);
+    bottomLayout->setSpacing(0);
+
+    // ---------- 左侧窄条 ----------
+    QWidget* strip = new QWidget(bottomContainer);
+    strip->setObjectName("BottomStrip");
+    strip->setFixedWidth(28);
+    strip->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+
+    QVBoxLayout* stripLayout = new QVBoxLayout(strip);
+    stripLayout->setContentsMargins(2, 4, 2, 4);
+    stripLayout->setSpacing(2);
+
+    auto makeStripButton = [&](const QString& text,
+                               const QString& tip) -> QToolButton* {
+        auto* b = new QToolButton(strip);
+        b->setText(text);
+        b->setToolTip(tip);
+        b->setFixedSize(24, 24);
+        b->setCheckable(false);
+        b->setFocusPolicy(Qt::NoFocus);
+        b->setCursor(Qt::PointingHandCursor);
+        return b;
+    };
+
+    m_viewBreakpointsButton = makeStripButton(QStringLiteral("●"),
+                                              tr("查看断点"));
+    m_viewBreakpointsButton->setCheckable(true);
+    m_viewBreakpointsButton->setChecked(false);
+    connect(m_viewBreakpointsButton, &QToolButton::clicked,
+            this, &MainWindow::onToggleBreakpointTab);
+
+    m_muteBreakpointsButton = makeStripButton(QStringLiteral("⊘"),
+                                              tr("禁用所有断点"));
+    m_muteBreakpointsButton->setCheckable(true);
+    m_muteBreakpointsButton->setChecked(false);
+    connect(m_muteBreakpointsButton, &QToolButton::clicked,
+            this, &MainWindow::onToggleMuteBreakpoints);
+
+    stripLayout->addWidget(m_viewBreakpointsButton);
+    stripLayout->addWidget(m_muteBreakpointsButton);
+    stripLayout->addStretch(1);
+
+    // ---------- 窄条样式（全部走 ThemeManager） ----------
+    {
+        ThemeManager& tm = ThemeManager::instance();
+        const QString qss = QString(
+            "QWidget#BottomStrip {"
+            "  background-color: %1;"
+            "  border-right: 1px solid %2;"
+            "}"
+            "QWidget#BottomStrip QToolButton {"
+            "  background: transparent;"
+            "  border: none;"
+            "  border-radius: 3px;"
+            "  color: %3;"
+            "  font-size: 14px;"
+            "  font-weight: 700;"
+            "}"
+            "QWidget#BottomStrip QToolButton:hover {"
+            "  background-color: %4;"
+            "}"
+            "QWidget#BottomStrip QToolButton:checked {"
+            "  background-color: %5;"
+            "  color: %6;"
+            "}"
+        ).arg(
+            tm.colorString(ThemeManager::UIElement::MainWindowBackground),
+            tm.colorString(ThemeManager::UIElement::BorderColor),
+            tm.colorString(ThemeManager::UIElement::SecondaryTextColor),
+            tm.colorString(ThemeManager::UIElement::HoverBackground),
+            tm.colorString(ThemeManager::UIElement::ActiveTabBackground),
+            tm.colorString(ThemeManager::UIElement::PrimaryColor)
+        );
+        strip->setStyleSheet(qss);
+    }
+
+    // ---------- 组装 ----------
+    bottomLayout->addWidget(strip);
+    bottomLayout->addWidget(m_bottomTabWidget, 1);
+
+    m_bottomDockWidget->setWidget(bottomContainer);
     addDockWidget(Qt::BottomDockWidgetArea, m_bottomDockWidget);
 
     // 不再 setGeometry，改用 resizeDocks 设定初始高度
@@ -1622,6 +1740,233 @@ void MainWindow::setupGitPanel()
 
     updateGitActions();
     qDebug() << "[MW] setupGitPanel 完成 (dialog mode)";
+}
+
+// ============================================================================
+//  断点列表面板：延迟到 m_debugManager 初始化之后再创建
+// ============================================================================
+void MainWindow::setupBreakpointListPanel()
+{
+    if (!m_debugManager) {
+        qWarning() << "[MW] setupBreakpointListPanel: m_debugManager 为空，跳过";
+        return;
+    }
+    if (m_breakpointListPanel) {
+        return;   // 已创建，幂等
+    }
+
+    m_breakpointListPanel = new BreakpointListPanel(m_debugManager, m_bottomTabWidget);
+
+    int idx = m_bottomTabWidget->addTab(
+        m_breakpointListPanel,
+        QIcon(":/icons/icons/toggle_break_point.svg"),
+        tr("断点"));
+    m_bottomTabWidget->setTabVisible(idx, false);
+
+    // 双击 → 打开文件 + 跳转
+    connect(m_breakpointListPanel, &BreakpointListPanel::breakpointActivated,
+            this, [this](const QString& file, int line) {
+                openFile(file);
+                if (TextEditor* ed = findEditorByFilePath(file)) {
+                    d->editorTabs->setCurrentWidget(ed);
+                    ed->gotoLine(line);
+                    ed->setFocus();
+                }
+            });
+
+    // 删除断点
+    connect(m_breakpointListPanel, &BreakpointListPanel::breakpointRemoveRequested,
+            this, [this](const QString& file, int line) {
+                if (!m_debugManager) return;
+                if (m_debugManager->hasBreakpoint(file, line)) {
+                    m_debugManager->toggleBreakpoint(file, line);
+                }
+                if (TextEditor* ed = findEditorByFilePath(file)) {
+                    ed->setBreakpoint(line, false);
+                    ed->viewport()->update();
+                }
+                if (m_cppDebugger && m_isDebugging) {
+                    m_cppDebugger->setBreakpoints(m_debugManager->getBreakpoints());
+                }
+                if (m_pythonDebugger && m_isDebugging) {
+                    m_pythonDebugger->setBreakpoints(m_debugManager->getBreakpoints());
+                }
+                refreshBreakpointListPanel();
+            });
+
+    // 启用 / 禁用
+    connect(m_breakpointListPanel, &BreakpointListPanel::breakpointToggleEnabledRequested,
+            this, [this](const QString& file, int line, bool enabled) {
+                if (!m_debugManager) return;
+                m_debugManager->setBreakpointEnabled(file, line, enabled);
+                if (TextEditor* ed = findEditorByFilePath(file)) {
+                    bool hasCond = false;
+                    for (const auto& bp : m_debugManager->getBreakpoints()) {
+                        if (bp.filePath == file && bp.lineNumber == line) {
+                            hasCond = !bp.condition.trimmed().isEmpty();
+                            break;
+                        }
+                    }
+                    ed->setBreakpointWithCondition(line, enabled, hasCond);
+                    ed->viewport()->update();
+                }
+                if (m_cppDebugger && m_isDebugging) {
+                    m_cppDebugger->setBreakpoints(m_debugManager->getBreakpoints());
+                }
+                if (m_pythonDebugger && m_isDebugging) {
+                    m_pythonDebugger->setBreakpoints(m_debugManager->getBreakpoints());
+                }
+                refreshBreakpointListPanel();
+            });
+
+    // 编辑条件
+    connect(m_breakpointListPanel, &BreakpointListPanel::breakpointEditConditionRequested,
+            this, [this](const QString& file, int line) {
+                if (!m_debugManager) return;
+
+                QString currentCond;
+                for (const auto& bp : m_debugManager->getBreakpoints()) {
+                    if (bp.filePath == file && bp.lineNumber == line) {
+                        currentCond = bp.condition;
+                        break;
+                    }
+                }
+
+                bool ok = false;
+                const QString cond = QInputDialog::getText(
+                    this, tr("编辑断点条件"),
+                    tr("第 %1 行的断点条件（留空 = 无条件）：").arg(line),
+                    QLineEdit::Normal, currentCond, &ok);
+                if (!ok) return;
+
+                m_debugManager->setBreakpointCondition(file, line, cond);
+
+                bool enabled = true;
+                for (const auto& bp : m_debugManager->getBreakpoints()) {
+                    if (bp.filePath == file && bp.lineNumber == line) {
+                        enabled = bp.enabled;
+                        break;
+                    }
+                }
+                if (TextEditor* ed = findEditorByFilePath(file)) {
+                    ed->setBreakpointWithCondition(
+                        line, enabled, !cond.trimmed().isEmpty());
+                    ed->viewport()->update();
+                }
+                refreshBreakpointListPanel();
+            });
+
+    qDebug() << "[MW] setupBreakpointListPanel 完成";
+}
+
+// ============================================================================
+//  断点列表：刷新
+// ============================================================================
+void MainWindow::refreshBreakpointListPanel()
+{
+    if (m_breakpointListPanel) {
+        m_breakpointListPanel->refresh();
+    }
+}
+
+// ============================================================================
+//  窄条按钮：查看断点（toggle）
+// ============================================================================
+void MainWindow::onToggleBreakpointTab()
+{
+    // 若 m_debugManager 已就绪但面板还没建 → 现场创建
+    if (!m_breakpointListPanel && m_debugManager) {
+        setupBreakpointListPanel();
+    }
+
+    if (!m_bottomTabWidget || !m_breakpointListPanel) return;
+
+    const int idx = m_bottomTabWidget->indexOf(m_breakpointListPanel);
+    if (idx < 0) return;
+
+    const bool wantShow = !m_bottomTabWidget->isTabVisible(idx);
+
+    if (wantShow) {
+        m_bottomTabWidget->setTabVisible(idx, true);
+        m_bottomTabWidget->setCurrentIndex(idx);
+        refreshBreakpointListPanel();
+    } else {
+        // 若当前正在断点页签上，先切到输出再隐藏
+        if (m_bottomTabWidget->currentIndex() == idx) {
+            switchToOutputTab();
+        }
+        m_bottomTabWidget->setTabVisible(idx, false);
+    }
+
+    if (m_viewBreakpointsButton) {
+        QSignalBlocker b(m_viewBreakpointsButton);
+        m_viewBreakpointsButton->setChecked(wantShow);
+    }
+}
+
+// ============================================================================
+//  窄条按钮：禁用 / 恢复所有断点
+// ============================================================================
+void MainWindow::onToggleMuteBreakpoints()
+{
+    if (!m_debugManager) return;
+
+    const QList<Breakpoint> bps = m_debugManager->getBreakpoints();
+    if (bps.isEmpty()) {
+        if (m_statusLabel) m_statusLabel->setText("没有断点可禁用");
+        if (m_muteBreakpointsButton) {
+            QSignalBlocker b(m_muteBreakpointsButton);
+            m_muteBreakpointsButton->setChecked(false);
+        }
+        m_breakpointsMuted = false;
+        return;
+    }
+
+    const bool target = !m_breakpointsMuted;   // 目标状态
+
+    for (const Breakpoint& bp : bps) {
+        m_debugManager->setBreakpointEnabled(bp.filePath, bp.lineNumber, !target);
+    }
+    m_breakpointsMuted = target;
+
+    // 同步所有打开编辑器的断点视觉
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (!ed) continue;
+        const QString file = ed->filePath();
+        if (file.isEmpty()) continue;
+
+        // 该文件的所有断点，重新按当前状态画
+        for (const Breakpoint& bp : bps) {
+            if (bp.filePath != file) continue;
+            bool hasCond = !bp.condition.trimmed().isEmpty();
+            ed->setBreakpointWithCondition(bp.lineNumber, !target, hasCond);
+        }
+        ed->viewport()->update();
+    }
+
+    // 调试器同步
+    const QList<Breakpoint> after = m_debugManager->getBreakpoints();
+    if (m_cppDebugger && m_isDebugging) {
+        m_cppDebugger->setBreakpoints(after);
+    }
+    if (m_pythonDebugger && m_isDebugging) {
+        m_pythonDebugger->setBreakpoints(after);
+    }
+
+    // 更新按钮状态与提示
+    if (m_muteBreakpointsButton) {
+        QSignalBlocker b(m_muteBreakpointsButton);
+        m_muteBreakpointsButton->setChecked(target);
+        m_muteBreakpointsButton->setToolTip(
+            target ? tr("恢复所有断点") : tr("禁用所有断点"));
+    }
+
+    if (m_statusLabel) {
+        m_statusLabel->setText(target ? "已禁用所有断点" : "已恢复所有断点");
+    }
+
+    refreshBreakpointListPanel();
 }
 
 void MainWindow::applyTheme()
@@ -2452,6 +2797,8 @@ void MainWindow::onBreakpointToggled(const QString& filePath, int line)
         m_pythonDebugger->setBreakpoints(breakpoints);
         qDebug() << "[Python Debug] 断点已同步，共" << breakpoints.size() << "个";
     }
+
+    refreshBreakpointListPanel();
 }
 
 void MainWindow::onPythonDebugFinished()

@@ -564,7 +564,8 @@ add_executable(${PROJECT_NAME}
     quick_open_dialog.cpp
     performance/performance_monitor.h
     performance/performance_monitor.cpp
-
+    breakpoint_list_panel.h
+    breakpoint_list_panel.cpp
 )
 
 

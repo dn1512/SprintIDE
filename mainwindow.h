@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QProgressBar>
+#include <QToolButton>
 
 #include "text_editor.h"
 #include "tab_widget.h"
@@ -46,6 +47,7 @@ class FindDialog;
 class ReplaceDialog;
 struct CompileResult;
 class PythonDebugger;
+class BreakpointListPanel;
 
 // Git 模块前向声明
 namespace Git { class GitPanel; }
@@ -236,7 +238,14 @@ public slots:
     // ProjectPanel 右键 Git 子菜单分发
     void onProjectPanelGitAction(int action, const QStringList& filePaths);
 
+    /// 断点变更后刷新列表面板
+    void refreshBreakpointListPanel();
 
+    /// 窄条按钮：查看断点（toggle 断点页签）
+    void onToggleBreakpointTab();
+
+    /// 窄条按钮：禁用 / 恢复所有断点
+    void onToggleMuteBreakpoints();
 
 private:
     void setupUI();
@@ -248,6 +257,7 @@ private:
     void setupDebugPanel(); 
     void setupTerminalPanel();
     void setupGitPanel();
+    void setupBreakpointListPanel();
     void loadAllProjectFiles(const QString& projectPath);
     void reloadLspFilterSettings();
 
@@ -410,6 +420,12 @@ private:
 
     QAction* m_toggleBottomPanelAction = nullptr;
     QAction* m_toggleProjectPanelAction = nullptr;
+
+    // ========== 断点窄条 + 列表页签 ==========
+    BreakpointListPanel* m_breakpointListPanel     = nullptr;
+    QToolButton*         m_viewBreakpointsButton   = nullptr;
+    QToolButton*         m_muteBreakpointsButton   = nullptr;
+    bool                 m_breakpointsMuted        = false;
 };
 
 } // namespace SprintIDE
