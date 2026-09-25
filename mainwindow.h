@@ -123,6 +123,7 @@ public slots:
     void onEditorCursorPositionChanged(int line, int column);
     void onFileLoaded(const QString &filePath);
     void onFileSaved(const QString &filePath);
+    void onFileRenamed(const QString& oldPath, const QString& newPath);
     void onEditorTextChanged(TextEditor* editor);
 
     // 项目面板信号处理

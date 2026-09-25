@@ -13,6 +13,8 @@
 #include <QVBoxLayout>
 #include <QAbstractItemModel>
 #include <QSplitter>
+#include <QDropEvent>
+#include <QDragMoveEvent>
 
 #include "project_config.h"
 #include "git/git_overlay_proxy_model.h"
@@ -141,6 +143,8 @@ signals:
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
 
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private slots:
     void onFileTreeSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
     void onFileTreeDoubleClicked(const QModelIndex &index);
@@ -162,6 +166,10 @@ private:
     QString selectedParentDir() const;
     void startRename(const QModelIndex &index);
     bool validateFileName(const QString& fileName) const;
+
+    bool handleDrop(QDropEvent* event);
+    bool movePath(const QString& src, const QString& dst);
+
     QString getNewFileName(const QString& parentDir, const QString& baseName, const QString& extension) const;
 
     // 构建 Git 子菜单（只在 createContextMenu() 里调用一次）

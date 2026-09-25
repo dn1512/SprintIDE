@@ -19,9 +19,14 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QDirIterator>
+#include <QUrl>
 #include <QDebug>
 #include <QHeaderView>
 #include <QSettings>
+#include <QEvent>
+#include <QDropEvent>
+#include <QShortcut>
 
 #include "python/python_test_runner.h"
 #include "project_manager.h"
@@ -314,10 +319,6 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
         QModelIndex idx = m_fileModel->index(fullPath);
         if (idx.isValid()) {
             locateFile(fullPath);
-            QModelIndex proxyIdx = toProxy(idx);
-            if (proxyIdx.isValid()) {
-                m_fileTreeView->edit(proxyIdx);
-            }
         }
     });
 
@@ -474,7 +475,33 @@ void ProjectPanel::openSelectedFile()
 void ProjectPanel::renameSelectedFile()
 {
     QModelIndex index = m_fileTreeView->currentIndex();
-    if (index.isValid()) m_fileTreeView->edit(index);
+    if (!index.isValid()) return;
+
+    const QString oldPath = getFilePath(index);
+    if (oldPath.isEmpty()) return;
+
+    const QFileInfo oldInfo(oldPath);
+
+    bool ok = false;
+    const QString newName = QInputDialog::getText(
+        this,
+        tr("重命名"),
+        tr("新名称:"),
+        QLineEdit::Normal,
+        oldInfo.fileName(),
+        &ok);
+
+    if (!ok || newName.isEmpty() || newName == oldInfo.fileName()) {
+        return;
+    }
+
+    // 直接走 QFile::rename（renameFile 内部实现）
+    if (renameFile(oldPath, newName)) {
+        const QString newPath = oldInfo.dir().absoluteFilePath(newName);
+        QTimer::singleShot(100, [this, newPath]() {
+            locateFile(newPath);
+        });
+    }
 }
 
 void ProjectPanel::deleteSelectedFile()
@@ -521,6 +548,172 @@ void ProjectPanel::showFileHistory()
 {
     QString path = selectedFilePath();
     if (!path.isEmpty()) emit requestFileHistory(path);
+}
+
+bool ProjectPanel::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_fileTreeView->viewport()) {
+        switch (event->type()) {
+        case QEvent::DragEnter:
+        case QEvent::DragMove: {
+            auto* e = static_cast<QDragMoveEvent*>(event);
+            if (e->mimeData()->hasUrls()) {
+                e->setDropAction(Qt::MoveAction);
+                e->accept();
+                return true;   // 阻止 view 默认处理（避免触发 Copy）
+            }
+            break;
+        }
+        case QEvent::Drop: {
+            auto* e = static_cast<QDropEvent*>(event);
+            if (handleDrop(e)) {
+                e->setDropAction(Qt::MoveAction);
+                e->accept();
+                return true;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+bool ProjectPanel::handleDrop(QDropEvent* event)
+{
+    if (!event->mimeData()->hasUrls()) return false;
+
+    // ---------- 1. 确定目标目录 ----------
+    // Qt6 用 position()，Qt5 用 pos()
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    const QPoint dropPos = event->position().toPoint();
+#else
+    const QPoint dropPos = event->pos();
+#endif
+
+    const QModelIndex idx = m_fileTreeView->indexAt(dropPos);
+
+    QString dstDir;
+    if (idx.isValid()) {
+        const QString path = getFilePath(idx);
+        QFileInfo info(path);
+        dstDir = info.isDir() ? path : info.absolutePath();
+    } else {
+        // 拖到空白区域 → 项目根目录
+        dstDir = m_projectPath;
+    }
+
+    if (dstDir.isEmpty()) return false;
+
+    // ---------- 2. 逐个移动 ----------
+    bool anyMoved = false;
+
+    const QList<QUrl> urls = event->mimeData()->urls();
+    for (const QUrl& url : urls) {
+        const QString srcPath = url.toLocalFile();
+        if (srcPath.isEmpty()) continue;
+
+        const QFileInfo srcInfo(srcPath);
+        const QString targetPath =
+            QDir(dstDir).absoluteFilePath(srcInfo.fileName());
+
+        // 目标与源相同 → 跳过
+        if (QDir::cleanPath(srcPath) == QDir::cleanPath(targetPath)) {
+            continue;
+        }
+
+        // 目标已存在 → 跳过（可在这里弹提示，暂不弹）
+        if (QFileInfo::exists(targetPath)) {
+            qWarning() << "[Drop] 目标已存在，跳过:" << targetPath;
+            continue;
+        }
+
+        // 移动文件或目录
+        if (movePath(srcPath, targetPath)) {
+            anyMoved = true;
+            qDebug() << "[Drop] 已移动:" << srcPath << "→" << targetPath;
+        } else {
+            qWarning() << "[Drop] 移动失败:" << srcPath << "→" << targetPath;
+        }
+    }
+
+    // ---------- 3. 刷新模型 ----------
+    if (anyMoved) {
+        // 通知文件系统模型：源和目标目录都变了
+        m_fileModel->setRootPath(dstDir);
+        emit fileRenamed(QString(), QString()); // 触发外部刷新（可选）
+        QTimer::singleShot(150, this, [this, dstDir]() {
+            QModelIndex srcRoot = m_fileModel->index(dstDir);
+            if (srcRoot.isValid()) {
+                m_fileModel->fetchMore(srcRoot);
+            }
+        });
+    }
+
+    return anyMoved;
+}
+
+// ============================================================
+// 移动文件 / 目录
+//   优先 QFile::rename（同盘原子操作）
+//   跨文件系统失败时回退：copy + remove
+// ============================================================
+bool ProjectPanel::movePath(const QString& src, const QString& dst)
+{
+    // 同盘 rename
+    if (QFile::rename(src, dst)) {
+        return true;
+    }
+
+    // 跨盘 fallback
+    const QFileInfo srcInfo(src);
+    if (srcInfo.isDir()) {
+        // 目录：递归复制 + 删除源
+        QDir srcDir(src);
+        QDir dstDir(dst);
+        if (!dstDir.exists() && !QDir().mkpath(dst)) {
+            return false;
+        }
+        // 递归复制
+        QDirIterator it(src, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString filePath = it.next();
+            const QFileInfo fileInfo(filePath);
+            const QString relPath = srcDir.relativeFilePath(filePath);
+            const QString target = QDir(dst).absoluteFilePath(relPath);
+
+            if (fileInfo.isDir()) {
+                QDir().mkpath(target);
+            } else {
+                QDir().mkpath(QFileInfo(target).absolutePath());
+                if (!QFile::copy(filePath, target)) {
+                    qWarning() << "[movePath] 复制失败:" << filePath;
+                    // 失败时清理
+                    QDir(dst).removeRecursively();
+                    return false;
+                }
+            }
+        }
+        // 删除源
+        if (!QDir(src).removeRecursively()) {
+            qWarning() << "[movePath] 删除源目录失败:" << src;
+            return false;
+        }
+        return true;
+    } else {
+        // 文件：copy + remove
+        if (!QFile::copy(src, dst)) {
+            return false;
+        }
+        if (!QFile::remove(src)) {
+            qWarning() << "[movePath] 删除源文件失败:" << src;
+            QFile::remove(dst);   // 回滚
+            return false;
+        }
+        return true;
+    }
 }
 
 // ==================== 事件处理 ====================
@@ -644,7 +837,8 @@ void ProjectPanel::createFileTree()
     m_fileTreeView->setDropIndicatorShown(true);
     m_fileTreeView->setDragDropMode(QAbstractItemView::DragDrop);
     m_fileTreeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    m_fileTreeView->setEditTriggers(QAbstractItemView::EditKeyPressed);
+    m_fileTreeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_fileTreeView->viewport()->installEventFilter(this);
     // m_fileTreeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
     // 关键：让文件树水平方向尽量扩展
@@ -684,6 +878,11 @@ void ProjectPanel::createFileTree()
     m_fileTreeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
     m_fileWatcher = new QFileSystemWatcher(this);
+
+    auto* renameShortcut = new QShortcut(QKeySequence(Qt::Key_F2), m_fileTreeView);
+    renameShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(renameShortcut, &QShortcut::activated,
+            this, &ProjectPanel::renameSelectedFile);
     connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged,
             this, &ProjectPanel::onWatchedDirectoryChanged);
     connect(m_fileWatcher, &QFileSystemWatcher::fileChanged,

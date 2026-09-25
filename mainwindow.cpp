@@ -474,6 +474,10 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始化调试管理器
     m_debugManager = &DebugManager::instance();
     m_debugManager->initialize();
+    if (d->projectPanel) {
+        connect(d->projectPanel, &ProjectPanel::fileRenamed,
+                this, &MainWindow::onFileRenamed);
+    }
 
     // 连接调试管理器信号
     connect(m_debugManager, &DebugManager::stateChanged,
@@ -2279,6 +2283,96 @@ void MainWindow::onFileSaved(const QString &filePath)
     if (Git::GitManager::instance().isActive()) {
         Git::GitManager::instance().refreshStatus();
     }
+}
+
+void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
+{
+    if (oldPath.isEmpty() || newPath.isEmpty() || oldPath == newPath) return;
+
+    qDebug() << "[MW] 文件重命名:" << oldPath << "→" << newPath;
+
+    // ============================================================
+    // 1. 同步所有打开该文件的编辑器
+    // ============================================================
+    int syncedCount = 0;
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (!editor) continue;
+        if (editor->filePath() != oldPath) continue;
+
+        // ---- 通知 LSP：关闭旧文档 ----
+        if (m_lspManager) {
+            const QString projectPath = d->currentProjectPath.isEmpty()
+                                            ? QFileInfo(oldPath).absolutePath()
+                                            : d->currentProjectPath;
+            LSPClient* client = m_lspManager->getClientForFile(oldPath, projectPath);
+            if (client && client->isReady()) {
+                client->closeDocument(oldPath);
+            }
+        }
+
+        // ---- 更新编辑器路径 ----
+        editor->setFilePath(newPath);
+
+        // ---- 更新标签页标题 ----
+        d->editorTabs->setTabText(i, editor->fileName());
+
+        // ---- 通知 LSP：打开新文档 ----
+        if (m_lspManager) {
+            const QString projectPath = d->currentProjectPath.isEmpty()
+                                            ? QFileInfo(newPath).absolutePath()
+                                            : d->currentProjectPath;
+            LSPClient* client = m_lspManager->getClientForFile(newPath, projectPath);
+            if (client && client->isReady()) {
+                client->openDocument(newPath, editor->toPlainText());
+            }
+        }
+
+        ++syncedCount;
+    }
+
+    // ============================================================
+    // 2. 同步断点（DebugManager 里按 filePath 存断点）
+    // ============================================================
+    if (m_debugManager) {
+        QList<Breakpoint> all = m_debugManager->getBreakpoints();
+        bool changed = false;
+        for (Breakpoint& bp : all) {
+            if (bp.filePath == oldPath) {
+                bp.filePath = newPath;
+                changed = true;
+            }
+        }
+        if (changed) {
+            m_debugManager->clearAllBreakpoints();
+            for (const Breakpoint& bp : all) {
+                m_debugManager->addBreakpoint(bp.filePath, bp.lineNumber, bp.condition);
+                if (!bp.enabled) {
+                    m_debugManager->setBreakpointEnabled(bp.filePath, bp.lineNumber, false);
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // 3. 更新窗口标题（当前编辑文件若被重命名）
+    // ============================================================
+    updateWindowTitle();
+
+    // ============================================================
+    // 4. 状态栏 + 输出面板反馈
+    // ============================================================
+    if (m_statusLabel) {
+        m_statusLabel->setText(QString("已重命名: %1 → %2")
+                                   .arg(QFileInfo(oldPath).fileName(),
+                                        QFileInfo(newPath).fileName()));
+    }
+    if (d && d->outputPanel) {
+        d->outputPanel->append(
+            QString("已重命名: %1 → %2").arg(oldPath, newPath));
+    }
+
+    qDebug() << "[MW] 已同步" << syncedCount << "个打开的编辑器";
 }
 
 void MainWindow::onEditorTextChanged(TextEditor* editor)

@@ -835,6 +835,29 @@ QString TextEditor::filePath() const
     return m_filePath;
 }
 
+void TextEditor::setFilePath(const QString& path)
+{
+    if (m_filePath == path) return;
+
+    // 保存当前 modified 状态（语言切换可能污染它）
+    const bool wasModified = m_isModified || document()->isModified();
+    beginSilentModification();
+
+    const QString oldExt = QFileInfo(m_filePath).suffix().toLower();
+    const QString newExt = QFileInfo(path).suffix().toLower();
+
+    m_filePath = path;
+
+    // 扩展名变了 → 语言可能变（例如 .txt 改成 .py）
+    if (oldExt != newExt && m_highlighter) {
+        setLanguageByFilePath(path);
+    }
+
+    endSilentModification();
+    m_isModified = wasModified;
+    document()->setModified(wasModified);
+}
+
 QString TextEditor::fileName() const
 {
     if (m_filePath.isEmpty()) {

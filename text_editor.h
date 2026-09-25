@@ -76,6 +76,13 @@ public:
     bool saveAs(const QString &filePath);
     bool isModified() const;
     QString filePath() const;
+    /**
+     * @brief 文件被外部重命名时同步路径
+     *
+     * 只更新 m_filePath 和语言（如果扩展名变了）。
+     * 不触碰 document、不触发 modified、不 emit 任何保存信号。
+     */
+    void setFilePath(const QString& path);
     QString fileName() const;
 
     // ========== 设置本地历史管理器 ==========
