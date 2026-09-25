@@ -34,6 +34,7 @@
 
 #include "cpp/cpp_debugger.h"
 #include "core/log_buffer.h"
+#include "performance/performance_monitor.h"
 
 class TextEditor;
 
@@ -212,6 +213,9 @@ public slots:
 
     void onAIRestartRequested(const QString& host, quint16 port);
 
+    // 性能监控：一次采样回调
+    void onPerformanceSnapshot(const SprintIDE::PerformanceSnapshot& snapshot);
+
     // ========== Git 槽函数 ==========
     void onGitInit();
     void onGitCommit();
@@ -310,6 +314,10 @@ private:
     QLabel* m_languageLabel = nullptr;        // 语言 (C++)
     QLabel* m_indentLabel = nullptr;          // 缩进 (空格:4)
     QProgressBar* m_buildProgressBar = nullptr; // 编译进度条
+
+    // ========== 性能监控 ==========
+    QLabel*             m_performanceLabel   = nullptr;
+    PerformanceMonitor* m_performanceMonitor = nullptr;
 
 
     // 面板切换方法

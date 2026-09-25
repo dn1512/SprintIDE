@@ -54,6 +54,7 @@
 #include <QMouseEvent>
 #include <QDialog>
 #include <QSet>
+#include <QLocale>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -631,6 +632,11 @@ void MainWindow::applyCurrentTheme()
         d->outputPanel->style()->polish(d->outputPanel);
     }
 
+    // 性能标签用内联 HTML 颜色，主题切换需要主动重刷
+    if (m_performanceMonitor && m_performanceLabel) {
+        onPerformanceSnapshot(m_performanceMonitor->lastSnapshot());
+    }
+
     update();
     repaint();
 }
@@ -1126,8 +1132,13 @@ void MainWindow::setupMenuBar()
     });
 
     QAction *performanceMonitorAction = toolsMenu->addAction("性能监控(&M)");
-    connect(performanceMonitorAction, &QAction::triggered, this, [this]() {
-        d->outputPanel->append("性能监控功能开发中...");
+    performanceMonitorAction->setCheckable(true);
+    performanceMonitorAction->setChecked(true);
+    performanceMonitorAction->setStatusTip("显示 / 隐藏状态栏性能监控指示器");
+    connect(performanceMonitorAction, &QAction::toggled, this, [this](bool checked) {
+        if (m_performanceLabel) {
+            m_performanceLabel->setVisible(checked);
+        }
     });
 
     QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/icons/terminal.svg"), "终端(&T)");
@@ -1253,6 +1264,22 @@ void MainWindow::setupStatusBar()
     m_buildProgressBar->setValue(0);
     m_buildProgressBar->setVisible(false);
     statusBar->addPermanentWidget(m_buildProgressBar);
+
+    // 性能监控指示器
+    m_performanceLabel = new QLabel(statusBar);
+    m_performanceLabel->setObjectName("PerformanceIndicator");
+    m_performanceLabel->setTextInteractionFlags(Qt::NoTextInteraction);
+    m_performanceLabel->setToolTip(tr("性能监控"));
+    // 固定一个最小宽度，避免数值变化时状态栏右侧抖动
+    m_performanceLabel->setMinimumWidth(170);
+    statusBar->addPermanentWidget(m_performanceLabel);
+
+    qRegisterMetaType<SprintIDE::PerformanceSnapshot>("SprintIDE::PerformanceSnapshot");
+
+    m_performanceMonitor = new PerformanceMonitor(this);
+    connect(m_performanceMonitor, &PerformanceMonitor::snapshotUpdated,
+            this, &MainWindow::onPerformanceSnapshot);
+    m_performanceMonitor->start(1000);
 
     // 更新光标位置（初始）
     onTabCurrentChanged(0);
@@ -5087,6 +5114,65 @@ void MainWindow::onDebuggerContinued()
     }
 
     updateDebugActions(); // 这个函数会根据 m_isDebugging 状态更新按钮
+}
+
+// ============================================================================
+//  性能监控
+// ============================================================================
+void MainWindow::onPerformanceSnapshot(const SprintIDE::PerformanceSnapshot& s)
+{
+    if (!m_performanceLabel) return;
+
+    ThemeManager& tm = ThemeManager::instance();
+
+    // ---- CPU 颜色分级 ----
+    QString cpuColor;
+    if (s.processCpuPercent >= 80.0) {
+        cpuColor = tm.colorString(ThemeManager::UIElement::ErrorColor);
+    } else if (s.processCpuPercent >= 40.0) {
+        cpuColor = tm.colorString(ThemeManager::UIElement::WarningColor);
+    } else {
+        cpuColor = tm.colorString(ThemeManager::UIElement::SecondaryTextColor);
+    }
+
+    // ---- 内存颜色分级：按系统内存压力着色 ----
+    QString memColor;
+    if (s.systemMemoryPercent >= 90.0) {
+        memColor = tm.colorString(ThemeManager::UIElement::ErrorColor);
+    } else if (s.systemMemoryPercent >= 75.0) {
+        memColor = tm.colorString(ThemeManager::UIElement::WarningColor);
+    } else {
+        memColor = tm.colorString(ThemeManager::UIElement::SecondaryTextColor);
+    }
+
+    const QString cpuText = QStringLiteral("CPU %1%")
+                                .arg(s.processCpuPercent, 0, 'f', 1);
+    const QString memText = QLocale::system().formattedDataSize(
+        s.processMemoryBytes, 1, QLocale::DataSizeTraditionalFormat);
+
+    m_performanceLabel->setText(QStringLiteral(
+        "<span style='color:%1;'>%2</span>"
+        "<span style='color:%3;'>  MEM %4</span>")
+        .arg(cpuColor, cpuText.toHtmlEscaped(),
+             memColor, memText.toHtmlEscaped()));
+
+    // ---- Tooltip：完整信息 ----
+    const QString sysMemUsed = QLocale::system().formattedDataSize(
+        s.systemUsedMemoryBytes, 1, QLocale::DataSizeTraditionalFormat);
+    const QString sysMemTotal = QLocale::system().formattedDataSize(
+        s.systemTotalMemoryBytes, 1, QLocale::DataSizeTraditionalFormat);
+
+    m_performanceLabel->setToolTip(QStringLiteral(
+        "IDE CPU：%1%\n"
+        "IDE 内存：%2\n"
+        "系统 CPU：%3%\n"
+        "系统内存：%4 / %5（%6%）")
+        .arg(s.processCpuPercent, 0, 'f', 1)
+        .arg(memText)
+        .arg(s.systemCpuPercent, 0, 'f', 1)
+        .arg(sysMemUsed)
+        .arg(sysMemTotal)
+        .arg(s.systemMemoryPercent, 0, 'f', 1));
 }
 
 // ==================== Git 槽函数实现 ====================

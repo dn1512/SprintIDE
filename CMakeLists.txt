@@ -562,6 +562,8 @@ add_executable(${PROJECT_NAME}
     lsp/diagnostic_filter.cpp
     quick_open_dialog.h
     quick_open_dialog.cpp
+    performance/performance_monitor.h
+    performance/performance_monitor.cpp
 
 )
 
@@ -738,6 +740,9 @@ if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
+
+    # 性能监控需要 psapi
+    target_link_libraries(${PROJECT_NAME} PRIVATE psapi)
 endif()
 
 # 安装目标
