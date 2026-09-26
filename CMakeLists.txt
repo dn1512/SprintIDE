@@ -566,6 +566,12 @@ add_executable(${PROJECT_NAME}
     performance/performance_monitor.cpp
     breakpoint_list_panel.h
     breakpoint_list_panel.cpp
+    search_in_files_dialog.h search_in_files_dialog.cpp
+
+    log/log_list_model.h log/log_list_model.cpp
+    log/log_list_view.h log/log_list_view.cpp
+    log/log_item_delegate.h log/log_item_delegate.cpp
+    log/output_panel.h log/output_panel.cpp
 )
 
 

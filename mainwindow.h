@@ -48,6 +48,8 @@ class ReplaceDialog;
 struct CompileResult;
 class PythonDebugger;
 class BreakpointListPanel;
+class SearchInFilesDialog;
+class OutputPanel;
 
 // Git 模块前向声明
 namespace Git { class GitPanel; }
@@ -95,7 +97,6 @@ public slots:
     void onContinueDebug();
     void onAddBreakpoint();
 
-    void onOutputPanelContextMenu(const QPoint& pos);
     void clearOutputPanel();
 
     // 调试信号处理
@@ -167,6 +168,7 @@ public slots:
     void onPaste();
     void onFind();
     void onReplace();
+    void onSearchInFiles();
     void onComment();
     void onGotoLine();
 
@@ -246,6 +248,16 @@ public slots:
 
     /// 窄条按钮：禁用 / 恢复所有断点
     void onToggleMuteBreakpoints();
+
+    void logInfo (const QString& msg,
+                 LogKind kind = LogKind::System,
+                 const QString& source = QStringLiteral("IDE"));
+    void logWarn (const QString& msg,
+                 LogKind kind = LogKind::System,
+                 const QString& source = QStringLiteral("IDE"));
+    void logError(const QString& msg,
+                  LogKind kind = LogKind::System,
+                  const QString& source = QStringLiteral("IDE"));
 
 private:
     void setupUI();
@@ -365,17 +377,22 @@ private:
     bool isCppDebugging() const;
     // entry 必填（结构化）；html 为空时退化为纯文本渲染
     void appendLog(const LogEntry& entry, const QString& html = QString());
+
+    QStringList collectProjectFiles(bool forceRescan = false);
 private:
     MainWindowPrivate *d;
     // 底部面板相关
     QDockWidget* m_bottomDockWidget = nullptr;
     QTabWidget* m_bottomTabWidget = nullptr;
+    OutputPanel* m_outputPanel = nullptr;   // 结构化输出面板
 
     FindDialog* m_findDialog = nullptr;
     ReplaceDialog* m_replaceDialog = nullptr;
+    SearchInFilesDialog* m_searchInFilesDialog = nullptr;
     QTextCursor m_lastFindCursor;
     bool m_compileForDebug = false;
     bool m_autoRunAfterCompile = false;
+    int m_dirtyTabCount = 0;      // 当前有未保存修改的 tab 数量
 
     // LSPClient* m_lspClient = nullptr;
     LSPManager *m_lspManager;
@@ -400,6 +417,10 @@ private:
     PythonDebugger* m_pythonDebugger = nullptr;
 
     CppDebugger* m_cppDebugger = nullptr;
+
+    QStringList m_cachedProjectFiles;
+    QString     m_cachedProjectRoot;
+    QDateTime   m_cachedScanTime;
 
     // ========== Git 集成 ==========
     // Git 面板改为独立窗口，不再占用右侧停靠区

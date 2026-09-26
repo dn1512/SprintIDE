@@ -41,6 +41,7 @@ struct LogEntry {
     QString     message;             // 纯文本（不带 HTML）
     QString     filePath;            // 关联文件（可选）
     int         lineNumber = -1;     // 关联行号（可选）
+    int column     = -1;
     QStringList attachments;         // 附件相对路径（阶段1空跑，UI 感知时启用）
 
     LogEntry() = default;
@@ -48,7 +49,8 @@ struct LogEntry {
     static LogEntry make(LogKind kind, LogLevel level,
                          const QString& source, const QString& message,
                          const QString& filePath = QString(),
-                         int lineNumber = -1);
+                         int lineNumber = -1,
+                         int column = -1);
 };
 
 // ============================================================

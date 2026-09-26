@@ -111,5 +111,11 @@
         <file>icons/status_deleted.svg</file>
         <file>icons/status_untracked.svg</file>
         <file>icons/status_conflict.svg</file>
+
+        <!-- 日志级别 -->
+        <file>icons/log_error.svg</file>
+        <file>icons/log_warning.svg</file>
+        <file>icons/log_info.svg</file>
+        <file>icons/log_follow.svg</file>
     </qresource>
 </RCC>

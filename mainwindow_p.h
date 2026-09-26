@@ -6,7 +6,6 @@
 #include <QTreeView>
 #include <QDockWidget>
 #include <QLabel>
-#include <QTextEdit>
 #include <QTabWidget>
 #include <QStandardItemModel>
 
@@ -26,9 +25,7 @@ public:
         : q_ptr(parent)
         , editorTabs(nullptr)
         , projectPanel(nullptr)
-        , outputPanel(nullptr)
         , projectDock(nullptr)
-        , outputDock(nullptr)
         , statusLabel(nullptr)
         , cursorPositionLabel(nullptr)
         , editModeLabel(nullptr)
@@ -44,9 +41,8 @@ public:
     ProjectPanel* projectPanel = nullptr;
     // UI组件
     TabWidget *editorTabs;
-    QTextEdit *outputPanel;
     QDockWidget *projectDock;
-    QDockWidget *outputDock;
+
 
     // 状态栏组件
     QLabel *statusLabel;

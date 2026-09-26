@@ -378,6 +378,18 @@ void TextEditor::initEditor()
     updateLineNumberAreaWidth();
     applyDefaultPalette();
     setupCompletion();
+
+    // ---- LSP didChange 防抖：停止输入 180ms 后才发 ----
+    m_lspChangeTimer = new QTimer(this);
+    m_lspChangeTimer->setSingleShot(true);
+    m_lspChangeTimer->setInterval(180);
+    connect(m_lspChangeTimer, &QTimer::timeout, this, [this]() {
+        if (!m_pendingLspChange) return;
+        m_pendingLspChange = false;
+        if (!m_filePath.isEmpty()) {
+            emit documentChangedForLsp(m_filePath, toPlainText());
+        }
+    });
 }
 
 void TextEditor::setupFindBar()
@@ -722,7 +734,7 @@ bool TextEditor::loadFile(const QString &filePath)
     setLanguageByFilePath(filePath);
 
     // 5. 计算折叠
-    updateFolding();
+    m_foldedLines.clear();
 
     // 结束静默期，重置为"干净"状态
     endSilentModification();
@@ -911,7 +923,8 @@ void TextEditor::setEditorFont(const QFont &font)
     // Tab 宽度跟随字体尺寸
     setTabStopDistance(fontMetrics().horizontalAdvance(' ') * m_tabWidth);
 
-    // 应用行距（每次字体变化都要重设）
+    // 应用行距（每次字体变化都重设）
+    m_lastAppliedLineHeight = -1.0;   // 使缓存失效，强制重新应用
     applyLineHeight();
 
     // 行号区字体也同步
@@ -2236,11 +2249,17 @@ bool TextEditor::tryExpandPairOnReturn()
 
 void TextEditor::applyLineHeight()
 {
-    QTextBlockFormat fmt;
-    fmt.setLineHeight(ThemeManager::kEditorLineHeightPercent,
-                      QTextBlockFormat::ProportionalHeight);
+    const qreal want = ThemeManager::kEditorLineHeightPercent;
 
-    // 记住原始 modified 状态，避免这段操作污染"文件已修改"标记
+    // 同一比例、且已经应用过 → 直接返回
+    if (m_lastAppliedLineHeight >= 0.0
+        && qFuzzyCompare(m_lastAppliedLineHeight, want)) {
+        return;
+    }
+
+    QTextBlockFormat fmt;
+    fmt.setLineHeight(want, QTextBlockFormat::ProportionalHeight);
+
     const bool wasModified = document()->isModified();
 
     QTextCursor cursor(document());
@@ -2250,6 +2269,8 @@ void TextEditor::applyLineHeight()
     cursor.endEditBlock();
 
     document()->setModified(wasModified);
+
+    m_lastAppliedLineHeight = want;
 }
 
 /**
@@ -2438,6 +2459,11 @@ void TextEditor::toggleFold(int line)
  */
 void TextEditor::updateFolding()
 {
+    // 没有任何折叠记录 → 块本身全部可见，无需遍历整个文档
+    if (m_foldedLines.isEmpty()) {
+        return;
+    }
+
     // 清除所有折叠状态
     m_foldedLines.clear();
 
@@ -2448,7 +2474,6 @@ void TextEditor::updateFolding()
         block = block.next();
     }
 
-    // 通过点击折叠按钮来折叠
     document()->markContentsDirty(0, document()->characterCount());
     document()->adjustSize();
     viewport()->update();
@@ -2924,12 +2949,10 @@ void TextEditor::rebuildCompletionList()
 
             CompletionEntry e;
             e.label      = label;
-            // e.insertText = it.insertText.isEmpty() ? label : it.insertText;
             e.detail     = it.detail;
-            e.kind       = "lsp";       // 统一归入 lsp 类别
+            e.kind       = "lsp";
             e.sortPriority = 30;
 
-            // 决定真正插入的文本
             QString insertText = it.insertText;
             if (insertText.isEmpty()) {
                 insertText = label;
@@ -2940,7 +2963,6 @@ void TextEditor::rebuildCompletionList()
                 && !insertText.contains('(')
                 && !insertText.contains(')')) {
                 const QString fnName = label.left(parenIdx);
-                // insertText 必须和 fnName 一致才做补全（否则可能是重命名）
                 if (insertText == fnName) {
                     insertText = fnName + "()";
                 }
@@ -2948,11 +2970,27 @@ void TextEditor::rebuildCompletionList()
 
             e.insertText = insertText;
 
-            // 去重（同 label + 同 kind）
             const QString key = e.label + QChar(0x1F) + e.kind;
             if (seen.contains(key)) continue;
             seen.insert(key);
             all.append(e);
+        }
+    }
+
+    // ---------- 4. 剔除"用户已完整输入"的补全项 ----------
+    //   规则：若某项的 insertText 与当前前缀完全相等 → 已经没有可补的内容，
+    //        直接移除，避免"输入 pass 还提示 pass"这种无意义项。
+    //
+    //   为什么用 insertText 而不是 label：
+    //     - 函数项 label="print" / insertText="print()" → 用户输入 "print" 时，
+    //       我们仍希望保留（按 Tab 能补出括号），所以不能被误删。
+    //     - 纯标识符 label="pass"  / insertText="pass"    → 输入 "pass" 时删掉。
+    if (!m_completionPrefix.isEmpty()) {
+        const QString prefix = m_completionPrefix;
+        for (int i = all.size() - 1; i >= 0; --i) {
+            if (all[i].insertText == prefix) {
+                all.removeAt(i);
+            }
         }
     }
 
@@ -3169,34 +3207,40 @@ void TextEditor::autoIndentAfterReturn()
     QTextBlock prevBlock = curBlock.previous();
     if (!prevBlock.isValid()) return;
 
-    const QString prevText     = prevBlock.text();
-    const QString prevTrimmed  = prevText.trimmed();
-    const QString prevIndent   = leadingWhitespace(prevText);
+    const QString prevText    = prevBlock.text();
+    const QString prevTrimmed = prevText.trimmed();
+    const QString prevIndent  = leadingWhitespace(prevText);
 
-    // 上一行是否是纯注释 / 在字符串里？
-    // （不在字符串里才考虑缩进触发；注释行视为普通行，继承缩进）
-    const bool prevSafe = !isInsideString(prevBlock.position() + prevText.length());
+    // ---- 关键：先做字符串前缀判断（O(前缀长度)），无触发就快速返回 ----
+    const bool mayIndent = m_editorRules.endsWithIndentTrigger(prevTrimmed);
+    const bool mayDedent = m_editorRules.startsWithDedentTrigger(prevTrimmed);
+
+    if (!mayIndent && !mayDedent) {
+        // 不涉及缩进变化 → 直接继承上一行缩进，不做字符串扫描
+        if (!prevIndent.isEmpty()) {
+            cursor.insertText(prevIndent);
+        }
+        return;
+    }
+
+    // 只有确实要变缩进时，才做字符串上下文检查（O(行长度)）
+    const bool needGuard = m_editorRules.needsContextGuard();
+    const bool prevSafe  = !needGuard
+                          || !isInsideString(prevBlock.position() + prevText.length());
 
     QString newIndent = prevIndent;
 
     if (prevSafe) {
-        // ---- 1. 增加缩进：以 indentTriggers 结尾 ----
-        if (m_editorRules.endsWithIndentTrigger(prevTrimmed)) {
+        if (mayIndent) {
             newIndent = prevIndent + indentUnit();
-        }
-        // ---- 2. 减少缩进：以 dedentTriggers 开头 ----
-        else if (m_editorRules.startsWithDedentTrigger(prevTrimmed)) {
-            // 把上一行的缩进砍掉一个单元
-            QString unit = indentUnit();
+        } else if (mayDedent) {
+            const QString unit = indentUnit();
             if (prevIndent.endsWith(unit)) {
                 newIndent = prevIndent.left(prevIndent.length() - unit.length());
-            } else {
-                newIndent = prevIndent;   // 不能砍，保持
             }
         }
     }
 
-    // 空行时把新行的缩进插入
     if (!newIndent.isEmpty()) {
         cursor.insertText(newIndent);
     }
@@ -3517,9 +3561,7 @@ void TextEditor::onTextChanged()
         return;
     }
 
-    // 如果文档没有内容变化，不标记修改
     if (!document()->isModified()) {
-        // 但也要检查是否有真正的修改
         if (!m_isModified) {
             return;
         }
@@ -3527,6 +3569,12 @@ void TextEditor::onTextChanged()
 
     m_isModified = true;
     emit modificationChanged(true);
+
+    // ---- LSP didChange 走防抖 ----
+    if (!m_filePath.isEmpty() && m_lspChangeTimer) {
+        m_pendingLspChange = true;
+        m_lspChangeTimer->start();   // 重置计时器
+    }
 
     // updateFolding();
 }

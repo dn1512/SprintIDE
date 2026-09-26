@@ -8,7 +8,7 @@ namespace SprintIDE {
 // ============================================================
 LogEntry LogEntry::make(LogKind kind, LogLevel level,
                         const QString& source, const QString& message,
-                        const QString& filePath, int lineNumber)
+                        const QString& filePath, int lineNumber, int column)
 {
     LogEntry e;
     e.timestamp  = QDateTime::currentMSecsSinceEpoch();
@@ -18,6 +18,7 @@ LogEntry LogEntry::make(LogKind kind, LogLevel level,
     e.message    = message;
     e.filePath   = filePath;
     e.lineNumber = lineNumber;
+    e.column     = column;
     return e;
 }
 

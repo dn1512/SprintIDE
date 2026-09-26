@@ -236,6 +236,9 @@ signals:
 
     void completionRequested(const QString& filePath, int line, int column);
 
+    /// 文档内容变化已防抖，供 LSP 发送 didChange 使用
+    void documentChangedForLsp(const QString& filePath, const QString& content);
+
     void definitionRequested(const QString& filePath, int line, int column);
 
     void breakpointConditionChanged(const QString& filePath, int line,
@@ -430,6 +433,8 @@ private:
     QString           m_completionPrefix;        // 当前前缀（已输入的部分）
 
     QTimer*           m_lspDebounceTimer = nullptr;   // LSP 请求防抖
+    QTimer*           m_lspChangeTimer   = nullptr;   // didChange 防抖
+    bool              m_pendingLspChange = false;
 
     // 已收到的 LSP 原始结果（未合并本地符号时缓存）
     QList<LSPCompletionItem> m_pendingLspItems;
@@ -484,6 +489,7 @@ private:
     // ========== 本地历史管理器指针 ==========
     LocalHistory *m_localHistory = nullptr;
 
+    qreal m_lastAppliedLineHeight = -1.0;
     bool m_suppressModificationFlag = false;    // 静默修改守卫：在这些操作期间不允许 modified 被置 true
     QSet<int> m_conditionalBreakpoints;   // 存储带条件的断点行号
 

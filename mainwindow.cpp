@@ -116,6 +116,9 @@
 #include "git/git_settings_page.h"
 
 #include "quick_open_dialog.h"
+#include "search_in_files_dialog.h"
+#include "log/output_panel.h"
+#include "log/log_list_model.h"     // 只需要 LogKind / LogLevel 常量时
 #include "breakpoint_list_panel.h"
 
 
@@ -467,7 +470,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
     connect(m_lspManager, &LSPManager::clientError,
             this, [this](const QString &languageId, const QString &error) {
-                d->outputPanel->append(QString("LSP (%1) 错误: %2")
+                logError(QString("LSP (%1) 错误: %2")
                                            .arg(languageId).arg(error));
             });
 
@@ -628,11 +631,9 @@ void MainWindow::applyCurrentTheme()
         tm.applyThemeToTreeView(d->projectPanel->getFileTreeView());
     }
 
-    // 4. 输出面板（QTextEdit，QSS 已覆盖，但 objectName 要设上）
-    if (d->outputPanel) {
-        d->outputPanel->setObjectName("OutputPanel");
-        d->outputPanel->style()->unpolish(d->outputPanel);
-        d->outputPanel->style()->polish(d->outputPanel);
+    // 4 输出面板：三档过滤按钮 / 工具条 / 摘要条都是自绘/自定义 QSS
+    if (m_outputPanel) {
+        m_outputPanel->applyTheme();
     }
 
     // 性能标签用内联 HTML 颜色，主题切换需要主动重刷
@@ -906,7 +907,7 @@ void MainWindow::setupMenuBar()
                 editor->saveFile();
             }
         }
-        d->outputPanel->append("已保存所有文件");
+        logInfo("已保存所有文件");
     });
 
     QAction *saveAsAction = fileMenu->addAction("另存为(&A)");
@@ -979,12 +980,12 @@ void MainWindow::setupMenuBar()
         }
         QString python = model->interpreterPath();
         if (python.isEmpty()) python = "python3";
-        d->outputPanel->append("正在安装依赖...");
+        logInfo("正在安装依赖...");
         PythonDependencyManager::installDependencies(
             model->projectPath(), python,
-            [this](const QString& out) { d->outputPanel->append(out); }
+            [this](const QString& out) { logInfo(out); }
             );
-        d->outputPanel->append("依赖安装完成");
+        logInfo("依赖安装完成");
     });
 
     QAction* createVenvAction = pythonMenu->addAction("创建虚拟环境");
@@ -995,10 +996,10 @@ void MainWindow::setupMenuBar()
             return;
         }
         if (PythonVirtualEnv::createVenv(model->projectPath())) {
-            d->outputPanel->append("虚拟环境创建成功");
+            logInfo("虚拟环境创建成功");
             model->load(); // 重新加载
         } else {
-            d->outputPanel->append("虚拟环境创建失败");
+            logError("虚拟环境创建失败");
         }
     });
 
@@ -1014,9 +1015,9 @@ void MainWindow::setupMenuBar()
         QString error;
         if (PythonFormatter::formatFile(filePath, error)) {
             editor->reloadFile();
-            d->outputPanel->append("代码格式化完成");
+            logInfo("代码格式化完成");
         } else {
-            d->outputPanel->append("格式化失败: " + error);
+            logError("格式化失败: " + error);
         }
     });
 
@@ -1042,6 +1043,12 @@ void MainWindow::setupMenuBar()
     QAction *replaceAction = editMenu->addAction("替换(&R)");
     replaceAction->setShortcut(QKeySequence("Ctrl+Shift+H"));
     connect(replaceAction, &QAction::triggered, this, &MainWindow::onReplace);
+
+    QAction *searchInFilesAction = editMenu->addAction("在文件中查找(&F)...");
+    searchInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
+    searchInFilesAction->setStatusTip("在整个项目中搜索文本 (Ctrl+Shift+F)");
+    connect(searchInFilesAction, &QAction::triggered,
+            this, &MainWindow::onSearchInFiles);
 
     QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), "格式化代码(&O)");
     formatCodeAction->setShortcut(QKeySequence("Ctrl+Alt+L"));
@@ -1160,7 +1167,7 @@ void MainWindow::setupMenuBar()
 
     QAction *pluginManagerAction = toolsMenu->addAction(QIcon(":/icons/icons/services.svg"), "插件管理(&P)");
     connect(pluginManagerAction, &QAction::triggered, this, [this]() {
-        d->outputPanel->append("插件管理功能开发中...");
+        logInfo("插件管理功能开发中...");
     });
 
     QAction *performanceMonitorAction = toolsMenu->addAction("性能监控(&M)");
@@ -1369,59 +1376,32 @@ void MainWindow::setupDockWidgets()
     m_bottomTabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // =============================== 输出面板 =============================
-    // parent 直接给最终容器，避免"创建时 parent=MainWindow，后面 reparent"的隐患
-    d->outputPanel = new QTextEdit(m_bottomTabWidget);
+    // 结构化日志面板：LogListModel + LogListView，支持多选复制、过滤、双击跳转
+    m_outputPanel = new OutputPanel(m_bottomTabWidget);
+    m_outputPanel->setObjectName("OutputPanel");
 
-    // objectName 必须在【创建之后】设置，否则就是空指针
-    d->outputPanel->setObjectName("OutputPanel");
+    // 双击跳转：错误日志带 file:line 时打开文件定位
+    connect(m_outputPanel, &OutputPanel::jumpRequested,
+            this, [this](const QString& file, int line, int column) {
+                if (file.isEmpty()) return;
+                openFile(file);
+                if (TextEditor* ed = findEditorByFilePath(file)) {
+                    d->editorTabs->setCurrentWidget(ed);
+                    ed->gotoLine(line);
 
-    d->outputPanel->setReadOnly(true);
-    d->outputPanel->setTextInteractionFlags(
-        Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-    d->outputPanel->setFocusPolicy(Qt::StrongFocus);
-    d->outputPanel->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    // 复制快捷键
-    QShortcut* copyShortcut = new QShortcut(QKeySequence::Copy, this);
-    copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);   //    避免抢占编辑器的 Cmd+C
-    connect(copyShortcut, &QShortcut::activated, this, [this]() {
-        if (d->outputPanel && d->outputPanel->textCursor().hasSelection()) {
-            d->outputPanel->copy();
-        }
-    });
-
-    // 上下文菜单
-    connect(d->outputPanel, &QTextEdit::customContextMenuRequested,
-            this, [this](const QPoint& pos) {
-                QMenu* menu = new QMenu(this);
-
-                QAction* copyAction = new QAction("复制", this);
-                copyAction->setShortcut(QKeySequence::Copy);
-                copyAction->setEnabled(d->outputPanel->textCursor().hasSelection());
-                connect(copyAction, &QAction::triggered,
-                        d->outputPanel, &QTextEdit::copy);
-                menu->addAction(copyAction);
-
-                menu->addSeparator();
-
-                QAction* clearAction = new QAction("清空", this);
-                connect(clearAction, &QAction::triggered,
-                        d->outputPanel, &QTextEdit::clear);
-                menu->addAction(clearAction);
-
-                menu->addSeparator();
-
-                QAction* selectAllAction = new QAction("全选", this);
-                selectAllAction->setShortcut(QKeySequence::SelectAll);
-                connect(selectAllAction, &QAction::triggered,
-                        d->outputPanel, &QTextEdit::selectAll);
-                menu->addAction(selectAllAction);
-
-                menu->exec(d->outputPanel->viewport()->mapToGlobal(pos));
-                delete menu;
+                    // 若已知列号 → 精确定位到列
+                    if (column > 0) {
+                        QTextCursor c = ed->textCursor();
+                        c.movePosition(QTextCursor::Right,
+                                       QTextCursor::MoveAnchor,
+                                       column - 1);
+                        ed->setTextCursor(c);
+                    }
+                    ed->setFocus();
+                }
             });
 
-    m_bottomTabWidget->addTab(d->outputPanel,
+    m_bottomTabWidget->addTab(m_outputPanel,
                               QIcon(":/icons/icons/run_view.svg"),
                               "输出");
 
@@ -1524,14 +1504,14 @@ void MainWindow::setupDockWidgets()
                     QWidget* w = m_bottomTabWidget->widget(index);
                     if (!w) return;
 
-                    int targetHeight = 200;      // 默认
+                    int targetHeight = 300;      // 默认
 
                     if (w == m_debugPanel) {
                         targetHeight = 420;
                     } else if (w == m_terminalPanel) {
                         targetHeight = 300;
-                    } else if (w == d->outputPanel) {
-                        targetHeight = 200;
+                    } else if (w == m_outputPanel) {
+                        targetHeight = 300;
                     }
 
                     // 避免小于最小值
@@ -1553,7 +1533,7 @@ void MainWindow::setupDockWidgets()
                     }
                 }
                 if (!canDelete) {
-                    d->outputPanel->append("删除操作已取消");
+                    logInfo("删除操作已取消");
                     return;
                 }
                 for (const QString& path : filePaths) {
@@ -1581,20 +1561,20 @@ void MainWindow::setupConnections()
                 // 调用 PythonTestRunner::runTest
                 PythonTestRunner::runTest(d->projectPanel->currentProjectPath(), test,
                                           [this](const QString& output) {
-                                              d->outputPanel->append(output);
+                                              logInfo(output);
                                           });
             });
     // ========== 连接测试运行请求 ==========
     connect(d->projectPanel, &ProjectPanel::runTestRequested,
             this, [this](const QString& filePath, const QString& testFullName) {
                 if (filePath.isEmpty() || testFullName.isEmpty()) {
-                    d->outputPanel->append("测试信息不完整");
+                    logInfo("测试信息不完整");
                     return;
                 }
 
                 QString projectPath = d->projectPanel->currentProjectPath();
                 if (projectPath.isEmpty()) {
-                    d->outputPanel->append("未打开项目，无法运行测试");
+                    logInfo("未打开项目，无法运行测试");
                     return;
                 }
 
@@ -1613,14 +1593,14 @@ void MainWindow::setupConnections()
                     test.methodName = testFullName;
                 }
 
-                d->outputPanel->append(QString("▶ 运行测试: %1").arg(testFullName));
+                logInfo(QString("▶ 运行测试: %1").arg(testFullName));
 
                 // 执行测试（异步，输出实时显示）
                 PythonTestRunner::runTest(projectPath, test,
                                           [this](const QString& output) {
                                               // 将输出显示到输出面板
                                               if (!output.isEmpty()) {
-                                                  d->outputPanel->append(output);
+                                                  logInfo(output);
                                               }
                                           });
             });
@@ -1969,6 +1949,19 @@ void MainWindow::onToggleMuteBreakpoints()
     refreshBreakpointListPanel();
 }
 
+void MainWindow::logInfo(const QString& msg, LogKind kind, const QString& source)
+{
+    appendLog(LogEntry::make(kind, LogLevel::Info, source, msg));
+}
+void MainWindow::logWarn(const QString& msg, LogKind kind, const QString& source)
+{
+    appendLog(LogEntry::make(kind, LogLevel::Warning, source, msg));
+}
+void MainWindow::logError(const QString& msg, LogKind kind, const QString& source)
+{
+    appendLog(LogEntry::make(kind, LogLevel::Error, source, msg));
+}
+
 void MainWindow::applyTheme()
 {
     // 主题应用留空，后续实现
@@ -2080,23 +2073,14 @@ void MainWindow::updateWindowTitle()
 
     TextEditor* editor = currentEditor();
     if (editor) {
-        QString fileName = editor->fileName();
+        const QString fileName = editor->fileName();
         if (!fileName.isEmpty()) {
             title += " - " + fileName;
         }
     }
 
-    // 遍历所有标签页检查是否有未保存
-    bool hasUnsaved = false;
-    for (int i = 0; i < d->editorTabs->count(); ++i) {
-        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (ed && ed->isModified()) {
-            hasUnsaved = true;
-            break;
-        }
-    }
-
-    if (hasUnsaved) {
+    // 直接使用计数器，避免每次按键遍历所有 tab
+    if (m_dirtyTabCount > 0) {
         title += " *";
     }
 
@@ -2153,6 +2137,10 @@ void MainWindow::openProject(const QString &path) {
     // 注意：loadAllProjectFiles 会深度遍历目录，遇到符号链接可能无限递归。
     // 已经改为带过滤 + 深度限制的版本，见下方函数实现。
     loadAllProjectFiles(actualRoot);
+    // 顺手把扫描结果缓存起来，供快速打开复用
+    m_cachedProjectFiles = scanFilesForQuickOpen(actualRoot);
+    m_cachedProjectRoot  = actualRoot;
+    m_cachedScanTime     = QDateTime::currentDateTime();
 
     ProjectModel* model = pm->javaProjectModel();
     if (model) {
@@ -2162,13 +2150,13 @@ void MainWindow::openProject(const QString &path) {
         case JavaProjectType::Gradle: typeStr = "Gradle"; break;
         default: typeStr = "Plain Java"; break;
         }
-        d->outputPanel->append(QString("检测到 Java 项目类型: %1").arg(typeStr));
-        d->outputPanel->append(QString("  主类: %1").arg(model->defaultMainClass()));
-        d->outputPanel->append(QString("  依赖数量: %1").arg(model->dependencyJars().size()));
-        d->outputPanel->append(QString("  类路径条目: %1").arg(model->classpath().size()));
+        logInfo(QString("检测到 Java 项目类型: %1").arg(typeStr));
+        logInfo(QString("  主类: %1").arg(model->defaultMainClass()));
+        logInfo(QString("  依赖数量: %1").arg(model->dependencyJars().size()));
+        logInfo(QString("  类路径条目: %1").arg(model->classpath().size()));
     }
 
-    d->outputPanel->append(QString("项目已打开: %1").arg(d->currentProjectPath));
+    logInfo(QString("项目已打开: %1").arg(d->currentProjectPath));
 
     // ========== Git 绑定 ==========
     if (m_gitPanel) {
@@ -2307,19 +2295,9 @@ void MainWindow::openFile(const QString &path)
         return;
     }
 
-    if (m_lspManager && path.endsWith(".py", Qt::CaseInsensitive)) {
-        QString projectRoot = d->currentProjectPath.isEmpty() ?
-                                  QFileInfo(path).absolutePath() :
-                                  d->currentProjectPath;
-        LSPClient* client = m_lspManager->getClientForFile(path, projectRoot);
-        if (client && client->isReady()) {
-            client->openDocument(path, editor->toPlainText());
-        }
-    }
-
     int index = d->editorTabs->addTab(editor, editor->fileName());
     d->editorTabs->setCurrentIndex(index);
-    d->outputPanel->append(QString("已打开: %1").arg(path));
+    logInfo(QString("已打开: %1").arg(path));
 
     // ---- 其他信号连接（原有） ----
     connect(editor, &TextEditor::modificationChanged,
@@ -2333,6 +2311,17 @@ void MainWindow::openFile(const QString &path)
     connect(editor->document(), &QTextDocument::contentsChanged,
             this, [this, editor]() {
                 onEditorTextChanged(editor);
+            });
+    connect(editor, &TextEditor::documentChangedForLsp,
+            this, [this](const QString& filePath, const QString& content) {
+                if (!m_lspManager || filePath.isEmpty()) return;
+                const QString projectPath = d->currentProjectPath.isEmpty()
+                                                ? QFileInfo(filePath).absolutePath()
+                                                : d->currentProjectPath;
+                LSPClient* client = m_lspManager->getClientForFile(filePath, projectPath);
+                if (client && client->isReady()) {
+                    client->changeDocument(filePath, content);
+                }
             });
     connect(editor, &TextEditor::breakpointToggled,
             this, &MainWindow::onBreakpointToggled);
@@ -2496,6 +2485,17 @@ void MainWindow::createNewEditorTab(const QString& title)
     connect(editor->document(), &QTextDocument::contentsChanged, this, [this, editor]() {
         onEditorTextChanged(editor);  // 直接传入 editor
     });
+    connect(editor, &TextEditor::documentChangedForLsp,
+            this, [this](const QString& filePath, const QString& content) {
+                if (!m_lspManager || filePath.isEmpty()) return;
+                const QString projectPath = d->currentProjectPath.isEmpty()
+                                                ? QFileInfo(filePath).absolutePath()
+                                                : d->currentProjectPath;
+                LSPClient* client = m_lspManager->getClientForFile(filePath, projectPath);
+                if (client && client->isReady()) {
+                    client->changeDocument(filePath, content);
+                }
+            });
     connect(editor, &TextEditor::breakpointToggled, this, &MainWindow::onBreakpointToggled);
     // qDebug() << "breakpointToggled signal connected for editor:" << editor;
     bool isDark = ThemeManager::instance().isDarkTheme();
@@ -2525,15 +2525,18 @@ bool MainWindow::closeEditorTab(int index)
                 return false; // 保存失败，视为取消
             }
             d->editorTabs->removeTab(index);
+            onEditorModificationChanged(false);
             return true;
         } else if (clicked == discardButton) {
             d->editorTabs->removeTab(index);
+            onEditorModificationChanged(false);
             return true;
         } else { // 取消
             return false;
         }
     } else {
         d->editorTabs->removeTab(index);
+        onEditorModificationChanged(false);
         return true;
     }
 }
@@ -2594,6 +2597,15 @@ void MainWindow::onTabContextMenuRequested(int index, const QPoint &pos)
 void MainWindow::onEditorModificationChanged(bool modified)
 {
     Q_UNUSED(modified);
+
+    // 重新统计（信号粒度粗但触发频率低，遍历成本可忽略）
+    int cnt = 0;
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (ed && ed->isModified()) ++cnt;
+    }
+    m_dirtyTabCount = cnt;
+
     updateWindowTitle();
 }
 
@@ -2606,7 +2618,7 @@ void MainWindow::onEditorCursorPositionChanged(int line, int column)
 
 void MainWindow::onFileLoaded(const QString &filePath)
 {
-    d->outputPanel->append(QString("已加载文件: %1").arg(filePath));
+    logInfo(QString("已加载文件: %1").arg(filePath));
     m_statusLabel->setText(QString("已加载: %1").arg(QFileInfo(filePath).fileName()));
 }
 
@@ -2615,7 +2627,7 @@ void MainWindow::onFileSaved(const QString &filePath)
     // qDebug() << "onFileSaved called, filePath:" << filePath;
     // qDebug() << "m_statusLabel:" << m_statusLabel;
 
-    // d->outputPanel->append(QString("已保存文件: %1").arg(filePath));
+    // logInfo(QString("已保存文件: %1").arg(filePath));
 
     TextEditor* editor = qobject_cast<TextEditor*>(sender());
     if (editor) {
@@ -2739,35 +2751,20 @@ void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
                                    .arg(QFileInfo(oldPath).fileName(),
                                         QFileInfo(newPath).fileName()));
     }
-    if (d && d->outputPanel) {
-        d->outputPanel->append(
-            QString("已重命名: %1 → %2").arg(oldPath, newPath));
-    }
+    logInfo(QString("已重命名: %1 → %2").arg(oldPath, newPath));
 
     qDebug() << "[MW] 已同步" << syncedCount << "个打开的编辑器";
 }
 
 void MainWindow::onEditorTextChanged(TextEditor* editor)
 {
-
     if (!editor) return;
-    // 获取发出信号的 QTextDocument
     QTextDocument* doc = qobject_cast<QTextDocument*>(sender());
     if (!doc) return;
 
     d->hasUnsavedChanges = true;
     updateWindowTitle();
-
-    // LSP 实时更新
-    if (m_lspManager && !editor->filePath().isEmpty()) {
-        QString projectPath = d->currentProjectPath.isEmpty() ?
-                                  QFileInfo(editor->filePath()).absolutePath() :
-                                  d->currentProjectPath;
-        LSPClient *client = m_lspManager->getClientForFile(editor->filePath(), projectPath);
-        if (client && client->isReady()) {
-            client->changeDocument(editor->filePath(), editor->toPlainText());
-        }
-    }
+    // LSP 的 changeDocument 已移到 TextEditor 侧防抖（见 documentChangedForLsp）
 }
 
 void MainWindow::onBreakpointToggled(const QString& filePath, int line)
@@ -2834,7 +2831,7 @@ void MainWindow::onPythonDebugFinished()
 
     setDebugTabVisible(false);
 
-    d->outputPanel->append(QString("<span style='color:#33CC33;'>调试会话已结束</span>"));
+    logInfo(QString("调试会话已结束"));
     // 调试面板控制台也打一条结束线
     if (m_debugPanel) {
         m_debugPanel->appendConsoleOutput("=== 调试会话结束 ===", false);
@@ -2846,7 +2843,7 @@ void MainWindow::onPythonDebugFinished()
 void MainWindow::onProjectItemDoubleClicked(const QModelIndex &index)
 {
     Q_UNUSED(index);
-    d->outputPanel->append("项目面板开发中...");
+    logInfo("项目面板开发中...");
 }
 
 // ==================== 编译系统 ====================
@@ -2882,7 +2879,7 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
     // 切换到输出标签
     switchToOutputTab();
 
-    d->outputPanel->clear();
+    m_outputPanel->clear();
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
     QString htmlMessage = QString("<span style='color:#3399FF;'>[%1] 开始编译: %2</span>")
@@ -2928,7 +2925,7 @@ void MainWindow::onCompileProgress(const QString& taskId, int progress, const QS
         QString htmlMessage = QString("<span style='color:#9966FF;'>[%1] 编译进度: %2%</span>")
                                   .arg(timeStr)
                                   .arg(progress);
-        d->outputPanel->append(htmlMessage);
+        logError(htmlMessage);
     }
     m_buildProgressBar->setValue(progress);
 }
@@ -3003,7 +3000,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
           htmlMessage);
 
         if (!result.executablePath.isEmpty()) {
-            d->outputPanel->append(QString("<span style='color:#33CC33;'>可执行文件: %1</span>")
+            logInfo(QString("<span style='color:#33CC33;'>可执行文件: %1</span>")
                                        .arg(result.executablePath));
         }
 
@@ -3011,7 +3008,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         QString statsLine = QString("<span style='color:#66CC66;'>  错误: %1, 警告: %2</span>")
                                 .arg(result.errors.size())
                                 .arg(result.warnings.size());
-        d->outputPanel->append(statsLine);
+        logError(statsLine);
 
         m_statusLabel->setText("编译成功");
 
@@ -3019,11 +3016,11 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         if (m_autoRunAfterCompile) {
             m_autoRunAfterCompile = false;
             if (!result.executablePath.isEmpty()) {
-                d->outputPanel->append("编译成功，正在运行...");
+                logInfo("编译成功，正在运行...");
                 // runProgram(result.executablePath, false);
                 runExecutableAsync(result.executablePath);
             } else {
-                d->outputPanel->append("编译成功，但未找到可执行文件，无法自动运行。");
+                logWarn("编译成功，但未找到可执行文件，无法自动运行。");
             }
         }
 
@@ -3032,7 +3029,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             m_compileForDebug = false;
 
             if (result.executablePath.isEmpty()) {
-                d->outputPanel->append("编译成功，但未找到可执行文件，无法启动调试。");
+                logWarn("编译成功，但未找到可执行文件，无法启动调试。");
             } else {
                 // 判断当前编辑器语言
                 TextEditor* editor = currentEditor();
@@ -3041,11 +3038,11 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
 
                 if (lang == LanguageType::Cpp) {
                     //    C++：用 DAP 路径。重新进 onStartDebug()，这次 exePath 已存在
-                    d->outputPanel->append("编译成功，正在启动 C++ 调试...");
+                    logInfo("编译成功，正在启动 C++ 调试...");
                     QTimer::singleShot(100, this, &MainWindow::onStartDebug);
                 } else {
                     // 其他语言：保留旧逻辑
-                    d->outputPanel->append("编译成功，正在启动调试...");
+                    logInfo("编译成功，正在启动调试...");
                     syncBreakpointsToDebugger();
                     startDebuggingWithExecutable(result.executablePath);
                 }
@@ -3067,7 +3064,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         QString htmlMessage = QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
                                   .arg(timeStr)
                                   .arg(elapsedMs);
-        d->outputPanel->append(htmlMessage);
+        logError(htmlMessage);
 
         m_statusLabel->setText("编译失败");
 
@@ -3078,18 +3075,18 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             QString statsMessage = QString("<span style='color:#FF3333;'>错误: %1, 警告: %2</span>")
                                        .arg(errorCount)
                                        .arg(warningCount);
-            d->outputPanel->append(statsMessage);
+            logError(statsMessage);
         }
 
         if (!result.errors.isEmpty()) {
-            d->outputPanel->append("<span style='color:#FF3333;font-weight:bold;'>错误列表:</span>");
+            logError("<span style='color:#FF3333;font-weight:bold;'>错误列表:</span>");
             for (int i = 0; i < qMin(5, result.errors.size()); i++) {
-                d->outputPanel->append(QString("<span style='color:#FF3333;'>  %1. %2</span>")
+                logError(QString("<span style='color:#FF3333;'>  %1. %2</span>")
                                            .arg(i + 1)
                                            .arg(result.errors[i].toHtmlEscaped()));
             }
             if (result.errors.size() > 5) {
-                d->outputPanel->append(QString("<span style='color:#FF9900;'>... 还有 %1 个错误未显示</span>")
+                logError(QString("<span style='color:#FF9900;'>... 还有 %1 个错误未显示</span>")
                                            .arg(result.errors.size() - 5));
             }
         }
@@ -3097,11 +3094,11 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         // 失败时清除自动运行/调试标志
         if (m_compileForDebug) {
             m_compileForDebug = false;
-            d->outputPanel->append("编译失败，无法启动调试。请修复错误后重试。");
+            logInfo("编译失败，无法启动调试。请修复错误后重试。");
         }
         if (m_autoRunAfterCompile) {
             m_autoRunAfterCompile = false;
-            d->outputPanel->append("编译失败，无法自动运行。");
+            logInfo("编译失败，无法自动运行。");
         }
     }
 
@@ -3169,9 +3166,9 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     }
 
     if (result.errors.isEmpty() && !result.success) {
-        d->outputPanel->append("=== 编译输出（完整） ===");
-        d->outputPanel->append(result.output);
-        d->outputPanel->append("=== 编译输出结束 ===");
+        logInfo("=== 编译输出（完整） ===");
+        logInfo(result.output);
+        logInfo("=== 编译输出结束 ===");
     }
 
     // ========== 清理工作 ==========
@@ -3207,11 +3204,11 @@ void MainWindow::onCompilersDetected(const QStringList& compilers)
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    d->outputPanel->append(QString("<span style='color:#3399FF;'>[%1] 检测到的编译器:</span>").arg(timeStr));
+    logInfo(QString("<span style='color:#3399FF;'>[%1] 检测到的编译器:</span>").arg(timeStr));
 
     for (const QString& compiler : compilers) {
         QString info = m_compileManager->getCompilerInfo(compiler);
-        d->outputPanel->append(QString("<span style='color:#CCCCCC;'>  - %1: %2</span>")
+        logInfo(QString("<span style='color:#CCCCCC;'>  - %1: %2</span>")
                                    .arg(compiler)
                                    .arg(info.toHtmlEscaped()));
     }
@@ -3237,7 +3234,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 正在运行程序...</span>").arg(timeStr));
+    logInfo(QString("<span style='color:#33CC33;'>[%1] 正在运行程序...</span>").arg(timeStr));
 
     if (inTerminal) {
         QString program;
@@ -3264,7 +3261,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         connect(process, &QProcess::readyReadStandardOutput, [=]() {
             QString output = QString::fromLocal8Bit(process->readAllStandardOutput());
             QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            d->outputPanel->append(QString("<span style='color:#CCCCCC;'>[%1] 程序输出: %2</span>")
+            logInfo(QString("<span style='color:#CCCCCC;'>[%1] 程序输出: %2</span>")
                                        .arg(timeStr)
                                        .arg(output.toHtmlEscaped()));
         });
@@ -3272,7 +3269,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         connect(process, &QProcess::readyReadStandardError, [=]() {
             QString error = QString::fromLocal8Bit(process->readAllStandardError());
             QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            d->outputPanel->append(QString("<span style='color:#FF9900;'>[%1] 程序错误: %2</span>")
+            logError(QString("<span style='color:#FF9900;'>[%1] 程序错误: %2</span>")
                                        .arg(timeStr)
                                        .arg(error.toHtmlEscaped()));
         });
@@ -3290,7 +3287,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
                         message = QString("<span style='color:#FF3333;'>[%1] 程序异常退出</span>").arg(timeStr);
                     }
 
-                    d->outputPanel->append(message);
+                    logInfo(message);
                     m_statusLabel->setText("程序执行完成");
 
                     process->deleteLater();
@@ -3482,7 +3479,7 @@ void MainWindow::onStartDebug() {
         config.workingDirectory = projectPath;
         config.stopOnEntry = true;
 
-        d->outputPanel->append("调试目标文件: " + sourceFile);
+        logInfo("调试目标文件: " + sourceFile);
 
         // --- 关键修改：复用调试器实例 ---
         if (!m_pythonDebugger) {
@@ -3492,7 +3489,7 @@ void MainWindow::onStartDebug() {
             connect(m_pythonDebugger, &PythonDebugger::stopped, this,
                     [this](const QString& file, int line, const QString& reason) {
 
-                        d->outputPanel->append(QString("调试暂停: %1:%2 (%3)")
+                        logInfo(QString("调试暂停: %1:%2 (%3)")
                                                    .arg(file).arg(line).arg(reason));
 
                         // 1. 找到（或打开）命中的文件
@@ -3519,13 +3516,13 @@ void MainWindow::onStartDebug() {
                     });
 
             // connect(m_pythonDebugger, &PythonDebugger::continued, this, [this]() {
-            //     d->outputPanel->append("继续执行");
+            //     logInfo("继续执行");
             //     TextEditor* ed = currentEditor();
             //     if (ed) { ed->clearCurrentDebugLine(); }
             // });
 
             connect(m_pythonDebugger, &PythonDebugger::exited, this, [this](int code) {
-                d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
+                logInfo(QString("程序退出，退出码: %1").arg(code));
                 onPythonDebugFinished();
             });
             connect(m_pythonDebugger, &PythonDebugger::terminated,
@@ -3537,10 +3534,10 @@ void MainWindow::onStartDebug() {
             connect(m_pythonDebugger, &PythonDebugger::outputReceived, this, [this](const QString& out, bool err) {
                 // 输出面板
                 if (err) {
-                    d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                    logError("<span style='color:#FF6B6B;'>"
                                            + out.toHtmlEscaped() + "</span>");
                 } else {
-                    d->outputPanel->append(out);
+                    logInfo(out);
                 }
                 // 调试面板控制台
                 if (m_debugPanel) {
@@ -3549,7 +3546,7 @@ void MainWindow::onStartDebug() {
             });
 
             connect(m_pythonDebugger, &PythonDebugger::errorOccurred, this, [this](const QString& error) {
-                d->outputPanel->append("调试错误: " + error);
+                logError("调试错误: " + error);
                 m_isDebugging = false;
                 updateDebugActions();
                 if (m_debugPanel) {
@@ -3572,7 +3569,7 @@ void MainWindow::onStartDebug() {
 
         // 启动调试
         if (m_pythonDebugger->startDebugging(config)) {
-            d->outputPanel->append("Python 调试已启动");
+            logInfo("Python 调试已启动");
             // 清空调试面板控制台并打分隔线
                         if (m_debugPanel) {
                             m_debugPanel->clearConsole();
@@ -3585,7 +3582,7 @@ void MainWindow::onStartDebug() {
 
             QList<Breakpoint> allBreakpoints = m_debugManager->getBreakpoints();
             m_pythonDebugger->setBreakpoints(allBreakpoints);
-            d->outputPanel->append(QString("已同步 %1 个断点").arg(allBreakpoints.size()));
+            logInfo(QString("已同步 %1 个断点").arg(allBreakpoints.size()));
 
             // 切换到调试面板
             switchToDebugTab();
@@ -3595,7 +3592,7 @@ void MainWindow::onStartDebug() {
             // --- 关键修改：不再手动发送断点 ---
             // 断点将在 debugpy 发送 "initialized" 事件后，
             // 由 PythonDebugger 内部的 applyBreakpoints() 自动同步
-            d->outputPanel->append("断点将在调试器初始化后自动同步");
+            logInfo("断点将在调试器初始化后自动同步");
 
             // 初始化调试面板
             if (m_debugPanel) {
@@ -3604,7 +3601,7 @@ void MainWindow::onStartDebug() {
                 m_debugPanel->updateCallStack(QList<StackFrame>());
             }
         } else {
-            d->outputPanel->append("Python 调试启动失败");
+            logError("Python 调试启动失败");
             // 如果启动失败，确保状态重置
             if (m_pythonDebugger) {
                 m_pythonDebugger->stopDebugging();
@@ -3693,14 +3690,14 @@ void MainWindow::onStartDebug() {
         if (!adapterRes.found) {
             ToolchainManager::instance().resolveOrPrompt(preferred, this, &adapterRes);
             if (!adapterRes.found) {
-                d->outputPanel->append(
+                logError(
                     QString("未找到 %1 调试适配器，调试中止。")
                         .arg(toolchainIdName(preferred)));
                 return;
             }
         }
 
-        d->outputPanel->append(QString("使用调试适配器: %1").arg(adapterRes.executablePath));
+        logInfo(QString("使用调试适配器: %1").arg(adapterRes.executablePath));
 
         // 3. 构建配置
         CppDebugConfig cfg;
@@ -3742,12 +3739,12 @@ void MainWindow::onStartDebug() {
 
             connect(m_cppDebugger, &CppDebugger::stopped, this,
                     [this](const QString& file, int line, const QString& reason) {
-                        d->outputPanel->append(
+                        logInfo(
                             QString("调试暂停: %1:%2 (%3)").arg(file).arg(line).arg(reason));
 
                         // 空路径防护：DAP 有时不返回 source.path
                         if (file.isEmpty()) {
-                            d->outputPanel->append(
+                            logError(
                                 "<span style='color:#FF9900;'>警告：调试器未返回源文件路径，无法跳转高亮</span>");
                             m_isDebugging = true;
                             updateDebugActions();
@@ -3775,7 +3772,7 @@ void MainWindow::onStartDebug() {
 
             connect(m_cppDebugger, &CppDebugger::exited, this,
                     [this](int code) {
-                        d->outputPanel->append(QString("程序退出，退出码: %1").arg(code));
+                        logInfo(QString("程序退出，退出码: %1").arg(code));
                         onPythonDebugFinished();
                     });
 
@@ -3786,10 +3783,10 @@ void MainWindow::onStartDebug() {
                     [this](const QString& out, bool err) {
                         // 输出面板
                         if (err) {
-                            d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                            logError("<span style='color:#FF6B6B;'>"
                                                    + out.toHtmlEscaped() + "</span>");
                         } else {
-                            d->outputPanel->append(out);
+                            logInfo(out);
                         }
                         // 调试面板控制台
                         if (m_debugPanel) {
@@ -3799,7 +3796,7 @@ void MainWindow::onStartDebug() {
 
             connect(m_cppDebugger, &CppDebugger::errorOccurred, this,
                     [this](const QString& e) {
-                        d->outputPanel->append("调试错误: " + e);
+                        logError("调试错误: " + e);
                         m_isDebugging = false;
                         updateDebugActions();
                         if (m_debugPanel) m_debugPanel->setDebuggingState(false);
@@ -3866,7 +3863,7 @@ void MainWindow::onStartDebug() {
 
         // 5. 启动
         if (m_cppDebugger->startDebugging(cfg)) {
-            d->outputPanel->append("C++ 调试已启动");
+            logInfo("C++ 调试已启动");
             // 清空调试面板控制台并打分隔线
             if (m_debugPanel) {
                 m_debugPanel->clearConsole();
@@ -3886,9 +3883,9 @@ void MainWindow::onStartDebug() {
 
             QList<Breakpoint> allBps = m_debugManager->getBreakpoints();
             m_cppDebugger->setBreakpoints(allBps);
-            d->outputPanel->append(QString("已同步 %1 个断点").arg(allBps.size()));
+            logInfo(QString("已同步 %1 个断点").arg(allBps.size()));
         } else {
-            d->outputPanel->append("C++ 调试启动失败");
+            logError("C++ 调试启动失败");
             m_isDebugging = false;
             updateDebugActions();
             setDebugTabVisible(false);
@@ -3950,11 +3947,11 @@ void MainWindow::onStartDebug() {
     dummyResult.executablePath = executablePath;
     QString output;
     if (m_compileManager->runTask(task, dummyResult, output)) {
-        d->outputPanel->append("调试已启动，等待连接...");
+        logInfo("调试已启动，等待连接...");
         m_isDebugging = true;
         updateDebugActions();
     } else {
-        d->outputPanel->append("启动调试失败: " + output);
+        logError("启动调试失败: " + output);
     }
 }
 
@@ -4052,38 +4049,9 @@ void MainWindow::onStepOut()
     }
 }
 
-void MainWindow::onOutputPanelContextMenu(const QPoint& pos)
-{
-    QMenu* menu = new QMenu(this);
-
-    // 复制（如果选中了文本才启用）
-    QAction* copyAction = new QAction("复制", this);
-    copyAction->setShortcut(QKeySequence::Copy);
-    copyAction->setEnabled(d->outputPanel->textCursor().hasSelection());
-    connect(copyAction, &QAction::triggered, d->outputPanel, &QTextEdit::copy);
-    menu->addAction(copyAction);
-
-    menu->addSeparator();
-
-    // 清空
-    QAction* clearAction = new QAction("清空", this);
-    connect(clearAction, &QAction::triggered, this, &MainWindow::clearOutputPanel);
-    menu->addAction(clearAction);
-
-    // 全选
-    menu->addSeparator();
-    QAction* selectAllAction = new QAction("全选", this);
-    selectAllAction->setShortcut(QKeySequence::SelectAll);
-    connect(selectAllAction, &QAction::triggered, d->outputPanel, &QTextEdit::selectAll);
-    menu->addAction(selectAllAction);
-
-    menu->exec(d->outputPanel->viewport()->mapToGlobal(pos));
-    delete menu;
-}
-
 void MainWindow::clearOutputPanel()
 {
-    d->outputPanel->clear();
+    m_outputPanel->clear();
 }
 
 void MainWindow::onContinueDebug()
@@ -4110,7 +4078,7 @@ void MainWindow::onAddBreakpoint()
 
     QString filePath = editor->filePath();
     if (filePath.isEmpty()) {
-        d->outputPanel->append("请先保存文件后再添加断点");
+        logInfo("请先保存文件后再添加断点");
         return;
     }
 
@@ -4201,7 +4169,7 @@ void MainWindow::onBreakpointHit(const QString& filePath, int lineNumber)
 
     QString absoluteFilePath = resolveDebuggerPath(filePath);
 
-    // d->outputPanel->append(QString("断点命中: %1:%2")
+    // logInfo(QString("断点命中: %1:%2")
     //                            .arg(absoluteFilePath)
     //                            .arg(lineNumber));
 
@@ -4223,7 +4191,7 @@ void MainWindow::onProgramStopped(const QString& filePath, int lineNumber, const
 
     QString absoluteFilePath = resolveDebuggerPath(filePath);
 
-    // d->outputPanel->append(QString("程序停止: %1 (%2:%3)")
+    // logInfo(QString("程序停止: %1 (%2:%3)")
     //                            .arg(reason)
     //                            .arg(absoluteFilePath)
     //                            .arg(lineNumber));
@@ -4243,7 +4211,7 @@ void MainWindow::onProgramStopped(const QString& filePath, int lineNumber, const
 
 void MainWindow::onProgramExited(int exitCode)
 {
-    d->outputPanel->append(QString("程序退出，退出码: %1").arg(exitCode));
+    logInfo(QString("程序退出，退出码: %1").arg(exitCode));
     m_isDebugging = false;
 
     // 清除高亮
@@ -4257,7 +4225,7 @@ void MainWindow::onProgramExited(int exitCode)
 
 void MainWindow::onDebugError(const QString& error)
 {
-    d->outputPanel->append(QString("调试错误: %1").arg(error));
+    logError(QString("调试错误: %1").arg(error));
     m_isDebugging = false;
     updateDebugActions();
 }
@@ -4270,19 +4238,19 @@ bool MainWindow::startDebugging()
 
     TextEditor* editor = currentEditor();
     if (!editor) {
-        d->outputPanel->append("请先打开一个文件再开始调试");
+        logInfo("请先打开一个文件再开始调试");
         return false;
     }
 
     QString sourceFile = editor->filePath();
     if (sourceFile.isEmpty()) {
-        d->outputPanel->append("请先保存文件再开始调试");
+        logInfo("请先保存文件再开始调试");
         return false;
     }
     // qDebug() << "Source file:" << sourceFile;
 
     if (editor->isModified()) {
-        d->outputPanel->append("文件已修改，正在编译...");
+        logInfo("文件已修改，正在编译...");
         onCompile();
     }
 
@@ -4290,18 +4258,18 @@ bool MainWindow::startDebugging()
     // qDebug() << "Executable path:" << executablePath;
 
     if (executablePath.isEmpty()) {
-        d->outputPanel->append("未找到可执行文件，请等待编译");
+        logInfo("未找到可执行文件，请等待编译");
         onCompile();
         // return false;
     }
 
     QFileInfo exeInfo(executablePath);
     if (!exeInfo.exists()) {
-        d->outputPanel->append("可执行文件不存在: " + executablePath);
+        logError("可执行文件不存在: " + executablePath);
         return false;
     }
     if (!exeInfo.isExecutable()) {
-        d->outputPanel->append("文件不可执行: " + executablePath);
+        logError("文件不可执行: " + executablePath);
         return false;
     }
 
@@ -4321,10 +4289,10 @@ bool MainWindow::startDebugging()
     bool success = m_debugManager->startDebugging(config);
     if (success) {
         m_isDebugging = true;
-        d->outputPanel->append("调试已启动");
+        logInfo("调试已启动");
         updateDebugActions();
     } else {
-        d->outputPanel->append("启动调试失败");
+        logError("启动调试失败");
     }
 
     return success;
@@ -4418,9 +4386,9 @@ void MainWindow::updateDebugPanels()
 
     // 同时输出到输出面板（方便查看）
     if (!m_callStack.isEmpty()) {
-        d->outputPanel->append("=== 调用栈 ===");
+        logInfo("=== 调用栈 ===");
         for (const StackFrame& frame : m_callStack) {
-            d->outputPanel->append(QString("  #%1 %2 at %3:%4")
+            logInfo(QString("  #%1 %2 at %3:%4")
                                        .arg(frame.level)
                                        .arg(frame.functionName)
                                        .arg(frame.filePath)
@@ -4429,9 +4397,9 @@ void MainWindow::updateDebugPanels()
     }
 
     if (!m_localVariables.isEmpty()) {
-        d->outputPanel->append("=== 局部变量 ===");
+        logInfo("=== 局部变量 ===");
         for (const DebugVariable& var : m_localVariables) {
-            d->outputPanel->append(QString("  %1 (%2) = %3")
+            logInfo(QString("  %1 (%2) = %3")
                                        .arg(var.name)
                                        .arg(var.type)
                                        .arg(var.value));
@@ -4472,8 +4440,8 @@ void MainWindow::setDebugTabVisible(bool visible)
 
 void MainWindow::switchToOutputTab()
 {
-    if (m_bottomTabWidget && d->outputPanel) {
-        int index = m_bottomTabWidget->indexOf(d->outputPanel);
+    if (m_bottomTabWidget && m_outputPanel) {
+        int index = m_bottomTabWidget->indexOf(m_outputPanel);
         if (index >= 0) {
             m_bottomTabWidget->setCurrentIndex(index);
         }
@@ -4781,23 +4749,31 @@ void MainWindow::restoreSession()
              << "断点数:"
              << session["breakpoints"].toArray().size();
 
-    // ---------- 1. 恢复打开的文件 ----------
+    // ---------- 1. 恢复打开的文件（分批异步，避免一次性卡住 UI） ----------
     const QJsonArray openFiles = session["openFiles"].toArray();
+
+    struct RestoreEntry { QString path; int line; };
+    QList<RestoreEntry> entries;
+    entries.reserve(openFiles.size());
     for (const QJsonValue &val : openFiles) {
         const QJsonObject fileObj = val.toObject();
         const QString path = fileObj["path"].toString();
-        if (!QFile::exists(path)) continue;
-
-        openFile(path);
-
-        TextEditor* editor = currentEditor();
-        if (editor) {
-            const int line   = fileObj["line"].toInt(1);
-            const int column = fileObj["column"].toInt(1);
-            editor->gotoLine(line);
-            Q_UNUSED(column);
-        }
+        if (path.isEmpty() || !QFile::exists(path)) continue;
+        entries.append({ path, fileObj["line"].toInt(1) });
     }
+
+    // 使用 shared_ptr 让 lambda 自递归（捕获自己）
+    auto queue = std::make_shared<std::function<void(int)>>();
+    *queue = [this, entries, queue](int i) {
+        if (i >= entries.size()) return;
+        openFile(entries[i].path);
+        if (TextEditor* ed = currentEditor()) {
+            ed->gotoLine(entries[i].line);
+        }
+        // 0ms 让事件循环跑一轮重绘 / 布局
+        QTimer::singleShot(0, this, [queue, i]() { (*queue)(i + 1); });
+    };
+    QTimer::singleShot(0, this, [queue]() { (*queue)(0); });
 
     // 2.    恢复断点
     const QJsonArray breakpointsArr = session["breakpoints"].toArray();
@@ -4895,18 +4871,18 @@ void MainWindow::restoreExpandedPaths(const QJsonArray &paths)
 bool MainWindow::startDebuggingWithExecutable(const QString& executablePath)
 {
     if (executablePath.isEmpty()) {
-        d->outputPanel->append("可执行文件路径为空");
+        logInfo("可执行文件路径为空");
         return false;
     }
 
     if (!QFile::exists(executablePath)) {
-        d->outputPanel->append(QString("可执行文件不存在: %1").arg(executablePath));
+        logInfo(QString("可执行文件不存在: %1").arg(executablePath));
         return false;
     }
 
     QFileInfo exeInfo(executablePath);
     if (!exeInfo.isExecutable()) {
-        d->outputPanel->append(QString("文件不可执行: %1").arg(executablePath));
+        logInfo(QString("文件不可执行: %1").arg(executablePath));
         return false;
     }
 
@@ -4923,10 +4899,10 @@ bool MainWindow::startDebuggingWithExecutable(const QString& executablePath)
     bool success = m_debugManager->startDebugging(config);
     if (success) {
         m_isDebugging = true;
-        d->outputPanel->append(QString("调试已启动: %1").arg(executablePath));
+        logInfo(QString("调试已启动: %1").arg(executablePath));
         updateDebugActions();
     } else {
-        d->outputPanel->append("启动调试失败");
+        logError("启动调试失败");
     }
 
     return success;
@@ -4942,31 +4918,49 @@ bool MainWindow::isCppDebugging() const
     return m_cppDebugger != nullptr && m_isDebugging;
 }
 
+QStringList MainWindow::collectProjectFiles(bool forceRescan)
+{
+    const QString root = d->currentProjectPath;
+    if (root.isEmpty()) return {};
+
+    constexpr int kCacheSecs = 30;
+    if (!forceRescan
+        && m_cachedProjectRoot == root
+        && m_cachedScanTime.isValid()
+        && m_cachedScanTime.secsTo(QDateTime::currentDateTime()) < kCacheSecs) {
+        return m_cachedProjectFiles;
+    }
+
+    m_cachedProjectFiles = scanFilesForQuickOpen(root);
+    m_cachedProjectRoot  = root;
+    m_cachedScanTime     = QDateTime::currentDateTime();
+    return m_cachedProjectFiles;
+}
+
 void MainWindow::appendLog(const LogEntry& entry, const QString& html)
 {
+    Q_UNUSED(html);
+
     // 1. 结构化写入 LogBuffer（AI 用）
     if (auto* buf = Application::instance().logBuffer()) {
         buf->append(entry);
     }
 
     // 2. 渲染到 outputPanel（人看）
-    if (!d || !d->outputPanel) return;
-    if (html.isEmpty()) {
-        d->outputPanel->append(entry.message.toHtmlEscaped());
-    } else {
-        d->outputPanel->append(html);
+    if (m_outputPanel) {
+        m_outputPanel->appendEntry(entry);
     }
 }
 
 void MainWindow::runExecutableAsync(const QString& executablePath)
 {
     if (executablePath.isEmpty() || !QFile::exists(executablePath)) {
-        d->outputPanel->append("可执行文件不存在: " + executablePath);
+        logError("可执行文件不存在: " + executablePath);
         return;
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    d->outputPanel->append(QString("<span style='color:#33CC33;'>[%1] 正在运行: %2</span>")
+    logInfo(QString("<span style='color:#33CC33;'>[%1] 正在运行: %2</span>")
                                .arg(timeStr).arg(executablePath));
 
     QProcess* process = new QProcess(this);
@@ -4978,14 +4972,14 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
         QByteArray data = process->readAllStandardOutput();
         QString output = QString::fromLocal8Bit(data);
         if (!output.isEmpty()) {
-            d->outputPanel->append(output);
+            logInfo(output);
         }
     });
     connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
         QByteArray data = process->readAllStandardError();
         QString output = QString::fromLocal8Bit(data);
         if (!output.isEmpty()) {
-            d->outputPanel->append("<span style='color:#FF6B6B;'>"
+            logError("<span style='color:#FF6B6B;'>"
                                    + output.toHtmlEscaped() + "</span>");
         }
     });
@@ -4993,11 +4987,11 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
             this, [this, process](int exitCode, QProcess::ExitStatus status) {
                 QString t = QTime::currentTime().toString("hh:mm:ss");
                 if (status == QProcess::NormalExit) {
-                    d->outputPanel->append(
+                    logInfo(
                         QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
                             .arg(t).arg(exitCode));
                 } else {
-                    d->outputPanel->append(
+                    logError(
                         QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>").arg(t));
                 }
                 process->deleteLater();
@@ -5006,7 +5000,7 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
 
     process->start();
     if (!process->waitForStarted(3000)) {
-        d->outputPanel->append("启动失败: " + process->errorString());
+        logError("启动失败: " + process->errorString());
         process->deleteLater();
         return;
     }
@@ -5136,7 +5130,7 @@ void MainWindow::onQuickOpen()
     }
 
     // -------- 3. 扫描项目文件 --------
-    const QStringList files = scanFilesForQuickOpen(d->currentProjectPath);
+    const QStringList files = collectProjectFiles();
     if (files.isEmpty()) {
         QMessageBox::information(this, "快速打开",
                                  "项目中没有可打开的文件。");
@@ -5151,7 +5145,7 @@ void MainWindow::onQuickOpen()
             this, [this](const QString& path) {
                 if (path.isEmpty()) return;
                 if (!QFile::exists(path)) {
-                    d->outputPanel->append(
+                    logError(
                         QString("<span style='color:#EBB65B;'>文件不存在: %1</span>")
                             .arg(path));
                     return;
@@ -5167,7 +5161,7 @@ void MainWindow::onSaveFile()
     TextEditor* editor = currentEditor();
     if (editor) {
         if (editor->saveFile()) {
-            // d->outputPanel->append(QString("已保存: %1").arg(editor->filePath()));
+            // logInfo(QString("已保存: %1").arg(editor->filePath()));
         } else {
             QMessageBox::warning(this, "保存错误", "无法保存文件。");
         }
@@ -5189,7 +5183,7 @@ void MainWindow::onSaveAs()
 
         if (!fileName.isEmpty()) {
             if (editor->saveAs(fileName)) {
-                d->outputPanel->append(QString("已另存为: %1").arg(fileName));
+                logInfo(QString("已另存为: %1").arg(fileName));
                 updateTabTitle(d->editorTabs->currentIndex(), editor->fileName());
             }
         }
@@ -5343,6 +5337,81 @@ void MainWindow::onReplace()
     editor->showFindBarWithReplace();
 }
 
+void MainWindow::onSearchInFiles()
+{
+    // ---------- 1. 决定搜索根目录 ----------
+    QString root = d->currentProjectPath;
+
+    if (root.isEmpty()) {
+        if (TextEditor* ed = currentEditor()) {
+            if (!ed->filePath().isEmpty()) {
+                QDir dir = QFileInfo(ed->filePath()).absoluteDir();
+                while (!dir.isRoot()) {
+                    if (dir.exists(".git")            ||
+                        dir.exists("CMakeLists.txt")  ||
+                        dir.exists("pom.xml")         ||
+                        dir.exists("package.json")    ||
+                        dir.exists("pyproject.toml")  ||
+                        dir.exists("Cargo.toml")      ||
+                        dir.exists("go.mod")) {
+                        root = dir.absolutePath();
+                        break;
+                    }
+                    dir.cdUp();
+                }
+                if (root.isEmpty()) {
+                    root = QFileInfo(ed->filePath()).absolutePath();
+                }
+            }
+        }
+    }
+
+    if (root.isEmpty()) {
+        QMessageBox::information(this, "在文件中查找",
+                                 "请先打开一个项目或文件。");
+        return;
+    }
+
+    // ---------- 2. 懒创建对话框 ----------
+    if (!m_searchInFilesDialog) {
+        m_searchInFilesDialog = new SearchInFilesDialog(root, this);
+        m_searchInFilesDialog->setAttribute(Qt::WA_DeleteOnClose, false);
+
+        connect(m_searchInFilesDialog, &SearchInFilesDialog::openFileAt,
+                this, [this](const QString& file, int line, int col) {
+                    Q_UNUSED(col);
+                    openFile(file);
+                    if (TextEditor* ed = findEditorByFilePath(file)) {
+                        d->editorTabs->setCurrentWidget(ed);
+                        ed->gotoLine(line);
+                        ed->setFocus();
+                    }
+                });
+    } else {
+        m_searchInFilesDialog->setRootPath(root);
+    }
+
+    // ---------- 3. 复用项目扫描缓存，注入文件列表 ----------
+    const QStringList files = collectProjectFiles();   // 上次回答里 MainWindow 新增的那个
+    m_searchInFilesDialog->setFileList(files);
+
+    // ---------- 4. 若当前有单行选中文本，预填 ----------
+    if (TextEditor* ed = currentEditor()) {
+        const QTextCursor cur = ed->textCursor();
+        if (cur.hasSelection()) {
+            const QString sel = cur.selectedText();
+            // 只处理单行选区（多行含段落分隔符不填）
+            if (!sel.contains(QChar::ParagraphSeparator) && !sel.contains('\n')) {
+                m_searchInFilesDialog->setSearchText(sel);
+            }
+        }
+    }
+
+    m_searchInFilesDialog->show();
+    m_searchInFilesDialog->raise();
+    m_searchInFilesDialog->activateWindow();
+}
+
 void MainWindow::onFindNext(const QString& text, bool caseSensitive, bool wholeWord)
 {
     TextEditor* editor = currentEditor();
@@ -5447,14 +5516,14 @@ void MainWindow::onReplaceAll(const QString& findText, const QString& replaceTex
     }
 
     m_statusLabel->setText(QString("替换完成，共替换 %1 处").arg(count));
-    d->outputPanel->append(QString("替换完成，共替换 %1 处").arg(count));
+    logInfo(QString("替换完成，共替换 %1 处").arg(count));
 }
 
 void MainWindow::onDebuggerContinued()
 {
     // 这个槽函数在调试器继续运行时被调用
     // 主要任务是更新 UI 状态
-    d->outputPanel->append("调试器已继续运行");
+    logInfo("调试器已继续运行");
     // 清除上一处停止的行高亮，避免两个绿色行
     if (TextEditor* editor = currentEditor()) {
         editor->clearCurrentDebugLine();
@@ -5536,7 +5605,7 @@ void MainWindow::onGitInit()
 
     // 若已是仓库，直接打开窗口
     if (Git::GitManager::instance().isActive()) {
-        d->outputPanel->append("当前目录已是 Git 仓库");
+        logInfo("当前目录已是 Git 仓库");
         showGitDialog();
         return;
     }
@@ -5547,7 +5616,7 @@ void MainWindow::onGitInit()
                              QString("无法初始化 Git 仓库：\n\n%1").arg(err));
         return;
     }
-    d->outputPanel->append(
+    logInfo(
         QString("<span style='color:#33CC33;'>Git 仓库已初始化: %1</span>")
             .arg(d->currentProjectPath));
     updateGitActions();
@@ -5570,7 +5639,7 @@ void MainWindow::onGitPush()
     if (!gm.isActive()) return;
 
     if (!gm.hasRemote()) {
-        d->outputPanel->append(
+        logError(
             "<span style='color:#EBB65B;'>没有可用的远程仓库，无法推送。</span>");
         return;
     }
@@ -5634,7 +5703,7 @@ void MainWindow::onGitPush()
         return;
     }
 
-    d->outputPanel->append(
+    logInfo(
         QStringLiteral("正在推送 %1 个提交到 %2 ...")
             .arg(st.ahead).arg(st.upstream));
     gm.push();
@@ -5646,7 +5715,7 @@ void MainWindow::onGitPull()
     if (!gm.isActive()) return;
 
     if (!gm.hasRemote()) {
-        d->outputPanel->append(
+        logError(
             "<span style='color:#EBB65B;'>没有可用的远程仓库，无法拉取。</span>");
         return;
     }
@@ -5688,7 +5757,7 @@ void MainWindow::onGitPull()
         return;
     }
 
-    d->outputPanel->append(
+    logInfo(
         QStringLiteral("正在拉取 %1 个提交（%2）...")
             .arg(st.behind).arg(st.upstream));
     gm.pull();
@@ -5698,11 +5767,11 @@ void MainWindow::onGitFetch()
 {
     if (!Git::GitManager::instance().isActive()) return;
     if (!Git::GitManager::instance().hasRemote()) {
-        d->outputPanel->append(
+        logError(
             "<span style='color:#EBB65B;'>没有可用的远程仓库，无法获取。</span>");
         return;
     }
-    d->outputPanel->append("正在获取远程更新...");
+    logInfo("正在获取远程更新...");
     Git::GitManager::instance().fetch();
 }
 
@@ -5722,7 +5791,7 @@ void MainWindow::onGitFileDoubleClicked(const QString& absolutePath)
 {
     if (absolutePath.isEmpty()) return;
     if (!QFile::exists(absolutePath)) {
-        d->outputPanel->append(
+        logError(
             QString("<span style='color:#EBB65B;'>文件已被删除或移动: %1</span>")
                 .arg(absolutePath));
         return;
@@ -5841,7 +5910,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
             const QString rel = toRel(abs);
             if (!rel.isEmpty()) gm.stageFile(rel);
         }
-        d->outputPanel->append(
+        logInfo(
             QStringLiteral("已暂存 %1 个文件").arg(filePaths.size()));
         break;
     }
@@ -5945,7 +6014,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
 
         if (box.clickedButton() == okBtn) {
             gm.discardFileChanges(firstRel);
-            d->outputPanel->append(
+            logInfo(
                 QStringLiteral("<span style='color:#EBB65B;'>已回滚: %1</span>")
                     .arg(firstRel));
         }
@@ -6018,7 +6087,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
         } else {
             gm.createBranch(branchName);
         }
-        d->outputPanel->append(
+        logInfo(
             QStringLiteral("<span style='color:#33CC33;'>分支已创建: %1</span>")
                 .arg(branchName));
         break;
@@ -6035,7 +6104,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
 
         gm.stashPush(msg.isEmpty() ? QStringLiteral("WIP") : msg,
                      /*includeUntracked=*/true);
-        d->outputPanel->append(QStringLiteral("已创建 stash"));
+        logInfo(QStringLiteral("已创建 stash"));
         break;
     }
 
@@ -6126,19 +6195,15 @@ void MainWindow::onAIRestartRequested(const QString& host, quint16 port)
                "请检查端口是否被占用，或地址是否合法。")
                 .arg(host).arg(port));
 
-        if (d && d->outputPanel) {
-            d->outputPanel->append(
-                QString("<span style='color:#FF5555;'>AI 服务器重启失败：%1:%2</span>")
-                    .arg(host).arg(port));
-        }
+        logError(
+            QString("<span style='color:#FF5555;'>AI 服务器重启失败：%1:%2</span>")
+                .arg(host).arg(port));
         return;
     }
 
-    if (d && d->outputPanel) {
-        d->outputPanel->append(
-            QString("<span style='color:#33CC33;'>AI 服务器已重启：%1:%2</span>")
-                .arg(host).arg(port));
-    }
+    logInfo(
+        QString("<span style='color:#33CC33;'>AI 服务器已重启：%1:%2</span>")
+            .arg(host).arg(port));
 }
 
 void MainWindow::onComment()
@@ -6178,7 +6243,7 @@ void MainWindow::onFormatCode()
 
     QString sourceCode = editor->toPlainText();
     if (sourceCode.isEmpty()) {
-        d->outputPanel->append("代码为空，无需格式化。");
+        logInfo("代码为空，无需格式化。");
         return;
     }
 
@@ -6201,9 +6266,9 @@ void MainWindow::onFormatCode()
         if (PythonFormatter::isAvailable()) {
             if (PythonFormatter::formatFile(filePath, error)) {
                 editor->reloadFile();
-                d->outputPanel->append("Python 代码格式化完成。");
+                logInfo("Python 代码格式化完成。");
             } else {
-                d->outputPanel->append("Python 格式化失败: " + error);
+                logError("Python 格式化失败: " + error);
             }
         } else {
             QMessageBox::warning(this, "提示",
@@ -6244,15 +6309,15 @@ void MainWindow::onFormatCode()
     QFile::remove(tempFileName);
 
     if (!errorOutput.isEmpty()) {
-        d->outputPanel->append(QString("Clang Format错误: %1").arg(errorOutput));
+        logError(QString("Clang Format错误: %1").arg(errorOutput));
         return;
     }
 
     if (!formattedCode.isEmpty()) {
         editor->setPlainText(formattedCode);
-        d->outputPanel->append("代码格式化完成。");
+        logInfo("代码格式化完成。");
     } else {
-        d->outputPanel->append("格式化后代码为空，可能是输入代码有问题。");
+        logError("格式化后代码为空，可能是输入代码有问题。");
     }
 }
 
@@ -6356,10 +6421,10 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
     qDebug() << "[loadAllProjectFiles] 扫描完成，共"
              << sourceFiles.size() << "个文件";
 
-    // 逐个打开文件（默认关闭，避免一次性打开几百个 tab）
-    // for (const QString& filePath : sourceFiles) {
-    //     openFile(filePath);
-    // }
+    // ---- 顺手缓存给快速打开用 ----
+    m_cachedProjectFiles = sourceFiles;
+    m_cachedProjectRoot  = QDir(projectPath).absolutePath();
+    m_cachedScanTime     = QDateTime::currentDateTime();
 }
 
 void MainWindow::reloadLspFilterSettings()
@@ -6406,12 +6471,12 @@ void MainWindow::onNewProject()
 
             ProjectConfig projectConfig = dialog.getProjectConfig();
 
-            d->outputPanel->append("==========================================");
-            d->outputPanel->append("项目创建成功！");
-            d->outputPanel->append(QString("项目名称: %1").arg(result.displayName));
-            d->outputPanel->append(QString("项目类型: %1").arg(getProjectTypeString(result.projectType)));
-            d->outputPanel->append(QString("项目路径: %1").arg(result.projectPath));
-            d->outputPanel->append("==========================================");
+            logInfo("==========================================");
+            logInfo("项目创建成功！");
+            logInfo(QString("项目名称: %1").arg(result.displayName));
+            logInfo(QString("项目类型: %1").arg(getProjectTypeString(result.projectType)));
+            logInfo(QString("项目路径: %1").arg(result.projectPath));
+            logInfo("==========================================");
 
             m_statusLabel->setText(QString("已创建项目: %1").arg(result.displayName));
 
@@ -6512,7 +6577,7 @@ void MainWindow::onBuildProject()
         }
     }
 
-    d->outputPanel->clear();
+    m_outputPanel->clear();
     switchToOutputTab();
 
     // 如果经过以上步骤仍为空，给出明确提示并退出
@@ -6575,12 +6640,12 @@ void MainWindow::onBuildProject()
 
         if (qtDir.isEmpty()) {
             // 给一个提示但不阻塞：让 CMake 靠系统自动查找，很多机器装在标准路径
-            d->outputPanel->append(
+            logError(
                 "<span style='color:#FFAA00;'>警告：未在设置里配置 QT_DIR，"
                 "CMake 将依赖系统自动探测 Qt。</span>");
         } else {
             task.extraArgs << QString("-DCMAKE_PREFIX_PATH=%1").arg(qtDir);
-            d->outputPanel->append(
+            logInfo(
                 QString("Qt SDK: %1").arg(qtDir));
         }
     }
@@ -6595,14 +6660,14 @@ void MainWindow::onBuildProject()
     if (lang == LanguageType::Cpp) {
         QDir projDir(projectPath);
         if (projDir.exists("CMakeLists.txt")) {
-            d->outputPanel->append("C++ 项目构建系统: CMake");
+            logInfo("C++ 项目构建系统: CMake");
             // task.outputName 留空，让 CppBuilder 内部用 model.defaultTarget() 自动选择
         } else if (projDir.exists("Makefile") ||
                    projDir.exists("makefile") ||
                    projDir.exists("GNUmakefile")) {
-            d->outputPanel->append("C++ 项目构建系统: Makefile");
+            logInfo("C++ 项目构建系统: Makefile");
         } else {
-            d->outputPanel->append("C++ 项目构建系统: SingleFile");
+            logInfo("C++ 项目构建系统: SingleFile");
         }
     }
 
@@ -6721,11 +6786,11 @@ void MainWindow::onCleanBuild()
     BuildResult result = m_compileManager->cleanTask(task);
 
     if (result.success) {
-        d->outputPanel->append("清理构建完成");
+        logInfo("清理构建完成");
         m_statusLabel->setText("清理构建完成");
     } else {
         QString error = result.errorMessage.isEmpty() ? "清理构建失败" : result.errorMessage;
-        d->outputPanel->append("清理构建失败: " + error);
+        logError("清理构建失败: " + error);
         m_statusLabel->setText("清理构建失败");
     }
 }
@@ -6737,7 +6802,7 @@ void MainWindow::onCompile() {
         SprintIDE::CppProjectModel probe(d->currentProjectPath);
         probe.load();
         if (probe.isQtProject()) {
-            d->outputPanel->append("Qt 项目，切换到项目构建模式");
+            logInfo("Qt 项目，切换到项目构建模式");
             onBuildProject();
             return;
         }
@@ -6873,9 +6938,9 @@ void MainWindow::onRun()
         }
 
         // 输出诊断信息
-        d->outputPanel->append(QString("使用 Python 解释器: %1").arg(python));
-        d->outputPanel->append(QString("工作目录: %1").arg(projectPath));
-        d->outputPanel->append("正在运行...");
+        logInfo(QString("使用 Python 解释器: %1").arg(python));
+        logInfo(QString("工作目录: %1").arg(projectPath));
+        logInfo("正在运行...");
 
         // 构建命令参数
         QStringList args;
@@ -6910,14 +6975,14 @@ void MainWindow::onRun()
             QByteArray data = process->readAllStandardOutput();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                d->outputPanel->append(output);
+                logInfo(output);
             }
         });
         connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
             QByteArray data = process->readAllStandardError();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                logError("<span style='color:#FF6B6B;'>"
                                        + output.toHtmlEscaped() + "</span>");
             }
         });
@@ -6927,11 +6992,11 @@ void MainWindow::onRun()
                 this, [this, process](int exitCode, QProcess::ExitStatus status) {
                     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
                     if (status == QProcess::NormalExit) {
-                        d->outputPanel->append(
+                        logInfo(
                             QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
                                 .arg(timeStr).arg(exitCode));
                     } else {
-                        d->outputPanel->append(
+                        logError(
                             QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
                                 .arg(timeStr));
                     }
@@ -6942,7 +7007,7 @@ void MainWindow::onRun()
         // 启动进程（异步）
         process->start();
         if (!process->waitForStarted(3000)) {
-            d->outputPanel->append("启动失败: " + process->errorString());
+            logError("启动失败: " + process->errorString());
             process->deleteLater();
             return;
         }
@@ -7015,8 +7080,8 @@ void MainWindow::onRun()
         }
 
         // 5. 异步运行可执行文件
-        d->outputPanel->append(QString("使用可执行文件: %1").arg(executablePath));
-        d->outputPanel->append("正在运行...");
+        logInfo(QString("使用可执行文件: %1").arg(executablePath));
+        logInfo("正在运行...");
 
         QProcess* process = new QProcess(this);
         process->setProgram(executablePath);
@@ -7028,14 +7093,14 @@ void MainWindow::onRun()
             QByteArray data = process->readAllStandardOutput();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                d->outputPanel->append(output);
+                logInfo(output);
             }
         });
         connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
             QByteArray data = process->readAllStandardError();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                d->outputPanel->append("<span style='color:#FF6B6B;'>"
+                logError("<span style='color:#FF6B6B;'>"
                                        + output.toHtmlEscaped() + "</span>");
             }
         });
@@ -7043,11 +7108,11 @@ void MainWindow::onRun()
                 this, [this, process](int exitCode, QProcess::ExitStatus status) {
                     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
                     if (status == QProcess::NormalExit) {
-                        d->outputPanel->append(
+                        logInfo(
                             QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
                                 .arg(timeStr).arg(exitCode));
                     } else {
-                        d->outputPanel->append(
+                        logError(
                             QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
                                 .arg(timeStr));
                     }
@@ -7057,7 +7122,7 @@ void MainWindow::onRun()
 
         process->start();
         if (!process->waitForStarted(3000)) {
-            d->outputPanel->append("启动失败: " + process->errorString());
+            logError("启动失败: " + process->errorString());
             process->deleteLater();
             return;
         }
@@ -7152,7 +7217,7 @@ void MainWindow::onRun()
     dummyResult.executablePath = executablePath;
     QString output;
     if (m_compileManager->runTask(task, dummyResult, output)) {
-        d->outputPanel->append(output);
+        logInfo(output);
     }
 }
 
@@ -7321,7 +7386,7 @@ void MainWindow::onZoomReset()
 
 void MainWindow::onSettings()
 {
-    d->outputPanel->append("打开设置对话框...");
+    logInfo("打开设置对话框...");
 }
 
 void MainWindow::onQuickStart()
@@ -7336,7 +7401,7 @@ void MainWindow::onQuickStart()
 
 void MainWindow::onDocumentation()
 {
-    d->outputPanel->append("打开使用文档...");
+    logInfo("打开使用文档...");
 }
 
 void MainWindow::onAbout()
@@ -7356,7 +7421,7 @@ void MainWindow::onThemeDark()
         cfg->setValue("General/Theme", "Dark");
     }
 
-    d->outputPanel->append("已切换到深色主题");
+    logInfo("已切换到深色主题");
     m_statusLabel->setText("主题已切换为深色");
 }
 
@@ -7369,13 +7434,13 @@ void MainWindow::onThemeLight()
             cfg->setValue("General/Theme", "Light");
     }
 
-    d->outputPanel->append("已切换到浅色主题");
+    logInfo("已切换到浅色主题");
     m_statusLabel->setText("主题已切换为浅色");
 }
 
 void MainWindow::onCustomTheme()
 {
-    d->outputPanel->append("打开自定义主题...");
+    logInfo("打开自定义主题...");
 }
 
 void MainWindow::createNewFileWithName(const QString &defaultName,
@@ -7471,7 +7536,7 @@ void MainWindow::createNewFileWithName(const QString &defaultName,
     // ============================================================
     // 6. 更新界面状态
     // ============================================================
-    d->outputPanel->append(QString("已创建文件: %1").arg(fullPath));
+    logInfo(QString("已创建文件: %1").arg(fullPath));
     m_statusLabel->setText(QString("已创建: %1").arg(fileName));
 
     // 获取当前编辑器，更新状态栏语言信息
@@ -7519,7 +7584,7 @@ void MainWindow::stopCompile()
 
         QString timeStr = QTime::currentTime().toString("hh:mm:ss");
         if (stopped) {
-            d->outputPanel->append(QString("<span style='color:#FF9900;'>[%1] 编译已取消</span>").arg(timeStr));
+            logError(QString("<span style='color:#FF9900;'>[%1] 编译已取消</span>").arg(timeStr));
             m_statusLabel->setText("编译已取消");
         }
 

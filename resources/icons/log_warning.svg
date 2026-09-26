@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="24" height="24" viewBox="0 0 24 24">
+  <!-- 警告：琥珀三角 + 白色叹号 -->
+  <path d="M12 2.5
+           L22 20.5
+           L2 20.5
+           Z"
+        fill="#EBB65B"
+        stroke="#EBB65B"
+        stroke-width="1.2"
+        stroke-linejoin="round"/>
+  <!-- 叹号竖线 -->
+  <rect x="11.1" y="8.5" width="1.8" height="6.5" rx="0.9" fill="#FFFFFF"/>
+  <!-- 叹号点 -->
+  <circle cx="12" cy="17.6" r="1.15" fill="#FFFFFF"/>
+</svg>
