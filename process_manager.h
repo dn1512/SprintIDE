@@ -21,6 +21,8 @@ class ProcessManager : public QObject {
     Q_OBJECT
 
 public:
+    using OutputCallback = std::function<void(const QString& chunk, bool isError)>;
+
     /**
      * @brief 进程执行结果
      */
@@ -56,7 +58,8 @@ public:
                               const QStringList& arguments = QStringList(),
                               const QString& workingDirectory = QString(),
                               int timeoutMs = 30000,
-                              const QString& encoding = "UTF-8");
+                              const QString& encoding = "UTF-8",
+                              OutputCallback onOutput = nullptr);
 
     /**
      * @brief 异步执行命令

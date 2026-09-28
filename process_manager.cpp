@@ -28,7 +28,8 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
     const QStringList& arguments,
     const QString& workingDirectory,
     int timeoutMs,
-    const QString& encoding)
+    const QString& encoding,
+    OutputCallback onOutput)
 {
     qDebug() << "同步执行命令:" << command << arguments;
 
@@ -60,15 +61,19 @@ ProcessManager::ProcessResult ProcessManager::executeSync(
 
     // 连接信号
     QObject::connect(&process, &QProcess::readyReadStandardOutput,
-                     [&process, &result]() {
+                     [&process, &result, onOutput]() {
                          QByteArray data = process.readAllStandardOutput();
-                         result.standardOutput += QString::fromLocal8Bit(data);
+                         QString chunk = QString::fromLocal8Bit(data);
+                         result.standardOutput += chunk;
+                         if (onOutput) onOutput(chunk, false);
                      });
 
     QObject::connect(&process, &QProcess::readyReadStandardError,
-                     [&process, &result]() {
+                     [&process, &result, onOutput]() {
                          QByteArray data = process.readAllStandardError();
-                         result.standardError += QString::fromLocal8Bit(data);
+                         QString chunk = QString::fromLocal8Bit(data);
+                         result.standardError += chunk;
+                         if (onOutput) onOutput(chunk, true);
                      });
 
     process.start(command, arguments);

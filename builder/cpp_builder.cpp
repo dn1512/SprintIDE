@@ -174,8 +174,14 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
 
         ProcessManager pm;
         pm.setEnvironment(env);
+
+        // 【修改】捕获 this，回调里 emit outputReady
+        auto onOutput = [this](const QString& chunk, bool isError) {
+            emit outputReady(chunk, isError);
+        };
+    
         ProcessManager::ProcessResult pr =
-            pm.executeSync(cmake, configArgs, workDir, 120000);
+            pm.executeSync(cmake, configArgs, workDir, 120000, "UTF-8", onOutput);
 
         result.fullOutput += pr.standardOutput + "\n" + pr.standardError;
         result.elapsedMs += pr.executionTime;
@@ -226,8 +232,13 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
 
     ProcessManager pm;
     pm.setEnvironment(env);
+    
+    auto onOutput = [this](const QString& chunk, bool isError) {
+        emit outputReady(chunk, isError);
+    };
+    
     ProcessManager::ProcessResult pr =
-        pm.executeSync(cmake, buildArgs, workDir, 600000);
+        pm.executeSync(cmake, buildArgs, workDir, 600000, "UTF-8", onOutput);
 
     result.fullOutput += pr.standardOutput + "\n" + pr.standardError;
     result.exitCode = pr.exitCode;
@@ -280,7 +291,13 @@ bool CppBuilder::buildSingleFile(const BuildTask& task, BuildResult& result)
 
     // 4. 执行编译
     m_processManager.setEnvironment(env);
-    ProcessManager::ProcessResult pr = m_processManager.executeSync(compiler, args, workDir, 60000);
+
+    auto onOutput = [this](const QString& chunk, bool isError) {
+        emit outputReady(chunk, isError);
+    };
+    
+    ProcessManager::ProcessResult pr =
+        m_processManager.executeSync(compiler, args, workDir, 60000, "UTF-8", onOutput);
 
     // 5. 填充结果
     result.exitCode = pr.exitCode;

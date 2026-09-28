@@ -1,6 +1,7 @@
 #include "compile_manager.h"
 #include "path_utils.h"
 #include "project_config.h"
+#include "builder/ibuilder.h"
 
 #include <utility>   // for std::pair
 #include <QDebug>
@@ -1303,12 +1304,16 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     }
 
     // ============================================================
-    // 4. 关键改动：把 builder->build() 丢到后台线程
-    //
-    //    - QtConcurrent::run 用全局线程池，不创建新线程，开销小
-    //    - lambda 捕获 task 和 builder 的拷贝（Builder 是指针，本身
-    //      是单例，不拷贝对象本身）
-    //    - 返回值是 std::pair<bool, BuildResult>
+    // 连接 builder 的实时输出信号
+    // ============================================================
+    m_currentTaskId = task.taskId;
+    
+    connect(builder, &IBuilder::outputReady,
+            this, &CompileManager::onBuilderOutput,
+            Qt::ConnectionType(Qt::QueuedConnection | Qt::UniqueConnection));
+
+    // ============================================================
+    // 4. 把 builder->build() 丢到后台线程
     // ============================================================
     m_runningTaskCount.fetch_add(1);
 
@@ -1363,23 +1368,23 @@ void CompileManager::handleBuildFinished(const BuildTask& task,
     }
 
     // ---- 4.2 把完整输出逐行发给 UI（保留原有分批逻辑）----
-    if (!result.fullOutput.isEmpty()) {
-        const QStringList lines = result.fullOutput.split('\n');
-        QString chunk;
-        int batchCounter = 0;
-        for (const QString& line : lines) {
-            chunk += line;
-            chunk += '\n';
-            if (++batchCounter >= 20) {
-                emit compileOutput(task.taskId, chunk, !result.success);
-                chunk.clear();
-                batchCounter = 0;
-            }
-        }
-        if (!chunk.isEmpty()) {
-            emit compileOutput(task.taskId, chunk, !result.success);
-        }
-    }
+    // if (!result.fullOutput.isEmpty()) {
+        // const QStringList lines = result.fullOutput.split('\n');
+        // QString chunk;
+        // int batchCounter = 0;
+        // for (const QString& line : lines) {
+            // chunk += line;
+            // chunk += '\n';
+            // if (++batchCounter >= 20) {
+                // emit compileOutput(task.taskId, chunk, !result.success);
+                // chunk.clear();
+                // batchCounter = 0;
+            // }
+        // }
+        // if (!chunk.isEmpty()) {
+            // emit compileOutput(task.taskId, chunk, !result.success);
+        // }
+    // }
 
     // ---- 4.3 转换为 CompileResult ----
     CompileResult oldResult;
@@ -1400,6 +1405,8 @@ void CompileManager::handleBuildFinished(const BuildTask& task,
                           result.errorMessage.isEmpty() ? "Build failed"
                                                         : result.errorMessage);
     }
+
+    m_currentTaskId.clear();
 }
 
 // ==================== 私有槽函数 ====================
@@ -1513,6 +1520,13 @@ void CompileManager::onProgressUpdated(const QString& processId, qint64 elapsedT
     // 这里可以计算更精确的进度
     // 简化实现：每收到进度更新就发送一次
     emit compileProgress(processId, 50, "编译中...");
+}
+
+void CompileManager::onBuilderOutput(const QString& chunk, bool isError)
+{
+    // 当前只有一个任务在跑，直接用 m_currentTaskId
+    if (m_currentTaskId.isEmpty()) return;
+    emit compileOutput(m_currentTaskId, chunk, isError);
 }
 
 } // namespace SprintIDE

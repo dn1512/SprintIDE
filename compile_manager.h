@@ -355,6 +355,7 @@ private slots:
     void onProcessStarted(const QString& processId);
     void onProcessError(const QString& processId, const QString& errorMessage);
     void onProgressUpdated(const QString& processId, qint64 elapsedTime);
+    void onBuilderOutput(const QString& chunk, bool isError);
 
 private:
     /**
@@ -464,6 +465,7 @@ private:
     QScopedPointer<Private> d;
     /// 正在运行的编译任务数（防并发）
     std::atomic<int> m_runningTaskCount{0};
+    QString m_currentTaskId;
 };
 
 } // namespace SprintIDE

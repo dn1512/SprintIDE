@@ -9,10 +9,14 @@ namespace SprintIDE {
 
 /**
  * @brief 构建器抽象接口
+ *
+ * 继承 QObject 以便发出 outputReady 信号（实时输出）。
  */
-class IBuilder {
+class IBuilder : public QObject {
+    Q_OBJECT
 public:
-    virtual ~IBuilder() = default;
+    explicit IBuilder(QObject* parent = nullptr) : QObject(parent) {}
+    ~IBuilder() override = default;
 
     /**
      * @brief 准备构建所需的环境变量
@@ -52,6 +56,18 @@ public:
      * @return 可执行文件的完整路径，如果无法确定则返回空字符串
      */
     virtual QString getExecutablePath(const BuildTask& task) = 0;
+
+signals:
+    /**
+     * @brief 构建过程中有输出到达（可能触发多次）
+     * @param chunk    输出片段（可能含多行）
+     * @param isError  是否为 stderr
+     *
+     * 注意：此信号可能在**工作线程**发出（因为 build() 是在
+     *      QtConcurrent 线程池里跑的）。接收方必须用
+     *      Qt::QueuedConnection 或接收方本身在 QObject 里。
+     */
+    void outputReady(const QString& chunk, bool isError);
 };
 
 } // namespace SprintIDE
