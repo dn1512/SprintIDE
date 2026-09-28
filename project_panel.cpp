@@ -299,14 +299,14 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
 
     if (isDirectory) {
         if (!QDir(parentDir).mkdir(fileName)) {
-            QMessageBox::critical(this, "创建失败", "无法创建目录: " + fileName);
+            QMessageBox::critical(this, tr("创建失败"), tr("无法创建目录: ") + fileName);
             return false;
         }
     } else {
         QFile file(fullPath);
         if (!file.open(QIODevice::WriteOnly)) {
-            QMessageBox::critical(this, "创建失败",
-                                  "无法创建文件: " + fileName + "\n错误: " + file.errorString());
+            QMessageBox::critical(this, tr("创建失败"),
+                                  tr("无法创建文件: ") + fileName + tr("\n错误: ") + file.errorString());
             return false;
         }
         file.close();
@@ -332,12 +332,12 @@ bool ProjectPanel::renameFile(const QString& oldPath, const QString& newName)
     QFileInfo oldInfo(oldPath);
     QString newPath = oldInfo.dir().absoluteFilePath(newName);
     if (QFileInfo::exists(newPath)) {
-        QMessageBox::warning(this, "重命名失败", "目标文件已存在: " + newName);
+        QMessageBox::warning(this, tr("重命名失败"), tr("目标文件已存在: ") + newName);
         return false;
     }
 
     if (!QFile::rename(oldPath, newPath)) {
-        QMessageBox::critical(this, "重命名失败", "无法重命名文件");
+        QMessageBox::critical(this, tr("重命名失败"), tr("无法重命名文件"));
         return false;
     }
 
@@ -353,8 +353,8 @@ bool ProjectPanel::deleteFile(const QString& filePath, bool moveToTrash)
 
     QFileInfo info(filePath);
     QMessageBox::StandardButton reply = QMessageBox::question(
-        this, "确认删除",
-        QString("确定要删除 \"%1\" 吗？").arg(info.fileName()),
+        this, tr("确认删除"),
+        QString(tr("确定要删除 \"%1\" 吗？")).arg(info.fileName()),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (reply != QMessageBox::Yes) return false;
 
@@ -364,7 +364,7 @@ bool ProjectPanel::deleteFile(const QString& filePath, bool moveToTrash)
         m_fileTreeView->setCurrentIndex(QModelIndex());
         emit fileDeleted(filePath);
     } else {
-        QMessageBox::critical(this, "删除失败", "无法删除: " + info.fileName());
+        QMessageBox::critical(this, tr("删除失败"), tr("无法删除: ") + info.fileName());
     }
     return success;
 }
@@ -450,7 +450,7 @@ void ProjectPanel::newFile()
     QString parentDir = selectedParentDir();
     if (parentDir.isEmpty()) parentDir = m_projectPath;
     bool ok;
-    QString name = QInputDialog::getText(this, "新建文件", "文件名:", QLineEdit::Normal,
+    QString name = QInputDialog::getText(this, tr("新建文件"), tr("文件名:"), QLineEdit::Normal,
                                          getNewFileName(parentDir, "new_file", "cpp"), &ok);
     if (ok && !name.isEmpty()) addNewFile(parentDir, name, false);
 }
@@ -460,7 +460,7 @@ void ProjectPanel::newDirectory()
     QString parentDir = selectedParentDir();
     if (parentDir.isEmpty()) parentDir = m_projectPath;
     bool ok;
-    QString name = QInputDialog::getText(this, "新建目录", "目录名:", QLineEdit::Normal,
+    QString name = QInputDialog::getText(this, tr("新建目录"), tr("目录名:"), QLineEdit::Normal,
                                          getNewFileName(parentDir, "NewFolder", ""), &ok);
     if (ok && !name.isEmpty()) addNewFile(parentDir, name, true);
 }
@@ -728,10 +728,10 @@ void ProjectPanel::contextMenuEvent(QContextMenuEvent *event)
         m_contextMenu->exec(event->globalPos());
     } else {
         QMenu blankMenu(this);
-        blankMenu.addAction("新建文件", this, &ProjectPanel::newFile);
-        blankMenu.addAction("新建目录", this, &ProjectPanel::newDirectory);
+        blankMenu.addAction(tr("新建文件"), this, &ProjectPanel::newFile);
+        blankMenu.addAction(tr("新建目录"), this, &ProjectPanel::newDirectory);
         blankMenu.addSeparator();
-        blankMenu.addAction("刷新", this, &ProjectPanel::refresh);
+        blankMenu.addAction(tr("刷新"), this, &ProjectPanel::refresh);
         blankMenu.exec(event->globalPos());
     }
 }
@@ -920,24 +920,24 @@ void ProjectPanel::createTestTree()
 void ProjectPanel::createContextMenu()
 {
     m_contextMenu = new QMenu(this);
-    m_newFileAction = m_contextMenu->addAction("新建文件", this, &ProjectPanel::newFile);
-    m_newDirAction  = m_contextMenu->addAction("新建目录", this, &ProjectPanel::newDirectory);
+    m_newFileAction = m_contextMenu->addAction(tr("新建文件"), this, &ProjectPanel::newFile);
+    m_newDirAction  = m_contextMenu->addAction(tr("新建目录"), this, &ProjectPanel::newDirectory);
     m_contextMenu->addSeparator();
-    m_openFileAction = m_contextMenu->addAction("打开", this, &ProjectPanel::openSelectedFile);
-    m_renameAction   = m_contextMenu->addAction("重命名", this, &ProjectPanel::renameSelectedFile);
-    m_deleteAction   = m_contextMenu->addAction("删除", this, &ProjectPanel::deleteSelectedFile);
+    m_openFileAction = m_contextMenu->addAction(tr("打开"), this, &ProjectPanel::openSelectedFile);
+    m_renameAction   = m_contextMenu->addAction(tr("重命名"), this, &ProjectPanel::renameSelectedFile);
+    m_deleteAction   = m_contextMenu->addAction(tr("删除"), this, &ProjectPanel::deleteSelectedFile);
     m_contextMenu->addSeparator();
-    m_copyPathAction = m_contextMenu->addAction("复制路径", this, &ProjectPanel::copyFilePath);
-    m_showInExplorerAction = m_contextMenu->addAction("在文件管理器中显示", this, &ProjectPanel::showInFileManager);
+    m_copyPathAction = m_contextMenu->addAction(tr("复制路径"), this, &ProjectPanel::copyFilePath);
+    m_showInExplorerAction = m_contextMenu->addAction(tr("在文件管理器中显示"), this, &ProjectPanel::showInFileManager);
     m_contextMenu->addSeparator();
-    m_historyAction = m_contextMenu->addAction("查看本地历史", this, &ProjectPanel::showFileHistory);
+    m_historyAction = m_contextMenu->addAction(tr("查看本地历史"), this, &ProjectPanel::showFileHistory);
 
     // ---- Git 子菜单（插在"刷新"之前，与 PyCharm 位置一致） ----
     buildGitSubMenu();
 
     m_contextMenu->addSeparator();
-    m_refreshAction = m_contextMenu->addAction("刷新", this, &ProjectPanel::refreshSelected);
-    m_expandAction  = m_contextMenu->addAction("展开", this, &ProjectPanel::expandToSelected);
+    m_refreshAction = m_contextMenu->addAction(tr("刷新"), this, &ProjectPanel::refreshSelected);
+    m_expandAction  = m_contextMenu->addAction(tr("展开"), this, &ProjectPanel::expandToSelected);
 }
 
 void ProjectPanel::buildGitSubMenu()
@@ -1277,11 +1277,11 @@ QStandardItem* ProjectPanel::findOrCreateTestRoot()
     QStandardItem* root = m_testModel->invisibleRootItem();
     for (int i = 0; i < root->rowCount(); ++i) {
         QStandardItem* item = root->child(i);
-        if (item && item->text() == "测试 (pytest)") {
+        if (item && item->text() == tr("测试 (pytest)")) {
             return item;
         }
     }
-    QStandardItem* newRoot = new QStandardItem("测试 (pytest)");
+    QStandardItem* newRoot = new QStandardItem(tr("测试 (pytest)"));
     newRoot->setIcon(QIcon(":/icons/test.svg"));
     newRoot->setEditable(false);
     root->appendRow(newRoot);

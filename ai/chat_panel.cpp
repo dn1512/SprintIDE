@@ -22,7 +22,7 @@ namespace SprintIDE {
 // 构造函数
 // ============================================================
 ChatPanel::ChatPanel(QWidget *parent)
-    : QDockWidget("AI 助手", parent)
+    : QDockWidget(tr("AI 助手"), parent)
     , m_maxHistorySize(50)
 {
     setObjectName("ChatPanel");
@@ -54,13 +54,13 @@ void ChatPanel::setAIServer(AIServer *server)
         connect(server, &AIServer::agentConnected,
                 this, [this]() {
                     setConnectionStatus(true);
-                    showSystemMessage("AI 助手已连接", false);
+                    showSystemMessage(tr("AI 助手已连接"), false);
                 });
 
         connect(server, &AIServer::agentDisconnected,
                 this, [this]() {
                     setConnectionStatus(false);
-                    showSystemMessage("AI 助手已断开连接", true);
+                    showSystemMessage(tr("AI 助手已断开连接"), true);
                 });
 
         connect(server, &AIServer::streamDataReceived,
@@ -78,7 +78,7 @@ void ChatPanel::setAIServer(AIServer *server)
         connect(server, &AIServer::errorResponseReceived,
                 this, [this](int requestId, int code, const QString &message) {
                     Q_UNUSED(requestId);
-                    showSystemMessage(QString("AI 错误 (%1): %2").arg(code).arg(message), true);
+                    showSystemMessage(QString(tr("AI 错误 (%1): %2")).arg(code).arg(message), true);
                 });
 
         qDebug() << "[ChatPanel] AI 服务器已设置";
@@ -139,7 +139,7 @@ void ChatPanel::createToolbar()
     m_toolbar->setFixedHeight(32);
 
     // 左：状态
-    m_statusLabel = new QLabel("● 未连接", this);
+    m_statusLabel = new QLabel(tr("● 未连接"), this);
     m_statusLabel->setObjectName("statusLabel");
     m_statusLabel->setProperty("class", "disconnected");
     m_toolbar->addWidget(m_statusLabel);
@@ -150,21 +150,21 @@ void ChatPanel::createToolbar()
     m_toolbar->addWidget(spacer);
 
     // 右：清空 + 复制
-    m_clearButton = new QPushButton("清空", this);
+    m_clearButton = new QPushButton(tr("清空"), this);
     m_clearButton->setObjectName("ChatClearButton");
-    m_clearButton->setToolTip("清空所有对话消息");
+    m_clearButton->setToolTip(tr("清空所有对话消息"));
     m_clearButton->setFixedHeight(24);
     connect(m_clearButton, &QPushButton::clicked, this, &ChatPanel::onClearClicked);
     m_toolbar->addWidget(m_clearButton);
 
-    QPushButton *copyButton = new QPushButton("复制", this);
+    QPushButton *copyButton = new QPushButton(tr("复制"), this);
     copyButton->setObjectName("ChatCopyButton");
-    copyButton->setToolTip("复制整个对话内容");
+    copyButton->setToolTip(tr("复制整个对话内容"));
     copyButton->setFixedHeight(24);
     connect(copyButton, &QPushButton::clicked, this, [this]() {
         if (m_messageDisplay) {
             QApplication::clipboard()->setText(m_messageDisplay->toPlainText());
-            showSystemMessage("对话已复制到剪贴板", false);
+            showSystemMessage(tr("对话已复制到剪贴板"), false);
         }
     });
     m_toolbar->addWidget(copyButton);
@@ -203,7 +203,7 @@ QWidget* ChatPanel::createInputArea()
 {
     m_inputEdit = new QTextEdit(this);
     m_inputEdit->setObjectName("inputEdit");
-    m_inputEdit->setPlaceholderText("输入消息，按 Enter 发送，Ctrl+Enter 换行...");
+    m_inputEdit->setPlaceholderText(tr("输入消息，按 Enter 发送，Ctrl+Enter 换行..."));
     m_inputEdit->setEnabled(false);
     m_inputEdit->setAcceptRichText(false);
     m_inputEdit->setTabChangesFocus(false);
@@ -215,10 +215,10 @@ QWidget* ChatPanel::createInputArea()
     connect(m_inputEdit, &QTextEdit::textChanged,
             this, &ChatPanel::onInputTextChanged);
 
-    m_sendButton = new QPushButton("发送", this);
+    m_sendButton = new QPushButton(tr("发送"), this);
     m_sendButton->setObjectName("sendButton");
     m_sendButton->setEnabled(false);
-    m_sendButton->setToolTip("发送消息 (Enter)");
+    m_sendButton->setToolTip(tr("发送消息 (Enter)"));
 
     // 宽度固定 64，高度不设 —— 交给布局拉伸
     m_sendButton->setFixedWidth(64);
@@ -281,7 +281,7 @@ void ChatPanel::addUserMessage(const QString &message)
     }
 
     addMessage("user", message);
-    m_conversationHistory.append("用户: " + message);
+    m_conversationHistory.append(tr("用户: ") + message);
 
     while (m_conversationHistory.size() > m_maxHistorySize) {
         m_conversationHistory.removeFirst();
@@ -387,7 +387,7 @@ bool ChatPanel::finishStreamMessage(const QString &streamId, const QString &full
         if (currentContent != fullContent) {
             QTextCursor cursor = m_streamCursors[streamId];
             cursor.beginEditBlock();
-            cursor.insertText("\n\n--- 完整内容 ---\n");
+            cursor.insertText(tr("\n\n--- 完整内容 ---\n"));
             cursor.insertText(fullContent);
             cursor.endEditBlock();
             m_streamContents[streamId] = fullContent;
@@ -424,7 +424,7 @@ void ChatPanel::clearMessages()
     m_conversationHistory.clear();
 
     emit historyChanged();
-    showSystemMessage("对话已清空", false);
+    showSystemMessage(tr("对话已清空"), false);
 }
 
 // ============================================================
@@ -436,10 +436,10 @@ void ChatPanel::setConnectionStatus(bool connected)
 
     if (m_statusLabel) {
         if (connected) {
-            m_statusLabel->setText("🟢 已连接");
+            m_statusLabel->setText(tr("🟢 已连接"));
             m_statusLabel->setProperty("class", "connected");
         } else {
-            m_statusLabel->setText("🔴 未连接");
+            m_statusLabel->setText(tr("🔴 未连接"));
             m_statusLabel->setProperty("class", "disconnected");
         }
         m_statusLabel->style()->unpolish(m_statusLabel);
@@ -454,9 +454,9 @@ void ChatPanel::setConnectionStatus(bool connected)
     }
 
     if (connected) {
-        setWindowTitle("AI 助手 (已连接)");
+        setWindowTitle(tr("AI 助手 (已连接)"));
     } else {
-        setWindowTitle("AI 助手 (未连接)");
+        setWindowTitle(tr("AI 助手 (未连接)"));
     }
 
     emit connectionStatusChanged(connected);
@@ -471,7 +471,7 @@ QJsonArray ChatPanel::getConversationHistory() const
 
     for (const QString &entry : m_conversationHistory) {
         QJsonObject msg;
-        if (entry.startsWith("用户: ")) {
+        if (entry.startsWith(tr("用户: "))) {
             msg["role"] = "user";
             msg["content"] = entry.mid(3);
         } else if (entry.startsWith("AI: ")) {
@@ -663,7 +663,7 @@ QString ChatPanel::getSenderDisplayName(const QString &sender) const
     } else if (sender == "ai") {
         return m_aiName;
     } else if (sender == "system") {
-        return "系统";
+        return tr("系统");
     }
     return sender;
 }

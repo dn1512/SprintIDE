@@ -79,8 +79,8 @@ void LineNumberArea::contextMenuEvent(QContextMenuEvent* event)
     }
 
     QMenu menu;
-    QAction* editCond = menu.addAction("编辑断点条件...");
-    QAction* removeBp = menu.addAction("移除断点");
+    QAction* editCond = menu.addAction(tr("编辑断点条件..."));
+    QAction* removeBp = menu.addAction(tr("移除断点"));
 
     QAction* chosen = menu.exec(event->globalPos());
     if (chosen == editCond) {
@@ -88,8 +88,8 @@ void LineNumberArea::contextMenuEvent(QContextMenuEvent* event)
         // 从 MainWindow 侧拿不到，简单起见弹空输入框，用户重填
         bool ok;
         QString cond = QInputDialog::getText(
-            this, "断点条件",
-            QString("第 %1 行的断点条件（空 = 无条件）:").arg(line),
+            this, tr("断点条件"),
+            tr("第 %1 行的断点条件（空 = 无条件）:").arg(line),
             QLineEdit::Normal, oldCond, &ok);
         if (ok) {
             emit m_editor->breakpointConditionChanged(
@@ -408,37 +408,37 @@ void TextEditor::setupFindBar()
     layout->setContentsMargins(8, 4, 8, 4);
     layout->setSpacing(6);
 
-    QLabel* findLabel = new QLabel("查找:", m_findBar);
+    QLabel* findLabel = new QLabel(tr("查找:"), m_findBar);
     findLabel->setStyleSheet("color: #E0E0E0;");
     layout->addWidget(findLabel);
 
     m_findLineEdit = new QLineEdit(m_findBar);
-    m_findLineEdit->setPlaceholderText("输入查找内容...");
+    m_findLineEdit->setPlaceholderText(tr("输入查找内容..."));
     m_findLineEdit->setMinimumWidth(200);
     connect(m_findLineEdit, &QLineEdit::textChanged, this, &TextEditor::onFindTextChanged);
     connect(m_findLineEdit, &QLineEdit::returnPressed, this, &TextEditor::onFindNextClicked);
     layout->addWidget(m_findLineEdit);
 
     m_caseSensitiveCheck = new QCheckBox("Aa", m_findBar);
-    m_caseSensitiveCheck->setToolTip("大小写敏感");
+    m_caseSensitiveCheck->setToolTip(tr("大小写敏感"));
     m_caseSensitiveCheck->setStyleSheet("color: #E0E0E0;");
     connect(m_caseSensitiveCheck, &QCheckBox::toggled, this, &TextEditor::onToggleCaseSensitive);
     layout->addWidget(m_caseSensitiveCheck);
 
     m_wholeWordCheck = new QCheckBox("\"\"", m_findBar);
-    m_wholeWordCheck->setToolTip("全字匹配");
+    m_wholeWordCheck->setToolTip(tr("全字匹配"));
     m_wholeWordCheck->setStyleSheet("color: #E0E0E0;");
     connect(m_wholeWordCheck, &QCheckBox::toggled, this, &TextEditor::onToggleWholeWord);
     layout->addWidget(m_wholeWordCheck);
 
     m_findPreviousButton = new QPushButton("▲", m_findBar);
-    m_findPreviousButton->setToolTip("上一个 (Shift+F3)");
+    m_findPreviousButton->setToolTip(tr("上一个 (Shift+F3)"));
     m_findPreviousButton->setFixedSize(30, 24);
     connect(m_findPreviousButton, &QPushButton::clicked, this, &TextEditor::onFindPreviousClicked);
     layout->addWidget(m_findPreviousButton);
 
     m_findNextButton = new QPushButton("▼", m_findBar);
-    m_findNextButton->setToolTip("下一个 (F3)");
+    m_findNextButton->setToolTip(tr("下一个 (F3)"));
     m_findNextButton->setFixedSize(30, 24);
     connect(m_findNextButton, &QPushButton::clicked, this, &TextEditor::onFindNextClicked);
     layout->addWidget(m_findNextButton);
@@ -449,26 +449,26 @@ void TextEditor::setupFindBar()
     layout->addWidget(m_matchCountLabel);
 
     m_toggleReplaceButton = new QPushButton("▼", m_findBar);
-    m_toggleReplaceButton->setToolTip("显示替换");
+    m_toggleReplaceButton->setToolTip(tr("显示替换"));
     m_toggleReplaceButton->setFixedSize(30, 24);
     connect(m_toggleReplaceButton, &QPushButton::clicked, this, &TextEditor::onToggleReplaceMode);
     layout->addWidget(m_toggleReplaceButton);
 
     m_replaceLineEdit = new QLineEdit(m_findBar);
-    m_replaceLineEdit->setPlaceholderText("替换为...");
+    m_replaceLineEdit->setPlaceholderText(tr("替换为..."));
     m_replaceLineEdit->setMinimumWidth(150);
     m_replaceLineEdit->setVisible(false);
     connect(m_replaceLineEdit, &QLineEdit::textChanged, this, &TextEditor::onReplaceTextChanged);
     connect(m_replaceLineEdit, &QLineEdit::returnPressed, this, &TextEditor::onReplaceClicked);
     layout->addWidget(m_replaceLineEdit);
 
-    m_replaceButton = new QPushButton("替换", m_findBar);
+    m_replaceButton = new QPushButton(tr("替换"), m_findBar);
     m_replaceButton->setVisible(false);
     m_replaceButton->setFixedWidth(50);
     connect(m_replaceButton, &QPushButton::clicked, this, &TextEditor::onReplaceClicked);
     layout->addWidget(m_replaceButton);
 
-    m_replaceAllButton = new QPushButton("全部替换", m_findBar);
+    m_replaceAllButton = new QPushButton(tr("全部替换"), m_findBar);
     m_replaceAllButton->setVisible(false);
     m_replaceAllButton->setFixedWidth(70);
     connect(m_replaceAllButton, &QPushButton::clicked, this, &TextEditor::onReplaceAllClicked);
@@ -477,7 +477,7 @@ void TextEditor::setupFindBar()
     layout->addStretch();
 
     m_closeButton = new QPushButton("×", m_findBar);
-    m_closeButton->setToolTip("关闭 (Esc)");
+    m_closeButton->setToolTip(tr("关闭 (Esc)"));
     m_closeButton->setFixedSize(30, 24);
     m_closeButton->setStyleSheet("QPushButton { background-color: #555555; color: #E0E0E0; border: none; }");
     connect(m_closeButton, &QPushButton::clicked, this, &TextEditor::onCloseFindBar);
@@ -680,36 +680,36 @@ void TextEditor::createContextMenu()
     m_contextMenu = new QMenu(this);
 
     // 创建菜单动作
-    m_undoAction = m_contextMenu->addAction("撤销 (Ctrl+Z)", this, &TextEditor::undo);
-    m_redoAction = m_contextMenu->addAction("重做 (Ctrl+Y)", this, &TextEditor::redo);
+    m_undoAction = m_contextMenu->addAction(tr("撤销 (Ctrl+Z)"), this, &TextEditor::undo);
+    m_redoAction = m_contextMenu->addAction(tr("重做 (Ctrl+Y)"), this, &TextEditor::redo);
     m_contextMenu->addSeparator();
 
-    m_cutAction = m_contextMenu->addAction("剪切 (Ctrl+X)", this, &TextEditor::cut);
-    m_copyAction = m_contextMenu->addAction("复制 (Ctrl+C)", this, &TextEditor::copy);
-    m_pasteAction = m_contextMenu->addAction("粘贴 (Ctrl+V)", this, &TextEditor::paste);
+    m_cutAction = m_contextMenu->addAction(tr("剪切 (Ctrl+X)"), this, &TextEditor::cut);
+    m_copyAction = m_contextMenu->addAction(tr("复制 (Ctrl+C)"), this, &TextEditor::copy);
+    m_pasteAction = m_contextMenu->addAction(tr("粘贴 (Ctrl+V)"), this, &TextEditor::paste);
     m_contextMenu->addSeparator();
 
-    m_selectAllAction = m_contextMenu->addAction("全选 (Ctrl+A)", this, &TextEditor::selectAll);
+    m_selectAllAction = m_contextMenu->addAction(tr("全选 (Ctrl+A)"), this, &TextEditor::selectAll);
     m_contextMenu->addSeparator();
 
-    m_commentAction = m_contextMenu->addAction("注释选中行 (Ctrl+/)", this, &TextEditor::commentSelection);
-    m_uncommentAction = m_contextMenu->addAction("取消注释 (Ctrl+/)", this, &TextEditor::uncommentSelection);
+    m_commentAction = m_contextMenu->addAction(tr("注释选中行 (Ctrl+/)"), this, &TextEditor::commentSelection);
+    m_uncommentAction = m_contextMenu->addAction(tr("取消注释 (Ctrl+/)"), this, &TextEditor::uncommentSelection);
     m_contextMenu->addSeparator();
 
-    m_duplicateLineAction = m_contextMenu->addAction("复制当前行 (Ctrl+D)", this, &TextEditor::duplicateLine);
-    m_deleteLineAction = m_contextMenu->addAction("删除当前行 (Ctrl+Y)", this, &TextEditor::deleteLine);
+    m_duplicateLineAction = m_contextMenu->addAction(tr("复制当前行 (Ctrl+D)"), this, &TextEditor::duplicateLine);
+    m_deleteLineAction = m_contextMenu->addAction(tr("删除当前行 (Ctrl+Y)"), this, &TextEditor::deleteLine);
     m_contextMenu->addSeparator();
 
     // 修复：连接到一个实际的槽函数，而不是不存在的信号
-    m_gotoLineAction = m_contextMenu->addAction("跳转到行 (Ctrl+G)...", this, &TextEditor::onGotoLineAction);
+    m_gotoLineAction = m_contextMenu->addAction(tr("跳转到行 (Ctrl+G)..."), this, &TextEditor::onGotoLineAction);
 }
 
 bool TextEditor::loadFile(const QString &filePath)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "文件打开失败",
-                             QString("无法打开文件：%1\n错误：%2")
+        QMessageBox::warning(this, tr("文件打开失败"),
+                             QString(tr("无法打开文件：%1\n错误：%2"))
                                  .arg(filePath).arg(file.errorString()));
         return false;
     }
@@ -770,7 +770,7 @@ bool TextEditor::saveFile()
 {
     if (m_filePath.isEmpty()) {
         QString filePath = QFileDialog::getSaveFileName(
-            this, "保存文件", "", "C++文件 (*.cpp *.h *.hpp);;所有文件 (*.*)");
+            this, tr("保存文件"), "", tr("C++文件 (*.cpp *.h *.hpp);;所有文件 (*.*)"));
 
         if (filePath.isEmpty()) {
             return false;
@@ -782,8 +782,8 @@ bool TextEditor::saveFile()
     QFile file(m_filePath);
 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "文件保存失败",
-                             QString("无法保存文件：%1\n错误：%2")
+        QMessageBox::warning(this, tr("文件保存失败"),
+                             QString(tr("无法保存文件：%1\n错误：%2"))
                                  .arg(m_filePath).arg(file.errorString()));
         return false;
     }
@@ -873,7 +873,7 @@ void TextEditor::setFilePath(const QString& path)
 QString TextEditor::fileName() const
 {
     if (m_filePath.isEmpty()) {
-        return "未命名";
+        return tr("未命名");
     }
 
     QFileInfo fileInfo(m_filePath);
@@ -3582,7 +3582,7 @@ void TextEditor::onTextChanged()
 void TextEditor::onGotoLineAction()
 {
     bool ok;
-    int line = QInputDialog::getInt(this, "跳转到行", "行号:", 1, 1, lineCount(), 1, &ok);
+    int line = QInputDialog::getInt(this, tr("跳转到行"), tr("行号:"), 1, 1, lineCount(), 1, &ok);
     if (ok) {
         gotoLine(line);
     }

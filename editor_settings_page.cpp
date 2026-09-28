@@ -96,13 +96,13 @@ void EditorSettingsPage::setupUI()
     m_preview->setReadOnly(true);
     m_preview->setMinimumHeight(160);
     m_preview->setPlainText(
-        "// 这段代码会实时反映字体与缩进设置\n"
+        tr("// 这段代码会实时反映字体与缩进设置\n"
         "#include <iostream>\n"
         "\n"
         "int main() {\n"
         "    std::cout << \"Hello, SprintIDE!\" << std::endl;\n"
         "    return 0;\n"
-        "}\n");
+        "}\n"));
     previewLayout->addWidget(m_preview);
 
     root->addWidget(previewGroup, 1);

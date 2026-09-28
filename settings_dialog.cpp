@@ -137,8 +137,9 @@ EnvironmentSettingsPage::EnvironmentSettingsPage(QWidget *parent)
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
     // ---------- 说明标签 ----------
-    QLabel *infoLabel = new QLabel(tr("这些环境变量将全局生效，用于配置各语言的 SDK 路径。"
-                                      "它们与具体项目无关，代表 SprintIDE 当前具备开发哪些语言的能力。"), this);
+    QLabel *infoLabel = new QLabel(
+        tr("这些环境变量将全局生效，用于配置各语言的 SDK 路径。"
+           "它们与具体项目无关，代表 SprintIDE 当前具备开发哪些语言的能力。"), this);
     infoLabel->setWordWrap(true);
     infoLabel->setStyleSheet("QLabel { color: #888888; font-size: 10pt; margin-bottom: 8px; }");
     mainLayout->addWidget(infoLabel);
@@ -234,8 +235,8 @@ LspSettingsPage::LspSettingsPage(QWidget* parent)
 
     // ---------- 说明 ----------
     QLabel* infoLabel = new QLabel(
-        tr("控制 LSP 服务器返回的诊断信息如何显示。\n"
-           "错误（error）始终显示，不受此设置影响。"),
+        tr("控制 LSP 服务器返回的诊断信息如何显示。\n")
+           + tr("错误（error）始终显示，不受此设置影响。"),
         this);
     infoLabel->setWordWrap(true);
     infoLabel->setStyleSheet("QLabel { color: #888888; font-size: 10pt; margin-bottom: 8px; }");

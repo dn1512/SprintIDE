@@ -821,84 +821,84 @@ void MainWindow::setupMenuBar()
     QMenuBar *menuBar = this->menuBar();
 
     // ==================== 文件菜单 ====================
-    QMenu *fileMenu = menuBar->addMenu("文件(&F)");
+    QMenu *fileMenu = menuBar->addMenu(tr("文件(&F)"));
 
-    QMenu *newMenu = fileMenu->addMenu(QIcon(":/icons/icons/new_file.svg"), "新建(&N)");
+    QMenu *newMenu = fileMenu->addMenu(QIcon(":/icons/icons/new_file.svg"), tr("新建(&N)"));
 
     // 通用新建文件（弹出对话框）
-    QAction *newFileAction = newMenu->addAction(QIcon(":/icons/icons/text.svg"), "文件...");
+    QAction *newFileAction = newMenu->addAction(QIcon(":/icons/icons/text.svg"), tr("文件..."));
     newFileAction->setShortcut(QKeySequence::New);
     connect(newFileAction, &QAction::triggered, this, &MainWindow::onNewFile);
 
     newMenu->addSeparator();
 
     // 快速创建 C++ 文件
-    QAction *newCppAction = newMenu->addAction(QIcon(":/icons/icons/cpp.svg"), "C++ 源文件");
+    QAction *newCppAction = newMenu->addAction(QIcon(":/icons/icons/cpp.svg"), tr("C++ 源文件"));
     connect(newCppAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("main.cpp", "新建 C++ 文件", QString());
+        createNewFileWithName("main.cpp", tr("新建 C++ 文件"), QString());
     });
 
     // 快速创建 C++ 头文件
-    QAction *newHppAction = newMenu->addAction(QIcon(":/icons/icons/header.svg"), "C++ 头文件");
+    QAction *newHppAction = newMenu->addAction(QIcon(":/icons/icons/header.svg"), tr("C++ 头文件"));
     connect(newHppAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("main.h", "新建 C++ 头文件", QString());
+        createNewFileWithName("main.h", tr("新建 C++ 头文件"), QString());
     });
 
     newMenu->addSeparator();
 
     // 快速创建 Python 文件
-    QAction *newPythonAction = newMenu->addAction("Python 文件");
+    QAction *newPythonAction = newMenu->addAction(tr("Python 文件"));
     connect(newPythonAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("main.py", "新建 Python 文件", QString());
+        createNewFileWithName("main.py", tr("新建 Python 文件"), QString());
     });
 
     // 快速创建 JavaScript 文件
-    QAction *newJsAction = newMenu->addAction("JavaScript 文件");
+    QAction *newJsAction = newMenu->addAction(tr("JavaScript 文件"));
     connect(newJsAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("main.js", "新建 JavaScript 文件", QString());
+        createNewFileWithName("main.js", tr("新建 JavaScript 文件"), QString());
     });
 
     // 快速创建 HTML 文件
-    QAction *newHtmlAction = newMenu->addAction("HTML 文件");
+    QAction *newHtmlAction = newMenu->addAction(tr("HTML 文件"));
     connect(newHtmlAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("index.html", "新建 HTML 文件", QString());
+        createNewFileWithName("index.html", tr("新建 HTML 文件"), QString());
     });
 
     // 快速创建纯文本文件
-    QAction *newTxtAction = newMenu->addAction("纯文本文件");
+    QAction *newTxtAction = newMenu->addAction(tr("纯文本文件"));
     connect(newTxtAction, &QAction::triggered, this, [this]() {
-        createNewFileWithName("untitled.txt", "新建文本文件", QString());
+        createNewFileWithName("untitled.txt", tr("新建文本文件"), QString());
     });
 
-    QAction *newProjectAction = newMenu->addAction(QIcon(":/icons/icons/new_project.svg"), "项目");
+    QAction *newProjectAction = newMenu->addAction(QIcon(":/icons/icons/new_project.svg"), tr("项目"));
     connect(newProjectAction, &QAction::triggered, this, &MainWindow::onNewProject);
 
-    QMenu *openMenu = fileMenu->addMenu(QIcon(":/icons/icons/open_file.svg"), "打开(&O)");
+    QMenu *openMenu = fileMenu->addMenu(QIcon(":/icons/icons/open_file.svg"), tr("打开(&O)"));
 
     // 快速打开（Ctrl+O）—— 搜索文件名快速打开
-    QAction *quickOpenAction = openMenu->addAction("快速打开文件...");
+    QAction *quickOpenAction = openMenu->addAction(tr("快速打开文件..."));
     quickOpenAction->setShortcut(QKeySequence::Open);          // Ctrl+O / Cmd+O
-    quickOpenAction->setStatusTip("输入文件名快速打开 (Ctrl+O)");
+    quickOpenAction->setStatusTip(tr("输入文件名快速打开 (Ctrl+O)"));
     connect(quickOpenAction, &QAction::triggered, this, &MainWindow::onQuickOpen);
 
     // 传统打开对话框（改为 Ctrl+Alt+O，避免与快速打开冲突）
     QAction *openFileAction = openMenu->addAction(
-        QIcon(":/icons/icons/open_file.svg"), "打开文件...");
+        QIcon(":/icons/icons/open_file.svg"), tr("打开文件..."));
     openFileAction->setShortcut(QKeySequence("Ctrl+Alt+O"));
     connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
 
     QAction *openProjectAction = openMenu->addAction(
-        QIcon(":/icons/icons/open_project.svg"), "项目");
+        QIcon(":/icons/icons/open_project.svg"), tr("项目"));
     openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
     connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
 
     fileMenu->addSeparator();
 
-    QAction *saveFileAction = fileMenu->addAction(QIcon(":/icons/icons/save_file.svg"), "保存(&S)");
+    QAction *saveFileAction = fileMenu->addAction(QIcon(":/icons/icons/save_file.svg"), tr("保存(&S)"));
     saveFileAction->setShortcut(QKeySequence::Save);
     connect(saveFileAction, &QAction::triggered, this, &MainWindow::onSaveFile);
 
-    QAction *saveAllAction = fileMenu->addAction(QIcon(":/icons/icons/save_all.svg"), "保存全部(&A)");
+    QAction *saveAllAction = fileMenu->addAction(QIcon(":/icons/icons/save_all.svg"), tr("保存全部(&A)"));
     saveAllAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
     connect(saveAllAction, &QAction::triggered, this, [this]() {
         for (int i = 0; i < d->editorTabs->count(); ++i) {
@@ -910,47 +910,47 @@ void MainWindow::setupMenuBar()
         logInfo("已保存所有文件");
     });
 
-    QAction *saveAsAction = fileMenu->addAction("另存为(&A)");
+    QAction *saveAsAction = fileMenu->addAction(tr("另存为(&A)"));
     connect(saveAsAction, &QAction::triggered, this, &MainWindow::onSaveAs);
 
     fileMenu->addSeparator();
 
-    QAction *closeFileAction = fileMenu->addAction(QIcon(":/icons/icons/close_tab.svg"), "关闭(&C)");
+    QAction *closeFileAction = fileMenu->addAction(QIcon(":/icons/icons/close_tab.svg"), tr("关闭(&C)"));
     closeFileAction->setShortcut(QKeySequence::Close);
     connect(closeFileAction, &QAction::triggered, this, &MainWindow::onCloseFile);
 
-    QAction *exitAction = fileMenu->addAction("退出(&X)");
+    QAction *exitAction = fileMenu->addAction(tr("退出(&X)"));
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &MainWindow::onExit);
 
     // ==================== 编辑菜单 ====================
-    QMenu *editMenu = menuBar->addMenu("编辑(&E)");
+    QMenu *editMenu = menuBar->addMenu(tr("编辑(&E)"));
 
-    QAction *undoAction = editMenu->addAction(QIcon(":/icons/icons/undo.svg"), "撤销(&U)");
+    QAction *undoAction = editMenu->addAction(QIcon(":/icons/icons/undo.svg"), tr("撤销(&U)"));
     undoAction->setShortcut(QKeySequence::Undo);
     connect(undoAction, &QAction::triggered, this, &MainWindow::onUndo);
 
-    QAction *redoAction = editMenu->addAction(QIcon(":/icons/icons/redo.svg"), "重做(&R)");
+    QAction *redoAction = editMenu->addAction(QIcon(":/icons/icons/redo.svg"), tr("重做(&R)"));
     redoAction->setShortcut(QKeySequence::Redo);
     connect(redoAction, &QAction::triggered, this, &MainWindow::onRedo);
 
     editMenu->addSeparator();
 
-    QAction *cutAction = editMenu->addAction(QIcon(":/icons/icons/cut.svg"), "剪切(&T)");
+    QAction *cutAction = editMenu->addAction(QIcon(":/icons/icons/cut.svg"), tr("剪切(&T)"));
     cutAction->setShortcut(QKeySequence::Cut);
     connect(cutAction, &QAction::triggered, this, &MainWindow::onCut);
 
-    QAction *copyAction = editMenu->addAction(QIcon(":/icons/icons/copy.svg"), "复制(&C)");
+    QAction *copyAction = editMenu->addAction(QIcon(":/icons/icons/copy.svg"), tr("复制(&C)"));
     copyAction->setShortcut(QKeySequence::Copy);
     connect(copyAction, &QAction::triggered, this, &MainWindow::onCopy);
 
-    QAction *pasteAction = editMenu->addAction(QIcon(":/icons/icons/paste.svg"), "粘贴(&P)");
+    QAction *pasteAction = editMenu->addAction(QIcon(":/icons/icons/paste.svg"), tr("粘贴(&P)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, &MainWindow::onPaste);
 
     editMenu->addSeparator();
 
-    QAction *copyLineAction = editMenu->addAction("复制行(&D)");
+    QAction *copyLineAction = editMenu->addAction(tr("复制行(&D)"));
     copyLineAction->setShortcut(QKeySequence("Ctrl+D"));
     connect(copyLineAction, &QAction::triggered, this, [this]() {
         TextEditor* editor = currentEditor();
@@ -959,7 +959,7 @@ void MainWindow::setupMenuBar()
         }
     });
 
-    QAction *deleteLineAction = editMenu->addAction("删除行(&Y)");
+    QAction *deleteLineAction = editMenu->addAction(tr("删除行(&Y)"));
     deleteLineAction->setShortcut(QKeySequence("Ctrl+Y"));
     connect(deleteLineAction, &QAction::triggered, this, [this]() {
         TextEditor* editor = currentEditor();
@@ -971,11 +971,11 @@ void MainWindow::setupMenuBar()
     // ========== Python 菜单 ==========
     QMenu* pythonMenu = menuBar->addMenu("Python(&P)");
 
-    QAction* installDepsAction = pythonMenu->addAction("安装依赖");
+    QAction* installDepsAction = pythonMenu->addAction(tr("安装依赖"));
     connect(installDepsAction, &QAction::triggered, this, [this]() {
         auto model = ProjectManager::instance()->pythonProjectModel();
         if (!model) {
-            QMessageBox::information(this, "提示", "未打开 Python 项目");
+            QMessageBox::information(this, tr("提示"), tr("未打开 Python 项目"));
             return;
         }
         QString python = model->interpreterPath();
@@ -988,11 +988,11 @@ void MainWindow::setupMenuBar()
         logInfo("依赖安装完成");
     });
 
-    QAction* createVenvAction = pythonMenu->addAction("创建虚拟环境");
+    QAction* createVenvAction = pythonMenu->addAction(tr("创建虚拟环境"));
     connect(createVenvAction, &QAction::triggered, this, [this]() {
         auto model = ProjectManager::instance()->pythonProjectModel();
         if (!model) {
-            QMessageBox::information(this, "提示", "未打开 Python 项目");
+            QMessageBox::information(this, tr("提示"), tr("未打开 Python 项目"));
             return;
         }
         if (PythonVirtualEnv::createVenv(model->projectPath())) {
@@ -1003,13 +1003,13 @@ void MainWindow::setupMenuBar()
         }
     });
 
-    QAction* formatPythonAction = pythonMenu->addAction("格式化代码");
+    QAction* formatPythonAction = pythonMenu->addAction(tr("格式化代码"));
     connect(formatPythonAction, &QAction::triggered, this, [this]() {
         TextEditor* editor = currentEditor();
         if (!editor) return;
         QString filePath = editor->filePath();
         if (!filePath.endsWith(".py")) {
-            QMessageBox::information(this, "提示", "当前文件不是 Python 文件");
+            QMessageBox::information(this, tr("提示"), tr("当前文件不是 Python 文件"));
             return;
         }
         QString error;
@@ -1024,163 +1024,163 @@ void MainWindow::setupMenuBar()
     // 设置动作（原编译配置）
     editMenu->addSeparator();
 
-    QAction *settingsAction = editMenu->addAction(QIcon(":/icons/icons/setting.svg"), "设置...");
+    QAction *settingsAction = editMenu->addAction(QIcon(":/icons/icons/setting.svg"), tr("设置..."));
     settingsAction->setShortcut(QKeySequence("Ctrl+,"));
     settingsAction->setMenuRole(QAction::PreferencesRole);  // 关键：让其在 macOS 下进入应用程序菜单
     connect(settingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
 
     // ---------- 跳转到行 ----------
-    QAction *gotoLineAction = editMenu->addAction("跳转到行(&L)...");
+    QAction *gotoLineAction = editMenu->addAction(tr("跳转到行(&L)..."));
     gotoLineAction->setShortcut(QKeySequence("Ctrl+G"));   // macOS 上 = Cmd+G
     connect(gotoLineAction, &QAction::triggered, this, &MainWindow::onGotoLine);
 
     editMenu->addSeparator();
 
-    QAction *findAction = editMenu->addAction("查找(&F)");
+    QAction *findAction = editMenu->addAction(tr("查找(&F)"));
     findAction->setShortcut(QKeySequence::Find);
     connect(findAction, &QAction::triggered, this, &MainWindow::onFind);
 
-    QAction *replaceAction = editMenu->addAction("替换(&R)");
+    QAction *replaceAction = editMenu->addAction(tr("替换(&R)"));
     replaceAction->setShortcut(QKeySequence("Ctrl+Shift+H"));
     connect(replaceAction, &QAction::triggered, this, &MainWindow::onReplace);
 
-    QAction *searchInFilesAction = editMenu->addAction("在文件中查找(&F)...");
+    QAction *searchInFilesAction = editMenu->addAction(tr("在文件中查找(&F)..."));
     searchInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
-    searchInFilesAction->setStatusTip("在整个项目中搜索文本 (Ctrl+Shift+F)");
+    searchInFilesAction->setStatusTip(tr("在整个项目中搜索文本 (Ctrl+Shift+F)"));
     connect(searchInFilesAction, &QAction::triggered,
             this, &MainWindow::onSearchInFiles);
 
-    QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), "格式化代码(&O)");
+    QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), tr("格式化代码(&O)"));
     formatCodeAction->setShortcut(QKeySequence("Ctrl+Alt+L"));
     connect(formatCodeAction, &QAction::triggered, this, &MainWindow::onFormatCode);
 
-    QAction *commentAction = editMenu->addAction(QIcon(":/icons/icons/comment_code.svg"), "注释(&C)");
+    QAction *commentAction = editMenu->addAction(QIcon(":/icons/icons/comment_code.svg"), tr("注释(&C)"));
     commentAction->setShortcut(QKeySequence("Ctrl+/"));
     connect(commentAction, &QAction::triggered, this, &MainWindow::onComment);
 
     // ==================== 构建菜单 ====================
-    QMenu *buildMenu = menuBar->addMenu("构建(&B)");
+    QMenu *buildMenu = menuBar->addMenu(tr("构建(&B)"));
 
-    QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译当前文件(&C)");
+    QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译当前文件(&C)"));
     compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
     connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
 
-    QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), "编译项目(&P)");
+    QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译项目(&P)"));
     compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
     connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
-    QAction *cleanBuildAction = buildMenu->addAction("清理构建(&O)");
+    QAction *cleanBuildAction = buildMenu->addAction(tr("清理构建(&O)"));
     connect(cleanBuildAction, &QAction::triggered, this, &MainWindow::onCleanBuild);
 
     // QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
     // connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
 
     // ==================== 调试菜单 ====================
-    QMenu *debugMenu = menuBar->addMenu("调试(&D)");
+    QMenu *debugMenu = menuBar->addMenu(tr("调试(&D)"));
 
-    m_startDebugAction = debugMenu->addAction(QIcon(":/icons/icons/debug.svg"), "启动调试(&S)");
+    m_startDebugAction = debugMenu->addAction(QIcon(":/icons/icons/debug.svg"), tr("启动调试(&S)"));
     m_startDebugAction->setShortcut(QKeySequence("Ctrl+Shift+D"));
     connect(m_startDebugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
 
-    m_stopDebugAction = debugMenu->addAction(QIcon(":/icons/icons/stop.svg"),"停止调试(&T)");
+    m_stopDebugAction = debugMenu->addAction(QIcon(":/icons/icons/stop.svg"),tr("停止调试(&T)"));
     m_stopDebugAction->setShortcut(QKeySequence("Ctrl+."));
     m_stopDebugAction->setEnabled(false);
     connect(m_stopDebugAction, &QAction::triggered, this, &MainWindow::onStopDebug);
 
     debugMenu->addSeparator();
 
-    m_stepOverAction = debugMenu->addAction(QIcon(":/icons/icons/stop_over.svg"), "步过(&N)");
+    m_stepOverAction = debugMenu->addAction(QIcon(":/icons/icons/stop_over.svg"), tr("步过(&N)"));
     m_stepOverAction->setShortcut(QKeySequence("F10"));
     m_stepOverAction->setEnabled(false);
     connect(m_stepOverAction, &QAction::triggered, this, &MainWindow::onStepOver);
 
-    m_stepIntoAction = debugMenu->addAction(QIcon(":/icons/icons/step_into.svg"), "步入(&S)");
+    m_stepIntoAction = debugMenu->addAction(QIcon(":/icons/icons/step_into.svg"), tr("步入(&S)"));
     m_stepIntoAction->setShortcut(QKeySequence("F11"));
     m_stepIntoAction->setEnabled(false);
     connect(m_stepIntoAction, &QAction::triggered, this, &MainWindow::onStepInto);
 
-    m_stepOutAction = debugMenu->addAction(QIcon(":/icons/icons/step_out.svg"), "步出(&O)");
+    m_stepOutAction = debugMenu->addAction(QIcon(":/icons/icons/step_out.svg"), tr("步出(&O)"));
     m_stepOutAction->setShortcut(QKeySequence("Shift+F11"));
     m_stepOutAction->setEnabled(false);
     connect(m_stepOutAction, &QAction::triggered, this, &MainWindow::onStepOut);
 
     debugMenu->addSeparator();
 
-    m_continueAction = debugMenu->addAction(QIcon(":/icons/icons/run.svg"), "继续(&C)");
+    m_continueAction = debugMenu->addAction(QIcon(":/icons/icons/run.svg"), tr("继续(&C)"));
     m_continueAction->setShortcut(QKeySequence("F5"));
     m_continueAction->setEnabled(false);
     connect(m_continueAction, &QAction::triggered, this, &MainWindow::onContinueDebug);
 
     debugMenu->addSeparator();
 
-    m_addBreakpointAction = debugMenu->addAction(QIcon(":/icons/icons/toggle_break_point.svg"), "添加断点(&B)");
+    m_addBreakpointAction = debugMenu->addAction(QIcon(":/icons/icons/toggle_break_point.svg"), tr("添加断点(&B)"));
     m_addBreakpointAction->setShortcut(QKeySequence("Ctrl+F8"));
     connect(m_addBreakpointAction, &QAction::triggered, this, &MainWindow::onAddBreakpoint);
 
     // ==================== Git 菜单 ====================
     QMenu *gitMenu = menuBar->addMenu("Git(&G)");
 
-    m_gitToggleAction = gitMenu->addAction("打开 Git 窗口(&O)");
+    m_gitToggleAction = gitMenu->addAction(tr("打开 Git 窗口(&O)"));
     m_gitToggleAction->setShortcut(QKeySequence("Ctrl+Shift+G"));
-    m_gitToggleAction->setStatusTip("显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)");
+    m_gitToggleAction->setStatusTip(tr("显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)"));
     connect(m_gitToggleAction, &QAction::triggered, this, &MainWindow::toggleGitDialog);
 
     gitMenu->addSeparator();
 
-    m_gitInitAction = gitMenu->addAction("初始化仓库(&I)");
+    m_gitInitAction = gitMenu->addAction(tr("初始化仓库(&I)"));
     connect(m_gitInitAction, &QAction::triggered, this, &MainWindow::onGitInit);
 
-    m_gitCommitAction = gitMenu->addAction("提交(&C)...");
+    m_gitCommitAction = gitMenu->addAction(tr("提交(&C)..."));
     m_gitCommitAction->setShortcut(QKeySequence("Ctrl+K"));
     connect(m_gitCommitAction, &QAction::triggered, this, &MainWindow::onGitCommit);
 
     gitMenu->addSeparator();
 
-    m_gitFetchAction = gitMenu->addAction("获取(&F)");
+    m_gitFetchAction = gitMenu->addAction(tr("获取(&F)"));
     connect(m_gitFetchAction, &QAction::triggered, this, &MainWindow::onGitFetch);
 
-    m_gitPullAction = gitMenu->addAction("拉取(&P)");
+    m_gitPullAction = gitMenu->addAction(tr("拉取(&P)"));
     connect(m_gitPullAction, &QAction::triggered, this, &MainWindow::onGitPull);
 
-    m_gitPushAction = gitMenu->addAction("推送(&U)");
+    m_gitPushAction = gitMenu->addAction(tr("推送(&U)"));
     connect(m_gitPushAction, &QAction::triggered, this, &MainWindow::onGitPush);
 
     gitMenu->addSeparator();
 
-    m_gitRefreshAction = gitMenu->addAction("刷新状态(&R)");
+    m_gitRefreshAction = gitMenu->addAction(tr("刷新状态(&R)"));
     m_gitRefreshAction->setShortcut(QKeySequence("F5"));
     connect(m_gitRefreshAction, &QAction::triggered, this, &MainWindow::onGitRefresh);
 
-    m_gitShowHistoryAction = gitMenu->addAction("查看历史(&H)");
+    m_gitShowHistoryAction = gitMenu->addAction(tr("查看历史(&H)"));
     connect(m_gitShowHistoryAction, &QAction::triggered, this, &MainWindow::onGitShowHistory);
 
     // ==================== 工具菜单 ====================
-    QMenu *toolsMenu = menuBar->addMenu("工具(&T)");
+    QMenu *toolsMenu = menuBar->addMenu(tr("工具(&T)"));
 
-    QMenu *themeMenu = toolsMenu->addMenu(QIcon(":/icons/icons/setting.svg"), "主题设置(&H)");
+    QMenu *themeMenu = toolsMenu->addMenu(QIcon(":/icons/icons/setting.svg"), tr("主题设置(&H)"));
 
-    QAction *lightThemeAction = themeMenu->addAction("浅色主题(&L)");
+    QAction *lightThemeAction = themeMenu->addAction(tr("浅色主题(&L)"));
     connect(lightThemeAction, &QAction::triggered, this, &MainWindow::onThemeLight);
 
-    QAction *darkThemeAction = themeMenu->addAction("深色主题(&D)");
+    QAction *darkThemeAction = themeMenu->addAction(tr("深色主题(&D)"));
     connect(darkThemeAction, &QAction::triggered, this, &MainWindow::onThemeDark);
 
-    QAction *pluginManagerAction = toolsMenu->addAction(QIcon(":/icons/icons/services.svg"), "插件管理(&P)");
+    QAction *pluginManagerAction = toolsMenu->addAction(QIcon(":/icons/icons/services.svg"), tr("插件管理(&P)"));
     connect(pluginManagerAction, &QAction::triggered, this, [this]() {
         logInfo("插件管理功能开发中...");
     });
 
-    QAction *performanceMonitorAction = toolsMenu->addAction("性能监控(&M)");
+    QAction *performanceMonitorAction = toolsMenu->addAction(tr("性能监控(&M)"));
     performanceMonitorAction->setCheckable(true);
     performanceMonitorAction->setChecked(true);
-    performanceMonitorAction->setStatusTip("显示 / 隐藏状态栏性能监控指示器");
+    performanceMonitorAction->setStatusTip(tr("显示 / 隐藏状态栏性能监控指示器"));
     connect(performanceMonitorAction, &QAction::toggled, this, [this](bool checked) {
         if (m_performanceLabel) {
             m_performanceLabel->setVisible(checked);
         }
     });
 
-    QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/icons/terminal.svg"), "终端(&T)");
+    QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/icons/terminal.svg"), tr("终端(&T)"));
     terminalAction->setShortcut(QKeySequence("Ctrl+`"));  // Cmd+`
     connect(terminalAction, &QAction::triggered, this, [this]() {
         if (m_terminalPanel) {
@@ -1189,14 +1189,14 @@ void MainWindow::setupMenuBar()
     });
 
     // ==================== 视图菜单 ====================
-    QMenu *viewMenu = menuBar->addMenu("视图(&V)");
+    QMenu *viewMenu = menuBar->addMenu(tr("视图(&V)"));
 
     // 底部面板 toggle
-    QAction* toggleBottomPanelAction = viewMenu->addAction("底部面板(&B)");
+    QAction* toggleBottomPanelAction = viewMenu->addAction(tr("底部面板(&B)"));
     toggleBottomPanelAction->setShortcut(QKeySequence("Ctrl+J"));
     toggleBottomPanelAction->setCheckable(true);
     toggleBottomPanelAction->setChecked(true);
-    toggleBottomPanelAction->setStatusTip("显示 / 隐藏底部面板 (Ctrl+J)");
+    toggleBottomPanelAction->setStatusTip(tr("显示 / 隐藏底部面板 (Ctrl+J)"));
 
     connect(toggleBottomPanelAction, &QAction::toggled, this, [this](bool checked) {
         if (m_bottomDockWidget) {
@@ -1208,11 +1208,11 @@ void MainWindow::setupMenuBar()
     viewMenu->addSeparator();
 
     // 项目面板 toggle（顺手做）
-    QAction* toggleProjectPanelAction = viewMenu->addAction("项目面板(&P)");
+    QAction* toggleProjectPanelAction = viewMenu->addAction(tr("项目面板(&P)"));
     toggleProjectPanelAction->setShortcut(QKeySequence("Ctrl+Shift+E"));
     toggleProjectPanelAction->setCheckable(true);
     toggleProjectPanelAction->setChecked(true);
-    toggleProjectPanelAction->setStatusTip("显示 / 隐藏项目面板 (Ctrl+Shift+E)");
+    toggleProjectPanelAction->setStatusTip(tr("显示 / 隐藏项目面板 (Ctrl+Shift+E)"));
 
     connect(toggleProjectPanelAction, &QAction::toggled, this, [this](bool checked) {
         if (d->projectDock) {
@@ -1222,43 +1222,43 @@ void MainWindow::setupMenuBar()
     m_toggleProjectPanelAction = toggleProjectPanelAction;
 
     // ==================== 帮助菜单 ====================
-    QMenu *helpMenu = menuBar->addMenu("帮助(&H)");
+    QMenu *helpMenu = menuBar->addMenu(tr("帮助(&H)"));
 
-    QAction *quickStartAction = helpMenu->addAction(QIcon(":/icons/icons/run.svg"), "快速指南(&G)");
+    QAction *quickStartAction = helpMenu->addAction(QIcon(":/icons/icons/run.svg"), tr("快速指南(&G)"));
     connect(quickStartAction, &QAction::triggered, this, &MainWindow::onQuickStart);
 
-    QAction *documentationAction = helpMenu->addAction(QIcon(":/icons/icons/text.svg"), "文档中心(&D)");
+    QAction *documentationAction = helpMenu->addAction(QIcon(":/icons/icons/text.svg"), tr("文档中心(&D)"));
     connect(documentationAction, &QAction::triggered, this, &MainWindow::onDocumentation);
 
-    QAction *aboutAction = helpMenu->addAction(QIcon(":/icons/icons/app_icon.svg"), "关于(&A)");
+    QAction *aboutAction = helpMenu->addAction(QIcon(":/icons/icons/app_icon.svg"), tr("关于(&A)"));
     connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
 }
 
 void MainWindow::setupToolBar()
 {
-    QToolBar *toolBar = addToolBar("主工具栏");
+    QToolBar *toolBar = addToolBar(tr("主工具栏"));
     toolBar->setMovable(false);
     toolBar->setIconSize(QSize(20, 20));
 
-    QAction *newAction = toolBar->addAction(QIcon(":/icons/icons/new_file.svg"), "新建");
+    QAction *newAction = toolBar->addAction(QIcon(":/icons/icons/new_file.svg"), tr("新建"));
     connect(newAction, &QAction::triggered, this, &MainWindow::onNewFile);
 
-    QAction *openAction = toolBar->addAction(QIcon(":/icons/icons/open_file.svg"), "打开");
+    QAction *openAction = toolBar->addAction(QIcon(":/icons/icons/open_file.svg"), tr("打开"));
     connect(openAction, &QAction::triggered, this, &MainWindow::onOpenFile);
 
-    QAction *saveAction = toolBar->addAction(QIcon(":/icons/icons/save_file.svg"), "保存");
+    QAction *saveAction = toolBar->addAction(QIcon(":/icons/icons/save_file.svg"), tr("保存"));
     connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveFile);
 
     toolBar->addSeparator();
 
-    QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),"编译");
+    QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),tr("编译"));
     connect(buildAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
-    QAction *runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"),"运行");
+    QAction *runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"),tr("运行"));
     runAction->setShortcut(QKeySequence("Ctrl+R"));
     connect(runAction, &QAction::triggered, this, &MainWindow::onRun);
 
-    QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),"调试");
+    QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),tr("调试"));
     connect(debugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
 }
 
@@ -1267,14 +1267,14 @@ void MainWindow::setupStatusBar()
     QStatusBar *statusBar = this->statusBar();
 
     // 主状态标签
-    m_statusLabel = new QLabel("就绪", statusBar);
+    m_statusLabel = new QLabel(tr("就绪"), statusBar);
     statusBar->addWidget(m_statusLabel, 1);  // stretch = 1
 
     // 分隔线
     statusBar->addPermanentWidget(new QLabel(" | "));
 
     // 行号/列号
-    m_cursorPositionLabel = new QLabel("行: 1  列: 1", statusBar);
+    m_cursorPositionLabel = new QLabel(tr("行: 1  列: 1"), statusBar);
     statusBar->addPermanentWidget(m_cursorPositionLabel);
 
     statusBar->addPermanentWidget(new QLabel(" | "));
@@ -1292,7 +1292,7 @@ void MainWindow::setupStatusBar()
     statusBar->addPermanentWidget(new QLabel(" | "));
 
     // 缩进
-    m_indentLabel = new QLabel("空格: 4", statusBar);
+    m_indentLabel = new QLabel(tr("空格: 4"), statusBar);
     statusBar->addPermanentWidget(m_indentLabel);
 
     // 编译进度条（默认隐藏）
@@ -1329,7 +1329,7 @@ void MainWindow::setupDockWidgets()
     ThemeManager& tm = ThemeManager::instance();
 
     // ============================== 项目面板（左侧） ==============================
-    d->projectDock = new QDockWidget("项目面板", this);
+    d->projectDock = new QDockWidget(tr("项目面板"), this);
     d->projectDock->setObjectName("ProjectDock");
     d->projectDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
@@ -1352,7 +1352,7 @@ void MainWindow::setupDockWidgets()
     tm.applyThemeToTreeView(d->projectPanel->getFileTreeView());
 
     // =============================== 底部面板 =============================
-    m_bottomDockWidget = new QDockWidget("面板", this);
+    m_bottomDockWidget = new QDockWidget(tr("面板"), this);
     m_bottomDockWidget->setObjectName("BottomPanel");
     m_bottomDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
     m_bottomDockWidget->setFeatures(QDockWidget::DockWidgetClosable |
@@ -1403,7 +1403,7 @@ void MainWindow::setupDockWidgets()
 
     m_bottomTabWidget->addTab(m_outputPanel,
                               QIcon(":/icons/icons/run_view.svg"),
-                              "输出");
+                              tr("输出"));
 
     // ============================================================
     //  底部容器：左侧窄条 + 右侧 Tab
@@ -1611,7 +1611,7 @@ void MainWindow::setupConnections()
 void MainWindow::setupDebugPanel()
 {
     m_debugPanel = new DebugPanel(this);
-    int index = m_bottomTabWidget->addTab(m_debugPanel, QIcon(":/icons/icons/debug.svg"), "调试");
+    int index = m_bottomTabWidget->addTab(m_debugPanel, QIcon(":/icons/icons/debug.svg"), tr("调试"));
     m_bottomTabWidget->setTabVisible(index, false);
 
     // 连接调试面板信号到 MainWindow 的槽函数
@@ -1633,7 +1633,7 @@ void MainWindow::setupDebugPanel()
 void MainWindow::setupTerminalPanel()
 {
     m_terminalPanel = new TerminalPanel(this);
-    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/icons/terminal.svg"), "终端");
+    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/icons/terminal.svg"), tr("终端"));
 
     if (!d->currentProjectPath.isEmpty()) {
         m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
@@ -1893,7 +1893,7 @@ void MainWindow::onToggleMuteBreakpoints()
 
     const QList<Breakpoint> bps = m_debugManager->getBreakpoints();
     if (bps.isEmpty()) {
-        if (m_statusLabel) m_statusLabel->setText("没有断点可禁用");
+        if (m_statusLabel) m_statusLabel->setText(tr("没有断点可禁用"));
         if (m_muteBreakpointsButton) {
             QSignalBlocker b(m_muteBreakpointsButton);
             m_muteBreakpointsButton->setChecked(false);
@@ -1943,7 +1943,7 @@ void MainWindow::onToggleMuteBreakpoints()
     }
 
     if (m_statusLabel) {
-        m_statusLabel->setText(target ? "已禁用所有断点" : "已恢复所有断点");
+        m_statusLabel->setText(target ? tr("已禁用所有断点") : tr("已恢复所有断点"));
     }
 
     refreshBreakpointListPanel();
@@ -1977,8 +1977,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 
     if (m_isCompiling) {
-        int reply = QMessageBox::question(this, "正在编译",
-                                          "当前正在编译，是否停止编译并退出？",
+        int reply = QMessageBox::question(this, tr("正在编译"),
+                                          tr("当前正在编译，是否停止编译并退出？"),
                                           QMessageBox::Yes | QMessageBox::No,
                                           QMessageBox::No);
 
@@ -2033,8 +2033,8 @@ bool MainWindow::confirmUnsavedChanges()
 
     if (hasUnsaved) {
         QMessageBox msgBox(this);
-        msgBox.setWindowTitle("未保存的更改");
-        msgBox.setText("有未保存的更改，是否保存？");
+        msgBox.setWindowTitle(tr("未保存的更改"));
+        msgBox.setText(tr("有未保存的更改，是否保存？"));
         msgBox.setStandardButtons(QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
         msgBox.setDefaultButton(QMessageBox::SaveAll);
 
@@ -2061,7 +2061,7 @@ void MainWindow::updateStatusBarPosition(TextEditor* editor)
 {
     if (!editor) return;
     m_cursorPositionLabel->setText(
-        QString("行: %1  列: %2")
+        QString(tr("行: %1  列: %2"))
             .arg(editor->currentLine())
             .arg(editor->currentColumn())
         );
@@ -2111,7 +2111,7 @@ void MainWindow::openProject(const QString &path) {
     // 使用 ProjectManager 打开项目
     ProjectManager* pm = ProjectManager::instance();
     if (!pm->openProject(path)) {
-        QMessageBox::warning(this, "打开项目失败", "无法打开项目：" + path);
+        QMessageBox::warning(this, tr("打开项目失败"), tr("无法打开项目：") + path);
         return;
     }
     d->currentProjectName = pm->currentProjectName();
@@ -2290,8 +2290,8 @@ void MainWindow::openFile(const QString &path)
     // ---- 加载文件 ----
     if (!editor->loadFile(path)) {
         delete editor;
-        QMessageBox::warning(this, "打开错误",
-                             QString("无法打开文件:\n%1").arg(path));
+        QMessageBox::warning(this, tr("打开错误"),
+                             QString(tr("无法打开文件:\n%1")).arg(path));
         return;
     }
 
@@ -2509,13 +2509,13 @@ bool MainWindow::closeEditorTab(int index)
 
     if (editor->isModified()) {
         QMessageBox msgBox(this);
-        msgBox.setWindowTitle("未保存的更改");
-        msgBox.setText(QString("文件 '%1' 有未保存的更改。\n是否保存更改？")
+        msgBox.setWindowTitle(tr("未保存的更改"));
+        msgBox.setText(QString(tr("文件 '%1' 有未保存的更改。\n是否保存更改？"))
                            .arg(editor->fileName()));
         msgBox.setIcon(QMessageBox::Question);
-        QPushButton *saveButton = msgBox.addButton("保存(&S)", QMessageBox::AcceptRole);
-        QPushButton *discardButton = msgBox.addButton("不保存(&D)", QMessageBox::RejectRole);
-        QPushButton *cancelButton = msgBox.addButton("取消(&C)", QMessageBox::NoRole);
+        QPushButton *saveButton = msgBox.addButton(tr("保存(&S)"), QMessageBox::AcceptRole);
+        QPushButton *discardButton = msgBox.addButton(tr("不保存(&D)"), QMessageBox::RejectRole);
+        QPushButton *cancelButton = msgBox.addButton(tr("取消(&C)"), QMessageBox::NoRole);
         msgBox.setDefaultButton(saveButton);
         msgBox.exec();
 
@@ -2577,12 +2577,12 @@ void MainWindow::onTabCurrentChanged(int index)
             // updateWindowTitle();
 
             if (!editor->filePath().isEmpty()) {
-                m_statusLabel->setText(QString("正在编辑: %1").arg(editor->fileName()));
+                m_statusLabel->setText(QString(tr("正在编辑: %1")).arg(editor->fileName()));
             }
         }
     } else {
-        m_cursorPositionLabel->setText("行: -  列: -");
-        m_statusLabel->setText("就绪");
+        m_cursorPositionLabel->setText(tr("行: -  列: -"));
+        m_statusLabel->setText(tr("就绪"));
     }
 }
 
@@ -2612,14 +2612,14 @@ void MainWindow::onEditorModificationChanged(bool modified)
 void MainWindow::onEditorCursorPositionChanged(int line, int column)
 {
     if (m_cursorPositionLabel) {
-        m_cursorPositionLabel->setText(QString("行: %1  列: %2").arg(line).arg(column));
+        m_cursorPositionLabel->setText(QString(tr("行: %1  列: %2")).arg(line).arg(column));
     }
 }
 
 void MainWindow::onFileLoaded(const QString &filePath)
 {
     logInfo(QString("已加载文件: %1").arg(filePath));
-    m_statusLabel->setText(QString("已加载: %1").arg(QFileInfo(filePath).fileName()));
+    m_statusLabel->setText(QString(tr("已加载: %1")).arg(QFileInfo(filePath).fileName()));
 }
 
 void MainWindow::onFileSaved(const QString &filePath)
@@ -2646,7 +2646,7 @@ void MainWindow::onFileSaved(const QString &filePath)
 
     // qDebug() << "Before setText";
     if (m_statusLabel) {
-        m_statusLabel->setText("文件已保存");
+        m_statusLabel->setText(tr("文件已保存"));
     }
     // qDebug() << "After setText";
 
@@ -2747,7 +2747,7 @@ void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
     // 4. 状态栏 + 输出面板反馈
     // ============================================================
     if (m_statusLabel) {
-        m_statusLabel->setText(QString("已重命名: %1 → %2")
+        m_statusLabel->setText(QString(tr("已重命名: %1 → %2"))
                                    .arg(QFileInfo(oldPath).fileName(),
                                         QFileInfo(newPath).fileName()));
     }
@@ -2823,7 +2823,7 @@ void MainWindow::onPythonDebugFinished()
 
     // 状态栏提示
     if (m_statusLabel) {
-        m_statusLabel->setText("调试已结束");
+        m_statusLabel->setText(tr("调试已结束"));
     }
 
     // 切回输出面板
@@ -2834,7 +2834,7 @@ void MainWindow::onPythonDebugFinished()
     logInfo(QString("调试会话已结束"));
     // 调试面板控制台也打一条结束线
     if (m_debugPanel) {
-        m_debugPanel->appendConsoleOutput("=== 调试会话结束 ===", false);
+        m_debugPanel->appendConsoleOutput(tr("=== 调试会话结束 ==="), false);
     }
 }
 
@@ -2882,7 +2882,7 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
     m_outputPanel->clear();
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString("[%1] 开始编译: %2")
+    QString htmlMessage = QString(tr("[%1] 开始编译: %2"))
                               .arg(timeStr)
                               .arg(sourceFile);
     appendLog(LogEntry::make(
@@ -2891,7 +2891,7 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
                   sourceFile),
               htmlMessage);
 
-    m_statusLabel->setText(QString("正在编译 %1...").arg(QFileInfo(sourceFile).fileName()));
+    m_statusLabel->setText(QString(tr("正在编译 %1...")).arg(QFileInfo(sourceFile).fileName()));
 
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
@@ -2914,15 +2914,15 @@ void MainWindow::onCompileProgress(const QString& taskId, int progress, const QS
 
     QString progressStr;
     if (!currentFile.isEmpty()) {
-        progressStr = QString("正在编译... %1% - %2").arg(progress).arg(currentFile);
+        progressStr = QString(tr("正在编译... %1% - %2")).arg(progress).arg(currentFile);
     } else {
-        progressStr = QString("正在编译... %1%").arg(progress);
+        progressStr = QString(tr("正在编译... %1%")).arg(progress);
     }
     m_statusLabel->setText(progressStr);
 
     if (progress % 25 == 0) {
         QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-        QString htmlMessage = QString("[%1] 编译进度: %2%")
+        QString htmlMessage = QString(tr("[%1] 编译进度: %2%"))
                                   .arg(timeStr)
                                   .arg(progress);
         logError(htmlMessage);
@@ -2992,7 +2992,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
 
     if (result.success) {
-        QString htmlMessage = QString("[%1] 编译成功! 耗时: %2ms")
+        QString htmlMessage = QString(tr("[%1] 编译成功! 耗时: %2ms"))
                                   .arg(timeStr)
                                   .arg(elapsedMs);
         appendLog(LogEntry::make(LogKind::Compile, LogLevel::Info, "Compile",
@@ -3005,12 +3005,12 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         }
 
         // 编译成功的细节统计
-        QString statsLine = QString(" 错误: %1, 警告: %2")
+        QString statsLine = QString(tr(" 错误: %1, 警告: %2"))
                                 .arg(result.errors.size())
                                 .arg(result.warnings.size());
         logInfo(statsLine);
 
-        m_statusLabel->setText("编译成功");
+        m_statusLabel->setText(tr("编译成功"));
 
         // ========== 编译后自动运行（新增） ==========
         if (m_autoRunAfterCompile) {
@@ -3061,18 +3061,18 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
                                      result.errors[i]));
         }
-        QString htmlMessage = QString("[%1] 编译失败! 耗时: %2ms")
+        QString htmlMessage = QString(tr("[%1] 编译失败! 耗时: %2ms"))
                                   .arg(timeStr)
                                   .arg(elapsedMs);
         logError(htmlMessage);
 
-        m_statusLabel->setText("编译失败");
+        m_statusLabel->setText(tr("编译失败"));
 
         int errorCount = result.errors.size();
         int warningCount = result.warnings.size();
 
         if (errorCount > 0 || warningCount > 0) {
-            QString statsMessage = QString("错误: %1, 警告: %2")
+            QString statsMessage = QString(tr("错误: %1, 警告: %2"))
                                        .arg(errorCount)
                                        .arg(warningCount);
             logError(statsMessage);
@@ -3186,13 +3186,13 @@ void MainWindow::onCompileError(const QString& taskId, const QString& errorMessa
     m_isCompiling = false;
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString("[%1] 编译错误: %2")
+    QString htmlMessage = QString(tr("[%1] 编译错误: %2"))
                               .arg(timeStr)
                               .arg(errorMessage.toHtmlEscaped());
     
     appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",errorMessage),htmlMessage);
 
-    m_statusLabel->setText("编译错误");
+    m_statusLabel->setText(tr("编译错误"));
 
     m_currentCompileTaskId.clear();
 }
@@ -3228,8 +3228,8 @@ void MainWindow::askRunProgram(const QString& executablePath)
 void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
 {
     if (!QFile::exists(executablePath)) {
-        QMessageBox::warning(this, "运行错误",
-                             QString("可执行文件不存在:\n%1").arg(executablePath));
+        QMessageBox::warning(this, tr("运行错误"),
+                             QString(tr("可执行文件不存在:\n%1")).arg(executablePath));
         return;
     }
 
@@ -3248,7 +3248,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         arguments << "-e" << QString("tell application \"Terminal\" to do script \"%1\"").arg(executablePath);
 #else
         program = "xterm";
-        arguments << "-e" << executablePath + "; echo '程序执行完毕，按任意键退出...'; read -n1";
+        arguments << "-e" << executablePath + tr("; echo '程序执行完毕，按任意键退出...'; read -n1");
 #endif
 
         QProcess::startDetached(program, arguments);
@@ -3280,15 +3280,15 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
                     QString message;
 
                     if (exitStatus == QProcess::NormalExit) {
-                        message = QString("[%1] 程序执行完毕，退出码: %2")
+                        message = QString(tr("[%1] 程序执行完毕，退出码: %2"))
                                       .arg(timeStr)
                                       .arg(exitCode);
                     } else {
-                        message = QString("[%1] 程序异常退出").arg(timeStr);
+                        message = QString(tr("[%1] 程序异常退出")).arg(timeStr);
                     }
 
                     logInfo(message);
-                    m_statusLabel->setText("程序执行完成");
+                    m_statusLabel->setText(tr("程序执行完成"));
 
                     process->deleteLater();
                 });
@@ -3296,10 +3296,10 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         process->start();
 
         if (!process->waitForStarted(3000)) {
-            QMessageBox::warning(this, "运行错误", "无法启动程序");
+            QMessageBox::warning(this, tr("运行错误"), tr("无法启动程序"));
             process->deleteLater();
         } else {
-            m_statusLabel->setText("程序运行中...");
+            m_statusLabel->setText(tr("程序运行中..."));
         }
     }
 }
@@ -3401,28 +3401,28 @@ TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 void MainWindow::onStartDebug() {
     TextEditor* editor = currentEditor();
     if (!editor) {
-        QMessageBox::information(this, "提示", "请先打开一个文件再开始调试。");
+        QMessageBox::information(this, tr("提示"), tr("请先打开一个文件再开始调试。"));
         return;
     }
 
     QString sourceFile = editor->filePath();
     if (sourceFile.isEmpty()) {
-        QMessageBox::warning(this, "错误", "请先保存文件。");
+        QMessageBox::warning(this, tr("错误"), tr("请先保存文件。"));
         return;
     }
 
     if (editor->isModified() && !editor->saveFile()) {
-        QMessageBox::warning(this, "保存错误", "无法保存文件，调试中止。");
+        QMessageBox::warning(this, tr("保存错误"), tr("无法保存文件，调试中止。"));
         return;
     }
 
     if (m_isCompiling) {
-        QMessageBox::information(this, "提示", "当前正在编译，请等待编译完成后再调试。");
+        QMessageBox::information(this, tr("提示"), tr("当前正在编译，请等待编译完成后再调试。"));
         return;
     }
 
     if (m_isDebugging) {
-        QMessageBox::information(this, "提示", "当前正在调试中，请先停止调试。");
+        QMessageBox::information(this, tr("提示"), tr("当前正在调试中，请先停止调试。"));
         return;
     }
 
@@ -3573,7 +3573,7 @@ void MainWindow::onStartDebug() {
                         if (m_debugPanel) {
                             m_debugPanel->clearConsole();
                             m_debugPanel->appendConsoleOutput(
-                                QString("=== 调试会话开始: %1 ===")
+                                QString(tr("=== 调试会话开始: %1 ==="))
                                     .arg(QFileInfo(sourceFile).fileName()),
                                 false);
                         }
@@ -3643,8 +3643,8 @@ void MainWindow::onStartDebug() {
 
         if (exePath.isEmpty() || !QFile::exists(exePath) ||
             QFileInfo(sourceFile).lastModified() > QFileInfo(exePath).lastModified()) {
-            int reply = QMessageBox::question(this, "编译并调试",
-                                              "文件尚未编译或已过期，是否现在编译并调试?",
+            int reply = QMessageBox::question(this, tr("编译并调试"),
+                                              tr("文件尚未编译或已过期，是否现在编译并调试?"),
                                               QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::Yes) {
                 m_compileForDebug = true;
@@ -3866,7 +3866,7 @@ void MainWindow::onStartDebug() {
             if (m_debugPanel) {
                 m_debugPanel->clearConsole();
                 m_debugPanel->appendConsoleOutput(
-                    QString("=== C++ 调试会话开始: %1 ===")
+                    QString(tr("=== C++ 调试会话开始: %1 ==="))
                         .arg(QFileInfo(sourceFile).fileName()),
                     false);
             }
@@ -3933,7 +3933,7 @@ void MainWindow::onStartDebug() {
     }
 
     if (executablePath.isEmpty() || !QFile::exists(executablePath) || QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified()) {
-        int reply = QMessageBox::question(this, "编译并调试", "文件尚未编译或已过期，是否现在编译并调试?", QMessageBox::Yes | QMessageBox::No);
+        int reply = QMessageBox::question(this, tr("编译并调试"), tr("文件尚未编译或已过期，是否现在编译并调试?"), QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes) {
             m_compileForDebug = true;
             onCompile();
@@ -4092,7 +4092,7 @@ void MainWindow::onDebugStateChanged(DebugState state)
     case DebugState::Stopped:
         m_isDebugging = false;
         if (m_statusLabel) {
-            m_statusLabel->setText("调试已停止");
+            m_statusLabel->setText(tr("调试已停止"));
         }
         if (m_bottomTabWidget) {
             int debugIndex = m_bottomTabWidget->indexOf(m_debugPanel);
@@ -4106,7 +4106,7 @@ void MainWindow::onDebugStateChanged(DebugState state)
     case DebugState::Starting:
         m_isDebugging = true;
         if (m_statusLabel) {
-            m_statusLabel->setText("正在启动调试...");
+            m_statusLabel->setText(tr("正在启动调试..."));
         }
         setDebugTabVisible(true);
         if (m_bottomTabWidget) {
@@ -4120,25 +4120,25 @@ void MainWindow::onDebugStateChanged(DebugState state)
     case DebugState::Running:
         m_isDebugging = true;
         if (m_statusLabel) {
-            m_statusLabel->setText("调试运行中");
+            m_statusLabel->setText(tr("调试运行中"));
         }
         break;
     case DebugState::Paused:
         m_isDebugging = true;
         if (m_statusLabel) {
-            m_statusLabel->setText("调试暂停（断点命中）");
+            m_statusLabel->setText(tr("调试暂停（断点命中）"));
         }
         switchToDebugTab();
         break;
     case DebugState::Stepping:
         if (m_statusLabel) {
-            m_statusLabel->setText("单步执行中...");
+            m_statusLabel->setText(tr("单步执行中..."));
         }
         break;
     case DebugState::Finished:
         m_isDebugging = false;
         if (m_statusLabel) {
-            m_statusLabel->setText("程序执行完成");
+            m_statusLabel->setText(tr("程序执行完成"));
         }
         // 清除高亮
         if (TextEditor* editor = currentEditor()) {
@@ -4149,7 +4149,7 @@ void MainWindow::onDebugStateChanged(DebugState state)
     case DebugState::Error:
         m_isDebugging = false;
         if (m_statusLabel) {
-            m_statusLabel->setText("调试错误");
+            m_statusLabel->setText(tr("调试错误"));
         }
         if (TextEditor* editor = currentEditor()) {
             editor->clearCurrentDebugLine();

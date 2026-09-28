@@ -106,14 +106,14 @@ void GitPanel::setupUI()
         m_operationLabel = new QLabel(m_operationBanner);
 
         m_operationContinueBtn = new QPushButton(
-            QStringLiteral("继续"), m_operationBanner);
+            tr("继续"), m_operationBanner);
         m_operationContinueBtn->setToolTip(
-            QStringLiteral("冲突全部解决后继续当前操作"));
+            tr("冲突全部解决后继续当前操作"));
         connect(m_operationContinueBtn, &QPushButton::clicked,
                 this, &GitPanel::onContinueOperation);
 
         m_operationAbortBtn = new QPushButton(
-            QStringLiteral("中止"), m_operationBanner);
+            tr("中止"), m_operationBanner);
         connect(m_operationAbortBtn, &QPushButton::clicked,
                 this, &GitPanel::onAbortOperation);
 
@@ -131,8 +131,7 @@ void GitPanel::setupUI()
     m_emptyRepoHint->setStyleSheet(
         "QLabel { color: #7A8599; padding: 24px; font-size: 11pt; }");
     m_emptyRepoHint->setText(
-        QStringLiteral("此目录尚未初始化为 Git 仓库。\n\n"
-                       "点击上方「初始化仓库」按钮开始使用。"));
+        tr("此目录尚未初始化为 Git 仓库。\n\n点击上方「初始化仓库」按钮开始使用。"));
     m_emptyRepoHint->setVisible(false);
     root->addWidget(m_emptyRepoHint);
 
@@ -188,7 +187,7 @@ QWidget* GitPanel::createTopBar()
     // ---- 分支操作菜单按钮（⋮）----
     m_branchMenuBtn = new QToolButton(bar);
     m_branchMenuBtn->setText(QStringLiteral("⋮"));
-    m_branchMenuBtn->setToolTip(QStringLiteral("分支操作"));
+    m_branchMenuBtn->setToolTip(tr("分支操作"));
     m_branchMenuBtn->setPopupMode(QToolButton::InstantPopup);
     m_branchMenuBtn->setCursor(Qt::PointingHandCursor);
     m_branchMenuBtn->setFixedSize(28, 28);
@@ -198,17 +197,17 @@ QWidget* GitPanel::createTopBar()
 
         QAction* newBranchAct = menu->addAction(
             QIcon(QStringLiteral(":/icons/icons/git_branch.svg")),
-            QStringLiteral("新建分支..."));
+            tr("新建分支..."));
         connect(newBranchAct, &QAction::triggered,
                 this, &GitPanel::onNewBranchClicked);
 
         menu->addSeparator();
 
-        QAction* mergeAct = menu->addAction(QStringLiteral("合并分支到当前分支..."));
+        QAction* mergeAct = menu->addAction(tr("合并分支到当前分支..."));
         connect(mergeAct, &QAction::triggered,
                 this, &GitPanel::onMergeIntoCurrent);
 
-        QAction* rebaseAct = menu->addAction(QStringLiteral("将当前分支 Rebase 到..."));
+        QAction* rebaseAct = menu->addAction(tr("将当前分支 Rebase 到..."));
         connect(rebaseAct, &QAction::triggered,
                 this, &GitPanel::onRebaseOnto);
 
@@ -219,7 +218,7 @@ QWidget* GitPanel::createTopBar()
     m_refreshBtn = new QToolButton(bar);
     m_refreshBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_refresh.svg")));
     m_refreshBtn->setIconSize(QSize(16, 16));
-    m_refreshBtn->setToolTip(QStringLiteral("刷新状态 (F5)"));
+    m_refreshBtn->setToolTip(tr("刷新状态 (F5)"));
     m_refreshBtn->setCursor(Qt::PointingHandCursor);
     m_refreshBtn->setFixedSize(28, 28);
     connect(m_refreshBtn, &QToolButton::clicked,
@@ -229,9 +228,9 @@ QWidget* GitPanel::createTopBar()
     m_initBtn = new QToolButton(bar);
     m_initBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_init.svg")));
     m_initBtn->setIconSize(QSize(16, 16));
-    m_initBtn->setText(QStringLiteral(" 初始化仓库"));
+    m_initBtn->setText(tr(" 初始化仓库"));
     m_initBtn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    m_initBtn->setToolTip(QStringLiteral("在当前项目根目录执行 git init"));
+    m_initBtn->setToolTip(tr("在当前项目根目录执行 git init"));
     m_initBtn->setCursor(Qt::PointingHandCursor);
     m_initBtn->setVisible(false);
     connect(m_initBtn, &QToolButton::clicked,
@@ -258,7 +257,7 @@ QWidget* GitPanel::createStatusSection()
     auto* sl = new QHBoxLayout(stagedBar);
     sl->setContentsMargins(8, 6, 6, 2);
 
-    m_stagedHeader = new QLabel(QStringLiteral("已暂存的更改 (0)"), stagedBar);
+    m_stagedHeader = new QLabel(tr("已暂存的更改 (0)"), stagedBar);
     QFont headerFont = m_stagedHeader->font();
     headerFont.setBold(true);
     headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
@@ -266,7 +265,7 @@ QWidget* GitPanel::createStatusSection()
 
     m_unstageAllBtn = new QToolButton(stagedBar);
     m_unstageAllBtn->setText(QStringLiteral("−"));
-    m_unstageAllBtn->setToolTip(QStringLiteral("全部取消暂存"));
+    m_unstageAllBtn->setToolTip(tr("全部取消暂存"));
     m_unstageAllBtn->setCursor(Qt::PointingHandCursor);
     m_unstageAllBtn->setFixedSize(22, 22);
     connect(m_unstageAllBtn, &QToolButton::clicked,
@@ -295,12 +294,12 @@ QWidget* GitPanel::createStatusSection()
     auto* ul = new QHBoxLayout(unstagedBar);
     ul->setContentsMargins(8, 6, 6, 2);
 
-    m_unstagedHeader = new QLabel(QStringLiteral("更改 (0)"), unstagedBar);
+    m_unstagedHeader = new QLabel(tr("更改 (0)"), unstagedBar);
     m_unstagedHeader->setFont(headerFont);
 
     m_stageAllBtn = new QToolButton(unstagedBar);
     m_stageAllBtn->setText(QStringLiteral("+"));
-    m_stageAllBtn->setToolTip(QStringLiteral("全部暂存"));
+    m_stageAllBtn->setToolTip(tr("全部暂存"));
     m_stageAllBtn->setCursor(Qt::PointingHandCursor);
     m_stageAllBtn->setFixedSize(22, 22);
     connect(m_stageAllBtn, &QToolButton::clicked,
@@ -333,7 +332,7 @@ QWidget* GitPanel::createCommitSection()
     lay->setSpacing(6);
 
     m_messageEdit = new QPlainTextEdit(w);
-    m_messageEdit->setPlaceholderText(QStringLiteral("提交信息 (Ctrl+Enter 提交)"));
+    m_messageEdit->setPlaceholderText(tr("提交信息 (Ctrl+Enter 提交)"));
     m_messageEdit->setMaximumHeight(88);
     m_messageEdit->setMinimumHeight(60);
     connect(m_messageEdit, &QPlainTextEdit::textChanged,
@@ -343,7 +342,7 @@ QWidget* GitPanel::createCommitSection()
     auto* btnRow = new QHBoxLayout;
     btnRow->setSpacing(8);
 
-    m_amendCheck = new QCheckBox(QStringLiteral("修正上次提交"), w);
+    m_amendCheck = new QCheckBox(tr("修正上次提交"), w);
     m_amendCheck->setCursor(Qt::PointingHandCursor);
     btnRow->addWidget(m_amendCheck);
     btnRow->addStretch();
@@ -352,7 +351,7 @@ QWidget* GitPanel::createCommitSection()
     // 复用全局 QSS 中的 "主按钮" 样式（QPushButton#sendButton）
     //   —— 与 AI 面板发送按钮共用同一主色，不重复定义
     m_commitBtn->setObjectName("sendButton");
-    m_commitBtn->setText(QStringLiteral("提交"));
+    m_commitBtn->setText(tr("提交"));
     m_commitBtn->setIcon(QIcon(QStringLiteral(":/icons/icons/git_commit.svg")));
     m_commitBtn->setIconSize(QSize(14, 14));
     m_commitBtn->setCursor(Qt::PointingHandCursor);
@@ -388,7 +387,7 @@ QWidget* GitPanel::createStashSection()
     auto* hl = new QHBoxLayout(bar);
     hl->setContentsMargins(8, 6, 6, 2);
 
-    m_stashHeader = new QLabel(QStringLiteral("Stash (0)"), bar);
+    m_stashHeader = new QLabel(tr("Stash (0)"), bar);
     QFont headerFont = m_stashHeader->font();
     headerFont.setBold(true);
     headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
@@ -396,7 +395,7 @@ QWidget* GitPanel::createStashSection()
 
     m_stashBtn = new QToolButton(bar);
     m_stashBtn->setText(QStringLiteral("+"));
-    m_stashBtn->setToolTip(QStringLiteral("创建 stash（暂存当前改动）"));
+    m_stashBtn->setToolTip(tr("创建 stash（暂存当前改动）"));
     m_stashBtn->setCursor(Qt::PointingHandCursor);
     m_stashBtn->setFixedSize(22, 22);
     connect(m_stashBtn, &QToolButton::clicked,
@@ -434,7 +433,7 @@ QWidget* GitPanel::createHistorySection()
     auto* hl = new QHBoxLayout(headerBar);
     hl->setContentsMargins(8, 6, 6, 2);
 
-    auto* header = new QLabel(QStringLiteral("提交历史"), headerBar);
+    auto* header = new QLabel(tr("提交历史"), headerBar);
     QFont headerFont = header->font();
     headerFont.setBold(true);
     headerFont.setPointSizeF(headerFont.pointSizeF() - 1.0);
@@ -531,7 +530,7 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
             item->setText(s.path);                                       // 不再带 [M] 前缀
             item->setIcon(statusIcon(s.indexStatus));                    // 状态图标
             item->setForeground(statusColor(s.indexStatus));             // 文件名着色
-            item->setToolTip(QStringLiteral("%1\n[已暂存] %2")
+            item->setToolTip(tr("%1\n[已暂存] %2")
                                  .arg(s.absolutePath, statusBadge(s.indexStatus)));
             item->setData(Qt::UserRole,     s.path);
             item->setData(Qt::UserRole + 1, s.absolutePath);
@@ -551,13 +550,13 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
             if (s.hasConflict()) {
                 const bool rebaseMode =
                     GitManager::instance().isRebaseInProgress();
+                const QString opName = rebaseMode ? QStringLiteral("Rebase")
+                                                  : QStringLiteral("Merge");
                 item->setToolTip(
-                    QStringLiteral("%1\n\n 存在冲突\n"
-                                   "右键「打开编辑器手动解决」或选择接受某一侧\n"
-                                   "（当前为 %2 冲突，右键菜单会相应调整语义）")
-                        .arg(s.absolutePath,
-                             rebaseMode ? QStringLiteral("Rebase")
-                                        : QStringLiteral("Merge")));
+                    tr("%1\n\n存在冲突\n"
+                       "右键「打开编辑器手动解决」或选择接受某一侧\n"
+                       "（当前为 %2 冲突，右键菜单会相应调整语义）")
+                        .arg(s.absolutePath, opName));
             } else {
                 item->setToolTip(s.absolutePath);
             }
@@ -570,9 +569,9 @@ void GitPanel::populateStatusLists(const QList<GitFileStatus>& status)
     }
 
     m_stagedHeader->setText(
-        QStringLiteral("已暂存的更改 (%1)").arg(stagedCount));
+        tr("已暂存的更改 (%1)").arg(stagedCount));
     m_unstagedHeader->setText(
-        QStringLiteral("更改 (%1)").arg(unstagedCount));
+        tr("更改 (%1)").arg(unstagedCount));
 
     m_unstageAllBtn->setEnabled(stagedCount > 0);
     m_stageAllBtn->setEnabled(unstagedCount > 0);
@@ -589,14 +588,14 @@ void GitPanel::populateBranchCombo()
     const auto info = gm.repositoryInfo();
 
     if (!info.isValid) {
-        m_branchCombo->addItem(QStringLiteral("(非 Git 仓库)"));
+        m_branchCombo->addItem(tr("(非 Git 仓库)"));
         m_branchCombo->setEnabled(false);
         m_branchCombo->blockSignals(false);
         return;
     }
 
     if (info.isEmpty) {
-        m_branchCombo->addItem(QStringLiteral("(尚无提交)"));
+        m_branchCombo->addItem(tr("(尚无提交)"));
         m_branchCombo->setEnabled(false);
         m_branchCombo->blockSignals(false);
         return;
@@ -686,9 +685,9 @@ void GitPanel::updateCommitButton()
 
     if (hasStaged) {
         m_commitBtn->setText(
-            QStringLiteral("提交 (%1)").arg(m_stagedList->count()));
+            tr("提交 (%1)").arg(m_stagedList->count()));
     } else {
-        m_commitBtn->setText(QStringLiteral("提交"));
+        m_commitBtn->setText(tr("提交"));
     }
 }
 
@@ -702,7 +701,7 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         m_branchCombo->setStyleSheet(
             "QComboBox { color: #EBB65B; font-weight: bold; }");
         m_branchCombo->setToolTip(
-            QStringLiteral("游离 HEAD（%1）\n"
+            tr("游离 HEAD（%1）\n"
                            "当前不在任何分支上。建议创建一个分支以保存提交。")
                 .arg(info.currentBranch));
     } else if (m_branchCombo) {
@@ -715,9 +714,9 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
             const QString opName = gitOperationName(info.operation);
 
             // Rebase 场景额外提示 ours/theirs 语义反转，避免用户按 merge 直觉操作
-            QString banner = QStringLiteral("  正在进行：%1").arg(opName);
+            QString banner = tr("  正在进行：%1").arg(opName);
             if (info.operation == GitOperation::Rebase) {
-                banner += QStringLiteral(
+                banner += tr(
                     "（提示：本模式下「接受我的提交 / 目标分支」"
                     "已自动按 rebase 语义处理）");
             }
@@ -747,9 +746,8 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         m_initBtn->setVisible(!m_projectRoot.isEmpty());
         m_emptyRepoHint->setText(
             m_projectRoot.isEmpty()
-                ? QStringLiteral("未打开项目。")
-                : QStringLiteral("此目录尚未初始化为 Git 仓库。\n\n"
-                                 "点击上方「初始化仓库」按钮开始使用。"));
+                ? tr("未打开项目。")
+                : tr("此目录尚未初始化为 Git 仓库。\n\n 点击上方「初始化仓库」按钮开始使用。"));
     }
 
     // 空仓库（无任何 commit）
@@ -757,7 +755,7 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         m_stagedList->clear();
         m_unstagedList->clear();
         m_historyList->clear();
-        m_historyList->addItem(QStringLiteral("(尚无提交)"));
+        m_historyList->addItem(tr("(尚无提交)"));
     }
 
     populateBranchCombo();
@@ -805,8 +803,8 @@ void GitPanel::onInitClicked()
     if (m_projectRoot.isEmpty()) return;
 
     const auto reply = QMessageBox::question(
-        this, QStringLiteral("初始化 Git 仓库"),
-        QStringLiteral("将在当前项目根目录执行 git init：\n\n%1\n\n继续？")
+        this, tr("初始化 Git 仓库"),
+        tr("将在当前项目根目录执行 git init：\n\n%1\n\n继续？")
             .arg(m_projectRoot),
         QMessageBox::Yes | QMessageBox::No);
 
@@ -814,8 +812,8 @@ void GitPanel::onInitClicked()
 
     QString err;
     if (!GitManager::instance().initRepository(m_projectRoot, &err)) {
-        QMessageBox::warning(this, QStringLiteral("初始化失败"),
-                             QStringLiteral("无法初始化 Git 仓库：\n\n%1").arg(err));
+        QMessageBox::warning(this, tr("初始化失败"),
+                             tr("无法初始化 Git 仓库：\n\n%1").arg(err));
         return;
     }
     // initRepository 内部已触发 setProjectRoot 刷新
@@ -851,24 +849,22 @@ void GitPanel::onBranchActivated(int index)
 
     if (info.isDetachedHead) {
         hasRisk = true;
-        warnings << QStringLiteral(
-            "  当前处于 <b>游离 HEAD</b> 状态（%1）。<br>"
-            "切走后，此处的提交将不属于任何分支，<b>可能难以找回</b>。")
-            .arg(info.currentBranch.toHtmlEscaped());
+        warnings << tr("当前处于 <b>游离 HEAD</b> 状态（%1）。<br>"
+                       "切走后，此处的提交将不属于任何分支，<b>可能难以找回</b>。")
+                        .arg(info.currentBranch.toHtmlEscaped());
     }
     if (dirtyCount > 0) {
         hasRisk = true;
-        warnings << QStringLiteral(
-            "  当前有 <b>%1</b> 个未提交的更改（含 %2 个未跟踪文件）。<br>"
-            "切换分支时可能产生冲突或被合并到其他基线。")
-            .arg(dirtyCount).arg(untrackedCount);
+        warnings << tr("当前有 <b>%1</b> 个未提交的更改（含 %2 个未跟踪文件）。<br>"
+                       "切换分支时可能产生冲突或被合并到其他基线。")
+                        .arg(dirtyCount).arg(untrackedCount);
     }
 
     // ---- 3. 无风险 → 简单确认 ----
     if (!hasRisk) {
         const auto reply = QMessageBox::question(
-            this, QStringLiteral("切换分支"),
-            QStringLiteral("切换到分支：%1 ？").arg(name),
+            this, tr("切换分支"),
+            tr("切换到分支：%1 ？").arg(name),
             QMessageBox::Yes | QMessageBox::No);
         if (reply != QMessageBox::Yes) {
             populateBranchCombo();
@@ -880,18 +876,20 @@ void GitPanel::onBranchActivated(int index)
 
     // ---- 4. 有风险 → 三按钮对话框 ----
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("切换分支"));
+    box.setWindowTitle(tr("切换分支"));
     box.setIcon(QMessageBox::Warning);
     box.setTextFormat(Qt::RichText);
-    box.setText(warnings.join(QStringLiteral("<br><br>"))
-                + QStringLiteral("<br><br>确认切换到分支：<b>%1</b> ？")
-                      .arg(name.toHtmlEscaped()));
+    box.setText(
+        warnings.join(QStringLiteral("<br><br>"))
+        + QStringLiteral("<br><br>")
+        + tr("确认切换到分支：<b>%1</b> ？").arg(name.toHtmlEscaped())
+        );
 
-    auto* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
-    auto* stashBtn  = box.addButton(QStringLiteral("先暂存(stash)再切换"),
-                                    QMessageBox::ActionRole);
-    auto* forceBtn  = box.addButton(QStringLiteral("仍然直接切换"),
-                                    QMessageBox::DestructiveRole);
+    auto* cancelBtn = box.addButton(tr("取消"), QMessageBox::RejectRole);
+    auto* stashBtn  = box.addButton(tr("先暂存(stash)再切换"),
+                                   QMessageBox::ActionRole);
+    auto* forceBtn  = box.addButton(tr("仍然直接切换"),
+                                   QMessageBox::DestructiveRole);
     box.setDefaultButton(cancelBtn);
     box.exec();
 
@@ -905,7 +903,7 @@ void GitPanel::onBranchActivated(int index)
     if (clicked == stashBtn) {
         // 自动 stash → 切换；GitManager 内部会在 stash 完成后 checkout
         gm.stashPush(
-            QStringLiteral("切换分支 %1 → %2 前自动暂存")
+            tr("切换分支 %1 → %2 前自动暂存")
                 .arg(info.currentBranch.isEmpty()
                          ? QStringLiteral("(detached)")
                          : info.currentBranch,
@@ -990,8 +988,8 @@ void GitPanel::onNewBranchClicked()
     // ---- 校验 ----
     const QString name = nameEdit->text().trimmed();
     if (name.isEmpty()) {
-        QMessageBox::warning(this, QStringLiteral("新建分支"),
-                             QStringLiteral("分支名不能为空。"));
+        QMessageBox::warning(this, tr("新建分支"),
+                             tr("分支 <b>%1</b> 已存在。").arg(name.toHtmlEscaped()));
         return;
     }
     // Git 分支名规则（简化版）：
@@ -1020,11 +1018,10 @@ void GitPanel::onNewBranchClicked()
 
     if (isInvalidName(name)) {
         QMessageBox::warning(this, QStringLiteral("新建分支"),
-                             QStringLiteral(
-                                 "分支名包含非法字符。<br><br>"
-                                 "不允许：<code>空格 ~ ^ : ? * [ \\ .. </code>，<br>"
-                                 "不允许以 <code>- . /</code> 开头，<br>"
-                                 "不允许以 <code>.lock</code> 或 <code>/</code> 结尾。"));
+                             tr("分支名包含非法字符。") + "<br><br>" +
+                                 tr("不允许：") + "<code>空格 ~ ^ : ? * [ \\ .. </code>，<br>" +
+                                 tr("不允许以") + " <code>- . /</code> " + tr("开头，") + "<br>" +
+                                 tr("不允许以") + " <code>.lock</code> " + tr("或") + " <code>/</code> " + tr("结尾。"));
         return;
     }
 
@@ -1150,7 +1147,7 @@ void GitPanel::onRebaseOnto()
     }
     if (dirtyCount > 0) {
         QMessageBox::warning(this, QStringLiteral("Rebase"),
-                             QStringLiteral("工作区有 <b>%1</b> 个未提交的更改。<br><br>"
+                             tr("工作区有 <b>%1</b> 个未提交的更改。<br><br>"
                                             "请先提交或 stash，再执行 rebase。")
                                  .arg(dirtyCount));
         return;
@@ -1170,12 +1167,11 @@ void GitPanel::onRebaseOnto()
     box.setIcon(QMessageBox::Warning);
     box.setTextFormat(Qt::RichText);
     box.setText(
-        QStringLiteral(
-            "将把当前分支 <b>%1</b> 的所有提交重放到 <b>%2</b> 之上。<br><br>"
-            "  Rebase 会重写当前分支的提交历史。<br>"
-            "  如果该分支已推送到远程，之后需要 <code>git push --force</code>。<br>"
-            "  冲突时 ours/theirs 语义与 merge 相反。<br><br>"
-            "确定继续？")
+        tr("将把当前分支 <b>%1</b> 的所有提交重放到 <b>%2</b> 之上。<br><br>"
+           "Rebase 会重写当前分支的提交历史。<br>"
+           "如果该分支已推送到远程，之后需要 <code>git push --force</code>。<br>"
+           "冲突时 ours/theirs 语义与 merge 相反。<br><br>"
+           "确定继续？")
             .arg(gm.repositoryInfo().currentBranch.toHtmlEscaped(),
                  branch.toHtmlEscaped()));
 
@@ -1199,10 +1195,9 @@ void GitPanel::onAbortOperation()
     const QString opName = gitOperationName(info.operation);
 
     const auto reply = QMessageBox::question(
-        this, QStringLiteral("中止操作"),
-        QStringLiteral("确定要中止当前的 <b>%1</b> 吗？<br><br>"
-                       "工作区里已解决的改动会保留，未提交的改动不会丢失。")
-            .arg(opName));
+        this, tr("中止操作"),
+        tr("确定要中止当前的") + " <b>%1</b> " + tr("吗") + "？<br><br>"
+                       + tr("工作区里已解决的改动会保留，未提交的改动不会丢失。").arg(opName));
     if (reply != QMessageBox::Yes) return;
 
     if (info.operation == GitOperation::Merge) {
@@ -1210,8 +1205,8 @@ void GitPanel::onAbortOperation()
     } else if (info.operation == GitOperation::Rebase) {
         gm.abortRebase();
     } else {
-        QMessageBox::information(this, QStringLiteral("中止操作"),
-                                 QStringLiteral("暂不支持中止 %1。").arg(opName));
+        QMessageBox::information(this, tr("中止操作"),
+                                 tr("暂不支持中止 %1。").arg(opName));
     }
 }
 
@@ -1228,8 +1223,8 @@ void GitPanel::onContinueOperation()
         if (s.hasConflict()) { hasConflict = true; break; }
     }
     if (hasConflict) {
-        QMessageBox::information(this, QStringLiteral("继续 Rebase"),
-                                 QStringLiteral("仍有未解决的冲突文件，请先在「更改」列表里全部解决。"));
+        QMessageBox::information(this, tr("继续 Rebase"),
+                                 tr("仍有未解决的冲突文件，请先在「更改」列表里全部解决。"));
         return;
     }
 
@@ -1262,20 +1257,26 @@ void GitPanel::onCommitClicked()
     // ============================================================
     if (gm.userName().isEmpty() || gm.userEmail().isEmpty()) {
         QMessageBox box(this);
-        box.setWindowTitle(QStringLiteral("Git 身份未配置"));
+        box.setWindowTitle(tr("Git 身份未配置"));
         box.setIcon(QMessageBox::Warning);
         box.setTextFormat(Qt::RichText);
         box.setText(
-            QStringLiteral(
-                "提交前需要先配置 Git 身份。<br><br>"
-                "在终端运行以下命令：<br>"
-                "<code>git config --global user.name \"你的名字\"</code><br>"
-                "<code>git config --global user.email \"你的邮箱\"</code><br><br>"
-                "或打开设置对话框，在 <b>Git</b> 页填写并保存。"));
+            tr("提交前需要先配置 Git 身份。<br><br>"
+               "在终端运行以下命令：<br>"
+               "<code>%1</code><br>"
+               "<code>%2</code><br><br>"
+               "或打开设置对话框，在 <b>Git</b> 页填写并保存。")
+                .arg(
+                    QStringLiteral("git config --global user.name \"%1\"")
+                        .arg(tr("你的名字")),
+                    QStringLiteral("git config --global user.email \"%1\"")
+                        .arg(tr("你的邮箱"))
+                    )
+            );
 
-        auto* openBtn = box.addButton(QStringLiteral("打开设置"),
+        auto* openBtn = box.addButton(tr("打开设置"),
                                       QMessageBox::AcceptRole);
-        box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        box.addButton(tr("取消"), QMessageBox::RejectRole);
         box.exec();
 
         if (box.clickedButton() == openBtn) {
@@ -1290,8 +1291,8 @@ void GitPanel::onCommitClicked()
     const QString msg = m_messageEdit->toPlainText().trimmed();
     if (msg.isEmpty()) return;
     if (m_stagedList->count() == 0) {
-        QMessageBox::information(this, QStringLiteral("提示"),
-                                 QStringLiteral("请先暂存至少一个文件。"));
+        QMessageBox::information(this, tr("提示"),
+                                 tr("请先暂存至少一个文件。"));
         return;
     }
 
@@ -1319,7 +1320,7 @@ void GitPanel::onStagedItemDoubleClicked(QListWidgetItem* item)
     connect(dlg, &GitDiffDialog::openFileRequested,
             this, [this](const QString& p) { emit fileDoubleClicked(p); });
     dlg->showFileDiff(
-        QStringLiteral("已暂存: %1").arg(rel),
+        tr("已暂存: %1").arg(rel),
         diffText,
         abs);
 }
@@ -1341,7 +1342,7 @@ void GitPanel::onUnstagedItemDoubleClicked(QListWidgetItem* item)
     connect(dlg, &GitDiffDialog::openFileRequested,
             this, [this](const QString& p) { emit fileDoubleClicked(p); });
     dlg->showFileDiff(
-        QStringLiteral("工作区: %1").arg(rel),
+        tr("工作区: %1").arg(rel),
         diffText,
         abs);
 }
@@ -1352,15 +1353,15 @@ void GitPanel::onStagedContextMenu(const QPoint& pos)
     if (!item) return;
 
     QMenu menu(this);
-    menu.addAction(QStringLiteral("查看差异"), this, [this, item]() {
+    menu.addAction(tr("查看差异"), this, [this, item]() {
         onStagedItemDoubleClicked(item);
     });
     menu.addSeparator();
-    menu.addAction(QStringLiteral("取消暂存"), this, [this, item]() {
+    menu.addAction(tr("取消暂存"), this, [this, item]() {
         const QString rel = item->data(Qt::UserRole).toString();
         GitManager::instance().unstageFile(rel);
     });
-    menu.addAction(QStringLiteral("打开文件"), this, [this, item]() {
+    menu.addAction(tr("打开文件"), this, [this, item]() {
         const QString abs = item->data(Qt::UserRole + 1).toString();
         if (!abs.isEmpty()) emit fileDoubleClicked(abs);
     });
@@ -1377,14 +1378,14 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
     const QString abs        = item->data(Qt::UserRole + 1).toString();
 
     QMenu menu(this);
-    menu.addAction(QStringLiteral("查看差异"), this, [this, item]() {
+    menu.addAction(tr("查看差异"), this, [this, item]() {
         onUnstagedItemDoubleClicked(item);
     });
     menu.addSeparator();
 
     // ---------- 冲突解决（仅当文件状态为冲突时显示） ----------
     if (isConflict) {
-        menu.addAction(QStringLiteral("打开编辑器手动解决"), this, [this, abs]() {
+        menu.addAction(tr("打开编辑器手动解决"), this, [this, abs]() {
             if (!abs.isEmpty()) emit fileDoubleClicked(abs);
         });
         menu.addSeparator();
@@ -1406,20 +1407,19 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
         if (isRebase) {
             // ---- Rebase 场景 ----
             QAction* mineAct = menu.addAction(
-                QStringLiteral("接受我的提交（正在重放的版本）"));
-            mineAct->setToolTip(QStringLiteral(
-                "Rebase 冲突时，保留你正在重放的提交的内容\n"
-                "底层执行：git checkout --theirs"));
+                tr("接受我的提交（正在重放的版本）"));
+            mineAct->setToolTip("Rebase" + tr("冲突时，保留你正在重放的提交的内容\n"
+                "底层执行：") + "git checkout --theirs");
             QObject::connect(mineAct, &QAction::triggered,
                              this, [this, rel]() {
                                  GitManager::instance().acceptTheirs(rel);
                              });
 
             QAction* baseAct = menu.addAction(
-                QStringLiteral("接受目标分支（base 上的版本）"));
-            baseAct->setToolTip(QStringLiteral(
+                tr("接受目标分支（base 上的版本）"));
+            baseAct->setToolTip(tr(
                 "Rebase 冲突时，保留目标分支（base）的内容\n"
-                "底层执行：git checkout --ours"));
+                "底层执行：") + "git checkout --ours");
             QObject::connect(baseAct, &QAction::triggered,
                              this, [this, rel]() {
                                  GitManager::instance().acceptOurs(rel);
@@ -1427,50 +1427,50 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
         } else {
             // ---- Merge 场景（或无进行中操作，按 merge 处理） ----
             QAction* mineAct = menu.addAction(
-                QStringLiteral("接受当前分支（本地的版本）"));
-            mineAct->setToolTip(QStringLiteral(
+                tr("接受当前分支（本地的版本）"));
+            mineAct->setToolTip(tr(
                 "保留当前分支（HEAD）的内容\n"
-                "底层执行：git checkout --ours"));
+                "底层执行：") + "git checkout --ours");
             QObject::connect(mineAct, &QAction::triggered,
                              this, [this, rel]() {
                                  GitManager::instance().acceptOurs(rel);
                              });
 
             QAction* otherAct = menu.addAction(
-                QStringLiteral("接受被合入的分支（外来的版本）"));
-            otherAct->setToolTip(QStringLiteral(
+                tr("接受被合入的分支（外来的版本）"));
+            otherAct->setToolTip(tr(
                 "保留被合入分支的内容\n"
-                "底层执行：git checkout --theirs"));
+                "底层执行：") + "git checkout --theirs");
             QObject::connect(otherAct, &QAction::triggered,
                              this, [this, rel]() {
                                  GitManager::instance().acceptTheirs(rel);
                              });
         }
 
-        menu.addAction(QStringLiteral("标记为已解决（git add）"), this, [this, rel]() {
+        menu.addAction(tr("标记为已解决") + "（git add）", this, [this, rel]() {
             GitManager::instance().markResolved(rel);
         });
         menu.addSeparator();
     }
 
     // ---------- 常规操作 ----------
-    menu.addAction(QStringLiteral("暂存此文件"), this, [this, rel]() {
+    menu.addAction(tr("暂存此文件"), this, [this, rel]() {
         GitManager::instance().stageFile(rel);
     });
-    menu.addAction(QStringLiteral("打开文件"), this, [this, abs]() {
+    menu.addAction(tr("打开文件"), this, [this, abs]() {
         if (!abs.isEmpty()) emit fileDoubleClicked(abs);
     });
 
     menu.addSeparator();
 
     // ---------- 丢弃更改 ----------
-    menu.addAction(QStringLiteral("丢弃更改…"), this, [this, rel, abs, isConflict]() {
+    menu.addAction(tr("丢弃更改…"), this, [this, rel, abs, isConflict]() {
         Q_UNUSED(abs);
         // 冲突文件不允许直接丢弃（会造成状态混乱）
         if (isConflict) {
             QMessageBox::information(
-                this, QStringLiteral("丢弃更改"),
-                QStringLiteral("冲突文件不能直接丢弃，请先用「接受本地 / 接受远程 / 手动解决」处理。"));
+                this, tr("丢弃更改"),
+                tr("冲突文件不能直接丢弃，请先用「接受本地 / 接受远程 / 手动解决」处理。"));
             return;
         }
 
@@ -1482,16 +1482,12 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
             return false;
         }();
 
-        const QString title = isUntracked
-                                  ? QStringLiteral("删除文件")
-                                  : QStringLiteral("丢弃更改");
+        const QString title = isUntracked ? tr("删除文件") : tr("丢弃更改");
         const QString question = isUntracked
-                                     ? QStringLiteral("确定要删除以下未跟踪文件吗？<br><br>"
-                                                      "<code>%1</code><br><br>此操作不可恢复。")
-                                           .arg(rel.toHtmlEscaped())
-                                     : QStringLiteral("确定要丢弃对该文件的所有未提交更改吗？<br><br>"
-                                                      "<code>%1</code><br><br>此操作不可恢复。")
-                                           .arg(rel.toHtmlEscaped());
+                                     ? tr("确定要删除以下未跟踪文件吗？") + "<br><br><code>"
+                                           + rel.toHtmlEscaped() + "</code><br><br>" + tr("此操作不可恢复。")
+                                     : tr("确定要丢弃对该文件的所有未提交更改吗？") + "<br><br><code>"
+                                           + rel.toHtmlEscaped() + "</code><br><br>" + tr("此操作不可恢复。");
 
         QMessageBox box(this);
         box.setWindowTitle(title);
@@ -1500,10 +1496,10 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
         box.setText(question);
 
         const QString okText = isUntracked
-                                   ? QStringLiteral("删除")
-                                   : QStringLiteral("丢弃更改");
+                                   ? tr("删除")
+                                   : tr("丢弃更改");
         auto* okBtn     = box.addButton(okText, QMessageBox::AcceptRole);
-        auto* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        auto* cancelBtn = box.addButton(tr("取消"), QMessageBox::RejectRole);
         box.setDefaultButton(cancelBtn);
         box.exec();
 
@@ -1524,8 +1520,8 @@ void GitPanel::onHistoryItemDoubleClicked(QListWidgetItem* item)
     auto& gm = GitManager::instance();
     const QString diffText = gm.rawCommitDiff(hash);
     if (diffText.isEmpty()) {
-        QMessageBox::information(this, QStringLiteral("提示"),
-                                 QStringLiteral("无法获取该 commit 的 diff。"));
+        QMessageBox::information(this, tr("提示"),
+                                 tr("无法获取该 commit 的 diff。"));
         return;
     }
 
@@ -1556,7 +1552,7 @@ void GitPanel::onStashListUpdated(const QList<GitStash>& stashes)
     if (!m_stashList) return;
 
     m_stashList->clear();
-    m_stashHeader->setText(QStringLiteral("Stash (%1)").arg(stashes.size()));
+    m_stashHeader->setText(tr("Stash (%1)").arg(stashes.size()));
 
     for (const GitStash& s : stashes) {
         const QString when = s.timestamp.toString("MM-dd hh:mm");
@@ -1566,9 +1562,9 @@ void GitPanel::onStashListUpdated(const QList<GitStash>& stashes)
         auto* item = new QListWidgetItem(m_stashList);
         item->setText(label);
         item->setData(Qt::UserRole, s.index);
-        item->setToolTip(QStringLiteral("%1\n分支: %2\n消息: %3\n时间: %4")
+        item->setToolTip(tr("%1\n分支: %2\n消息: %3\n时间: %4")
                              .arg(s.ref,
-                                  s.branch.isEmpty() ? QStringLiteral("(未知)") : s.branch,
+                                  s.branch.isEmpty() ? tr("(未知)") : s.branch,
                                   s.message,
                                   s.timestamp.toString(Qt::ISODate)));
     }
@@ -1584,8 +1580,8 @@ void GitPanel::onStashClicked()
     bool ok = false;
     const QString msg = QInputDialog::getText(
         this,
-        QStringLiteral("创建 Stash"),
-        QStringLiteral("Stash 消息（可留空，默认 WIP）:"),
+        tr("创建 Stash"),
+        tr("Stash 消息（可留空，默认 WIP）:"),
         QLineEdit::Normal, QString(), &ok);
     if (!ok) return;
 
@@ -1599,13 +1595,13 @@ void GitPanel::onStashItemDoubleClicked(QListWidgetItem* item)
     const int idx = item->data(Qt::UserRole).toInt();
 
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("Stash 操作"));
-    box.setText(QStringLiteral("对 %1 执行什么操作？").arg(item->text()));
-    auto* popBtn   = box.addButton(QStringLiteral("应用并删除 (pop)"),
+    box.setWindowTitle(tr("Stash 操作"));
+    box.setText(tr("对 %1 执行什么操作？").arg(item->text()));
+    auto* popBtn   = box.addButton(tr("应用并删除 (pop)"),
                                  QMessageBox::AcceptRole);
-    auto* applyBtn = box.addButton(QStringLiteral("仅应用 (apply)"),
+    auto* applyBtn = box.addButton(tr("仅应用 (apply)"),
                                    QMessageBox::ActionRole);
-    box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.addButton(tr("取消"), QMessageBox::RejectRole);
     box.exec();
 
     auto* c = box.clickedButton();
@@ -1620,12 +1616,12 @@ void GitPanel::onStashContextMenu(const QPoint& pos)
     // 空白处右键 → 清空所有 stash
     if (!item) {
         QMenu menu(this);
-        QAction* clearAll = menu.addAction(QStringLiteral("清空所有 Stash"));
+        QAction* clearAll = menu.addAction(tr("清空所有 Stash"));
         clearAll->setEnabled(m_stashList->count() > 0);
         connect(clearAll, &QAction::triggered, this, [this]() {
             if (QMessageBox::question(
-                    this, QStringLiteral("清空 Stash"),
-                    QStringLiteral("确定要清空所有 stash 吗？此操作不可恢复。"))
+                    this, tr("清空 Stash"),
+                    tr("确定要清空所有 stash 吗？此操作不可恢复。"))
                 == QMessageBox::Yes) {
                 GitManager::instance().stashClear();
             }
@@ -1637,20 +1633,20 @@ void GitPanel::onStashContextMenu(const QPoint& pos)
     const int idx = item->data(Qt::UserRole).toInt();
 
     QMenu menu(this);
-    connect(menu.addAction(QStringLiteral("应用并删除 (pop)")),
+    connect(menu.addAction(tr("应用并删除 (pop)")),
             &QAction::triggered, this, [idx]() {
                 GitManager::instance().stashPop(idx);
             });
-    connect(menu.addAction(QStringLiteral("仅应用 (apply)")),
+    connect(menu.addAction(tr("仅应用 (apply)")),
             &QAction::triggered, this, [idx]() {
                 GitManager::instance().stashApply(idx);
             });
     menu.addSeparator();
-    connect(menu.addAction(QStringLiteral("删除此 Stash")),
+    connect(menu.addAction(tr("删除此 Stash")),
             &QAction::triggered, this, [this, idx]() {
                 if (QMessageBox::question(
                         this, QStringLiteral("删除 Stash"),
-                        QStringLiteral("确定要删除此 stash 吗？此操作不可恢复。"))
+                        tr("确定要删除此 stash 吗？此操作不可恢复。"))
                     == QMessageBox::Yes) {
                     GitManager::instance().stashDrop(idx);
                 }

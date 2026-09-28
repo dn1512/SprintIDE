@@ -73,7 +73,7 @@ void TerminalPanel::setupUI()
 
     m_inputWidget = new QLineEdit(this);
     m_inputWidget->setObjectName("TerminalInput");
-    m_inputWidget->setPlaceholderText("输入命令...");
+    m_inputWidget->setPlaceholderText(tr("输入命令..."));
     m_inputWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_inputWidget->setMinimumWidth(200);
     connect(m_inputWidget, &QLineEdit::returnPressed, this, &TerminalPanel::onInputEntered);
@@ -83,23 +83,23 @@ void TerminalPanel::setupUI()
     m_stopButton = new QPushButton("■", this);
     m_stopButton->setObjectName("TerminalStopButton");
     m_stopButton->setMaximumWidth(30);
-    m_stopButton->setToolTip("停止当前命令");
+    m_stopButton->setToolTip(tr("停止当前命令"));
     m_stopButton->setEnabled(false);
     connect(m_stopButton, &QPushButton::clicked, this, &TerminalPanel::stopCurrentCommand);
     inputLayout->addWidget(m_stopButton);
 
     // 清空按钮
-    m_clearButton = new QPushButton("清空", this);
+    m_clearButton = new QPushButton(tr("清空"), this);
     m_clearButton->setObjectName("TerminalClearButton");
     m_clearButton->setMaximumWidth(50);
-    m_clearButton->setToolTip("清空输出");
+    m_clearButton->setToolTip(tr("清空输出"));
     connect(m_clearButton, &QPushButton::clicked, this, &TerminalPanel::onClearClicked);
     inputLayout->addWidget(m_clearButton);
 
     layout->addLayout(inputLayout);
 
     // 初始提示
-    appendOutput("终端已准备就绪。输入命令并按 Enter 执行。", false);
+    appendOutput(tr("终端已准备就绪。输入命令并按 Enter 执行。"), false);
     updatePrompt();
     updateVenvDisplay();
 
@@ -148,7 +148,7 @@ void TerminalPanel::setWorkingDirectory(const QString& dir)
     updateVenvForDirectory(dir);
     updateVenvDisplay();
 
-    appendOutput("工作目录已切换至: " + dir, false);
+    appendOutput(tr("工作目录已切换至: ") + dir, false);
     emit workingDirectoryChanged(dir);
 
     // 聚焦输入框
@@ -167,7 +167,7 @@ void TerminalPanel::executeCommand(const QString& command)
     }
 
     if (m_isCommandRunning) {
-        appendOutput("命令已在运行中，请先停止", true);
+        appendOutput(tr("命令已在运行中，请先停止"), true);
         return;
     }
 
@@ -209,7 +209,7 @@ void TerminalPanel::executeCommand(const QString& command)
             // 设置 VIRTUAL_ENV 环境变量
             env.insert("VIRTUAL_ENV", m_currentVenvPath);
 
-            appendOutput("已自动激活虚拟环境: " + m_currentVenvPath, false);
+            appendOutput(tr("已自动激活虚拟环境: ") + m_currentVenvPath, false);
         }
     }
 
@@ -234,12 +234,12 @@ void TerminalPanel::executeCommand(const QString& command)
     m_isCommandRunning = true;
     m_stopButton->setEnabled(true);
     m_inputWidget->setEnabled(false);
-    m_promptLabel->setText("[运行中] ");
+    m_promptLabel->setText(tr("[运行中] "));
 
     m_process->start();
 
     if (!m_process->waitForStarted(3000)) {
-        appendOutput("启动命令失败: " + m_process->errorString(), true);
+        appendOutput(tr("启动命令失败: ") + m_process->errorString(), true);
         onProcessFinished(-1, QProcess::NormalExit);
     } else {
         emit commandStarted(command);
@@ -259,7 +259,7 @@ void TerminalPanel::clearOutput()
 void TerminalPanel::stopCurrentCommand()
 {
     if (m_isCommandRunning && m_process) {
-        appendOutput("正在停止命令...", false);
+        appendOutput(tr("正在停止命令..."), false);
         m_process->terminate();
         if (!m_process->waitForFinished(2000)) {
             m_process->kill();
@@ -309,10 +309,10 @@ void TerminalPanel::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     updatePrompt();
 
     if (status == QProcess::NormalExit) {
-        appendOutput("进程结束，退出码: " + QString::number(exitCode), false);
+        appendOutput(tr("进程结束，退出码: ") + QString::number(exitCode), false);
         emit commandFinished(m_currentCommand, exitCode);
     } else {
-        appendOutput("进程异常结束", true);
+        appendOutput(tr("进程异常结束"), true);
     }
 
     if (m_process) {
@@ -325,14 +325,14 @@ void TerminalPanel::onProcessErrorOccurred(QProcess::ProcessError error)
 {
     QString msg;
     switch (error) {
-    case QProcess::FailedToStart: msg = "启动失败"; break;
-    case QProcess::Crashed: msg = "进程崩溃"; break;
-    case QProcess::Timedout: msg = "超时"; break;
-    case QProcess::WriteError: msg = "写入错误"; break;
-    case QProcess::ReadError: msg = "读取错误"; break;
-    default: msg = "未知错误"; break;
+    case QProcess::FailedToStart: msg = tr("启动失败"); break;
+    case QProcess::Crashed: msg = tr("进程崩溃"); break;
+    case QProcess::Timedout: msg = tr("超时"); break;
+    case QProcess::WriteError: msg = tr("写入错误"); break;
+    case QProcess::ReadError: msg = tr("读取错误"); break;
+    default: msg = tr("未知错误"); break;
     }
-    appendOutput("进程错误: " + msg, true);
+    appendOutput(tr("进程错误: ") + msg, true);
 }
 
 void TerminalPanel::onClearClicked()
@@ -413,7 +413,7 @@ void TerminalPanel::appendOutput(const QString& text, bool /*isError*/)
 void TerminalPanel::updatePrompt()
 {
     if (m_isCommandRunning) {
-        m_promptLabel->setText("[运行中] ");
+        m_promptLabel->setText(tr("[运行中] "));
     } else {
         updateVenvDisplay();
     }

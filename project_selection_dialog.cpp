@@ -26,7 +26,7 @@ ProjectSelectionDialog::ProjectSelectionDialog(const QMap<QString, QDateTime>& r
     m_selectedProjectPath(""),
     m_createNewProject(false)
 {
-    setWindowTitle("选择或创建项目");
+    setWindowTitle(tr("选择或创建项目"));
     setMinimumSize(600, 400);
     setModal(true);
 
@@ -64,7 +64,7 @@ void ProjectSelectionDialog::onProjectItemDoubleClicked(QListWidgetItem* item)
 
 void ProjectSelectionDialog::onOpenExistingProject()
 {
-    QString dirPath = QFileDialog::getExistingDirectory(this, "选择项目目录");
+    QString dirPath = QFileDialog::getExistingDirectory(this, tr("选择项目目录"));
     if (!dirPath.isEmpty()) {
         m_selectedProjectPath = dirPath;
         accept();
@@ -102,8 +102,8 @@ void ProjectSelectionDialog::onProjectListContextMenuRequested(const QPoint& pos
     // 空处右键：只提供"打开现有项目 / 创建新项目"
     if (!item || !(item->flags() & Qt::ItemIsSelectable)) {
         QMenu menu(this);
-        QAction* openAct   = menu.addAction("打开现有项目...");
-        QAction* createAct = menu.addAction("创建新项目...");
+        QAction* openAct   = menu.addAction(tr("打开现有项目..."));
+        QAction* createAct = menu.addAction(tr("创建新项目..."));
         QAction* chosen = menu.exec(m_projectList->viewport()->mapToGlobal(pos));
 
         if (chosen == openAct)   onOpenExistingProject();
@@ -115,13 +115,13 @@ void ProjectSelectionDialog::onProjectListContextMenuRequested(const QPoint& pos
     m_projectList->setCurrentItem(item);
 
     QMenu menu(this);
-    QAction* openAct   = menu.addAction("打开项目");
+    QAction* openAct   = menu.addAction(tr("打开项目"));
     menu.addSeparator();
-    QAction* removeAct = menu.addAction("从历史记录中移除");
+    QAction* removeAct = menu.addAction(tr("从历史记录中移除"));
     removeAct->setShortcut(QKeySequence::Delete);
     menu.addSeparator();
-    QAction* createAct = menu.addAction("创建新项目...");
-    QAction* browseAct = menu.addAction("打开其他项目...");
+    QAction* createAct = menu.addAction(tr("创建新项目..."));
+    QAction* browseAct = menu.addAction(tr("打开其他项目..."));
 
     QAction* chosen = menu.exec(m_projectList->viewport()->mapToGlobal(pos));
 
@@ -156,8 +156,8 @@ void ProjectSelectionDialog::removeProjectItem(QListWidgetItem* item)
     // ---------- 1. 弹出确认框 ----------
     const QMessageBox::StandardButton reply = QMessageBox::question(
         this,
-        "从历史记录中移除",
-        QString("确定要把以下项目从历史记录中移除吗？\n\n"
+        tr("从历史记录中移除"),
+        tr("确定要把以下项目从历史记录中移除吗？\n\n"
                 "%1\n\n"
                 "· 只移除历史记录\n"
                 "· 磁盘上的项目文件不会被删除")
@@ -195,7 +195,7 @@ void ProjectSelectionDialog::initUI()
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
     // ---------- 标题 ----------
-    QLabel* titleLabel = new QLabel("请选择要打开的项目，或创建新项目", this);
+    QLabel* titleLabel = new QLabel(tr("请选择要打开的项目，或创建新项目"), this);
     titleLabel->setObjectName("DialogTitleLabel");
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(14);
@@ -208,7 +208,7 @@ void ProjectSelectionDialog::initUI()
     mainLayout->addSpacing(20);
 
     // ---------- 最近项目标签 ----------
-    QLabel* recentProjectsLabel = new QLabel("最近使用的项目：", this);
+    QLabel* recentProjectsLabel = new QLabel(tr("最近使用的项目："), this);
     recentProjectsLabel->setObjectName("DialogSubtitleLabel");
     mainLayout->addWidget(recentProjectsLabel);
 
@@ -235,11 +235,11 @@ void ProjectSelectionDialog::initUI()
     // ---------- 中部按钮 ----------
     QHBoxLayout* buttonLayout = new QHBoxLayout();
 
-    m_openButton = new QPushButton("打开现有项目", this);
+    m_openButton = new QPushButton(tr("打开现有项目"), this);
     m_openButton->setIcon(QIcon(":/icons/icons/open_project.svg"));
     buttonLayout->addWidget(m_openButton);
 
-    m_createButton = new QPushButton("创建新项目", this);
+    m_createButton = new QPushButton(tr("创建新项目"), this);
     m_createButton->setIcon(QIcon(":/icons/icons/new_project.svg"));
     buttonLayout->addWidget(m_createButton);
 
@@ -300,8 +300,8 @@ void ProjectSelectionDialog::loadRecentProjects(const QMap<QString, QDateTime>& 
         item->setData(Qt::UserRole, project.first);
 
         // 提示
-        QString toolTip = QString("项目路径: %1\n上次打开: %2\n\n"
-                                  "右键可移除历史记录")
+        QString toolTip = tr("项目路径: %1\n上次打开: %2\n\n"
+                             "右键可移除历史记录")
                               .arg(project.first)
                               .arg(project.second.toString("yyyy-MM-dd HH:mm:ss"));
         item->setToolTip(toolTip);
@@ -333,10 +333,11 @@ void ProjectSelectionDialog::showProjectInfo(const QString& projectPath)
     QString fileSize      = QString::number(fileInfo.size() / 1024.0, 'f', 2) + " KB";
     QString lastModified  = fileInfo.lastModified().toString("yyyy-MM-dd HH:mm:ss");
 
-    QString infoText = QString("项目名称: <b>%1</b><br>").arg(projectName)
-                       + QString("项目路径: <b>%1</b><br>").arg(projectDir)
-                       + QString("配置文件大小: <b>%1</b><br>").arg(fileSize)
-                       + QString("上次修改时间: <b>%1</b>").arg(lastModified);
+    QString infoText =
+        tr("项目名称:") + " <b>" + projectName.toHtmlEscaped() + "</b><br>"
+        + tr("项目路径:") + " <b>" + projectDir.toHtmlEscaped() + "</b><br>"
+        + tr("配置文件大小:") + " <b>" + fileSize + "</b><br>"
+        + tr("上次修改时间:") + " <b>" + lastModified + "</b>";
 
     m_infoLabel->setText(infoText);
 }
@@ -346,7 +347,7 @@ void ProjectSelectionDialog::ensureEmptyPlaceholder()
 {
     if (m_projectList->count() > 0) return;
 
-    QListWidgetItem* emptyItem = new QListWidgetItem("没有最近使用的项目");
+    QListWidgetItem* emptyItem = new QListWidgetItem(tr("没有最近使用的项目"));
     emptyItem->setFlags(Qt::NoItemFlags);   // 禁用选择
     emptyItem->setForeground(QBrush(
         ThemeManager::instance().color(ThemeManager::UIElement::SecondaryTextColor)));

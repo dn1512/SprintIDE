@@ -29,34 +29,34 @@ void DebugPanel::setupUI()
     mainLayout->setSpacing(2);
 
     // ========== 顶部控制工具栏 ==========
-    m_controlToolBar = new QToolBar("调试控制", this);
+    m_controlToolBar = new QToolBar(tr("调试控制"), this);
     m_controlToolBar->setObjectName("DebugControlBar");
     m_controlToolBar->setMovable(false);
     m_controlToolBar->setIconSize(QSize(16, 16));
 
     // 继续
-    m_continueAction = new QAction(QIcon(":/icons/icons/run.svg"), "继续", this);
+    m_continueAction = new QAction(QIcon(":/icons/icons/run.svg"), tr("继续"), this);
     m_continueAction->setShortcut(QKeySequence("F5"));
     m_continueAction->setEnabled(false);
     connect(m_continueAction, &QAction::triggered, this, &DebugPanel::onContinueClicked);
     m_controlToolBar->addAction(m_continueAction);
 
     // 步过
-    m_stepOverAction = new QAction(QIcon(":/icons/icons/stop_over.svg"), "步过", this);
+    m_stepOverAction = new QAction(QIcon(":/icons/icons/stop_over.svg"), tr("步过"), this);
     m_stepOverAction->setShortcut(QKeySequence("F10"));
     m_stepOverAction->setEnabled(false);
     connect(m_stepOverAction, &QAction::triggered, this, &DebugPanel::onStepOverClicked);
     m_controlToolBar->addAction(m_stepOverAction);
 
     // 步入
-    m_stepIntoAction = new QAction(QIcon(":/icons/icons/step_into.svg"), "步入", this);
+    m_stepIntoAction = new QAction(QIcon(":/icons/icons/step_into.svg"), tr("步入"), this);
     m_stepIntoAction->setShortcut(QKeySequence("F11"));
     m_stepIntoAction->setEnabled(false);
     connect(m_stepIntoAction, &QAction::triggered, this, &DebugPanel::onStepIntoClicked);
     m_controlToolBar->addAction(m_stepIntoAction);
 
     // 步出
-    m_stepOutAction = new QAction(QIcon(":/icons/icons/step_out.svg"), "步出", this);
+    m_stepOutAction = new QAction(QIcon(":/icons/icons/step_out.svg"), tr("步出"), this);
     m_stepOutAction->setShortcut(QKeySequence("Shift+F11"));
     m_stepOutAction->setEnabled(false);
     connect(m_stepOutAction, &QAction::triggered, this, &DebugPanel::onStepOutClicked);
@@ -65,7 +65,7 @@ void DebugPanel::setupUI()
     m_controlToolBar->addSeparator();
 
     // 停止
-    m_stopAction = new QAction(QIcon(":/icons/icons/stop.svg"), "停止", this);
+    m_stopAction = new QAction(QIcon(":/icons/icons/stop.svg"), tr("停止"), this);
     m_stopAction->setShortcut(QKeySequence("Shift+F5"));
     m_stopAction->setEnabled(false);
     connect(m_stopAction, &QAction::triggered, this, &DebugPanel::onStopClicked);
@@ -74,7 +74,7 @@ void DebugPanel::setupUI()
     m_controlToolBar->addSeparator();
 
     // 清空
-    QAction* clearAction = new QAction(QIcon(":/icons/icons/clear.svg"), "清空", this);
+    QAction* clearAction = new QAction(QIcon(":/icons/icons/clear.svg"), tr("清空"), this);
     connect(clearAction, &QAction::triggered, this, &DebugPanel::onClearConsoleClicked);
     m_controlToolBar->addAction(clearAction);
 
@@ -92,13 +92,13 @@ void DebugPanel::setupUI()
     callStackLayout->setContentsMargins(2, 2, 2, 2);
     callStackLayout->setSpacing(2);
 
-    QLabel* callStackLabel = new QLabel("调用栈");
+    QLabel* callStackLabel = new QLabel(tr("调用栈"));
     callStackLabel->setObjectName("DebugSectionLabel");
     callStackLayout->addWidget(callStackLabel);
 
     m_callStackWidget = new QTreeWidget();
     m_callStackWidget->setObjectName("CallStackTree");
-    m_callStackWidget->setHeaderLabels(QStringList() << "函数" << "文件" << "行号");
+    m_callStackWidget->setHeaderLabels(QStringList() << tr("函数") << tr("文件") << tr("行号"));
     m_callStackWidget->setIndentation(10);
     m_callStackWidget->setAlternatingRowColors(false);
     m_callStackWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -111,20 +111,20 @@ void DebugPanel::setupUI()
     variableLayout->setContentsMargins(2, 2, 2, 2);
     variableLayout->setSpacing(2);
 
-    QLabel* variableLabel = new QLabel("局部变量");
+    QLabel* variableLabel = new QLabel(tr("局部变量"));
     variableLabel->setObjectName("DebugSectionLabel");
     variableLayout->addWidget(variableLabel);
 
     m_variableWidget = new QTreeWidget();
     m_variableWidget->setObjectName("VariableTree");
-    m_variableWidget->setHeaderLabels(QStringList() << "名称" << "值" << "类型");
+    m_variableWidget->setHeaderLabels(QStringList() << tr("名称") << tr("值") << tr("类型"));
     m_variableWidget->setIndentation(10);
     m_variableWidget->setAlternatingRowColors(false);
     m_variableWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     variableLayout->addWidget(m_variableWidget);
 
     // ---------- 表达式求值区 ----------
-    QLabel* evalLabel = new QLabel("表达式求值");
+    QLabel* evalLabel = new QLabel(tr("表达式求值"));
     evalLabel->setObjectName("DebugSectionLabel");
     variableLayout->addWidget(evalLabel);
 
@@ -137,7 +137,7 @@ void DebugPanel::setupUI()
 
     m_evalInput = new QLineEdit();
     m_evalInput->setObjectName("DebugEvalInput");
-    m_evalInput->setPlaceholderText("输入表达式，回车求值…");
+    m_evalInput->setPlaceholderText(tr("输入表达式，回车求值…"));
     m_evalInput->setFrame(false);
     connect(m_evalInput, &QLineEdit::returnPressed,
             this, &DebugPanel::onEvaluateInputEntered);
@@ -163,7 +163,7 @@ void DebugPanel::setupUI()
     consoleLayout->setContentsMargins(2, 2, 2, 2);
     consoleLayout->setSpacing(2);
 
-    QLabel* consoleLabel = new QLabel("调试控制台");
+    QLabel* consoleLabel = new QLabel(tr("调试控制台"));
     consoleLabel->setObjectName("DebugSectionLabel");
     consoleLayout->addWidget(consoleLabel);
 

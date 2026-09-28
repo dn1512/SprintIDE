@@ -103,7 +103,7 @@ void BreakpointListPanel::refresh()
         item->setIcon(makeDotIcon(bp.enabled ? dotOn : dotOff, bp.enabled));
         item->setForeground(hasCond ? condClr
                                     : (bp.enabled ? textOn : textOff));
-        item->setToolTip(QStringLiteral("%1\n行: %2%3")
+        item->setToolTip(tr("%1\n行: %2%3")
                              .arg(bp.filePath)
                              .arg(bp.lineNumber)
                              .arg(hasCond

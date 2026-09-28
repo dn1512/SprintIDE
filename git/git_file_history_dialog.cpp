@@ -109,7 +109,7 @@ void GitFileHistoryDialog::onItemDoubleClicked(QListWidgetItem* item)
     const QString diffText = gm.rawCommitDiff(hash);
     if (diffText.isEmpty()) {
         QMessageBox::information(this, QStringLiteral("提示"),
-            QStringLiteral("无法获取该 commit 的 diff。"));
+            tr("无法获取该 commit 的 diff。"));
         return;
     }
 

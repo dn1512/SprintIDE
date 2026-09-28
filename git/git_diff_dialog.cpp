@@ -149,8 +149,9 @@ void GitDiffDialog::renderDiff(const QString& diffText)
                                 .color(UI::SecondaryTextColor).name();
         m_diffView->setHtml(
             QStringLiteral("<div style='color:%1; padding:20px; "
-                           "font-family:Menlo,Consolas,monospace;'>"
-                           "此文件没有任何差异。</div>").arg(dim));
+                           "font-family:Menlo,Consolas,monospace;'>").arg(dim)
+            + tr("此文件没有任何差异。")
+            + QStringLiteral("</div>"));
         return;
     }
 
@@ -254,9 +255,9 @@ void GitDiffDialog::renderDiff(const QString& diffText)
     if (truncated) {
         html += QStringLiteral(
                     "<div style='color:#EBB65B; background:#2A3340; padding:8px; "
-                    "margin-top:10px;'>"
-                    "... 剩余 %1 行已省略（diff 过大）</div>")
-                    .arg(totalLines - kMaxDiffLines);
+                    "margin-top:10px;'>")
+                + tr("... 剩余 %1 行已省略（diff 过大）").arg(totalLines - kMaxDiffLines)
+                + QStringLiteral("</div>");
     }
 
     html += "</body></html>";

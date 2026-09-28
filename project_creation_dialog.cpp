@@ -222,7 +222,7 @@ ProjectCreationDialog::ProjectCreationDialog(QWidget *parent)
     qDebug() << "[PCD] 构造开始";
 
     // ---- 基本窗口属性 ----
-    setWindowTitle("创建新项目 - SprintIDE");
+    setWindowTitle(tr("创建新项目 - SprintIDE"));
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
     // ---- 加载 .ui ----
@@ -332,11 +332,11 @@ void ProjectCreationDialog::accept()
     // 输入校验
     QStringList errors;
     if (!validateInput(errors)) {
-        QString errorMsg = "请修正以下错误：\n\n";
+        QString errorMsg = tr("请修正以下错误：\n\n");
         for (const QString& error : errors) {
             errorMsg += "• " + error + "\n";
         }
-        QMessageBox::warning(this, "输入错误", errorMsg);
+        QMessageBox::warning(this, tr("输入错误"), errorMsg);
         return;
     }
 
@@ -346,8 +346,8 @@ void ProjectCreationDialog::accept()
 
     // 创建项目目录结构
     if (!createProjectStructure()) {
-        m_result.errorMessage = "无法创建项目目录结构";
-        QMessageBox::critical(this, "创建失败", m_result.errorMessage);
+        m_result.errorMessage = tr("无法创建项目目录结构");
+        QMessageBox::critical(this, tr("创建失败"), m_result.errorMessage);
         return;
     }
 
@@ -377,9 +377,9 @@ void ProjectCreationDialog::accept()
 
     if (!ok) {
         if (m_result.errorMessage.isEmpty()) {
-            m_result.errorMessage = "无法生成项目文件";
+            m_result.errorMessage = tr("无法生成项目文件");
         }
-        QMessageBox::critical(this, "创建失败", m_result.errorMessage);
+        QMessageBox::critical(this, tr("创建失败"), m_result.errorMessage);
         return;
     }
 
@@ -407,7 +407,7 @@ void ProjectCreationDialog::accept()
                 QFile gitignore(QDir(m_projectConfig.projectPath()).absoluteFilePath(".gitignore"));
                 if (gitignore.open(QIODevice::WriteOnly | QIODevice::Text)) {
                     QString content =
-                        "# 编译输出\n"
+                        tr("# 编译输出\n"
                         "bin/\n"
                         "build/\n"
                         "dist/\n"
@@ -428,7 +428,7 @@ void ProjectCreationDialog::accept()
                         "*.vcxproj\n\n"
                         "# 系统文件\n"
                         ".DS_Store\n"
-                        "Thumbs.db\n";
+                        "Thumbs.db\n");
                     gitignore.write(content.toUtf8());
                     gitignore.close();
 
@@ -453,7 +453,7 @@ void ProjectCreationDialog::accept()
 void ProjectCreationDialog::onBrowseLocation()
 {
     QString dir = QFileDialog::getExistingDirectory(
-        this, "选择项目位置", ui->locationLineEdit->text(),
+        this, tr("选择项目位置"), ui->locationLineEdit->text(),
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (!dir.isEmpty()) {
         ui->locationLineEdit->setText(dir);
@@ -551,13 +551,13 @@ void ProjectCreationDialog::onWarningLevelChanged(int index)
 
 void ProjectCreationDialog::onShowAdvancedConfig()
 {
-    QMessageBox::information(this, "高级配置",
-                             "高级编译配置功能正在开发中...\n"
+    QMessageBox::information(this, tr("高级配置"),
+                             tr("高级编译配置功能正在开发中...\n"
                              "未来版本将允许您设置：\n"
                              "- 自定义包含路径\n"
                              "- 库链接设置\n"
                              "- 预处理器定义\n"
-                             "- 自定义编译标志");
+                             "- 自定义编译标志"));
 }
 
 void ProjectCreationDialog::onShowExampleCode()
@@ -574,11 +574,11 @@ void ProjectCreationDialog::onShowExampleCode()
     } else if (!currentTemplate.exampleFiles.isEmpty()) {
         exampleCode = currentTemplate.exampleFiles.first().content;
     } else {
-        exampleCode = QStringLiteral("（暂无示例代码）");
+        exampleCode = tr("（暂无示例代码）");
     }
 
     QDialog previewDialog(this);
-    previewDialog.setWindowTitle("示例代码预览 - " + currentTemplate.name);
+    previewDialog.setWindowTitle(tr("示例代码预览 - ") + currentTemplate.name);
     previewDialog.resize(700, 460);
 
     QVBoxLayout* layout = new QVBoxLayout(&previewDialog);
@@ -654,16 +654,16 @@ void ProjectCreationDialog::setCompilerType(ProjectCompilerType type)
 void ProjectCreationDialog::setupUI()
 {
     // ---------- 静态控件基础配置（原有） ----------
-    ui->projectNameLineEdit->setPlaceholderText("例如: MyFirstGame");
-    ui->displayNameLineEdit->setPlaceholderText("例如: 我的第一个游戏");
-    ui->locationLineEdit->setPlaceholderText("选择项目保存的位置");
+    ui->projectNameLineEdit->setPlaceholderText(tr("例如: MyFirstGame"));
+    ui->displayNameLineEdit->setPlaceholderText(tr("例如: 我的第一个游戏"));
+    ui->locationLineEdit->setPlaceholderText(tr("选择项目保存的位置"));
 
     // ---------- 模板下拉框（先空着，后面 refreshTemplateList 会填） ----------
     ui->templateComboBox->clear();
 
     // ---------- C++ 编译器下拉框 ----------
     ui->compilerComboBox->clear();
-    ui->compilerComboBox->addItem("自动检测", "auto");
+    ui->compilerComboBox->addItem(tr("自动检测"), "auto");
     ui->compilerComboBox->addItem("GCC (g++)", "gcc");
     ui->compilerComboBox->addItem("Clang (clang++)", "clang");
 #ifdef Q_OS_WIN
@@ -695,8 +695,8 @@ void ProjectCreationDialog::setupUI()
     ui->advancedConfigGroupBox->setVisible(false);
 
     // ---------- 底部按钮 ----------
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setText("创建");
-    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("创建"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("取消"));
     ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 
     // ---------- tab 顺序 ----------
@@ -783,9 +783,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "console_app";
-        t.name = "控制台应用程序";
-        t.description = "创建一个简单的命令行程序，适合学习基础 C++ 语法。\n"
-                        "包含基本的 main 函数结构和标准库使用示例。";
+        t.name = tr("控制台应用程序");
+        t.description = tr("创建一个简单的命令行程序，适合学习基础 C++ 语法。\n"
+                        "包含基本的 main 函数结构和标准库使用示例。");
         t.language = ProjectLanguage::Cpp;
         t.type = ProjectType::ConsoleApp;
         t.icon = ":/icons/icons/template_console.svg";
@@ -804,9 +804,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "simple_game";
-        t.name = "简单游戏";
-        t.description = "创建一个有趣的小游戏项目，如猜数字、井字棋等。\n"
-                        "增加编程的趣味性，适合有一定基础的学习者。";
+        t.name = tr("简单游戏");
+        t.description = tr("创建一个有趣的小游戏项目，如猜数字、井字棋等。\n"
+                        "增加编程的趣味性，适合有一定基础的学习者。");
         t.language = ProjectLanguage::Cpp;
         t.type = ProjectType::SimpleGame;
         t.icon = ":/icons/icons/template_game.svg";
@@ -825,9 +825,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "gui_app";
-        t.name = "图形界面程序";
-        t.description = "创建一个带窗口界面的应用程序，使用 Qt 框架。\n"
-                        "学习图形界面编程，创建更直观的用户界面。";
+        t.name = tr("图形界面程序");
+        t.description = tr("创建一个带窗口界面的应用程序，使用 Qt 框架。\n"
+                        "学习图形界面编程，创建更直观的用户界面。");
         t.language = ProjectLanguage::Cpp;
         t.type = ProjectType::GuiApp;
         t.icon = ":/icons/icons/template_gui.svg";
@@ -846,9 +846,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "empty_project";
-        t.name = "空白项目";
-        t.description = "创建一个完全自定义的项目结构，没有预置代码。\n"
-                        "适合有经验的学习者，或需要特殊结构的项目。";
+        t.name = tr("空白项目");
+        t.description = tr("创建一个完全自定义的项目结构，没有预置代码。\n"
+                        "适合有经验的学习者，或需要特殊结构的项目。");
         t.language = ProjectLanguage::Cpp;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/template_empty.svg";
@@ -871,9 +871,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "python_blank";
-        t.name = "Python 空白项目";
-        t.description = "创建一个空白 Python 项目。\n"
-                        "包含 main.py、requirements.txt 和可选的虚拟环境 (.venv)。";
+        t.name = tr("Python 空白项目");
+        t.description = tr("创建一个空白 Python 项目。\n"
+                        "包含 main.py、requirements.txt 和可选的虚拟环境 (.venv)。");
         t.language = ProjectLanguage::Python;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/python.svg";
@@ -896,9 +896,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "go_blank";
-        t.name = "Go 空白项目";
-        t.description = "创建一个 Go 模块项目。\n"
-                        "包含 main.go 和 go.mod，可直接用 go build 构建。";
+        t.name = tr("Go 空白项目");
+        t.description = tr("创建一个 Go 模块项目。\n"
+                        "包含 main.go 和 go.mod，可直接用 go build 构建。");
         t.language = ProjectLanguage::Go;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/go.svg";
@@ -921,9 +921,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "rust_blank";
-        t.name = "Rust 项目";
-        t.description = "创建一个 Rust 项目（可执行或库）。\n"
-                        "包含 Cargo.toml 与 src/ 目录，可直接用 cargo build 构建。";
+        t.name = tr("Rust 项目");
+        t.description = tr("创建一个 Rust 项目（可执行或库）。\n"
+                        "包含 Cargo.toml 与 src/ 目录，可直接用 cargo build 构建。");
         t.language = ProjectLanguage::Rust;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/rust.svg";
@@ -946,9 +946,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "node_js";
-        t.name = "Node.js 项目 (JavaScript)";
-        t.description = "创建一个 Node.js 项目，使用 JavaScript。\n"
-                        "包含 package.json 与 index.js。";
+        t.name = tr("Node.js 项目 (JavaScript)");
+        t.description = tr("创建一个 Node.js 项目，使用 JavaScript。\n"
+                        "包含 package.json 与 index.js。");
         t.language = ProjectLanguage::Node;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/node.svg";
@@ -971,9 +971,9 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "node_ts";
-        t.name = "Node.js 项目 (TypeScript)";
-        t.description = "创建一个 Node.js 项目，使用 TypeScript。\n"
-                        "包含 package.json、tsconfig.json 与 src/index.ts。";
+        t.name = tr("Node.js 项目 (TypeScript)");
+        t.description = tr("创建一个 Node.js 项目，使用 TypeScript。\n"
+                        "包含 package.json、tsconfig.json 与 src/index.ts。");
         t.language = ProjectLanguage::Node;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/typescript.svg";
@@ -996,10 +996,10 @@ void ProjectCreationDialog::initTemplates()
     {
         ProjectTemplate t;
         t.id = "generic_ai";
-        t.name = "AI 通用适配器项目";
-        t.description = "适用于任意语言 / 工具链的空项目。\n"
+        t.name = tr("AI 通用适配器项目");
+        t.description = tr("适用于任意语言 / 工具链的空项目。\n"
                         "可在下方指定 build / run / clean 命令，或让 AI 自动补全。\n"
-                        "命令会被写入 .lightcppproj 文件。";
+                        "命令会被写入 .lightcppproj 文件。");
         t.language = ProjectLanguage::GenericAI;
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/ai.svg";
@@ -1009,8 +1009,8 @@ void ProjectCreationDialog::initTemplates()
         ProjectTemplate::ExampleFile f;
         f.path = "README.md";
         f.content = "# ${DISPLAY_NAME}\n\n"
-                    "由 SprintIDE 的 AI 通用适配器创建。\n\n"
-                    "请在 `.lightcppproj` 的 `generic_build` 字段中配置命令。\n";
+                    + tr("由 SprintIDE 的 AI 通用适配器创建。\n\n"
+                    "请在 `.lightcppproj` 的 `generic_build` 字段中配置命令。\n");
         f.language = "markdown";
         t.exampleFiles.append(f);
 
@@ -1023,7 +1023,7 @@ void ProjectCreationDialog::initCompilerSettings()
 {
     QStringList compilers = ProjectConfig::detectAvailableCompilers();
     if (!compilers.isEmpty()) {
-        QString tooltip = "检测到以下编译器:\n";
+        QString tooltip = tr("检测到以下编译器:\n");
         for (const QString& compiler : compilers) {
             tooltip += "• " + compiler + "\n";
         }
@@ -1057,7 +1057,7 @@ void ProjectCreationDialog::createLanguageComboBox()
                                 "Node.js / TypeScript",
                                 QVariant::fromValue(int(ProjectLanguage::Node)));
     m_languageComboBox->addItem(QIcon(":/icons/icons/ai.svg"),
-                                "AI 通用适配器",
+                                tr("AI 通用适配器"),
                                 QVariant::fromValue(int(ProjectLanguage::GenericAI)));
 
     // 默认选中 C++
@@ -1083,7 +1083,7 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
     }
     if (!ui->templateComboBox) {
         qWarning() << "[ProjectCreationDialog] ui->templateComboBox 为空，"
-                      "检查 .ui 文件是否包含该控件，或 uic 输出是否过期。";
+                      + tr("检查 .ui 文件是否包含该控件，或 uic 输出是否过期。");
         return;
     }
 
@@ -1091,14 +1091,14 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
     QWidget* parentWidget = anchor->parentWidget();
     if (!parentWidget) {
         qWarning() << "[ProjectCreationDialog] templateComboBox 没有父 widget，"
-                      "无法自动插入语言选择器。";
+                      + tr("无法自动插入语言选择器。");
         return;
     }
 
     QLayout* layout = parentWidget->layout();
     if (!layout) {
         qWarning() << "[ProjectCreationDialog] templateComboBox 的父 widget 没有布局，"
-                      "无法自动插入语言选择器。";
+                      + tr("无法自动插入语言选择器。");
         return;
     }
 
@@ -1107,7 +1107,7 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
         for (int row = 0; row < form->rowCount(); ++row) {
             QLayoutItem* item = form->itemAt(row, QFormLayout::FieldRole);
             if (item && item->widget() == anchor) {
-                QLabel* label = new QLabel("编程语言:", this);
+                QLabel* label = new QLabel(tr("编程语言:"), this);
                 // 在模板下拉框所在行插入新的一行
                 form->insertRow(row, label, m_languageComboBox);
                 return;
@@ -1120,7 +1120,7 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
         int idx = vbox->indexOf(anchor);
         if (idx >= 0) {
             QHBoxLayout* rowLayout = new QHBoxLayout;
-            QLabel* label = new QLabel("编程语言:", this);
+            QLabel* label = new QLabel(tr("编程语言:"), this);
             label->setMinimumWidth(80);
             rowLayout->addWidget(label);
             rowLayout->addWidget(m_languageComboBox, 1);
@@ -1131,10 +1131,10 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
 
     // ---------- 情况 3：QGridLayout —— 无法自动插入，提示用户 ----------
     if (qobject_cast<QGridLayout*>(layout)) {
-        qWarning() << "[ProjectCreationDialog] templateComboBox 位于 QGridLayout 中，"
+        qWarning() << tr("[ProjectCreationDialog] templateComboBox 位于 QGridLayout 中，"
                       "无法自动插入语言选择器。\n"
                       "请在 Qt Designer 中把 templateComboBox 所在的父布局改为 "
-                      "QFormLayout 或 QVBoxLayout。";
+                      "QFormLayout 或 QVBoxLayout。");
         // 兜底：直接把语言下拉框塞到父 widget 里（视觉上会靠底部）
         m_languageComboBox->setParent(parentWidget);
         return;
@@ -1149,7 +1149,7 @@ void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
 // ------------------------------------------------------------
 void ProjectCreationDialog::createLanguageSpecificGroup()
 {
-    m_languageSpecificGroup = new QGroupBox("语言选项", this);
+    m_languageSpecificGroup = new QGroupBox(tr("语言选项"), this);
     m_languageSpecificForm  = new QFormLayout(m_languageSpecificGroup);
     m_languageSpecificForm->setLabelAlignment(Qt::AlignRight);
 
@@ -1157,20 +1157,20 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
     //   这样它们跟随 group 一起隐藏，不会在布局外"漏出"到对话框左上角
 
     // ---- Python ----
-    m_pythonVenvCheckBox = new QCheckBox("创建虚拟环境 (.venv)", m_languageSpecificGroup);
+    m_pythonVenvCheckBox = new QCheckBox(tr("创建虚拟环境 (.venv)"), m_languageSpecificGroup);
     m_pythonVenvCheckBox->setChecked(true);
     m_pythonInterpreterEdit = new QLineEdit(m_languageSpecificGroup);
-    m_pythonInterpreterEdit->setPlaceholderText("留空则自动探测 python3 / py");
+    m_pythonInterpreterEdit->setPlaceholderText(tr("留空则自动探测 python3 / py"));
     m_pythonEntryLabel = new QLabel("main.py", m_languageSpecificGroup);
 
     // ---- Go ----
     m_goModuleEdit = new QLineEdit(m_languageSpecificGroup);
-    m_goModuleEdit->setPlaceholderText("例如 example.com/myapp");
+    m_goModuleEdit->setPlaceholderText(tr("例如 example.com/myapp"));
 
     // ---- Rust ----
     m_rustKindCombo = new QComboBox(m_languageSpecificGroup);
-    m_rustKindCombo->addItem("可执行程序 (bin)", "bin");
-    m_rustKindCombo->addItem("库 (lib)",         "lib");
+    m_rustKindCombo->addItem(tr("可执行程序 (bin)"), "bin");
+    m_rustKindCombo->addItem(tr("库 (lib)"),         "lib");
 
     // ---- Node ----
     m_nodeVariantCombo = new QComboBox(m_languageSpecificGroup);
@@ -1190,11 +1190,11 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
 
     // ---- GenericAI ----
     m_genericBuildEdit = new QLineEdit(m_languageSpecificGroup);
-    m_genericBuildEdit->setPlaceholderText("例如 make -j4");
+    m_genericBuildEdit->setPlaceholderText(tr("例如 make -j4"));
     m_genericRunEdit = new QLineEdit(m_languageSpecificGroup);
-    m_genericRunEdit->setPlaceholderText("例如 ./my_app");
+    m_genericRunEdit->setPlaceholderText(tr("例如 ./my_app"));
     m_genericCleanEdit = new QLineEdit(m_languageSpecificGroup);
-    m_genericCleanEdit->setPlaceholderText("例如 rm -rf build/");
+    m_genericCleanEdit->setPlaceholderText(tr("例如 rm -rf build/"));
 
     // ---- 把 group 插到对话框里（逻辑不变） ----
     QWidget* anchor = ui->templateFilesLabel;
@@ -1234,12 +1234,12 @@ void ProjectCreationDialog::refreshTemplateList(ProjectLanguage lang)
 {
     if (!ui || !ui->templateComboBox) {
         qWarning() << "[ProjectCreationDialog] refreshTemplateList: "
-                      "templateComboBox 不可用";
+                      + tr("templateComboBox 不可用");
         return;
     }
     if (!m_languageComboBox) {
         qWarning() << "[ProjectCreationDialog] refreshTemplateList: "
-                      "languageComboBox 尚未创建";
+                      + tr("languageComboBox 尚未创建");
         return;
     }
 
@@ -1329,45 +1329,45 @@ void ProjectCreationDialog::refreshLanguageSpecificUI()
 
     switch (lang) {
     case ProjectLanguage::Python:
-        m_languageSpecificForm->addRow("入口文件:", m_pythonEntryLabel);
+        m_languageSpecificForm->addRow(tr("入口文件:"), m_pythonEntryLabel);
         m_pythonEntryLabel->show();
 
         m_languageSpecificForm->addRow(QString(), m_pythonVenvCheckBox);
         m_pythonVenvCheckBox->show();
 
-        m_languageSpecificForm->addRow("解释器路径:", m_pythonInterpreterEdit);
+        m_languageSpecificForm->addRow(tr("解释器路径:"), m_pythonInterpreterEdit);
         m_pythonInterpreterEdit->show();
         break;
 
     case ProjectLanguage::Go:
-        m_languageSpecificForm->addRow("Module 路径:", m_goModuleEdit);
+        m_languageSpecificForm->addRow(tr("Module 路径:"), m_goModuleEdit);
         m_goModuleEdit->show();
         break;
 
     case ProjectLanguage::Rust:
-        m_languageSpecificForm->addRow("目标类型:", m_rustKindCombo);
+        m_languageSpecificForm->addRow(tr("目标类型:"), m_rustKindCombo);
         m_rustKindCombo->show();
         break;
 
     case ProjectLanguage::Node:
-        m_languageSpecificForm->addRow("语言变体:", m_nodeVariantCombo);
+        m_languageSpecificForm->addRow(tr("语言变体:"), m_nodeVariantCombo);
         m_nodeVariantCombo->show();
 
-        m_languageSpecificForm->addRow("包管理器:", m_nodePmCombo);
+        m_languageSpecificForm->addRow(tr("包管理器:"), m_nodePmCombo);
         m_nodePmCombo->show();
 
-        m_languageSpecificForm->addRow("入口文件:", m_nodeEntryEdit);
+        m_languageSpecificForm->addRow(tr("入口文件:"), m_nodeEntryEdit);
         m_nodeEntryEdit->show();
         break;
 
     case ProjectLanguage::GenericAI:
-        m_languageSpecificForm->addRow("Build 命令:", m_genericBuildEdit);
+        m_languageSpecificForm->addRow(tr("Build 命令:"), m_genericBuildEdit);
         m_genericBuildEdit->show();
 
-        m_languageSpecificForm->addRow("Run 命令:", m_genericRunEdit);
+        m_languageSpecificForm->addRow(tr("Run 命令:"), m_genericRunEdit);
         m_genericRunEdit->show();
 
-        m_languageSpecificForm->addRow("Clean 命令:", m_genericCleanEdit);
+        m_languageSpecificForm->addRow(tr("Clean 命令:"), m_genericCleanEdit);
         m_genericCleanEdit->show();
         break;
 
@@ -1385,24 +1385,24 @@ bool ProjectCreationDialog::validateInput(QStringList& errors) const
     QString projectName = ui->projectNameLineEdit->text().trimmed();
     QString nameError;
     if (!validateProjectName(projectName, nameError)) {
-        errors.append("项目名称: " + nameError);
+        errors.append(tr("项目名称: ") + nameError);
     }
 
     QString displayName = ui->displayNameLineEdit->text().trimmed();
     if (displayName.isEmpty()) {
-        errors.append("显示名称不能为空");
+        errors.append(tr("显示名称不能为空"));
     }
 
     QString projectPath = ui->locationLineEdit->text().trimmed();
     QString pathError;
     if (!validateProjectPath(projectPath, pathError)) {
-        errors.append("项目路径: " + pathError);
+        errors.append(tr("项目路径: ") + pathError);
     } else {
         QString fullProjectPath = QDir(projectPath).absoluteFilePath(projectName);
         if (QDir(fullProjectPath).exists()) {
             QDir projectDir(fullProjectPath);
             if (!projectDir.isEmpty()) {
-                errors.append("项目目录已存在且不为空");
+                errors.append(tr("项目目录已存在且不为空"));
             }
         }
     }
@@ -1413,12 +1413,12 @@ bool ProjectCreationDialog::validateInput(QStringList& errors) const
 bool ProjectCreationDialog::validateProjectName(const QString& name, QString& error) const
 {
     if (name.isEmpty()) {
-        error = "项目名称不能为空";
+        error = tr("项目名称不能为空");
         return false;
     }
 
     if (!ProjectConfig::isValidProjectName(name)) {
-        error = "项目名称只能包含字母、数字和下划线，且不能以数字开头";
+        error = tr("项目名称只能包含字母、数字和下划线，且不能以数字开头");
         return false;
     }
 
@@ -1428,7 +1428,7 @@ bool ProjectCreationDialog::validateProjectName(const QString& name, QString& er
         "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
     };
     if (reservedNames.contains(name.toLower())) {
-        error = "项目名称是系统保留名称，请选择其他名称";
+        error = tr("项目名称是系统保留名称，请选择其他名称");
         return false;
     }
 
@@ -1439,33 +1439,33 @@ bool ProjectCreationDialog::validateProjectName(const QString& name, QString& er
 bool ProjectCreationDialog::validateProjectPath(const QString& path, QString& error) const
 {
     if (path.isEmpty()) {
-        error = "项目路径不能为空";
+        error = tr("项目路径不能为空");
         return false;
     }
 
     QDir dir(path);
     if (!dir.isAbsolute()) {
-        error = "项目路径必须是绝对路径";
+        error = tr("项目路径必须是绝对路径");
         return false;
     }
 
     static const QString illegalChars = "<>:\"|?*";
     for (const QChar& ch : illegalChars) {
         if (path.contains(ch)) {
-            error = "路径包含非法字符";
+            error = tr("路径包含非法字符");
             return false;
         }
     }
 
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
-            error = "无法创建目录，请检查权限";
+            error = tr("无法创建目录，请检查权限");
             return false;
         }
     } else {
         QFile testFile(dir.absoluteFilePath(".sprintide_test"));
         if (!testFile.open(QIODevice::WriteOnly)) {
-            error = "目录不可写，请检查权限";
+            error = tr("目录不可写，请检查权限");
             return false;
         }
         testFile.remove();
@@ -1486,7 +1486,7 @@ bool ProjectCreationDialog::createProjectStructure()
     // 创建项目根目录
     QDir projectDir(fullProjectPath);
     if (!projectDir.mkpath(".")) {
-        m_result.errorMessage = "无法创建项目目录: " + fullProjectPath;
+        m_result.errorMessage = tr("无法创建项目目录: ") + fullProjectPath;
         return false;
     }
     m_result.createdDirectories.append(fullProjectPath);
@@ -1498,7 +1498,7 @@ bool ProjectCreationDialog::createProjectStructure()
         if (projectDir.mkpath(dirName)) {
             m_result.createdDirectories.append(dirPath);
         } else {
-            m_result.errorMessage = "无法创建目录: " + dirPath;
+            m_result.errorMessage = tr("无法创建目录: ") + dirPath;
             return false;
         }
     }
@@ -1566,7 +1566,7 @@ bool ProjectCreationDialog::generateConfigFile()
                              .absoluteFilePath(m_projectConfig.projectName() + ".lightcppproj");
     QStringList errors;
     if (!m_projectConfig.saveToFile(configPath, errors)) {
-        m_result.errorMessage = "无法生成配置文件:\n" + errors.join("\n");
+        m_result.errorMessage = tr("无法生成配置文件:\n") + errors.join("\n");
         return false;
     }
     m_result.createdFiles.append(configPath);
@@ -1584,7 +1584,7 @@ bool ProjectCreationDialog::generateExampleFiles()
 
         // 确保目录存在
         if (!projectDir.mkpath(fileInfo.absolutePath())) {
-            m_result.errorMessage = "无法创建目录: " + fileInfo.absolutePath();
+            m_result.errorMessage = tr("无法创建目录: ") + fileInfo.absolutePath();
             return false;
         }
 
@@ -1597,7 +1597,7 @@ bool ProjectCreationDialog::generateExampleFiles()
         QString content = replaceTemplateVariables(example.content, variables);
 
         if (!writeTextFile(filePath, content)) {
-            m_result.errorMessage = "无法写入文件: " + filePath;
+            m_result.errorMessage = tr("无法写入文件: ") + filePath;
             return false;
         }
         m_result.createdFiles.append(filePath);
@@ -1616,7 +1616,7 @@ bool ProjectCreationDialog::generatePythonProject()
     // ---- 1. main.py ----
     QString mainPath = projDir.absoluteFilePath("main.py");
     if (!writeTextFile(mainPath, PYTHON_MAIN_EXAMPLE)) {
-        m_result.errorMessage = "无法创建 main.py";
+        m_result.errorMessage = tr("无法创建 main.py");
         return false;
     }
     m_result.createdFiles.append(mainPath);
@@ -1636,7 +1636,7 @@ bool ProjectCreationDialog::generatePythonProject()
         m_projectConfig.projectName() + ".lightcppproj");
     QStringList cfgErrors;
     if (!m_projectConfig.saveToFile(cfgPath, cfgErrors)) {
-        m_result.errorMessage = "无法写入配置文件: " + cfgErrors.join("; ");
+        m_result.errorMessage = tr("无法写入配置文件: ") + cfgErrors.join("; ");
         return false;
     }
     m_result.createdFiles.append(cfgPath);
@@ -1671,7 +1671,7 @@ bool ProjectCreationDialog::generateGoProject()
     // ---- 1. main.go ----
     QString mainPath = projDir.absoluteFilePath("main.go");
     if (!writeTextFile(mainPath, GO_MAIN_EXAMPLE)) {
-        m_result.errorMessage = "无法创建 main.go";
+        m_result.errorMessage = tr("无法创建 main.go");
         return false;
     }
     m_result.createdFiles.append(mainPath);
@@ -1680,7 +1680,7 @@ bool ProjectCreationDialog::generateGoProject()
     QString modContent = QString("module %1\n\ngo 1.21\n").arg(moduleName);
     QString modPath = projDir.absoluteFilePath("go.mod");
     if (!writeTextFile(modPath, modContent)) {
-        m_result.errorMessage = "无法创建 go.mod";
+        m_result.errorMessage = tr("无法创建 go.mod");
         return false;
     }
     m_result.createdFiles.append(modPath);
@@ -1695,7 +1695,7 @@ bool ProjectCreationDialog::generateGoProject()
         m_projectConfig.projectName() + ".lightcppproj");
     QStringList cfgErrors;
     if (!m_projectConfig.saveToFile(cfgPath, cfgErrors)) {
-        m_result.errorMessage = "无法写入配置文件: " + cfgErrors.join("; ");
+        m_result.errorMessage = tr("无法写入配置文件: ") + cfgErrors.join("; ");
         return false;
     }
     m_result.createdFiles.append(cfgPath);
@@ -1725,21 +1725,21 @@ bool ProjectCreationDialog::generateRustProject()
 
     QString tomlPath = projDir.absoluteFilePath("Cargo.toml");
     if (!writeTextFile(tomlPath, tomlContent)) {
-        m_result.errorMessage = "无法创建 Cargo.toml";
+        m_result.errorMessage = tr("无法创建 Cargo.toml");
         return false;
     }
     m_result.createdFiles.append(tomlPath);
 
     // ---- 2. src/main.rs 或 src/lib.rs ----
     if (!projDir.mkpath("src")) {
-        m_result.errorMessage = "无法创建 src 目录";
+        m_result.errorMessage = tr("无法创建 src 目录");
         return false;
     }
     const QString srcName = (kind == "lib") ? "lib.rs" : "main.rs";
     const QString srcContent = (kind == "lib") ? RUST_LIB_EXAMPLE : RUST_MAIN_EXAMPLE;
     QString srcPath = projDir.absoluteFilePath("src/" + srcName);
     if (!writeTextFile(srcPath, srcContent)) {
-        m_result.errorMessage = "无法创建 " + srcName;
+        m_result.errorMessage = tr("无法创建 ") + srcName;
         return false;
     }
     m_result.createdFiles.append(srcPath);
@@ -1754,7 +1754,7 @@ bool ProjectCreationDialog::generateRustProject()
         m_projectConfig.projectName() + ".lightcppproj");
     QStringList cfgErrors;
     if (!m_projectConfig.saveToFile(cfgPath, cfgErrors)) {
-        m_result.errorMessage = "无法写入配置文件: " + cfgErrors.join("; ");
+        m_result.errorMessage = tr("无法写入配置文件: ") + cfgErrors.join("; ");
         return false;
     }
     m_result.createdFiles.append(cfgPath);
@@ -1793,7 +1793,7 @@ bool ProjectCreationDialog::generateNodeProject()
     QString pkgPath = projDir.absoluteFilePath("package.json");
     if (!writeTextFile(pkgPath,
                        QString::fromUtf8(QJsonDocument(pkg).toJson(QJsonDocument::Indented)))) {
-        m_result.errorMessage = "无法创建 package.json";
+        m_result.errorMessage = tr("无法创建 package.json");
         return false;
     }
     m_result.createdFiles.append(pkgPath);
@@ -1802,12 +1802,12 @@ bool ProjectCreationDialog::generateNodeProject()
     const QString srcRel = isTs ? "src/index.ts" : "index.js";
     const QString srcAbs = projDir.absoluteFilePath(srcRel);
     if (!projDir.mkpath(QFileInfo(srcAbs).absolutePath())) {
-        m_result.errorMessage = "无法创建源码目录";
+        m_result.errorMessage = tr("无法创建源码目录");
         return false;
     }
     const QString srcContent = isTs ? NODE_TS_EXAMPLE : NODE_JS_EXAMPLE;
     if (!writeTextFile(srcAbs, srcContent)) {
-        m_result.errorMessage = "无法创建入口文件";
+        m_result.errorMessage = tr("无法创建入口文件");
         return false;
     }
     m_result.createdFiles.append(srcAbs);
@@ -1827,7 +1827,7 @@ bool ProjectCreationDialog::generateNodeProject()
             "}\n";
         QString tsCfgPath = projDir.absoluteFilePath("tsconfig.json");
         if (!writeTextFile(tsCfgPath, tsConfigContent)) {
-            m_result.errorMessage = "无法创建 tsconfig.json";
+            m_result.errorMessage = tr("无法创建 tsconfig.json");
             return false;
         }
         m_result.createdFiles.append(tsCfgPath);
@@ -1843,7 +1843,7 @@ bool ProjectCreationDialog::generateNodeProject()
         m_projectConfig.projectName() + ".lightcppproj");
     QStringList cfgErrors;
     if (!m_projectConfig.saveToFile(cfgPath, cfgErrors)) {
-        m_result.errorMessage = "无法写入配置文件: " + cfgErrors.join("; ");
+        m_result.errorMessage = tr("无法写入配置文件: ") + cfgErrors.join("; ");
         return false;
     }
     m_result.createdFiles.append(cfgPath);
@@ -1868,7 +1868,7 @@ void ProjectCreationDialog::updatePathPreview()
     QString projectPath = ui->locationLineEdit->text().trimmed();
 
     if (projectName.isEmpty() || projectPath.isEmpty()) {
-        ui->pathPreviewLabel->setText("请填写项目名称和路径");
+        ui->pathPreviewLabel->setText(tr("请填写项目名称和路径"));
         ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
         return;
     }
@@ -1881,14 +1881,14 @@ void ProjectCreationDialog::updatePathPreview()
     QString status;
     if (exists) {
         if (empty) {
-            status = "(目录已存在，为空)";
+            status = tr("(目录已存在，为空)");
             ui->pathPreviewLabel->setStyleSheet("color: orange;");
         } else {
-            status = "(目录已存在，不为空)";
+            status = tr("(目录已存在，不为空)");
             ui->pathPreviewLabel->setStyleSheet("color: red;");
         }
     } else {
-        status = "(将创建新目录)";
+        status = tr("(将创建新目录)");
         ui->pathPreviewLabel->setStyleSheet("color: green;");
     }
 
@@ -1910,12 +1910,12 @@ void ProjectCreationDialog::updateTemplateDescription()
 
     ui->templateDescriptionLabel->setText(currentTemplate.description);
 
-    QString fileList = "将创建以下文件:\n";
+    QString fileList = tr("将创建以下文件:\n");
     for (const QString& file : currentTemplate.defaultFiles) {
         fileList += "• " + file + "\n";
     }
 
-    fileList += "\n目录结构:\n";
+    fileList += tr("\n目录结构:\n");
     for (const QString& dir : currentTemplate.directories) {
         fileList += "• " + dir + "/\n";
     }
@@ -1982,6 +1982,8 @@ void ProjectCreationDialog::saveDialogState()
     settings.setValue("debugInfo",    ui->debugInfoCheckBox->isChecked());
     settings.setValue("autoOpen",     ui->autoOpenCheckBox->isChecked());
     settings.setValue("createGitRepo", ui->createGitRepoCheckBox->isChecked());
+    settings.setValue("lastTemplateId",
+                      ui->templateComboBox->currentData().toString());
 
     // 保存语言选择
     if (m_languageComboBox) {
@@ -2016,8 +2018,8 @@ void ProjectCreationDialog::loadDialogState()
     // if (lastTemplate >= 0 && lastTemplate < ui->templateComboBox->count()) {
     //     ui->templateComboBox->setCurrentIndex(lastTemplate);
     // }
-    settings.setValue("lastTemplateId",
-                      ui->templateComboBox->currentData().toString());
+    // settings.setValue("lastTemplateId",
+    //                   ui->templateComboBox->currentData().toString());
 
     // 读取时：
     const QString lastId = settings.value("lastTemplateId").toString();
@@ -2092,7 +2094,7 @@ bool ProjectCreationDialog::saveProjectConfigFile()
     .absoluteFilePath(m_projectConfig.projectName() + ".lightcppproj");
     QStringList errors;
     if (!m_projectConfig.saveToFile(cfgPath, errors)) {
-        m_result.errorMessage = "无法写入配置文件: " + errors.join("; ");
+        m_result.errorMessage = tr("无法写入配置文件: ") + errors.join("; ");
         return false;
     }
     m_result.createdFiles.append(cfgPath);

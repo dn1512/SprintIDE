@@ -13,28 +13,28 @@ FindDialog::FindDialog(QPlainTextEdit* editor, QWidget* parent)
     : QDialog(parent)
     , m_editor(editor)
 {
-    setWindowTitle("查找");
+    setWindowTitle(tr("查找"));
     setFixedWidth(400);
     setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
 
     m_findLineEdit = new QLineEdit(this);
-    m_findLineEdit->setPlaceholderText("输入查找内容...");
+    m_findLineEdit->setPlaceholderText(tr("输入查找内容..."));
     connect(m_findLineEdit, &QLineEdit::textChanged, this, &FindDialog::onTextChanged);
     connect(m_findLineEdit, &QLineEdit::returnPressed, this, &FindDialog::onFindNext);
 
-    m_caseSensitiveCheck = new QCheckBox("大小写敏感", this);
-    m_wholeWordCheck = new QCheckBox("全字匹配", this);
+    m_caseSensitiveCheck = new QCheckBox(tr("大小写敏感"), this);
+    m_wholeWordCheck = new QCheckBox(tr("全字匹配"), this);
 
-    m_findNextButton = new QPushButton("查找下一个", this);
+    m_findNextButton = new QPushButton(tr("查找下一个"), this);
     m_findNextButton->setDefault(true);
     m_findNextButton->setEnabled(false);
     connect(m_findNextButton, &QPushButton::clicked, this, &FindDialog::onFindNext);
 
-    m_findPreviousButton = new QPushButton("查找上一个", this);
+    m_findPreviousButton = new QPushButton(tr("查找上一个"), this);
     m_findPreviousButton->setEnabled(false);
     connect(m_findPreviousButton, &QPushButton::clicked, this, &FindDialog::onFindPrevious);
 
-    m_closeButton = new QPushButton("关闭", this);
+    m_closeButton = new QPushButton(tr("关闭"), this);
     connect(m_closeButton, &QPushButton::clicked, this, &FindDialog::close);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);

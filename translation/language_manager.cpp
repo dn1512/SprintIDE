@@ -2,8 +2,10 @@
 #include "application.h"
 #include "config_manager.h"
 
-#include <QCoreApplication>
+#include <QDirIterator>
+#include <QFile>
 #include <QLibraryInfo>
+#include <QCoreApplication>
 #include <QDebug>
 
 namespace SprintIDE {
