@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
                     QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
 
                 if (createDlg.exec() != QDialog::Accepted) {
-                    // ★ 用户取消创建 → continue 回到"选择项目"对话框
+                    // 用户取消创建 → continue 回到"选择项目"对话框
                     continue;
                 }
 

@@ -330,6 +330,85 @@ void LspSettingsPage::saveSettings()
     cfg->setValue("Lsp/IgnoreWarnings", rules);
 }
 
+// ====================================================================
+// LanguageSettingsPage 实现
+// ====================================================================
+#include "translation/language_manager.h"
+
+LanguageSettingsPage::LanguageSettingsPage(QWidget* parent)
+    : SettingsPage(parent)
+{
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+    QLabel* infoLabel = new QLabel(
+        tr("选择 SprintIDE 的界面语言。切换后需要重启应用才能生效。"),
+        this);
+    infoLabel->setWordWrap(true);
+    infoLabel->setStyleSheet(
+        "QLabel { color: #888888; font-size: 10pt; margin-bottom: 8px; }");
+    mainLayout->addWidget(infoLabel);
+
+    QGroupBox* langGroup = new QGroupBox(tr("界面语言"), this);
+    QFormLayout* langLayout = new QFormLayout(langGroup);
+
+    m_langCombo = new QComboBox(this);
+    for (const auto& info : LanguageManager::availableLanguages()) {
+        m_langCombo->addItem(info.display, info.code);
+    }
+    langLayout->addRow(tr("语言:"), m_langCombo);
+
+    mainLayout->addWidget(langGroup);
+
+    m_hintLabel = new QLabel(this);
+    m_hintLabel->setWordWrap(true);
+    m_hintLabel->setStyleSheet(
+        "QLabel { color: #EBB65B; font-size: 10pt; margin-top: 8px; }");
+    m_hintLabel->setVisible(false);
+    mainLayout->addWidget(m_hintLabel);
+
+    mainLayout->addStretch();
+
+    // 用户改动时实时给出"需重启"提示
+    connect(m_langCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+                const QString cur = m_langCombo->currentData().toString();
+                const bool changed = (cur != m_initialLang);
+                m_hintLabel->setVisible(changed);
+                if (changed) {
+                    m_hintLabel->setText(
+                        tr("⚠ 语言已更改，重启 SprintIDE 后生效。"));
+                }
+            });
+}
+
+void LanguageSettingsPage::loadSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    const QString cur = cfg->value("General/Language", "zh_CN").toString();
+    m_initialLang = cur;
+
+    int idx = m_langCombo->findData(cur);
+    if (idx < 0) idx = 0;
+    m_langCombo->setCurrentIndex(idx);
+
+    m_hintLabel->setVisible(false);
+}
+
+void LanguageSettingsPage::saveSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    const QString selected = m_langCombo->currentData().toString();
+    cfg->setValue("General/Language", selected);
+
+    if (selected != m_initialLang) {
+        emit languageChanged(selected);
+    }
+}
+
 void EnvironmentSettingsPage::setupTable()
 {
     m_tableWidget->setColumnWidth(0, 200);
@@ -390,8 +469,8 @@ void EnvironmentSettingsPage::saveToGlobalConfig(const QVariantMap& sdkEnv)
     if (!cfg) return;
 
     cfg->setValue("Sdk/Environment", QVariant::fromValue(sdkEnv));
-    QMessageBox::information(this, tr("保存成功"),
-                             tr("SDK 环境变量已保存到全局设置。"));
+    // QMessageBox::information(this, tr("保存成功"),
+    //                          tr("SDK 环境变量已保存到全局设置。"));
 }
 
 QVariantMap EnvironmentSettingsPage::loadFromGlobalConfig() const
@@ -890,6 +969,8 @@ void SettingsDialog::createUI()
 
     m_categoryList->addItem(tr("LSP 诊断"));
 
+    m_categoryList->addItem(tr("语言 / Language"));
+
     // 右侧堆叠页面
     m_stackedWidget = new QStackedWidget(this);
 
@@ -921,7 +1002,15 @@ void SettingsDialog::createUI()
 
     LspSettingsPage* lspPage = new LspSettingsPage(this);
     m_stackedWidget->addWidget(lspPage);
-    m_pages.append(lspPage);
+    m_pages.append(lspPage);    
+
+    // 语言设置页（放在最后，符合"系统级"配置的直觉位置）
+    LanguageSettingsPage* langPage = new LanguageSettingsPage(this);
+    m_stackedWidget->addWidget(langPage);
+    m_pages.append(langPage);
+
+    connect(langPage, &LanguageSettingsPage::languageChanged,
+            this, [this](const QString&) { m_languageChanged = true; });
 
     connect(m_categoryList, &QListWidget::currentRowChanged,
             this, &SettingsDialog::onCategoryChanged);
@@ -982,5 +1071,18 @@ void SettingsDialog::onApply()
 void SettingsDialog::accept()
 {
     saveAllSettings();
+    if (m_languageChanged) {
+        const auto reply = QMessageBox::question(
+            this, tr("语言已更改"),
+            tr("界面语言已更改，需要重启 SprintIDE 才能生效。\n\n是否立即重启？"),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            // 触发重启：QProcess 起一个新实例后退出
+            QProcess::startDetached(QCoreApplication::applicationFilePath(),
+                                    QCoreApplication::arguments().mid(1));
+            QCoreApplication::quit();
+            return;
+        }
+    }
     QDialog::accept();
 }

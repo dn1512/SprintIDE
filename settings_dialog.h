@@ -128,6 +128,26 @@ private:
     QStackedWidget   *m_stackedWidget;
     QDialogButtonBox *m_buttonBox;
     QList<SettingsPage*> m_pages;
+    bool m_languageChanged = false;
+};
+
+// ========== 语言设置页面 ==========
+class LanguageSettingsPage : public SettingsPage
+{
+    Q_OBJECT
+public:
+    explicit LanguageSettingsPage(QWidget* parent = nullptr);
+    void loadSettings() override;
+    void saveSettings() override;
+
+signals:
+    // 语言真的发生变化时发出（用于 SettingsDialog 提示重启）
+    void languageChanged(const QString& langCode);
+
+private:
+    QComboBox* m_langCombo = nullptr;
+    QLabel*    m_hintLabel = nullptr;
+    QString    m_initialLang;
 };
 
 #endif // SETTINGS_DIALOG_H

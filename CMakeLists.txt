@@ -14,7 +14,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # 查找Qt组件
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools)
 
 # 应用程序信息
 set(APP_NAME "SprintIDE")
@@ -572,8 +572,38 @@ add_executable(${PROJECT_NAME}
     log/log_list_view.h log/log_list_view.cpp
     log/log_item_delegate.h log/log_item_delegate.cpp
     log/output_panel.h log/output_panel.cpp
+    translation/language_manager.h translation/language_manager.cpp
 )
 
+# ============================================================
+# 国际化（i18n）：.ts → .qm 并打包进 Qt 资源系统
+#   - 运行时通过 ":/i18n/SprintIDE_<locale>.qm" 加载
+#   - 若 translations/ 目录下没有 .ts，则本段自动跳过（首次 clone 不报错）
+# ============================================================
+set(SPRINTIDE_TS_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/SprintIDE_zh_CN.ts"
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/SprintIDE_en_US.ts"
+)
+
+set(SPRINTIDE_EXISTING_TS)
+foreach(_ts ${SPRINTIDE_TS_FILES})
+    if(EXISTS "${_ts}")
+        list(APPEND SPRINTIDE_EXISTING_TS "${_ts}")
+    else()
+        message(STATUS "[i18n] 翻译文件暂不存在（跳过）: ${_ts}")
+    endif()
+endforeach()
+
+if(SPRINTIDE_EXISTING_TS)
+    qt_add_translations(${PROJECT_NAME}
+        TS_FILES       ${SPRINTIDE_EXISTING_TS}
+        RESOURCE_PREFIX "/i18n"
+    )
+    list(LENGTH SPRINTIDE_EXISTING_TS _ts_count)
+    message(STATUS "[i18n] 已启用，翻译文件数: ${_ts_count}")
+else()
+    message(STATUS "[i18n] 未启用（translations/ 目录下没有 .ts）")
+endif()
 
 # 链接Qt库
 target_link_libraries(${PROJECT_NAME} PRIVATE

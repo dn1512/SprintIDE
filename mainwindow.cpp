@@ -2882,7 +2882,7 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
     m_outputPanel->clear();
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString("<span style='color:#3399FF;'>[%1] 开始编译: %2</span>")
+    QString htmlMessage = QString("[%1] 开始编译: %2")
                               .arg(timeStr)
                               .arg(sourceFile);
     appendLog(LogEntry::make(
@@ -2922,7 +2922,7 @@ void MainWindow::onCompileProgress(const QString& taskId, int progress, const QS
 
     if (progress % 25 == 0) {
         QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-        QString htmlMessage = QString("<span style='color:#9966FF;'>[%1] 编译进度: %2%</span>")
+        QString htmlMessage = QString("[%1] 编译进度: %2%")
                                   .arg(timeStr)
                                   .arg(progress);
         logError(htmlMessage);
@@ -2992,7 +2992,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
 
     if (result.success) {
-        QString htmlMessage = QString("<span style='color:#33CC33;'>[%1] 编译成功! 耗时: %2ms</span>")
+        QString htmlMessage = QString("[%1] 编译成功! 耗时: %2ms")
                                   .arg(timeStr)
                                   .arg(elapsedMs);
         appendLog(LogEntry::make(LogKind::Compile, LogLevel::Info, "Compile",
@@ -3000,15 +3000,15 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
           htmlMessage);
 
         if (!result.executablePath.isEmpty()) {
-            logInfo(QString("<span style='color:#33CC33;'>可执行文件: %1</span>")
+            logInfo(QString("可执行文件: %1")
                                        .arg(result.executablePath));
         }
 
         // 编译成功的细节统计
-        QString statsLine = QString("<span style='color:#66CC66;'>  错误: %1, 警告: %2</span>")
+        QString statsLine = QString(" 错误: %1, 警告: %2")
                                 .arg(result.errors.size())
                                 .arg(result.warnings.size());
-        logError(statsLine);
+        logInfo(statsLine);
 
         m_statusLabel->setText("编译成功");
 
@@ -3054,14 +3054,14 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                       LogKind::Compile, LogLevel::Error, "Compile",
                       QStringLiteral("编译失败，耗时 %1ms，错误 %2，警告 %3")
                           .arg(elapsedMs).arg(result.errors.size()).arg(result.warnings.size())),
-                  QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
+                  QString("[%1] 编译失败! 耗时: %2ms")
                       .arg(timeStr).arg(elapsedMs));
         
         for (int i = 0; i < result.errors.size(); ++i) {
             appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
                                      result.errors[i]));
         }
-        QString htmlMessage = QString("<span style='color:#FF3333;'>[%1] 编译失败! 耗时: %2ms</span>")
+        QString htmlMessage = QString("[%1] 编译失败! 耗时: %2ms")
                                   .arg(timeStr)
                                   .arg(elapsedMs);
         logError(htmlMessage);
@@ -3072,21 +3072,21 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         int warningCount = result.warnings.size();
 
         if (errorCount > 0 || warningCount > 0) {
-            QString statsMessage = QString("<span style='color:#FF3333;'>错误: %1, 警告: %2</span>")
+            QString statsMessage = QString("错误: %1, 警告: %2")
                                        .arg(errorCount)
                                        .arg(warningCount);
             logError(statsMessage);
         }
 
         if (!result.errors.isEmpty()) {
-            logError("<span style='color:#FF3333;font-weight:bold;'>错误列表:</span>");
+            logError("错误列表:");
             for (int i = 0; i < qMin(5, result.errors.size()); i++) {
-                logError(QString("<span style='color:#FF3333;'>  %1. %2</span>")
+                logError(QString(" %1. %2")
                                            .arg(i + 1)
                                            .arg(result.errors[i].toHtmlEscaped()));
             }
             if (result.errors.size() > 5) {
-                logError(QString("<span style='color:#FF9900;'>... 还有 %1 个错误未显示</span>")
+                logError(QString("... 还有 %1 个错误未显示")
                                            .arg(result.errors.size() - 5));
             }
         }
@@ -3186,7 +3186,7 @@ void MainWindow::onCompileError(const QString& taskId, const QString& errorMessa
     m_isCompiling = false;
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString("<span style='color:#FF3333;font-weight:bold;'>[%1] 编译错误: %2</span>")
+    QString htmlMessage = QString("[%1] 编译错误: %2")
                               .arg(timeStr)
                               .arg(errorMessage.toHtmlEscaped());
     
@@ -3204,11 +3204,11 @@ void MainWindow::onCompilersDetected(const QStringList& compilers)
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    logInfo(QString("<span style='color:#3399FF;'>[%1] 检测到的编译器:</span>").arg(timeStr));
+    logInfo(QString("[%1] 检测到的编译器:").arg(timeStr));
 
     for (const QString& compiler : compilers) {
         QString info = m_compileManager->getCompilerInfo(compiler);
-        logInfo(QString("<span style='color:#CCCCCC;'>  - %1: %2</span>")
+        logInfo(QString("  - %1: %2")
                                    .arg(compiler)
                                    .arg(info.toHtmlEscaped()));
     }
@@ -3234,7 +3234,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    logInfo(QString("<span style='color:#33CC33;'>[%1] 正在运行程序...</span>").arg(timeStr));
+    logInfo(QString("[%1] 正在运行程序...").arg(timeStr));
 
     if (inTerminal) {
         QString program;
@@ -3261,7 +3261,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         connect(process, &QProcess::readyReadStandardOutput, [=]() {
             QString output = QString::fromLocal8Bit(process->readAllStandardOutput());
             QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            logInfo(QString("<span style='color:#CCCCCC;'>[%1] 程序输出: %2</span>")
+            logInfo(QString("[%1] 程序输出: %2")
                                        .arg(timeStr)
                                        .arg(output.toHtmlEscaped()));
         });
@@ -3269,7 +3269,7 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
         connect(process, &QProcess::readyReadStandardError, [=]() {
             QString error = QString::fromLocal8Bit(process->readAllStandardError());
             QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-            logError(QString("<span style='color:#FF9900;'>[%1] 程序错误: %2</span>")
+            logError(QString("[%1] 程序错误: %2")
                                        .arg(timeStr)
                                        .arg(error.toHtmlEscaped()));
         });
@@ -3280,11 +3280,11 @@ void MainWindow::runProgram(const QString& executablePath, bool inTerminal)
                     QString message;
 
                     if (exitStatus == QProcess::NormalExit) {
-                        message = QString("<span style='color:#33CC33;'>[%1] 程序执行完毕，退出码: %2</span>")
+                        message = QString("[%1] 程序执行完毕，退出码: %2")
                                       .arg(timeStr)
                                       .arg(exitCode);
                     } else {
-                        message = QString("<span style='color:#FF3333;'>[%1] 程序异常退出</span>").arg(timeStr);
+                        message = QString("[%1] 程序异常退出").arg(timeStr);
                     }
 
                     logInfo(message);
@@ -3534,8 +3534,7 @@ void MainWindow::onStartDebug() {
             connect(m_pythonDebugger, &PythonDebugger::outputReceived, this, [this](const QString& out, bool err) {
                 // 输出面板
                 if (err) {
-                    logError("<span style='color:#FF6B6B;'>"
-                                           + out.toHtmlEscaped() + "</span>");
+                    logError(out.toHtmlEscaped());
                 } else {
                     logInfo(out);
                 }
@@ -3745,7 +3744,7 @@ void MainWindow::onStartDebug() {
                         // 空路径防护：DAP 有时不返回 source.path
                         if (file.isEmpty()) {
                             logError(
-                                "<span style='color:#FF9900;'>警告：调试器未返回源文件路径，无法跳转高亮</span>");
+                                "警告：调试器未返回源文件路径，无法跳转高亮");
                             m_isDebugging = true;
                             updateDebugActions();
                             switchToDebugTab();
@@ -3783,8 +3782,7 @@ void MainWindow::onStartDebug() {
                     [this](const QString& out, bool err) {
                         // 输出面板
                         if (err) {
-                            logError("<span style='color:#FF6B6B;'>"
-                                                   + out.toHtmlEscaped() + "</span>");
+                            logError(out.toHtmlEscaped());
                         } else {
                             logInfo(out);
                         }
@@ -4960,7 +4958,7 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
     }
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    logInfo(QString("<span style='color:#33CC33;'>[%1] 正在运行: %2</span>")
+    logInfo(QString("[%1] 正在运行: %2")
                                .arg(timeStr).arg(executablePath));
 
     QProcess* process = new QProcess(this);
@@ -4979,8 +4977,7 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
         QByteArray data = process->readAllStandardError();
         QString output = QString::fromLocal8Bit(data);
         if (!output.isEmpty()) {
-            logError("<span style='color:#FF6B6B;'>"
-                                   + output.toHtmlEscaped() + "</span>");
+            logError(output.toHtmlEscaped());
         }
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
@@ -4988,11 +4985,11 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
                 QString t = QTime::currentTime().toString("hh:mm:ss");
                 if (status == QProcess::NormalExit) {
                     logInfo(
-                        QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                        QString("[%1] 进程结束，退出码: %2")
                             .arg(t).arg(exitCode));
                 } else {
                     logError(
-                        QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>").arg(t));
+                        QString("[%1] 进程异常崩溃").arg(t));
                 }
                 process->deleteLater();
                 m_statusLabel->setText("运行完成");
@@ -5146,7 +5143,7 @@ void MainWindow::onQuickOpen()
                 if (path.isEmpty()) return;
                 if (!QFile::exists(path)) {
                     logError(
-                        QString("<span style='color:#EBB65B;'>文件不存在: %1</span>")
+                        QString("文件不存在: %1")
                             .arg(path));
                     return;
                 }
@@ -5567,8 +5564,8 @@ void MainWindow::onPerformanceSnapshot(const SprintIDE::PerformanceSnapshot& s)
         s.processMemoryBytes, 1, QLocale::DataSizeTraditionalFormat);
 
     m_performanceLabel->setText(QStringLiteral(
-        "<span style='color:%1;'>%2</span>"
-        "<span style='color:%3;'>  MEM %4</span>")
+        "%2"
+        "  MEM %4")
         .arg(cpuColor, cpuText.toHtmlEscaped(),
              memColor, memText.toHtmlEscaped()));
 
@@ -5617,7 +5614,7 @@ void MainWindow::onGitInit()
         return;
     }
     logInfo(
-        QString("<span style='color:#33CC33;'>Git 仓库已初始化: %1</span>")
+        QString("Git 仓库已初始化: %1")
             .arg(d->currentProjectPath));
     updateGitActions();
     showGitDialog();
@@ -5640,7 +5637,7 @@ void MainWindow::onGitPush()
 
     if (!gm.hasRemote()) {
         logError(
-            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法推送。</span>");
+            "没有可用的远程仓库，无法推送。");
         return;
     }
 
@@ -5715,8 +5712,7 @@ void MainWindow::onGitPull()
     if (!gm.isActive()) return;
 
     if (!gm.hasRemote()) {
-        logError(
-            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法拉取。</span>");
+        logError("没有可用的远程仓库，无法拉取。");
         return;
     }
 
@@ -5767,8 +5763,7 @@ void MainWindow::onGitFetch()
 {
     if (!Git::GitManager::instance().isActive()) return;
     if (!Git::GitManager::instance().hasRemote()) {
-        logError(
-            "<span style='color:#EBB65B;'>没有可用的远程仓库，无法获取。</span>");
+        logError("没有可用的远程仓库，无法获取。");
         return;
     }
     logInfo("正在获取远程更新...");
@@ -5792,7 +5787,7 @@ void MainWindow::onGitFileDoubleClicked(const QString& absolutePath)
     if (absolutePath.isEmpty()) return;
     if (!QFile::exists(absolutePath)) {
         logError(
-            QString("<span style='color:#EBB65B;'>文件已被删除或移动: %1</span>")
+            QString("文件已被删除或移动: %1")
                 .arg(absolutePath));
         return;
     }
@@ -6015,7 +6010,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
         if (box.clickedButton() == okBtn) {
             gm.discardFileChanges(firstRel);
             logInfo(
-                QStringLiteral("<span style='color:#EBB65B;'>已回滚: %1</span>")
+                QStringLiteral("已回滚: %1")
                     .arg(firstRel));
         }
         break;
@@ -6088,7 +6083,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
             gm.createBranch(branchName);
         }
         logInfo(
-            QStringLiteral("<span style='color:#33CC33;'>分支已创建: %1</span>")
+            QStringLiteral("分支已创建: %1")
                 .arg(branchName));
         break;
     }
@@ -6161,10 +6156,10 @@ void MainWindow::updateGitStatusIndicator()
     }
 
     QStringList parts;
-    if (modified   > 0) parts << QStringLiteral("<span style='color:#EBB65B;'>M:%1</span>").arg(modified);
-    if (staged     > 0) parts << QStringLiteral("<span style='color:#46C687;'>S:%1</span>").arg(staged);
-    if (untracked  > 0) parts << QStringLiteral("<span style='color:#7A8599;'>U:%1</span>").arg(untracked);
-    if (conflicted > 0) parts << QStringLiteral("<span style='color:#E55B6B;'>C:%1</span>").arg(conflicted);
+    if (modified   > 0) parts << QStringLiteral("M:%1").arg(modified);
+    if (staged     > 0) parts << QStringLiteral("S:%1").arg(staged);
+    if (untracked  > 0) parts << QStringLiteral("U:%1").arg(untracked);
+    if (conflicted > 0) parts << QStringLiteral("C:%1").arg(conflicted);
 
     QString text = QStringLiteral(
             "<img src=':/icons/icons/git_branch.svg' width='12' height='12' "
@@ -6195,14 +6190,12 @@ void MainWindow::onAIRestartRequested(const QString& host, quint16 port)
                "请检查端口是否被占用，或地址是否合法。")
                 .arg(host).arg(port));
 
-        logError(
-            QString("<span style='color:#FF5555;'>AI 服务器重启失败：%1:%2</span>")
-                .arg(host).arg(port));
+        logError(QString("AI 服务器重启失败：%1:%2").arg(host).arg(port));
         return;
     }
 
     logInfo(
-        QString("<span style='color:#33CC33;'>AI 服务器已重启：%1:%2</span>")
+        QString("AI 服务器已重启：%1:%2")
             .arg(host).arg(port));
 }
 
@@ -6640,13 +6633,11 @@ void MainWindow::onBuildProject()
 
         if (qtDir.isEmpty()) {
             // 给一个提示但不阻塞：让 CMake 靠系统自动查找，很多机器装在标准路径
-            logError(
-                "<span style='color:#FFAA00;'>警告：未在设置里配置 QT_DIR，"
-                "CMake 将依赖系统自动探测 Qt。</span>");
+            logError("警告：未在设置里配置 QT_DIR，"
+                "CMake 将依赖系统自动探测 Qt。");
         } else {
             task.extraArgs << QString("-DCMAKE_PREFIX_PATH=%1").arg(qtDir);
-            logInfo(
-                QString("Qt SDK: %1").arg(qtDir));
+            logInfo(QString("Qt SDK: %1").arg(qtDir));
         }
     }
 
@@ -6982,8 +6973,7 @@ void MainWindow::onRun()
             QByteArray data = process->readAllStandardError();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                logError("<span style='color:#FF6B6B;'>"
-                                       + output.toHtmlEscaped() + "</span>");
+                logError(output.toHtmlEscaped());
             }
         });
 
@@ -6992,13 +6982,9 @@ void MainWindow::onRun()
                 this, [this, process](int exitCode, QProcess::ExitStatus status) {
                     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
                     if (status == QProcess::NormalExit) {
-                        logInfo(
-                            QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
-                                .arg(timeStr).arg(exitCode));
+                        logInfo(QString("[%1] 进程结束，退出码: %2").arg(timeStr).arg(exitCode));
                     } else {
-                        logError(
-                            QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
-                                .arg(timeStr));
+                        logError(QString("[%1] 进程异常崩溃").arg(timeStr));
                     }
                     process->deleteLater();
                     m_statusLabel->setText("运行完成");
@@ -7100,8 +7086,7 @@ void MainWindow::onRun()
             QByteArray data = process->readAllStandardError();
             QString output = QString::fromLocal8Bit(data);
             if (!output.isEmpty()) {
-                logError("<span style='color:#FF6B6B;'>"
-                                       + output.toHtmlEscaped() + "</span>");
+                logError(output.toHtmlEscaped());
             }
         });
         connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
@@ -7109,11 +7094,11 @@ void MainWindow::onRun()
                     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
                     if (status == QProcess::NormalExit) {
                         logInfo(
-                            QString("<span style='color:#33CC33;'>[%1] 进程结束，退出码: %2</span>")
+                            QString("[%1] 进程结束，退出码: %2")
                                 .arg(timeStr).arg(exitCode));
                     } else {
                         logError(
-                            QString("<span style='color:#FF6B6B;'>[%1] 进程异常崩溃</span>")
+                            QString("[%1] 进程异常崩溃")
                                 .arg(timeStr));
                     }
                     process->deleteLater();
@@ -7584,7 +7569,7 @@ void MainWindow::stopCompile()
 
         QString timeStr = QTime::currentTime().toString("hh:mm:ss");
         if (stopped) {
-            logError(QString("<span style='color:#FF9900;'>[%1] 编译已取消</span>").arg(timeStr));
+            logError(QString("[%1] 编译已取消").arg(timeStr));
             m_statusLabel->setText("编译已取消");
         }
 

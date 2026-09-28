@@ -10,6 +10,7 @@
 #include <QObject>
 
 #include "builder/builder_factory.h"
+#include "translation/language_manager.h"
 
 namespace SprintIDE {
 
@@ -125,6 +126,15 @@ bool Application::initialize(int argc, char *argv[])
         qDebug() << "[Application] 编辑器字体已从配置加载:"
                  << fontFamily << clampedSize << "pt";
     }
+
+    // ============================================================
+    //  初始化语言（放在 ConfigManager / 主题之后，MainWindow 之前）
+    //  - ConfigManager 已就绪，可从 General/Language 读取配置
+    //  - .qm 不存在时 LanguageManager 内部会静默 fallback 到中文硬编码
+    // ============================================================
+    SprintIDE::LanguageManager::instance().applyFromConfig();
+    qDebug() << "[Application] 已应用语言:"
+             << SprintIDE::LanguageManager::instance().currentLanguage();
 
     emit initialized();
     qDebug() << "Application initialized successfully";
@@ -275,18 +285,26 @@ bool Application::hasUnsavedSession() const
 
 void Application::setLanguage(const QString &languageCode)
 {
-    Q_UNUSED(languageCode)
-    // 暂未实现
+    // 转发给 LanguageManager，同时把选择持久化到配置
+    SprintIDE::LanguageManager::instance().applyLanguage(languageCode);
+
+    if (d->configManager) {
+        d->configManager->setValue("General/Language", languageCode);
+    }
 }
 
 QString Application::currentLanguage() const
 {
-    return "en_US"; // 暂未实现
+    return SprintIDE::LanguageManager::instance().currentLanguage();
 }
 
 QStringList Application::availableLanguages() const
 {
-    return {"en_US"}; // 暂未实现
+    QStringList codes;
+    for (const auto& info : SprintIDE::LanguageManager::availableLanguages()) {
+        codes.append(info.code);
+    }
+    return codes;
 }
 
 } // namespace SprintIDE
