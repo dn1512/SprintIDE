@@ -1254,9 +1254,10 @@ void MainWindow::setupToolBar()
     QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),tr("编译"));
     connect(buildAction, &QAction::triggered, this, &MainWindow::onBuildProject);
 
-    QAction *runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"),tr("运行"));
-    runAction->setShortcut(QKeySequence("Ctrl+R"));
-    connect(runAction, &QAction::triggered, this, &MainWindow::onRun);
+    m_runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"), tr("运行"));
+    m_runAction->setShortcut(QKeySequence("Ctrl+R"));
+    m_runAction->setToolTip(tr("运行 (Ctrl+R)"));
+    connect(m_runAction, &QAction::triggered, this, &MainWindow::onRun);
 
     QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),tr("调试"));
     connect(debugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
@@ -1971,6 +1972,11 @@ void MainWindow::applyTheme()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    // 退出前先停掉正在运行的程序
+    if (isRunningProgram()) {
+        stopRunningProcess();
+    }
+
     if (!confirmUnsavedChanges()) {
         event->ignore();
         return;
@@ -4961,47 +4967,168 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
     logInfo(QString("[%1] 正在运行: %2")
                                .arg(timeStr).arg(executablePath));
 
-    QProcess* process = new QProcess(this);
-    process->setProgram(executablePath);
-    process->setWorkingDirectory(QFileInfo(executablePath).absolutePath());
-    process->setProcessChannelMode(QProcess::MergedChannels);
-
-    connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
-        QByteArray data = process->readAllStandardOutput();
-        QString output = QString::fromLocal8Bit(data);
-        if (!output.isEmpty()) {
-            logInfo(output);
-        }
-    });
-    connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
-        QByteArray data = process->readAllStandardError();
-        QString output = QString::fromLocal8Bit(data);
-        if (!output.isEmpty()) {
-            logError(output.toHtmlEscaped());
-        }
-    });
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process](int exitCode, QProcess::ExitStatus status) {
-                QString t = QTime::currentTime().toString("hh:mm:ss");
-                if (status == QProcess::NormalExit) {
-                    logInfo(
-                        QString("[%1] 进程结束，退出码: %2")
-                            .arg(t).arg(exitCode));
-                } else {
-                    logError(
-                        QString("[%1] 进程异常崩溃").arg(t));
-                }
-                process->deleteLater();
-                m_statusLabel->setText("运行完成");
-            });
-
+    QProcess* process = createRunProcess(
+        executablePath,
+        QStringList(),
+        QFileInfo(executablePath).absolutePath(),
+        QProcessEnvironment());
+    
     process->start();
     if (!process->waitForStarted(3000)) {
         logError("启动失败: " + process->errorString());
         process->deleteLater();
         return;
     }
-    m_statusLabel->setText("程序运行中...");
+    markProcessRunning(process, executablePath);
+}
+
+// ============================================================================
+//  运行进程管理
+// ============================================================================
+QProcess* MainWindow::createRunProcess(const QString& program,
+                                       const QStringList& arguments,
+                                       const QString& workDir,
+                                       const QProcessEnvironment& env)
+{
+    QProcess* p = new QProcess(this);
+    p->setProgram(program);
+    p->setArguments(arguments);
+    if (!workDir.isEmpty()) p->setWorkingDirectory(workDir);
+    if (!env.isEmpty())     p->setProcessEnvironment(env);
+    p->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(p, &QProcess::readyReadStandardOutput, this, [this, p]() {
+        const QString out = QString::fromLocal8Bit(p->readAllStandardOutput());
+        if (!out.isEmpty()) logInfo(out);
+    });
+    connect(p, &QProcess::readyReadStandardError, this, [this, p]() {
+        const QString err = QString::fromLocal8Bit(p->readAllStandardError());
+        if (!err.isEmpty()) logError(err.toHtmlEscaped());
+    });
+    connect(p, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, p](int code, QProcess::ExitStatus status) {
+        if (m_runningProcess == p) {
+            if (m_stoppingProcess) {
+                // 主动停止：不管 status 是什么，都是正常的
+                logInfo("程序已停止");
+            } else if (status == QProcess::NormalExit) {
+                logInfo(QString("[%1] 进程结束，退出码: %2")
+                            .arg(QTime::currentTime().toString("hh:mm:ss"))
+                            .arg(code));
+            } else {
+                // 真正的崩溃（用户没点停止，但 status != NormalExit）
+                logError(QString("[%1] 进程异常崩溃（退出码: %2）")
+                             .arg(QTime::currentTime().toString("hh:mm:ss"))
+                             .arg(code));
+            }
+            markProcessFinished();
+        }
+        p->deleteLater();
+    });
+    connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError err) {
+        if (m_runningProcess != p) return;
+    
+        // 主动停止时，QProcess 会发 Crashed 错误，忽略
+        if (m_stoppingProcess) return;
+    
+        // FailedToStart 是真正的错误（程序根本起不来）
+        if (err == QProcess::FailedToStart) {
+            logError("进程启动失败: " + p->errorString());
+            return;
+        }
+    
+        // 其他错误：Crashed / Timedout / ReadError / WriteError
+        // 如果是 Timedout，不算崩溃，只是超时
+        if (err == QProcess::Timedout) {
+            logWarn("进程超时: " + p->errorString());
+            return;
+        }
+    
+        logError(QString("进程错误: %1 (%2)")
+                     .arg(p->errorString())
+                     .arg(static_cast<int>(err)));
+    });
+
+    return p;
+}
+
+void MainWindow::markProcessRunning(QProcess* proc, const QString& sourcePath)
+{
+    m_runningProcess   = proc;
+    m_runningFilePath  = sourcePath;
+
+    if (m_runAction) {
+        m_runAction->setIcon(QIcon(":/icons/icons/stop.svg"));
+        m_runAction->setText(tr("停止"));
+        m_runAction->setToolTip(tr("停止运行 (Ctrl+R)"));
+        // 断开旧连接 → 连到停止
+        disconnect(m_runAction, nullptr, this, nullptr);
+        connect(m_runAction, &QAction::triggered, this, &MainWindow::stopRunningProcess);
+    }
+    if (m_statusLabel) {
+        m_statusLabel->setText(tr("程序运行中..."));
+    }
+}
+
+void MainWindow::markProcessFinished()
+{
+    m_stoppingProcess = false;
+    m_runningProcess.clear();
+    m_runningFilePath.clear();
+
+    if (m_runAction) {
+        m_runAction->setIcon(QIcon(":/icons/icons/run.svg"));
+        m_runAction->setText(tr("运行"));
+        m_runAction->setToolTip(tr("运行 (Ctrl+R)"));
+        disconnect(m_runAction, nullptr, this, nullptr);
+        connect(m_runAction, &QAction::triggered, this, &MainWindow::onRun);
+    }
+    if (m_statusLabel) {
+        m_statusLabel->setText(tr("运行完成"));
+    }
+}
+
+void MainWindow::stopRunningProcess()
+{
+    if (m_runningProcess.isNull()) return;
+
+    logInfo("正在停止程序...");
+    QProcess* p = m_runningProcess.data();
+
+    // 防止 finished 信号重复触发 markProcessFinished（幂等，但保险）
+    if (p->state() == QProcess::NotRunning) {
+        markProcessFinished();
+        return;
+    }
+
+    logInfo("正在停止程序...");
+    m_stoppingProcess = true; 
+
+    p->terminate();
+    if (!p->waitForFinished(3000)) {
+        logWarn("程序未响应，强制结束");
+        p->kill();
+        p->waitForFinished(1000);
+    }
+    // finished 信号会触发 markProcessFinished()，这里不用手动调
+}
+
+// ============================================================================
+//  AI 集成入口
+// ============================================================================
+void MainWindow::aiRequestBuild()
+{
+    onBuildProject();
+}
+
+void MainWindow::aiRequestRun()
+{
+    onRun();
+}
+
+void MainWindow::aiRequestStopRun()
+{
+    stopRunningProcess();
 }
 
 // mainwindow.cpp - 实现
@@ -6954,51 +7081,14 @@ void MainWindow::onRun()
         // =================================================
 
         // 使用 QProcess 异步运行（信号槽机制，不阻塞 UI 线程）
-        QProcess* process = new QProcess(this);
-        process->setProgram(python);
-        process->setArguments(args);
-        process->setWorkingDirectory(projectPath);
-        process->setProcessEnvironment(env);
-        process->setProcessChannelMode(QProcess::MergedChannels);
-
-        // 连接输出信号
-        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
-            QByteArray data = process->readAllStandardOutput();
-            QString output = QString::fromLocal8Bit(data);
-            if (!output.isEmpty()) {
-                logInfo(output);
-            }
-        });
-        connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
-            QByteArray data = process->readAllStandardError();
-            QString output = QString::fromLocal8Bit(data);
-            if (!output.isEmpty()) {
-                logError(output.toHtmlEscaped());
-            }
-        });
-
-        // 连接完成信号
-        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                this, [this, process](int exitCode, QProcess::ExitStatus status) {
-                    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-                    if (status == QProcess::NormalExit) {
-                        logInfo(QString("[%1] 进程结束，退出码: %2").arg(timeStr).arg(exitCode));
-                    } else {
-                        logError(QString("[%1] 进程异常崩溃").arg(timeStr));
-                    }
-                    process->deleteLater();
-                    m_statusLabel->setText("运行完成");
-                });
-
-        // 启动进程（异步）
+        QProcess* process = createRunProcess(python, args, projectPath, env);
         process->start();
         if (!process->waitForStarted(3000)) {
             logError("启动失败: " + process->errorString());
             process->deleteLater();
             return;
         }
-
-        m_statusLabel->setText("程序运行中...");
+        markProcessRunning(process, sourceFile);
         return;
     }
 
@@ -7069,49 +7159,19 @@ void MainWindow::onRun()
         logInfo(QString("使用可执行文件: %1").arg(executablePath));
         logInfo("正在运行...");
 
-        QProcess* process = new QProcess(this);
-        process->setProgram(executablePath);
-        process->setArguments(task.extraArgs);
-        process->setWorkingDirectory(QFileInfo(executablePath).absolutePath());
-        process->setProcessChannelMode(QProcess::MergedChannels);
-
-        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
-            QByteArray data = process->readAllStandardOutput();
-            QString output = QString::fromLocal8Bit(data);
-            if (!output.isEmpty()) {
-                logInfo(output);
-            }
-        });
-        connect(process, &QProcess::readyReadStandardError, this, [this, process]() {
-            QByteArray data = process->readAllStandardError();
-            QString output = QString::fromLocal8Bit(data);
-            if (!output.isEmpty()) {
-                logError(output.toHtmlEscaped());
-            }
-        });
-        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                this, [this, process](int exitCode, QProcess::ExitStatus status) {
-                    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-                    if (status == QProcess::NormalExit) {
-                        logInfo(
-                            QString("[%1] 进程结束，退出码: %2")
-                                .arg(timeStr).arg(exitCode));
-                    } else {
-                        logError(
-                            QString("[%1] 进程异常崩溃")
-                                .arg(timeStr));
-                    }
-                    process->deleteLater();
-                    m_statusLabel->setText("运行完成");
-                });
-
+        QProcess* process = createRunProcess(
+            executablePath,
+            task.extraArgs,
+            QFileInfo(executablePath).absolutePath(),
+            QProcessEnvironment());   // 空 env，用系统默认
+        
         process->start();
         if (!process->waitForStarted(3000)) {
             logError("启动失败: " + process->errorString());
             process->deleteLater();
             return;
         }
-        m_statusLabel->setText("程序运行中...");
+        markProcessRunning(process, sourceFile);
         return;
     }
 

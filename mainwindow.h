@@ -26,6 +26,10 @@
 #include "lsp/lsp_manager.h"
 #include "terminal/terminal_panel.h"
 
+#include <QPointer>
+#include <QProcess>
+#include <QProcessEnvironment>
+
 #include "ai/ai_action_executor.h"
 #include "ai/ai_integration.h"
 #include "ai/ai_server.h"
@@ -259,6 +263,10 @@ public slots:
                   LogKind kind = LogKind::System,
                   const QString& source = QStringLiteral("IDE"));
 
+// ========== AI 集成入口（供外部模块调用）==========
+    void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
+    void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
+    void aiRequestStopRun();    ///< 停止正在运行的程序
 private:
     void setupUI();
     void setupMenuBar();
@@ -301,6 +309,9 @@ private:
     bool m_isCompiling = false;
     QElapsedTimer m_compileTimer;
     QMap<QString, QString> m_compilerOutputCache;
+    
+    // 工具栏运行按钮（运行中会切换成"停止"）
+    QAction* m_runAction = nullptr;
 
     // 调试菜单动作指针
     QAction* m_startDebugAction = nullptr;
@@ -379,6 +390,23 @@ private:
     void appendLog(const LogEntry& entry, const QString& html = QString());
 
     QStringList collectProjectFiles(bool forceRescan = false);
+    /// 创建并连接一个"运行用"QProcess（统一输出/结束信号处理）
+    QProcess* createRunProcess(const QString& program,
+                               const QStringList& arguments,
+                               const QString& workDir,
+                               const QProcessEnvironment& env);
+
+    /// 标记"有程序正在运行"（更新 UI）
+    void markProcessRunning(QProcess* proc, const QString& sourcePath);
+
+    /// 标记"运行结束"（恢复 UI）
+    void markProcessFinished();
+
+    /// 停止当前运行的程序（terminate → kill）
+    void stopRunningProcess();
+
+    /// 是否正在运行程序
+    bool isRunningProgram() const { return !m_runningProcess.isNull(); }
 private:
     MainWindowPrivate *d;
     // 底部面板相关
@@ -447,6 +475,11 @@ private:
     QToolButton*         m_viewBreakpointsButton   = nullptr;
     QToolButton*         m_muteBreakpointsButton   = nullptr;
     bool                 m_breakpointsMuted        = false;
+    
+    // ========== 运行进程管理 ==========
+    QPointer<QProcess> m_runningProcess;   ///< 当前正在运行的程序（自动置空）
+    QString            m_runningFilePath;  ///< 当前运行源文件（用于状态恢复）
+    bool               m_stoppingProcess = false;  ///< 是否正在主动停止进程
 };
 
 } // namespace SprintIDE
