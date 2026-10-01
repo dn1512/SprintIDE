@@ -14,11 +14,14 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+#include "ai_connection_manager.h"
+
 // 前向声明（避免循环包含）
 // 注意：这些类在 SprintIDE 命名空间中，但为了能用于 QPointer，我们只需前向声明
 namespace SprintIDE {
 class AIServer;
 class AIActionExecutor;
+class AiConnectionManager;
 }
 
 namespace SprintIDE {
@@ -63,6 +66,11 @@ public:
      * @brief 设置动作执行器指针（用于获取上下文）
      */
     void setActionExecutor(AIActionExecutor *executor);
+    
+    /**
+     * @brief 设置 AI 连接管理
+     */
+    void setConnectionManager(AiConnectionManager* mgr);
 
     // ============================================================
     // 消息添加方法（供外部调用）
@@ -168,6 +176,12 @@ public slots:
                               const QString &chunk, bool isEnd,
                               const QString &fullContent);
 
+    /// 状态变化（替代原来的 agentConnected / agentDisconnected）
+    void onConnectionStateChanged(AiConnectionManager::State state);
+
+    /// 接收 Agent 消息（替代原来的 streamDataReceived / responseReceived）
+    void onAgentMessageReceived(const QJsonObject& message);
+    
     /**
      * @brief 处理动作执行器产生的输出（显示操作日志）
      */
@@ -276,6 +290,8 @@ private:
 
     QPointer<AIServer> m_aiServer;           ///< AI 服务器指针（弱引用）
     QPointer<AIActionExecutor> m_actionExecutor; ///< 动作执行器指针（弱引用）
+
+    QPointer<AiConnectionManager> m_connMgr;
 
     QStringList m_conversationHistory;       ///< 对话历史（纯文本，用于上下文）
     QMap<QString, QTextCursor> m_streamCursors; ///< 流式消息的文本光标（streamId → cursor）

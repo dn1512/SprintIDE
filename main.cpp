@@ -202,7 +202,14 @@ int main(int argc, char *argv[])
         //          但因为内部状态已清空，第二次 shutdown() 是幂等的空操作。
         sprintApp.shutdown();
 
-        qDebug() << "SprintIDE正常退出，退出码：" << result;
+        // ============================================================
+        // 从这里开始，改用 stderr —— qDebug 已经不可靠
+        // ============================================================
+        std::fprintf(stderr, "\n===== [main] 准备返回 =====\n");
+        std::fflush(stderr);
+        
+        std::fprintf(stderr, "[main] 即将 return result\n");
+        std::fflush(stderr);
         return result;
 
     } catch (const std::exception& e) {

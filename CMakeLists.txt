@@ -226,6 +226,8 @@ set(AI_SOURCES
     src/ai/chat_panel.cpp
     src/ai/ai_integration.cpp
     ai/ai_settings_page.cpp
+    ai/transport/tcp_transport.cpp
+    ai/ai_connection_manager.cpp
 )
 
 set(AI_HEADERS
@@ -234,6 +236,9 @@ set(AI_HEADERS
     src/ai/chat_panel.h
     src/ai/ai_integration.h
     ai/ai_settings_page.h
+    ai/transport/ai_transport.h
+    ai/transport/tcp_transport.h
+    ai/ai_connection_manager.h
 )
 
 set(LANGUAGE_SOURCES
@@ -445,6 +450,11 @@ add_executable(${PROJECT_NAME}
     ai/chat_panel.cpp
     ai/ai_integration.cpp
     ai/ai_integration.h
+    ai/transport/ai_transport.h
+    ai/transport/tcp_transport.h
+    ai/transport/tcp_transport.cpp
+    ai/ai_connection_manager.h
+    ai/ai_connection_manager.cpp
     language/language_detector.h
     language/language_detector.cpp
     language/language_highlighter.h

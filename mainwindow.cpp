@@ -526,9 +526,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-
+    qDebug() << "[MainWindow] 析构开始";
     // 防止 LSP shutdown 期间嵌套事件循环把队列里的旧事件重新投递
-        this->blockSignals(true);
+    this->blockSignals(true);
 
     // 把当前线程队列里给 this 的事件全部取消（安全，不会漏掉正在派发的）
     QCoreApplication::removePostedEvents(this);
@@ -543,24 +543,24 @@ MainWindow::~MainWindow()
     if (m_pythonDebugger) {
         disconnect(m_pythonDebugger, nullptr, this, nullptr);
     }
-
+    qDebug() << "[MainWindow] 断开可能产生回调的信号";
     // ========== 2. Python 调试器停止（不 delete，交给 Qt parent）==========
     if (m_pythonDebugger) {
         m_pythonDebugger->stopDebugging();
     }
-
+    qDebug() << "[MainWindow] Python 调试器停止";
     // ========== 2.5 C++ 调试器停止 ==========
     if (m_cppDebugger) {
         m_cppDebugger->stopDebugging();
         delete m_cppDebugger;
         m_cppDebugger = nullptr;
     }
-
+    qDebug() << "[MainWindow] 调试器停止";
     // ========== 3. 显式关闭 LSP（它有 parent = this，会随后被 Qt 删除）==========
     if (m_lspManager) {
         m_lspManager->shutdownAll();
     }
-
+    qDebug() << "[MainWindow] 显式关闭 LSP";
     // ========== 4. 清理编辑器标签 ==========
     if (d && d->editorTabs) {
         while (d->editorTabs->count() > 0) {
@@ -580,7 +580,7 @@ MainWindow::~MainWindow()
             }
         }
     }
-
+    qDebug() << "[MainWindow] 清理编辑器标签";
     // ========== 5. 断开 definition 连接 ==========
     // for (auto it = m_definitionConnections.begin(); it != m_definitionConnections.end(); ++it) {
     //     disconnect(it.value());
@@ -595,7 +595,7 @@ MainWindow::~MainWindow()
     // ========== 6. 删除私有实现 ==========
     delete d;
     d = nullptr;
-
+    qDebug() << "[MainWindow] 删除私有实现";
     qDebug() << "[MainWindow] 析构完成";
 }
 

@@ -1,6 +1,7 @@
 #include "chat_panel.h"
 #include "ai_server.h"
 #include "ai_action_executor.h"
+#include "ai_connection_manager.h"
 #include "theme_manager.h"
 
 #include <QScrollBar>
@@ -494,6 +495,16 @@ void ChatPanel::setAutoSendContext(bool enabled)
     m_autoSendContext = enabled;
 }
 
+void ChatPanel::setConnectionManager(AiConnectionManager* mgr) {
+    m_connMgr = mgr;
+    if (!mgr) return;
+
+    connect(mgr, &AiConnectionManager::stateChanged,
+            this, &ChatPanel::onConnectionStateChanged);
+    connect(mgr, &AiConnectionManager::agentMessageReceived,
+            this, &ChatPanel::onAgentMessageReceived);
+}
+
 // ============================================================
 // 私有槽：发送按钮点击
 // ============================================================
@@ -526,6 +537,48 @@ void ChatPanel::onClearClicked()
 // ============================================================
 // 私有槽：流式数据接收
 // ============================================================
+void ChatPanel::onConnectionStateChanged(AiConnectionManager::State state) {
+    switch (state) {
+    case AiConnectionManager::State::Ready:
+        setConnectionStatus(true);
+        showSystemMessage(tr("AI 助手已连接"), false);
+        break;
+    case AiConnectionManager::State::Disconnected:
+    case AiConnectionManager::State::Failed:
+        setConnectionStatus(false);
+        showSystemMessage(tr("AI 助手已断开连接"), true);
+        break;
+    case AiConnectionManager::State::Reconnecting:
+        showSystemMessage(tr("正在重连..."), false);
+        break;
+    default:
+        break;
+    }
+}
+
+void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
+    // 1. reply → ChatPanel 气泡
+    const QString reply = msg.value("reply").toString();
+    if (!reply.isEmpty()) {
+        addAIMessage(reply);
+    }
+
+    // 2. items → 阶段 0 暂不处理，阶段 1 交给 OperationBus
+    //    这里只记日志
+    const QJsonArray items = msg.value("items").toArray();
+    if (!items.isEmpty()) {
+        qDebug() << "[ChatPanel] 收到" << items.size() << "个 items（阶段 0 暂不执行）";
+    }
+
+    // 3. error → OutputPanel（不进 ChatPanel）
+    if (msg.contains("error")) {
+        const QJsonObject err = msg.value("error").toObject();
+        qWarning() << "[AI] Agent 错误:" << err.value("code").toString()
+                   << err.value("message").toString();
+        // 阶段 1 接入 OutputPanel 后改这里
+    }
+}
+
 void ChatPanel::onStreamDataReceived(int requestId, const QString &streamId,
                                      const QString &chunk, bool isEnd,
                                      const QString &fullContent)
