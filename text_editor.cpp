@@ -34,7 +34,11 @@
 #include <QLabel>
 #include <QRect>
 #include <QHBoxLayout>
-#include <QGuiApplication> 
+#include <QGuiApplication>
+#include <QSvgRenderer>
+#include <QPixmap>
+#include <QHash>
+
 
 namespace SprintIDE {
 
@@ -103,10 +107,11 @@ void LineNumberArea::contextMenuEvent(QContextMenuEvent* event)
 void LineNumberArea::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
-    painter.fillRect(event->rect(), Qt::red);
-    painter.fillRect(event->rect(),
-                     ThemeManager::instance().color(
-                         ThemeManager::UIElement::LineNumberAreaBackground));
+
+    // ---------- 背景 ----------
+    const QColor bg = ThemeManager::instance().color(
+        ThemeManager::UIElement::LineNumberAreaBackground);
+    painter.fillRect(event->rect(), bg);
 
     QTextBlock block = m_editor->firstVisibleBlock();
     int blockNumber = block.blockNumber();
@@ -115,119 +120,106 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
     qreal bottom = top + m_editor->blockBoundingRect(block).height();
     int currentLine = m_editor->currentLine();
 
-    // 断点点击区宽度（左侧）
-    int clickAreaWidth = 22;
-    // 红点位置（在点击区内，靠近中间偏左一点）
-    int dotX = 8;
-    int dotSize = 12;
+    // 尺寸常量
+    constexpr int clickAreaWidth = 22;
+    constexpr int dotX           = 6;      // 断点图标左上角 x
+    constexpr int dotSize        = 12;     // 断点图标尺寸
+    constexpr int foldAreaWidth  = 16;     // 折叠按钮区域宽度
+    constexpr int foldX          = 2;      // 折叠图标左上角 x
+    constexpr int foldSize       = 10;     // 折叠图标尺寸
 
-    // 折叠按钮区域宽度（位于行号左侧）
-    int foldAreaWidth = 16;
-    int numberStartX = foldAreaWidth + 4;
+    // ★ 主题相关路径 + 是否深色主题
+    const bool isDark = ThemeManager::instance().isDarkTheme();
+    const QString foldClosedPath = isDark
+                                       ? ":/icons/icons/branch-closed-dark.svg"
+                                       : ":/icons/icons/branch-closed-light.svg";
+    const QString foldOpenPath   = isDark
+                                     ? ":/icons/icons/branch-open-dark.svg"
+                                     : ":/icons/icons/branch-open-light.svg";
+    const QString bpNormalPath   = ":/icons/icons/breakpoint.svg";
+    const QString bpCondPath     = ":/icons/icons/breakpoint_conditional.svg";
+    const QString bpDisabledPath = ":/icons/icons/breakpoint_disabled.svg";
 
     while (block.isValid() && top <= event->rect().bottom()) {
         if (block.isVisible() && bottom >= event->rect().top()) {
-            int lineNumber = blockNumber + 1;
-            QString number = QString::number(lineNumber);
+            const int lineNumber = blockNumber + 1;
+            const QString number = QString::number(lineNumber);
 
-            // ========== 绘制折叠按钮 ==========
+            // ========== 1. 折叠三角（SVG） ==========
             if (m_editor->isFoldableBlock(lineNumber)) {
-                int btnX = 2;
-                int btnY = (int)(top + (bottom - top) / 2 - 6);
-                int btnSize = 10;
+                const bool isFolded = m_editor->isBlockFolded(lineNumber);
+                const QString path = isFolded ? foldClosedPath : foldOpenPath;
 
-                bool isFolded = m_editor->isBlockFolded(lineNumber);
-
-                painter.setPen(QColor(150, 150, 150));
-                painter.setBrush(QColor(150, 150, 150));
-
-                if (isFolded) {
-                    // ▶ 折叠状态（向右三角形，表示可以展开）
-                    QPolygon triangle;
-                    triangle << QPoint(btnX, btnY)
-                             << QPoint(btnX + btnSize, btnY + btnSize / 2)
-                             << QPoint(btnX, btnY + btnSize);
-                    painter.drawPolygon(triangle);
-                } else {
-                    // ▼ 展开状态（向下三角形，表示可以折叠）
-                    QPolygon triangle;
-                    triangle << QPoint(btnX, btnY)
-                             << QPoint(btnX + btnSize, btnY)
-                             << QPoint(btnX + btnSize / 2, btnY + btnSize);
-                    painter.drawPolygon(triangle);
-                }
+                const QPixmap pm = m_editor->cachedIcon(path,
+                                                        QSize(foldSize, foldSize));
+                const int btnY = static_cast<int>(top + (bottom - top) / 2
+                                                  - foldSize / 2);
+                painter.drawPixmap(foldX, btnY, pm);
             }
 
-            // ---- 绘制断点红点（行号左侧） ----
+            // ========== 2. 断点图标（SVG） ==========
             if (m_editor->hasBreakpoint(lineNumber)) {
-                int dotY = (int)(top + (bottom - top) / 2 - dotSize / 2);
-                painter.setBrush(QColor(255, 0, 0));
-                painter.setPen(Qt::NoPen);
-                painter.drawEllipse(dotX, dotY, dotSize, dotSize);
-                painter.setBrush(Qt::NoBrush);
-                painter.setPen(QColor(255, 255, 255, 100));
-                painter.drawEllipse(dotX, dotY, dotSize, dotSize);
+                const bool hasCond  = m_editor->m_conditionalBreakpoints
+                                         .contains(lineNumber);
+                const bool enabled  = !m_editor->m_disabledBreakpoints
+                                          .contains(lineNumber);  // ← 见下方说明
 
-                // 条件断点在内圈画一个黄色小点
-                if (m_editor->m_conditionalBreakpoints.contains(lineNumber)) {
-                    painter.setBrush(QColor(255, 220, 0));
-                    painter.setPen(Qt::NoPen);
-                    int innerSize = 5;
-                    painter.drawEllipse(dotX + (dotSize - innerSize) / 2,
-                                        dotY + (dotSize - innerSize) / 2,
-                                        innerSize, innerSize);
-                }
+                const QString path = !enabled
+                                         ? bpDisabledPath
+                                         : (hasCond ? bpCondPath : bpNormalPath);
+
+                const QPixmap pm = m_editor->cachedIcon(path,
+                                                        QSize(dotSize, dotSize));
+                const int dotY = static_cast<int>(top + (bottom - top) / 2
+                                                  - dotSize / 2);
+                painter.drawPixmap(dotX, dotY, pm);
             }
 
-            // ---- 绘制行号数字（右对齐） ----
-            int numberStartX = clickAreaWidth; // 从点击区右侧开始绘制
+            // ========== 3. 行号（保留原逻辑） ==========
             if (lineNumber == currentLine) {
-                painter.setPen(QColor(0, 100, 200));
-                painter.setFont(QFont(font().family(), font().pointSize(), QFont::Bold));
+                painter.setPen(ThemeManager::instance().color(
+                    ThemeManager::UIElement::CurrentLineNumberColor));
+                painter.setFont(QFont(font().family(), font().pointSize(),
+                                      QFont::Bold));
             } else {
-                painter.setPen(QColor(100, 100, 100));
+                painter.setPen(ThemeManager::instance().color(
+                    ThemeManager::UIElement::LineNumberColor));
                 painter.setFont(font());
             }
-            painter.drawText(numberStartX, (int)top,
-                             width() - numberStartX - 16, (int)(bottom - top),
+            painter.drawText(clickAreaWidth, static_cast<int>(top),
+                             width() - clickAreaWidth - 16,
+                             static_cast<int>(bottom - top),
                              Qt::AlignRight | Qt::AlignVCenter, number);
 
-            // ========== 绘制错误标记（红色圈） ==========
+            // ========== 4. 错误/警告标记（保留手绘，形状简单更快） ==========
             if (m_editor->hasErrorMarker(lineNumber)) {
-                int iconSize = 12;
-                int iconX = width() - 30;
-                int iconY = (int)(top + (bottom - top) / 2 - iconSize / 2);
-
-                // 红色圆圈背景
+                const int iconSize = 12;
+                const int iconX = width() - 30;
+                const int iconY = static_cast<int>(top + (bottom - top) / 2
+                                                   - iconSize / 2);
                 painter.setBrush(QColor(255, 50, 50));
                 painter.setPen(Qt::NoPen);
                 painter.drawEllipse(iconX, iconY, iconSize, iconSize);
-
-                // 白色叉号
                 painter.setPen(QPen(Qt::white, 2));
-                int padding = 3;
-                painter.drawLine(iconX + padding, iconY + padding,
-                                 iconX + iconSize - padding, iconY + iconSize - padding);
-                painter.drawLine(iconX + iconSize - padding, iconY + padding,
-                                 iconX + padding, iconY + iconSize - padding);
+                const int pad = 3;
+                painter.drawLine(iconX + pad, iconY + pad,
+                                 iconX + iconSize - pad, iconY + iconSize - pad);
+                painter.drawLine(iconX + iconSize - pad, iconY + pad,
+                                 iconX + pad, iconY + iconSize - pad);
             }
 
-            // ========== 绘制警告标记（黄色三角形） ==========
             if (m_editor->hasWarningMarker(lineNumber)) {
-                int iconSize = 12;
-                int iconX = width() - 30;
-                int iconY = (int)(top + (bottom - top) / 2 - iconSize / 2);
-
-                // 黄色三角形
+                const int iconSize = 12;
+                const int iconX = width() - 30;
+                const int iconY = static_cast<int>(top + (bottom - top) / 2
+                                                   - iconSize / 2);
                 painter.setBrush(QColor(255, 200, 0));
                 painter.setPen(Qt::NoPen);
                 QPolygon triangle;
-                triangle << QPoint(iconX + iconSize/2, iconY)
+                triangle << QPoint(iconX + iconSize / 2, iconY)
                          << QPoint(iconX, iconY + iconSize)
                          << QPoint(iconX + iconSize, iconY + iconSize);
                 painter.drawPolygon(triangle);
-
-                // 黑色感叹号
                 painter.setPen(QPen(Qt::black, 1));
                 painter.setFont(QFont("Arial", 9, QFont::Bold));
                 painter.drawText(iconX + 3, iconY + iconSize - 2, "!");
@@ -985,6 +977,9 @@ void TextEditor::applyTheme(const QString &themeName)
     endSilentModification();
     m_isModified = wasModified;
     document()->setModified(wasModified);
+
+    // 主题切换后，缓存里的旧色图标作废
+    invalidateIconCache();
 
     update();
     viewport()->update();
@@ -3146,6 +3141,16 @@ void TextEditor::setBreakpointWithCondition(int line, bool enabled, bool hasCond
     if (m_lineNumberArea) m_lineNumberArea->update();
 }
 
+void TextEditor::setBreakpointEnabled(int line, bool enabled)
+{
+    if (enabled) {
+        m_disabledBreakpoints.remove(line);
+    } else {
+        m_disabledBreakpoints.insert(line);
+    }
+    if (m_lineNumberArea) m_lineNumberArea->update();
+}
+
 void TextEditor::insertCompletion(const QString& insertText)
 {
     QTextCursor cursor = textCursor();
@@ -3468,6 +3473,48 @@ void TextEditor::endSilentModification()
     // 从"脏"恢复为"净"——因为这是程序内部改动，用户没编辑
     m_isModified = false;
     document()->setModified(false);
+}
+
+// ============================================================================
+//  SVG 图标缓存
+//  - 第一次调用：用 QSvgRenderer 渲染到 QPixmap，存进 m_iconCache
+//  - 后续调用：直接命中缓存（O(1) hash 查表）
+//  - 主题切换时必须 invalidateIconCache() 否则颜色不会更新
+// ============================================================================
+QPixmap TextEditor::cachedIcon(const QString& svgPath, const QSize& size) const
+{
+    const QString key = svgPath + QString("@%1x%2")
+    .arg(size.width())
+        .arg(size.height());
+
+    auto it = m_iconCache.find(key);
+    if (it != m_iconCache.end()) {
+        return it.value();
+    }
+
+    // ---- 首次渲染 ----
+    QPixmap pm(size);
+    pm.fill(Qt::transparent);
+
+    QSvgRenderer renderer(svgPath);
+    if (renderer.isValid()) {
+        QPainter p(&pm);
+        // 高质量缩放
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        renderer.render(&p);
+        p.end();
+    } else {
+        qWarning() << "[TextEditor] 无效 SVG:" << svgPath;
+    }
+
+    m_iconCache.insert(key, pm);
+    return pm;
+}
+
+void TextEditor::invalidateIconCache()
+{
+    m_iconCache.clear();
 }
 
 void TextEditor::resizeEvent(QResizeEvent *event)

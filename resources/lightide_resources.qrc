@@ -59,6 +59,13 @@
         <file>icons/toggle_break_point.svg</file>
         <file>icons/pause.svg</file>
         <file>icons/build.svg</file>
+        <file>icons/breakpoint.svg</file>
+        <file>icons/breakpoint_disabled.svg</file>
+        <file>icons/breakpoint_conditional.svg</file>
+        <file>icons/breakpoints_mute.svg</file>
+        <file>icons/debug_arrow.svg</file>
+        <file>icons/editor_error.svg</file>
+        <file>icons/editor_warning.svg</file>
         
         <!-- 版本控制 -->
         <file>icons/vcs_update.svg</file>
@@ -117,5 +124,9 @@
         <file>icons/log_warning.svg</file>
         <file>icons/log_info.svg</file>
         <file>icons/log_follow.svg</file>
+
+        <!-- 日志级别 -->
+        <file>icons/locate.svg</file>
+        <file>icons/refresh.svg</file>
     </qresource>
 </RCC>

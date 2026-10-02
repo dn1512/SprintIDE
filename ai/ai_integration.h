@@ -8,7 +8,6 @@
 #include <QMenu>
 
 #include "ai/ai_action_executor.h"
-#include "ai/ai_server.h"
 #include "ai/chat_panel.h"
 
 
@@ -20,6 +19,8 @@ class MainWindow;
 class AIServer;
 class AIActionExecutor;
 class ChatPanel;
+class AiConnectionManager;
+
 struct CompileResult;
 
 /**
@@ -65,7 +66,7 @@ struct CompileResult;
  * @endcode
  */
 bool initializeAIIntegration(MainWindow *mainWindow,
-                             AIServer *&outServer,
+                             AiConnectionManager *&outConnMgr,
                              AIActionExecutor *&outExecutor,
                              ChatPanel *&outChatPanel);
 
@@ -89,7 +90,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
  * @note 此函数通常在 ChatPanel::userMessageSent 信号中调用
  */
 void handleUserMessage(MainWindow *mainWindow,
-                       AIServer *server,
+                       AiConnectionManager *connMgr,
                        ChatPanel *chatPanel,
                        const QString &message,
                        bool includeContext);

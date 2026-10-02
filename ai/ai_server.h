@@ -11,10 +11,6 @@
 #include <QPointer>
 #include <QTcpServer>
 
-#include "ai/ai_action_executor.h"
-#include "ai/ai_integration.h"
-#include "ai/chat_panel.h"
-
 
 namespace SprintIDE {
 

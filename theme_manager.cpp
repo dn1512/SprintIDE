@@ -713,6 +713,36 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::ActiveTabBackground))    // %5
                .arg(c(UIElement::DisabledTextColor));     // %6
 
+    // ---------- ProjectPanel 紧凑圆形工具按钮 ----------
+    qss += QString(
+               // 用 objectName 精确命中，覆盖全局 QToolButton 的 min-width/min-height
+               "QToolButton#ProjectPanelLocateButton,"
+               "QToolButton#ProjectPanelRefreshButton {"
+               "  min-width: 12px;"
+               "  max-width: 12px;"
+               "  min-height: 12px;"
+               "  max-height: 12px;"
+               "  padding: 0;"              // ★ 清空内边距，让图标填满
+               "  border: none;"
+               "  border-radius: 6px;"      // ★ 12px 按钮 → 6px 圆角 = 正圆
+               "  background: transparent;"
+               "  color: %1;"
+               "}"
+               // 悬停：浅背景
+               "QToolButton#ProjectPanelLocateButton:hover,"
+               "QToolButton#ProjectPanelRefreshButton:hover {"
+               "  background-color: %2;"
+               "}"
+               // 按下：更深一档
+               "QToolButton#ProjectPanelLocateButton:pressed,"
+               "QToolButton#ProjectPanelRefreshButton:pressed {"
+               "  background-color: %3;"
+               "}"
+               )
+               .arg(c(UIElement::TextColor))            // %1
+               .arg(c(UIElement::HoverBackground))      // %2
+               .arg(c(UIElement::ActiveTabBackground)); // %3
+
     // ---------- 按钮 ----------
     qss += QString(
                "QPushButton {"
@@ -845,6 +875,55 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::TextColor))             // 活动 tab 文字
                .arg(c(UIElement::HoverBackground))       // 悬停背景
                .arg(c(UIElement::PrimaryColor));         // 活动竖条色
+
+    // ---------- 底部窄条（断点工具条） ----------
+    qss += QString(
+               // 容器
+               "QWidget#BottomStrip {"
+               "  background-color: %1;"                       // MainWindowBackground
+               "  border-right: 1px solid %2;"                 // BorderColor
+               "}"
+               // 通用按钮
+               "QWidget#BottomStrip QToolButton {"
+               "  background: transparent;"
+               "  border: 1px solid transparent;"
+               "  border-radius: 6px;"
+               "  padding: 0;"
+               "  color: %3;"                                   // SecondaryTextColor
+               "}"
+               "QWidget#BottomStrip QToolButton:hover {"
+               "  background-color: %4;"                       // HoverBackground
+               "  border-color: %2;"                           // BorderColor
+               "}"
+               "QWidget#BottomStrip QToolButton:pressed {"
+               "  background-color: %5;"                       // ActiveTabBackground
+               "}"
+               // 激活态基础：左竖条 + 深背景
+               "QWidget#BottomStrip QToolButton:checked {"
+               "  background-color: %5;"
+               "}"
+               // 角色：primary —— 冰蓝
+               "QWidget#BottomStrip QToolButton[role=\"primary\"]:checked {"
+               "  color: %6;"
+               "  border-left: 2px solid %6;"
+               "  border-top-left-radius: 2px;"
+               "  border-bottom-left-radius: 2px;"
+               "}"
+               // 角色：warning —— 琥珀
+               "QWidget#BottomStrip QToolButton[role=\"warning\"]:checked {"
+               "  color: %7;"
+               "  border-left: 2px solid %7;"
+               "  border-top-left-radius: 2px;"
+               "  border-bottom-left-radius: 2px;"
+               "}"
+               )
+               .arg(c(UIElement::MainWindowBackground))   // %1
+               .arg(c(UIElement::BorderColor))            // %2
+               .arg(c(UIElement::SecondaryTextColor))     // %3
+               .arg(c(UIElement::HoverBackground))        // %4
+               .arg(c(UIElement::ActiveTabBackground))    // %5
+               .arg(c(UIElement::PrimaryColor))           // %6
+               .arg(c(UIElement::WarningColor));          // %7
 
     // ---------- 树 / 列表 ----------
     qss += QString(

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="rotate(25, 12, 12)">
+    <!-- 外圈瞄准镜 -->
+    <circle cx="12" cy="12" r="8" stroke="#6B4226" fill="none"></circle>
+    <!-- 十字准星 -->
+    <path d="M12 4 L12 8" stroke="#6B4226"></path>
+    <path d="M12 16 L12 20" stroke="#6B4226"></path>
+    <path d="M4 12 L8 12" stroke="#6B4226"></path>
+    <path d="M16 12 L20 12" stroke="#6B4226"></path>
+    <!-- 中心点 -->
+    <circle cx="12" cy="12" r="1.5" fill="#6B4226" stroke="none"></circle>
+  </g>
+</svg>

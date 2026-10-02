@@ -1,3 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-  <circle cx="12" cy="12" r="6"></circle>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="rotate(25, 12, 12)">
+    <!-- 外圈 -->
+    <circle cx="12" cy="12" r="7" stroke="#6B4226" fill="none"></circle>
+    <!-- 中心实心点 -->
+    <circle cx="12" cy="12" r="3" fill="#6B4226" stroke="none"></circle>
+  </g>
 </svg>

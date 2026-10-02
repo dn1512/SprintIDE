@@ -55,6 +55,7 @@
 #include <QDialog>
 #include <QSet>
 #include <QLocale>
+#include <QEvent>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -492,7 +493,7 @@ MainWindow::MainWindow(QWidget *parent)
     // ... 其余调试信号连接（保持不变） ...
 
     // 初始化 AI 模块
-    if (initializeAIIntegration(this, m_aiServer, m_aiExecutor, m_aiChatPanel)) {
+    if (initializeAIIntegration(this, m_aiConnMgr, m_aiExecutor, m_aiChatPanel)) {
         setupAIMenu(this, m_aiChatPanel);
         restoreChatPanelState(m_aiChatPanel);
         if (m_aiChatPanel) {
@@ -1417,34 +1418,44 @@ void MainWindow::setupDockWidgets()
     // ---------- 左侧窄条 ----------
     QWidget* strip = new QWidget(bottomContainer);
     strip->setObjectName("BottomStrip");
-    strip->setFixedWidth(28);
+    strip->setFixedWidth(32);                                        // 28 → 32
     strip->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     QVBoxLayout* stripLayout = new QVBoxLayout(strip);
-    stripLayout->setContentsMargins(2, 4, 2, 4);
-    stripLayout->setSpacing(2);
+    stripLayout->setContentsMargins(3, 6, 3, 6);                     // 内边距加大
+    stripLayout->setSpacing(4);                                      // 间距加大
 
-    auto makeStripButton = [&](const QString& text,
-                               const QString& tip) -> QToolButton* {
+    // ---------- 通用工厂：带图标 + 可选角色属性 ----------
+    auto makeStripButton = [&](const QString& iconPath,
+                                const QString& tip,
+                                const QString& role) -> QToolButton* {
         auto* b = new QToolButton(strip);
-        b->setText(text);
+        b->setIcon(QIcon(iconPath));
+        b->setIconSize(QSize(14, 14));                               // 14×14
         b->setToolTip(tip);
-        b->setFixedSize(24, 24);
+        b->setFixedSize(26, 26);                                     // 24 → 26
         b->setCheckable(false);
         b->setFocusPolicy(Qt::NoFocus);
         b->setCursor(Qt::PointingHandCursor);
+        b->setProperty("role", role);                                // 用于 QSS 区分
         return b;
     };
 
-    m_viewBreakpointsButton = makeStripButton(QStringLiteral("●"),
-                                              tr("查看断点"));
+    // ---- 查看断点 ----
+    m_viewBreakpointsButton = makeStripButton(
+        ":/icons/icons/toggle_break_point.svg",
+        tr("查看断点"),
+        "primary");
     m_viewBreakpointsButton->setCheckable(true);
     m_viewBreakpointsButton->setChecked(false);
     connect(m_viewBreakpointsButton, &QToolButton::clicked,
             this, &MainWindow::onToggleBreakpointTab);
 
-    m_muteBreakpointsButton = makeStripButton(QStringLiteral("⊘"),
-                                              tr("禁用所有断点"));
+    // ---- 禁用全部断点 ----
+    m_muteBreakpointsButton = makeStripButton(
+        ":/icons/icons/breakpoints_mute.svg",   // 新增图标
+        tr("禁用所有断点"),
+        "warning");
     m_muteBreakpointsButton->setCheckable(true);
     m_muteBreakpointsButton->setChecked(false);
     connect(m_muteBreakpointsButton, &QToolButton::clicked,
@@ -1453,40 +1464,6 @@ void MainWindow::setupDockWidgets()
     stripLayout->addWidget(m_viewBreakpointsButton);
     stripLayout->addWidget(m_muteBreakpointsButton);
     stripLayout->addStretch(1);
-
-    // ---------- 窄条样式（全部走 ThemeManager） ----------
-    {
-        ThemeManager& tm = ThemeManager::instance();
-        const QString qss = QString(
-            "QWidget#BottomStrip {"
-            "  background-color: %1;"
-            "  border-right: 1px solid %2;"
-            "}"
-            "QWidget#BottomStrip QToolButton {"
-            "  background: transparent;"
-            "  border: none;"
-            "  border-radius: 3px;"
-            "  color: %3;"
-            "  font-size: 14px;"
-            "  font-weight: 700;"
-            "}"
-            "QWidget#BottomStrip QToolButton:hover {"
-            "  background-color: %4;"
-            "}"
-            "QWidget#BottomStrip QToolButton:checked {"
-            "  background-color: %5;"
-            "  color: %6;"
-            "}"
-        ).arg(
-            tm.colorString(ThemeManager::UIElement::MainWindowBackground),
-            tm.colorString(ThemeManager::UIElement::BorderColor),
-            tm.colorString(ThemeManager::UIElement::SecondaryTextColor),
-            tm.colorString(ThemeManager::UIElement::HoverBackground),
-            tm.colorString(ThemeManager::UIElement::ActiveTabBackground),
-            tm.colorString(ThemeManager::UIElement::PrimaryColor)
-        );
-        strip->setStyleSheet(qss);
-    }
 
     // ---------- 组装 ----------
     bottomLayout->addWidget(strip);
@@ -1604,6 +1581,41 @@ void MainWindow::setupConnections()
                                                   logInfo(output);
                                               }
                                           });
+            });
+    // ============================================================
+    //  项目面板：定位 / 刷新
+    // ============================================================
+    // "定位"按钮 → 拿当前编辑器文件 → 调 locateFile
+    connect(d->projectPanel, &ProjectPanel::locateCurrentFileRequested,
+            this, [this]() {
+                TextEditor* editor = currentEditor();
+                if (!editor) return;
+                const QString filePath = editor->filePath();
+                if (filePath.isEmpty()) return;
+
+                // 文件不在当前项目根目录下 → 提示并跳过
+                if (!d->currentProjectPath.isEmpty()
+                    && !filePath.startsWith(d->currentProjectPath)) {
+                    logInfo(QString("文件 %1 不在当前项目内，无法定位")
+                                .arg(QFileInfo(filePath).fileName()));
+                    return;
+                }
+
+                d->projectPanel->locateFile(filePath);
+            });
+
+    // ② 对外信号 → 项目面板刷新槽
+    connect(this, &MainWindow::projectPanelRefreshRequested,
+            d->projectPanel, &ProjectPanel::onRefreshRequested,
+            Qt::UniqueConnection);
+
+    // ③ 窗口激活防抖定时器
+    m_projectPanelRefreshDebounce = new QTimer(this);
+    m_projectPanelRefreshDebounce->setSingleShot(true);
+    m_projectPanelRefreshDebounce->setInterval(300);   // 300ms 防抖
+    connect(m_projectPanelRefreshDebounce, &QTimer::timeout,
+            this, [this]() {
+                emit projectPanelRefreshRequested();
             });
 }
 
@@ -2021,6 +2033,23 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
         }
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+// ============================================================
+//  窗口激活 → 请求刷新项目面板
+//
+//  使用 300ms 防抖，避免：
+//    - 从子对话框返回时立刻触发（此时不需要刷）
+//    - 短时间多次激活叠加刷新
+// ============================================================
+void MainWindow::changeEvent(QEvent* event)
+{
+    if (event->type() == QEvent::WindowActivate) {
+        if (m_projectPanelRefreshDebounce) {
+            m_projectPanelRefreshDebounce->start();
+        }
+    }
+    QMainWindow::changeEvent(event);
 }
 
 bool MainWindow::confirmUnsavedChanges()
@@ -6302,28 +6331,24 @@ void MainWindow::updateGitStatusIndicator()
 
 void MainWindow::onAIRestartRequested(const QString& host, quint16 port)
 {
-    if (!m_aiServer) {
-        // 极端情况：AI 模块初始化失败，server 为空 → 现场创建一个
-        m_aiServer = new AIServer(this);
-    } else {
-        // 先停旧实例
-        m_aiServer->stopServer();
-    }
-
-    if (!m_aiServer->startServer(port, host)) {
-        QMessageBox::warning(
-            this, tr("AI 服务器"),
-            tr("重启失败：无法在 %1:%2 上监听。\n"
-               "请检查端口是否被占用，或地址是否合法。")
-                .arg(host).arg(port));
-
-        logError(QString("AI 服务器重启失败：%1:%2").arg(host).arg(port));
+    if (!m_aiConnMgr) {
+        logError("AI 连接管理器未初始化");
         return;
     }
 
-    logInfo(
-        QString("AI 服务器已重启：%1:%2")
-            .arg(host).arg(port));
+    ConfigManager* cfg = Application::instance().configManager();
+    const QString token = cfg ? cfg->value("AI/Token", "").toString() : QString();
+
+    QString clientId = cfg ? cfg->value("AI/ClientId", "").toString() : QString();
+    if (clientId.isEmpty()) {
+        clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        if (cfg) cfg->setValue("AI/ClientId", clientId);
+    }
+
+    m_aiConnMgr->stop();
+    m_aiConnMgr->start(host, port, token, clientId);
+
+    logInfo(QString("AI 连接已重启：%1:%2").arg(host).arg(port));
 }
 
 void MainWindow::onComment()

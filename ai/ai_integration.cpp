@@ -10,6 +10,7 @@
 #include "ai_action_executor.h"
 #include "chat_panel.h"
 #include "config_manager.h"
+#include "ai/ai_connection_manager.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -20,6 +21,7 @@
 #include <QJsonDocument>
 #include <QMetaObject>
 #include <QTimer>
+#include <QUuid>
 
 namespace SprintIDE {
 
@@ -27,7 +29,7 @@ namespace SprintIDE {
 // AI 集成初始化函数
 // ============================================================
 bool initializeAIIntegration(MainWindow *mainWindow,
-                             AIServer *&outServer,
+                             AiConnectionManager *&outConnMgr,
                              AIActionExecutor *&outExecutor,
                              ChatPanel *&outChatPanel)
 {
@@ -38,94 +40,72 @@ bool initializeAIIntegration(MainWindow *mainWindow,
 
     qDebug() << "[AI Integration] 开始初始化 AI 模块...";
 
-    // ---- 1. 创建 AI 服务器 ----
+    // ---- 1. 读配置 ----
     ConfigManager* cfg = Application::instance().configManager();
-    const QString  aiHost    = cfg
-                               ? cfg->value("AI/Host", "127.0.0.1").toString()
-                               : QStringLiteral("127.0.0.1");
-    const quint16  aiPort    = cfg
-                               ? static_cast<quint16>(cfg->value("AI/Port", 9876).toInt())
-                               : 9876;
-    const bool     autoStart = cfg
-                               ? cfg->value("AI/AutoStart", true).toBool()
-                               : true;
+    const QString host = cfg
+        ? cfg->value("AI/Host", "127.0.0.1").toString()
+        : QStringLiteral("127.0.0.1");
+    const quint16 port = cfg
+        ? static_cast<quint16>(cfg->value("AI/Port", 9876).toInt())
+        : 9876;
+    const QString token = cfg
+        ? cfg->value("AI/Token", "").toString()
+        : QString();
+    const bool autoConnect = cfg
+        ? cfg->value("AI/AutoConnect", true).toBool()
+        : true;
 
-    AIServer *server = new AIServer(mainWindow);
-
-    if (autoStart) {
-        if (!server->startServer(aiPort, aiHost)) {
-            // 注意：这里故意不返回 false，也不 delete server。
-            // 用户可在设置页面里改地址后手动重启；chat panel 也保持可用。
-            qWarning() << "[AI Integration] AI 服务器启动失败:"
-                       << aiHost << ":" << aiPort
-                       << "（可在设置 → AI 中修改后重启）";
-        } else {
-            qDebug() << "[AI Integration] AI 服务器已启动:"
-                     << aiHost << ":" << aiPort;
+    // ---- 2. 生成持久化 clientId（首次运行） ----
+    QString clientId = cfg ? cfg->value("AI/ClientId", "").toString() : QString();
+    if (clientId.isEmpty()) {
+        clientId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        if (cfg) {
+            cfg->setValue("AI/ClientId", clientId);
         }
-    } else {
-        qDebug() << "[AI Integration] 根据 AI/AutoStart=false，跳过服务器启动";
     }
-    outServer = server;
 
-    // ---- 2. 创建动作执行器 ----
+    // ---- 3. 创建连接管理器 ----
+    AiConnectionManager *connMgr = new AiConnectionManager(mainWindow);
+    outConnMgr = connMgr;
+
+    // ---- 4. 创建动作执行器（阶段 0 保留） ----
     AIActionExecutor *executor = new AIActionExecutor(mainWindow, mainWindow);
     outExecutor = executor;
 
-    // ---- 3. 创建聊天面板 ----
+    // ---- 5. 创建聊天面板 ----
     ChatPanel *chatPanel = new ChatPanel(mainWindow);
     chatPanel->setObjectName("AIChatPanel");
     chatPanel->setWindowTitle("AI 助手");
     chatPanel->setFeatures(QDockWidget::DockWidgetClosable |
                            QDockWidget::DockWidgetMovable |
                            QDockWidget::DockWidgetFloatable);
-
-    // 停靠在右侧
     mainWindow->addDockWidget(Qt::RightDockWidgetArea, chatPanel);
     outChatPanel = chatPanel;
 
-    // ---- 4. 连接各组件 ----
-    // 4.1 服务器 → 聊天面板（流式数据）
-    QObject::connect(server, &AIServer::streamDataReceived,
-                     chatPanel, &ChatPanel::onStreamDataReceived);
+    // ---- 6. 组件互连 ----
+    chatPanel->setConnectionManager(connMgr);
+    chatPanel->setActionExecutor(executor);
 
-    // 4.2 服务器 → 聊天面板（连接状态）
-    QObject::connect(server, &AIServer::agentConnected,
-                     chatPanel, [chatPanel]() {
-                         chatPanel->setConnectionStatus(true);
-                     });
-    QObject::connect(server, &AIServer::agentDisconnected,
-                     chatPanel, [chatPanel]() {
-                         chatPanel->setConnectionStatus(false);
-                     });
-
-    // 4.3 聊天面板 → 服务器（用户发送消息）
+    // 用户发消息 → handleUserMessage
     QObject::connect(chatPanel, &ChatPanel::userMessageSent,
-                     mainWindow, [mainWindow, server, chatPanel](const QString &message, bool includeContext) {
-                         handleUserMessage(mainWindow, server, chatPanel, message, includeContext);
+                     mainWindow,
+                     [mainWindow, connMgr, chatPanel](const QString &message, bool includeContext) {
+                         handleUserMessage(mainWindow, connMgr, chatPanel, message, includeContext);
                      });
 
-    // 4.4 动作执行器 → 聊天面板（操作日志）
+    // 动作执行器的输出 → ChatPanel 系统消息
     QObject::connect(executor, &AIActionExecutor::outputProduced,
                      chatPanel, &ChatPanel::onActionOutput);
 
-    // 4.5 服务器 → 主窗口（IDE 请求处理）
-    QObject::connect(server, &AIServer::ideRequestReceived,
-                     mainWindow, [mainWindow, server, executor](int requestId, const QString &method, const QJsonObject &params) {
-                         handleIdeRequest(mainWindow, server, executor, requestId, method, params);
-                     });
+    // ---- 7. 自动连接 ----
+    if (autoConnect) {
+        connMgr->start(host, port, token, clientId);
+    } else {
+        qDebug() << "[AI Integration] AutoConnect=false，跳过连接";
+    }
 
-    // ---- 5. 设置指针 ----
-    chatPanel->setAIServer(server);
-    chatPanel->setActionExecutor(executor);
-    server->setMainWindow(mainWindow);
-
-    // ---- 6. 连接编译/调试错误自动上报 ----
-    connectAutoErrorReporting(mainWindow, chatPanel);
-
-    // ---- 7. 显示启动消息 ----
+    // ---- 8. 启动提示 ----
     chatPanel->showSystemMessage("AI 模块已初始化，等待 Agent 连接...", false);
-    chatPanel->showSystemMessage("请在本地启动 Python Agent 并连接到 ws://127.0.0.1:9876", false);
 
     qDebug() << "[AI Integration] AI 模块初始化完成";
     return true;
@@ -134,119 +114,38 @@ bool initializeAIIntegration(MainWindow *mainWindow,
 // ============================================================
 // 处理用户消息
 // ============================================================
-void handleUserMessage(MainWindow *mainWindow, AIServer *server,
-                       ChatPanel *chatPanel, const QString &message,
+void handleUserMessage(MainWindow *mainWindow,
+                       AiConnectionManager *connMgr,
+                       ChatPanel *chatPanel,
+                       const QString &message,
                        bool includeContext)
 {
-    if (!server || !server->isAgentConnected()) {
+    if (!connMgr || !connMgr->isReady()) {
         chatPanel->showSystemMessage("AI 助手未连接，请先启动 Agent", true);
         return;
     }
 
-    // 生成请求 ID
-    static int requestId = 1000;
-    int currentId = ++requestId;
+    QJsonObject payload;
+    payload["message"] = message;
 
-    // 构建参数
-    QJsonObject params;
-
-    // 添加用户消息
-    QJsonArray messages;
-    QJsonObject userMsg;
-    userMsg["role"] = "user";
-    userMsg["content"] = message;
-    messages.append(userMsg);
-
-    // 如果包含上下文，添加历史记录
-    if (includeContext) {
-        QJsonArray history = chatPanel->getConversationHistory();
-        // 历史记录已经包含之前的对话，追加到 messages 前面
-        // 但为了保持顺序，我们需要将历史记录放在前面
-        // 注意：历史记录已经包含了用户消息和 AI 消息
-        // 这里我们只添加最新的用户消息，历史记录由 chatPanel 维护
-        // 但为了更好的上下文，我们重新构建消息列表
-        QJsonArray fullMessages;
-        for (const QJsonValue &val : history) {
-            fullMessages.append(val);
-        }
-        // 添加当前用户消息（如果历史记录中没有这条）
-        // 因为 chatPanel 已经在 addUserMessage 中添加了历史记录
-        // 所以我们直接使用历史记录 + 当前消息
-        // 但为了防止重复，我们检查最后一条消息是否与当前消息相同
-        if (!history.isEmpty()) {
-            QJsonObject last = history.last().toObject();
-            if (last.value("role").toString() == "user" &&
-                last.value("content").toString() == message) {
-                // 已经存在，不重复添加
-                params["messages"] = history;
-            } else {
-                // 添加当前消息
-                QJsonArray newMessages = history;
-                newMessages.append(userMsg);
-                params["messages"] = newMessages;
+    if (includeContext && mainWindow) {
+        QJsonObject context;
+        if (TextEditor* editor = mainWindow->currentEditor()) {
+            context["activeFile"]   = editor->filePath();
+            context["cursorLine"]   = editor->currentLine();
+            context["cursorColumn"] = editor->currentColumn();
+            if (editor->textCursor().hasSelection()) {
+                context["selection"] = editor->textCursor().selectedText();
             }
-        } else {
-            params["messages"] = messages;
         }
-
-        // 添加上下文信息
-        if (mainWindow) {
-            // 获取当前文件信息
-            TextEditor *editor = mainWindow->currentEditor();
-            if (editor) {
-                QJsonObject fileContext;
-                fileContext["filePath"] = editor->filePath();
-                fileContext["fileName"] = editor->fileName();
-                fileContext["content"] = editor->toPlainText();
-                fileContext["cursorLine"] = editor->currentLine();
-                fileContext["cursorColumn"] = editor->currentColumn();
-                // fileContext["language"] = editor->language();  //多语言支持尚未开发完成
-                // ================ 临时代替多语言功能：开始 ================
-                QString ext = QFileInfo(editor->filePath()).suffix().toLower();
-                QString lang;
-                if (ext == "cpp" || ext == "cxx" || ext == "cc" || ext == "c") {
-                    lang = "cpp";
-                } else if (ext == "h" || ext == "hpp" || ext == "hxx") {
-                    lang = "cpp-header";
-                } else if (ext == "py") {
-                    lang = "python";
-                } else if (ext == "js" || ext == "ts") {
-                    lang = "javascript";
-                } else if (ext == "go") {
-                    lang = "go";
-                } else if (ext == "rs") {
-                    lang = "rust";
-                } else if (ext == "java") {
-                    lang = "java";
-                } else {
-                    lang = ext.isEmpty() ? "text" : ext;
-                }
-                fileContext["language"] = lang;
-                // ================ 临时代替多语言功能：结束 多语言支持完成开发后删除 ================
-                fileContext["isModified"] = editor->isModified();
-                params["fileContext"] = fileContext;
-            }
-
-            // 添加项目信息
-            QString projPath = mainWindow->projectPath();
-            if (!projPath.isEmpty()) {
-                QJsonObject projectContext;
-                projectContext["projectPath"] = projPath;
-                projectContext["projectName"] = QFileInfo(projPath).fileName();
-                params["projectContext"] = projectContext;
-            }
-
-            // 添加编译状态
-            params["isCompiling"] = mainWindow->isCompiling();
-        }
-    } else {
-        params["messages"] = messages;
+        payload["context"] = context;
     }
 
-    // 发送请求
-    server->sendRequest("agent.chat", params, currentId);
+    const QString requestId =
+        QUuid::createUuid().toString(QUuid::WithoutBraces);
 
-    qDebug() << "[AI Integration] 用户消息已发送，ID:" << currentId;
+    connMgr->sendMethod("chat.send", payload, requestId);
+    qDebug() << "[AI Integration] chat.send 已发送，requestId:" << requestId;
 }
 
 // ============================================================

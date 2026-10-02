@@ -219,6 +219,8 @@ public:
 
     void setBreakpointWithCondition(int line, bool enabled, bool hasCondition);
 
+    void setBreakpointEnabled(int line, bool enabled);      /// 设置断点的启用/禁用状态（与 DebugManager 同步用）
+
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -373,6 +375,7 @@ private:
     // ========== 断点相关成员 ==========
     QSet<int> m_breakpoints;      // 存储有断点的行号
     int m_currentDebugLine;       // 当前调试执行的行号（-1表示无）
+    QSet<int> m_disabledBreakpoints;      // 被禁用（灰色）的断点行
 
     QMap<int, QString> m_inlineValues;   // 行号 → 显示的文本
 
@@ -495,6 +498,15 @@ private:
 
     // ========== 语言编辑规则（打开文件时确定一次）==========
     EditorRules m_editorRules;
+
+    // SVG 图标缓存（key = "路径@宽x高"）
+    mutable QHash<QString, QPixmap> m_iconCache;
+
+    // 取（并在必要时渲染 + 缓存）图标
+    QPixmap cachedIcon(const QString& svgPath, const QSize& size) const;
+
+    // 主题切换时调用，清空缓存（让下次绘制重新渲染正确色版本）
+    void invalidateIconCache();
 };
 
 /**

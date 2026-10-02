@@ -263,15 +263,25 @@ QStringList ProjectPanel::selectedFilePaths() const
 
 void ProjectPanel::refresh()
 {
-    if (!m_projectPath.isEmpty()) {
-        m_fileModel->setRootPath(m_projectPath);
-        QModelIndex sourceRoot = m_fileModel->index(m_projectPath);
-        if (sourceRoot.isValid()) {
-            QModelIndex proxyRoot = toProxy(sourceRoot);
+    if (m_projectPath.isEmpty()) return;
+
+    // 记录根路径；清空再设回是让 QFileSystemModel 丢弃内部缓存、
+    // 真正重新扫描文件系统的可靠做法。
+    const QString rootPath = m_projectPath;
+
+    m_fileModel->setRootPath(QString());                  // 清空
+    QModelIndex sourceRoot = m_fileModel->setRootPath(rootPath);  // 重新扫描
+
+    if (sourceRoot.isValid()) {
+        QModelIndex proxyRoot = toProxy(sourceRoot);
+        if (proxyRoot.isValid()) {
             m_fileTreeView->setRootIndex(proxyRoot);
+            m_fileTreeView->expand(proxyRoot);            // 展开根
         }
     }
+
     refreshTestTree();
+    qDebug() << "[ProjectPanel] refresh 完成:" << rootPath;
 }
 
 void ProjectPanel::locateFile(const QString& filePath)
@@ -822,7 +832,90 @@ void ProjectPanel::setupUI()
     // 用 QVBoxLayout 包裹分割器，填满整个 ProjectPanel
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(m_splitter);
+    layout->setSpacing(0);
+
+    setupToolbar(layout);
+
+    m_splitter = new QSplitter(Qt::Vertical, this);
+    m_splitter->setChildrenCollapsible(false);
+    m_splitter->setHandleWidth(4);
+
+    createFileTree();
+    createTestTree();
+
+    m_splitter->setStretchFactor(0, 7);
+    m_splitter->setStretchFactor(1, 3);
+
+    layout->addWidget(m_splitter, /*stretch=*/1);
+}
+
+// ============================================================
+//  顶部工具栏：定位文件 / 刷新
+//  - 按钮风格跟随主题（QSS 全局规则 + autoRaise）
+//  - 定位：发信号给 MainWindow，由它决定"当前文件"是谁
+//  - 刷新：直接调 onRefreshRequested()，无参数
+// ============================================================
+void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
+{
+    QWidget* toolbar = new QWidget(this);
+    toolbar->setObjectName("ProjectPanelToolbar");
+    toolbar->setFixedHeight(22);                              // 26 → 22，更紧凑
+    toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    QHBoxLayout* tl = new QHBoxLayout(toolbar);
+    tl->setContentsMargins(6, 2, 6, 2);
+    tl->setSpacing(4);
+
+    // ★ 关键 1：stretch 放最前面 → 后续控件全部靠右
+    tl->addStretch(1);
+
+    // ============================================================
+    //  定位按钮
+    // ============================================================
+    m_locateButton = new QToolButton(toolbar);
+
+    m_locateButton->setObjectName("ProjectPanelLocateButton"); // 供 QSS 精确命中
+    m_locateButton->setToolTip(tr("定位到当前正在编辑的文件"));
+    m_locateButton->setAutoRaise(true);
+    m_locateButton->setFocusPolicy(Qt::NoFocus);
+    m_locateButton->setCursor(Qt::PointingHandCursor);
+
+    // 只显示图标
+    m_locateButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+
+    // 图标 12×12，按钮 12×12
+    m_locateButton->setIconSize(QSize(14, 14));
+    m_locateButton->setFixedSize(14, 14);
+
+    m_locateButton->setIcon(QIcon(":icons/icons/locate.svg"));
+
+    connect(m_locateButton, &QToolButton::clicked,
+            this, &ProjectPanel::locateCurrentFileRequested);
+    tl->addWidget(m_locateButton);
+
+    // ============================================================
+    //  刷新按钮
+    // ============================================================
+    m_refreshButton = new QToolButton(toolbar);
+    // m_refreshButton->setIcon(QIcon(":icons/icons/refresh.svg"));
+    m_refreshButton->setObjectName("ProjectPanelRefreshButton");
+    m_refreshButton->setToolTip(tr("刷新项目面板（重新加载根目录下的所有内容）"));
+    m_refreshButton->setAutoRaise(true);
+    m_refreshButton->setFocusPolicy(Qt::NoFocus);
+    m_refreshButton->setCursor(Qt::PointingHandCursor);
+
+    m_refreshButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_refreshButton->setIconSize(QSize(14, 14));
+    m_refreshButton->setFixedSize(14, 14);
+
+    m_refreshButton->setIcon(
+        style()->standardIcon(QStyle::SP_BrowserReload));
+
+    connect(m_refreshButton, &QToolButton::clicked,
+            this, &ProjectPanel::onRefreshRequested);
+    tl->addWidget(m_refreshButton);
+
+    parentLayout->addWidget(toolbar);
 }
 
 void ProjectPanel::createFileTree()
@@ -1286,6 +1379,14 @@ QStandardItem* ProjectPanel::findOrCreateTestRoot()
     newRoot->setEditable(false);
     root->appendRow(newRoot);
     return newRoot;
+}
+
+// ============================================================
+//  外部请求刷新（按钮 / MainWindow 信号）→ 统一走这里
+// ============================================================
+void ProjectPanel::onRefreshRequested()
+{
+    refresh();
 }
 
 // ==================== Git 状态叠加 ====================

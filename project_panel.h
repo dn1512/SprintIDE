@@ -6,11 +6,13 @@
 #include <QFileSystemWatcher>
 #include <QMenu>
 #include <QAction>
+#include <QToolButton>
 #include <QFileInfo>
 #include <QDir>
 #include <QSortFilterProxyModel>
 #include <QStandardItemModel>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QAbstractItemModel>
 #include <QSplitter>
 #include <QDropEvent>
@@ -119,12 +121,18 @@ public slots:
     void expandToSelected();
     void showFileHistory();
 
+    // 外部触发刷新（按钮 + 信号都走这里）
+    void onRefreshRequested();
+
     // Git 状态更新（由 MainWindow 转发，或直接连 GitManager 信号）
     void onGitStatusUpdated(const QList<Git::GitFileStatus>& status);
 
 signals:
     void fileOpenRequested(const QString& filePath);
     void fileCreated(const QString& filePath);
+
+    // 用户点击"定位"按钮。MainWindow 收到后调用 locateFile()
+    void locateCurrentFileRequested();
 
     // 右键 Git 子菜单动作
     //   action : 用户选择的动作
@@ -156,6 +164,7 @@ private slots:
 
 private:
     void setupUI();
+    void setupToolbar(QVBoxLayout* parentLayout);
     void createFileTree();
     void createTestTree();
     void createContextMenu();
@@ -199,6 +208,10 @@ private:
 
     QTreeView* m_testTreeView;
     QStandardItemModel* m_testModel;
+
+    // 顶部工具栏按钮
+    QToolButton* m_locateButton  = nullptr;
+    QToolButton* m_refreshButton = nullptr;
 
     QMenu* m_contextMenu;
     QAction* m_newFileAction;

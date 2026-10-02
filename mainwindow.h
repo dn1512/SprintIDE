@@ -13,6 +13,10 @@
 #include <QProgressBar>
 #include <QToolButton>
 
+#include <QPointer>
+#include <QProcess>
+#include <QProcessEnvironment>
+
 #include "text_editor.h"
 #include "tab_widget.h"
 #include "theme_manager.h"
@@ -26,14 +30,12 @@
 #include "lsp/lsp_manager.h"
 #include "terminal/terminal_panel.h"
 
-#include <QPointer>
-#include <QProcess>
-#include <QProcessEnvironment>
-
 #include "ai/ai_action_executor.h"
 #include "ai/ai_integration.h"
 #include "ai/ai_server.h"
 #include "ai/chat_panel.h"
+#include "ai/ai_connection_manager.h"
+
 #include "history/local_history.h"
 #include "python/python_debugger.h"
 
@@ -90,6 +92,7 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 public slots:
     // 调试菜单槽函数
@@ -267,6 +270,14 @@ public slots:
     void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
     void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
     void aiRequestStopRun();    ///< 停止正在运行的程序
+
+signals:
+    // 请求项目面板刷新
+    // 任何地方想刷新项目面板，只需要：
+    //     emit projectPanelRefreshRequested();
+    // 已自动连接到 ProjectPanel::onRefreshRequested()
+    void projectPanelRefreshRequested();
+
 private:
     void setupUI();
     void setupMenuBar();
@@ -430,6 +441,7 @@ private:
     AIServer *m_aiServer = nullptr;
     AIActionExecutor *m_aiExecutor = nullptr;
     ChatPanel *m_aiChatPanel = nullptr;
+    AiConnectionManager *m_aiConnMgr = nullptr;   // 阶段 0：连接管理器
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态
     // ========== 本地历史管理器指针 ==========
     LocalHistory *m_localHistory = nullptr;
@@ -480,6 +492,8 @@ private:
     QPointer<QProcess> m_runningProcess;   ///< 当前正在运行的程序（自动置空）
     QString            m_runningFilePath;  ///< 当前运行源文件（用于状态恢复）
     bool               m_stoppingProcess = false;  ///< 是否正在主动停止进程
+    // 窗口激活防抖定时器
+    QTimer* m_projectPanelRefreshDebounce = nullptr;
 };
 
 } // namespace SprintIDE
