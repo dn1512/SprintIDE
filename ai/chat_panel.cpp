@@ -549,6 +549,7 @@ void ChatPanel::onConnectionStateChanged(AiConnectionManager::State state) {
         showSystemMessage(tr("AI 助手已断开连接"), true);
         break;
     case AiConnectionManager::State::Reconnecting:
+        setConnectionStatus(false);
         showSystemMessage(tr("正在重连..."), false);
         break;
     default:
