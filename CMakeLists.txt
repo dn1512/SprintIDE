@@ -228,6 +228,7 @@ set(AI_SOURCES
     ai/ai_settings_page.cpp
     ai/transport/tcp_transport.cpp
     ai/ai_connection_manager.cpp
+    ai/protocol/validator.cpp
 )
 
 set(AI_HEADERS
@@ -239,6 +240,8 @@ set(AI_HEADERS
     ai/transport/ai_transport.h
     ai/transport/tcp_transport.h
     ai/ai_connection_manager.h
+    ai/protocol/protocol_types.h
+    ai/protocol/validator.h
 )
 
 set(LANGUAGE_SOURCES
@@ -583,6 +586,9 @@ add_executable(${PROJECT_NAME}
     log/log_item_delegate.h log/log_item_delegate.cpp
     log/output_panel.h log/output_panel.cpp
     translation/language_manager.h translation/language_manager.cpp
+    ai/protocol/protocol_types.h
+    ai/protocol/validator.h
+    ai/protocol/validator.cpp
 )
 
 # ============================================================
