@@ -11,6 +11,14 @@
 #include "chat_panel.h"
 #include "config_manager.h"
 #include "ai/ai_connection_manager.h"
+#include "ai/operation_bus.h"
+#include "ai/executor/chat_executor.h"
+#include "ai/executor/meta_executor.h"
+#include "ai/executor/file_executor.h"
+#include "ai/executor/command_executor.h"
+#include "ai/executor/ide_executor.h"
+#include "ai/executor/project_executor.h"
+#include "ai/executor/env_executor.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -24,6 +32,8 @@
 #include <QUuid>
 
 namespace SprintIDE {
+
+using namespace SprintIDE::Protocol;
 
 // ============================================================
 // AI 集成初始化函数
@@ -96,6 +106,46 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     // 动作执行器的输出 → ChatPanel 系统消息
     QObject::connect(executor, &AIActionExecutor::outputProduced,
                      chatPanel, &ChatPanel::onActionOutput);
+
+    // ---- 6.5 创建 OperationBus 并注册 Executor（阶段 1） ----
+    OperationBus* operationBus = new OperationBus(connMgr, mainWindow);
+
+    ChatExecutor*    chatExec    = new ChatExecutor(mainWindow);
+    MetaExecutor*    metaExec    = new MetaExecutor(operationBus, mainWindow);
+    FileExecutor*    fileExec    = new FileExecutor(mainWindow);
+    CommandExecutor* cmdExec     = new CommandExecutor(mainWindow);
+    IdeExecutor*     ideExec     = new IdeExecutor(mainWindow, mainWindow);
+    ProjectExecutor* projExec    = new ProjectExecutor(mainWindow);
+    EnvExecutor*     envExec     = new EnvExecutor(mainWindow);
+
+    operationBus->registerExecutor(chatExec);
+    operationBus->registerExecutor(metaExec);
+    operationBus->registerExecutor(fileExec);
+    operationBus->registerExecutor(cmdExec);
+    operationBus->registerExecutor(ideExec);
+    operationBus->registerExecutor(projExec);
+    operationBus->registerExecutor(envExec);
+
+    // ChatExecutor 的 notify → ChatPanel 系统消息
+    QObject::connect(chatExec, &ChatExecutor::notifyRequested,
+                     chatPanel,
+                     [chatPanel](const QString& level,
+                                 const QString& title,
+                                 const QString& message) {
+                         const bool isError = (level == QStringLiteral("error"));
+                         const bool isWarn  = (level == QStringLiteral("warning"));
+                         QString text = message;
+                         if (!title.isEmpty()) {
+                             text = QStringLiteral("[%1] %2").arg(title, message);
+                         }
+                         chatPanel->showSystemMessage(text, isError || isWarn);
+                     });
+
+    // Agent 消息 → OperationBus 路由
+    QObject::connect(connMgr, &AiConnectionManager::agentMessageReceived,
+                     operationBus, &OperationBus::handleAgentMessage);
+
+    qDebug() << "[AI Integration] OperationBus 已创建并注册 7 个 Executor";
 
     // ---- 7. 自动连接 ----
     if (autoConnect) {

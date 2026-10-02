@@ -93,6 +93,17 @@ bool AiConnectionManager::sendMethod(const QString& method,
     return m_transport->sendMessage(body);
 }
 
+bool AiConnectionManager::sendRaw(const QJsonObject& message)
+{
+    if (m_state != State::Ready) {
+        qWarning() << "[AI] sendRaw rejected: not Ready, state="
+                   << static_cast<int>(m_state);
+        return false;
+    }
+    const QByteArray body = QJsonDocument(message).toJson(QJsonDocument::Compact);
+    return m_transport->sendMessage(body);
+}
+
 // ------------------------------------------------------------
 // 传输层回调
 // ------------------------------------------------------------

@@ -229,6 +229,15 @@ set(AI_SOURCES
     ai/transport/tcp_transport.cpp
     ai/ai_connection_manager.cpp
     ai/protocol/validator.cpp
+    ai/protocol/result_builder.cpp
+    ai/operation_bus.cpp
+    ai/executor/chat_executor.cpp
+    ai/executor/meta_executor.cpp
+    ai/executor/file_executor.cpp
+    ai/executor/command_executor.cpp
+    ai/executor/ide_executor.cpp
+    ai/executor/project_executor.cpp
+    ai/executor/env_executor.cpp
 )
 
 set(AI_HEADERS
@@ -242,6 +251,16 @@ set(AI_HEADERS
     ai/ai_connection_manager.h
     ai/protocol/protocol_types.h
     ai/protocol/validator.h
+    ai/protocol/execution_result.h
+    ai/protocol/result_builder.h
+    ai/executor/i_executor.h
+    ai/operation_bus.h
+    ai/executor/chat_executor.h
+    ai/executor/meta_executor.h    ai/executor/file_executor.h
+    ai/executor/command_executor.h
+    ai/executor/ide_executor.h
+    ai/executor/project_executor.h
+    ai/executor/env_executor.h
 )
 
 set(LANGUAGE_SOURCES
@@ -589,6 +608,26 @@ add_executable(${PROJECT_NAME}
     ai/protocol/protocol_types.h
     ai/protocol/validator.h
     ai/protocol/validator.cpp
+    ai/protocol/execution_result.h
+    ai/protocol/result_builder.h
+    ai/protocol/result_builder.cpp
+    ai/executor/i_executor.h
+    ai/operation_bus.h
+    ai/operation_bus.cpp
+    ai/executor/chat_executor.h
+    ai/executor/chat_executor.cpp
+    ai/executor/meta_executor.h
+    ai/executor/meta_executor.cpp
+    ai/executor/file_executor.h
+    ai/executor/command_executor.h
+    ai/executor/ide_executor.h
+    ai/executor/project_executor.h
+    ai/executor/env_executor.h
+    ai/executor/file_executor.cpp
+    ai/executor/command_executor.cpp
+    ai/executor/ide_executor.cpp
+    ai/executor/project_executor.cpp
+    ai/executor/env_executor.cpp
 )
 
 # ============================================================

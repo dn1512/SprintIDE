@@ -568,7 +568,8 @@ void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
     //    这里只记日志
     const QJsonArray items = msg.value("items").toArray();
     if (!items.isEmpty()) {
-        qDebug() << "[ChatPanel] 收到" << items.size() << "个 items（阶段 0 暂不执行）";
+        qDebug() << "[ChatPanel] 收到" << items.size()
+            << "个 items（已交给 OperationBus 处理）";
     }
 
     // 3. error → OutputPanel（不进 ChatPanel）

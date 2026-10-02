@@ -43,6 +43,9 @@ public:
                     const QJsonObject& payload,
                     const QString& requestId);
 
+    /// 发送已经组装好的完整消息（供 ResultBuilder 使用）
+    bool sendRaw(const QJsonObject& message);
+
 signals:
     void stateChanged(State newState);
     void connected();
