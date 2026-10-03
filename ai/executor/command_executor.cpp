@@ -7,6 +7,8 @@
 #include <QElapsedTimer>
 #include <QDir>
 #include <QJsonArray>
+#include <QEventLoop>
+#include <QTimer>
 
 namespace SprintIDE {
 namespace Protocol {
@@ -63,7 +65,7 @@ ExecutionResult CommandExecutor::handleRun(const QJsonObject& item)
     proc.setProgram(program);
     proc.setArguments(args);
     proc.setWorkingDirectory(workDir);
-    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     const QJsonObject envObj = item.value("env").toObject();
@@ -72,28 +74,75 @@ ExecutionResult CommandExecutor::handleRun(const QJsonObject& item)
     }
     proc.setProcessEnvironment(env);
 
+    // ---- 事件驱动累积 ----
+    QString stdoutBuf;
+    QString stderrBuf;
+    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&]() {
+        stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    });
+    QObject::connect(&proc, &QProcess::readyReadStandardError, [&]() {
+        stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+    });
+
     QElapsedTimer timer;
     timer.start();
 
     proc.start();
-
-    bool finished = false;
-    if (timeoutMs > 0) {
-        finished = proc.waitForFinished(timeoutMs);
-    } else {
-        finished = proc.waitForFinished(-1);
+    if (!proc.waitForStarted(3000)) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.run"),
+                                     ErrorCode::InternalError,
+                                     QStringLiteral("Failed to start program: %1")
+                                         .arg(proc.errorString()));
     }
 
-    const QString output = QString::fromLocal8Bit(proc.readAllStandardOutput());
-    const int     exitCode = finished ? proc.exitCode() : -1;
-    const bool    timedOut = !finished;
+    // ---- 用 QEventLoop 等 finished（或超时） ----
+    QEventLoop loop;
+    bool finishedNormally = false;
+    QObject::connect(&proc,
+                     QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     &loop,
+                     [&](int, QProcess::ExitStatus) {
+                         finishedNormally = true;
+                         loop.quit();
+                     });
+
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (timeoutMs > 0) {
+        timeoutTimer.start(timeoutMs);
+    }
+    loop.exec();
+
+    const bool timedOut = !finishedNormally;
+
+    if (timedOut) {
+        proc.terminate();
+        if (!proc.waitForFinished(1000)) {
+            proc.kill();
+            proc.waitForFinished(500);
+        }
+    }
+
+    // ---- 补读 socket 残留 ----
+    stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+
+    const int exitCode = finishedNormally ? proc.exitCode() : -1;
+
+    // ---- 截断 ----
+    constexpr int kMaxChunk = 64 * 1024;
+    bool truncated = false;
+    if (stdoutBuf.size() > kMaxChunk) { stdoutBuf = stdoutBuf.left(kMaxChunk); truncated = true; }
+    if (stderrBuf.size() > kMaxChunk) { stderrBuf = stderrBuf.left(kMaxChunk); truncated = true; }
 
     QJsonObject data;
     data["commandType"]      = QStringLiteral("run");
     data["exitCode"]         = exitCode;
-    data["stdout"]           = output;
-    data["stderr"]           = QString();
-    data["truncated"]        = false;
+    data["stdout"]           = stdoutBuf;
+    data["stderr"]           = stderrBuf;
+    data["truncated"]        = truncated;
     data["durationMs"]       = static_cast<int>(timer.elapsed());
     data["timedOut"]         = timedOut;
     data["workingDirectory"] = workDir;
@@ -118,10 +167,131 @@ ExecutionResult CommandExecutor::handleRun(const QJsonObject& item)
 // ------------------------------------------------------------
 ExecutionResult CommandExecutor::handleRunShell(const QJsonObject& item)
 {
-    return ExecutionResult::fail(
-        item.value("id").toString(), QStringLiteral("command.runShell"),
-        ErrorCode::UnsupportedType,
-        QStringLiteral("command.runShell not yet implemented (planned for Phase 3)"));
+    const QString itemId = item.value("id").toString();
+    const QString script = item.value("script").toString();
+
+    QString shell = item.value("shell").toString();
+    if (shell.isEmpty()) {
+#ifdef Q_OS_WIN
+        shell = QStringLiteral("cmd.exe");
+#else
+        shell = QStringLiteral("/bin/sh");
+#endif
+    }
+
+    QString workDir = item.value("workingDirectory").toString();
+    if (workDir.isEmpty()) {
+        ProjectManager* pm = ProjectManager::instance();
+        workDir = pm ? pm->currentProjectPath() : QString();
+    }
+    if (workDir.isEmpty()) {
+        workDir = QDir::currentPath();
+    }
+    if (!QDir(workDir).exists()) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.runShell"),
+                                     ErrorCode::PathNotFound,
+                                     QStringLiteral("Working directory not found: %1").arg(workDir));
+    }
+
+    const int timeoutMs = item.value("timeoutMs").toInt(0);
+
+    QProcess proc;
+#ifdef Q_OS_WIN
+    proc.setProgram(shell);
+    proc.setArguments({QStringLiteral("/c"), script});
+#else
+    proc.setProgram(shell);
+    proc.setArguments({QStringLiteral("-c"), script});
+#endif
+    proc.setWorkingDirectory(workDir);
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+
+    // ---- 事件驱动累积 ----
+    QString stdoutBuf;
+    QString stderrBuf;
+    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&]() {
+        stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    });
+    QObject::connect(&proc, &QProcess::readyReadStandardError, [&]() {
+        stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+    });
+
+    QElapsedTimer timer;
+    timer.start();
+
+    proc.start();
+    if (!proc.waitForStarted(3000)) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.runShell"),
+                                     ErrorCode::InternalError,
+                                     QStringLiteral("Failed to start shell: %1")
+                                         .arg(proc.errorString()));
+    }
+
+    // ---- QEventLoop 等 finished（或超时） ----
+    QEventLoop loop;
+    bool finishedNormally = false;
+    QObject::connect(&proc,
+                     QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     &loop,
+                     [&](int, QProcess::ExitStatus) {
+                         finishedNormally = true;
+                         loop.quit();
+                     });
+
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (timeoutMs > 0) {
+        timeoutTimer.start(timeoutMs);
+    }
+    loop.exec();
+
+    const bool timedOut = !finishedNormally;
+
+    if (timedOut) {
+        proc.terminate();
+        if (!proc.waitForFinished(1000)) {
+            proc.kill();
+            proc.waitForFinished(500);
+        }
+    }
+
+    // ---- 补读 socket 残留 ----
+    stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+
+    const int exitCode = finishedNormally ? proc.exitCode() : -1;
+
+    // ---- 截断 ----
+    constexpr int kMaxChunk = 64 * 1024;
+    bool truncated = false;
+    if (stdoutBuf.size() > kMaxChunk) { stdoutBuf = stdoutBuf.left(kMaxChunk); truncated = true; }
+    if (stderrBuf.size() > kMaxChunk) { stderrBuf = stderrBuf.left(kMaxChunk); truncated = true; }
+
+    QJsonObject data;
+    data["commandType"]      = QStringLiteral("runShell");
+    data["exitCode"]         = exitCode;
+    data["stdout"]           = stdoutBuf;
+    data["stderr"]           = stderrBuf;
+    data["truncated"]        = truncated;
+    data["durationMs"]       = static_cast<int>(timer.elapsed());
+    data["timedOut"]         = timedOut;
+    data["workingDirectory"] = workDir;
+
+    if (timedOut) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.runShell"),
+                                     ErrorCode::Timeout,
+                                     QStringLiteral("Shell script timed out after %1ms").arg(timeoutMs),
+                                     data);
+    }
+    if (exitCode != 0) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.runShell"),
+                                     ErrorCode::ExitCodeNonZero,
+                                     QStringLiteral("Exit code: %1").arg(exitCode),
+                                     data);
+    }
+    return ExecutionResult::ok(itemId, QStringLiteral("command.runShell"), data);
 }
 
 // ------------------------------------------------------------
@@ -129,10 +299,154 @@ ExecutionResult CommandExecutor::handleRunShell(const QJsonObject& item)
 // ------------------------------------------------------------
 ExecutionResult CommandExecutor::handleInstallDep(const QJsonObject& item)
 {
-    return ExecutionResult::fail(
-        item.value("id").toString(), QStringLiteral("command.installDep"),
-        ErrorCode::UnsupportedType,
-        QStringLiteral("command.installDep not yet implemented (planned for Phase 3)"));
+    const QString itemId   = item.value("id").toString();
+    const QString manager  = item.value("manager").toString();
+    const QString target   = item.value("target").toString();
+
+    QStringList packages;
+    for (const QJsonValue& v : item.value("packages").toArray()) {
+        packages.append(v.toString());
+    }
+
+    if (packages.isEmpty()) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.installDep"),
+                                     ErrorCode::InvalidFields,
+                                     QStringLiteral("No packages specified"));
+    }
+
+    // ---- 根据 manager 构造命令行 ----
+    QString program;
+    QStringList args;
+
+    if (manager == QStringLiteral("pip")) {
+        program = QStringLiteral("python3");
+        args << QStringLiteral("-m") << QStringLiteral("pip")
+             << QStringLiteral("install");
+        if (!target.isEmpty()) {
+            args << QStringLiteral("--target") << target;
+        }
+        args << packages;
+
+    } else if (manager == QStringLiteral("poetry")) {
+        program = QStringLiteral("poetry");
+        args << QStringLiteral("add") << packages;
+
+    } else if (manager == QStringLiteral("npm")) {
+        program = QStringLiteral("npm");
+        args << QStringLiteral("install") << packages;
+
+    } else if (manager == QStringLiteral("cargo")) {
+        program = QStringLiteral("cargo");
+        args << QStringLiteral("add") << packages;
+
+    } else if (manager == QStringLiteral("go")) {
+        program = QStringLiteral("go");
+        args << QStringLiteral("get") << packages;
+
+    } else {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.installDep"),
+                                     ErrorCode::InvalidFields,
+                                     QStringLiteral("Unsupported manager: %1").arg(manager));
+    }
+
+    // ---- 工作目录 ----
+    QString workDir = ProjectManager::instance()
+                          ? ProjectManager::instance()->currentProjectPath()
+                          : QString();
+    if (workDir.isEmpty()) {
+        workDir = QDir::currentPath();
+    }
+
+    // ---- 执行 ----
+    QProcess proc;
+    proc.setProgram(program);
+    proc.setArguments(args);
+    proc.setWorkingDirectory(workDir);
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+
+    QString stdoutBuf;
+    QString stderrBuf;
+    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&]() {
+        stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    });
+    QObject::connect(&proc, &QProcess::readyReadStandardError, [&]() {
+        stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+    });
+
+    QElapsedTimer timer;
+    timer.start();
+
+    proc.start();
+    if (!proc.waitForStarted(3000)) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.installDep"),
+                                     ErrorCode::InternalError,
+                                     QStringLiteral("Failed to start %1: %2")
+                                         .arg(program, proc.errorString()));
+    }
+
+    // 包管理器可能很慢，硬上限 5 分钟
+    constexpr int kInstallTimeoutMs = 5 * 60 * 1000;
+
+    QEventLoop loop;
+    bool finishedNormally = false;
+    QObject::connect(&proc,
+                     QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     &loop,
+                     [&](int, QProcess::ExitStatus) {
+                         finishedNormally = true;
+                         loop.quit();
+                     });
+
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeoutTimer.start(kInstallTimeoutMs);
+    loop.exec();
+
+    const bool timedOut = !finishedNormally;
+
+    if (timedOut) {
+        proc.terminate();
+        if (!proc.waitForFinished(2000)) {
+            proc.kill();
+            proc.waitForFinished(1000);
+        }
+    }
+
+    stdoutBuf += QString::fromLocal8Bit(proc.readAllStandardOutput());
+    stderrBuf += QString::fromLocal8Bit(proc.readAllStandardError());
+
+    const int exitCode = finishedNormally ? proc.exitCode() : -1;
+
+    constexpr int kMaxChunk = 64 * 1024;
+    bool truncated = false;
+    if (stdoutBuf.size() > kMaxChunk) { stdoutBuf = stdoutBuf.left(kMaxChunk); truncated = true; }
+    if (stderrBuf.size() > kMaxChunk) { stderrBuf = stderrBuf.left(kMaxChunk); truncated = true; }
+
+    QJsonObject data;
+    data["commandType"] = QStringLiteral("installDep");
+    data["manager"]     = manager;
+    data["packages"]    = QJsonArray::fromStringList(packages);
+    data["exitCode"]    = exitCode;
+    data["stdout"]      = stdoutBuf;
+    data["stderr"]      = stderrBuf;
+    data["truncated"]   = truncated;
+    data["durationMs"]  = static_cast<int>(timer.elapsed());
+    data["timedOut"]    = timedOut;
+
+    if (timedOut) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.installDep"),
+                                     ErrorCode::Timeout,
+                                     QStringLiteral("Install timed out"),
+                                     data);
+    }
+    if (exitCode != 0) {
+        return ExecutionResult::fail(itemId, QStringLiteral("command.installDep"),
+                                     ErrorCode::ExitCodeNonZero,
+                                     QStringLiteral("Install failed with exit code %1").arg(exitCode),
+                                     data);
+    }
+    return ExecutionResult::ok(itemId, QStringLiteral("command.installDep"), data);
 }
 
 } // namespace Protocol

@@ -10,55 +10,55 @@ namespace Protocol {
 const QMap<QString, QStringList>& Validator::requiredFieldsMap()
 {
     static const QMap<QString, QStringList> s_map = {
-                                                     // ---- chat.* ----
-                                                     { QStringLiteral("chat.ask"),     { QStringLiteral("question") } },
-                                                     { QStringLiteral("chat.confirm"), { QStringLiteral("targetId"),
-                                                                                       QStringLiteral("prompt") } },
-                                                     { QStringLiteral("chat.notify"),  { QStringLiteral("level"),
-                                                                                      QStringLiteral("message") } },
+         // ---- chat.* ----
+         { QStringLiteral("chat.ask"),     { QStringLiteral("question") } },
+         { QStringLiteral("chat.confirm"), { QStringLiteral("targetId"),
+                                           QStringLiteral("prompt") } },
+         { QStringLiteral("chat.notify"),  { QStringLiteral("level"),
+                                          QStringLiteral("message") } },
 
-                                                     // ---- file.* ----
-                                                     { QStringLiteral("file.read"),    { QStringLiteral("id"),
-                                                                                    QStringLiteral("path") } },
-                                                     { QStringLiteral("file.create"),  { QStringLiteral("path"),
-                                                                                      QStringLiteral("content") } },
-                                                     { QStringLiteral("file.delete"),  { QStringLiteral("path") } },
-                                                     { QStringLiteral("file.rename"),  { QStringLiteral("oldPath"),
-                                                                                      QStringLiteral("newPath") } },
-                                                     { QStringLiteral("file.edit"),    { QStringLiteral("path"),
-                                                                                    QStringLiteral("mode") } },
+         // ---- file.* ----
+         { QStringLiteral("file.read"),    { QStringLiteral("id"),
+                                        QStringLiteral("path") } },
+         { QStringLiteral("file.create"),  { QStringLiteral("path"),
+                                          QStringLiteral("content") } },
+         { QStringLiteral("file.delete"),  { QStringLiteral("path") } },
+         { QStringLiteral("file.rename"),  { QStringLiteral("oldPath"),
+                                          QStringLiteral("newPath") } },
+         { QStringLiteral("file.edit"),    { QStringLiteral("path"),
+                                        QStringLiteral("mode") } },
 
-                                                     // ---- command.* ----
-                                                     { QStringLiteral("command.run"),        { QStringLiteral("id"),
-                                                                                      QStringLiteral("program"),
-                                                                                      QStringLiteral("arguments") } },
-                                                     { QStringLiteral("command.runShell"),   { QStringLiteral("id"),
-                                                                                           QStringLiteral("script") } },
-                                                     { QStringLiteral("command.installDep"), { QStringLiteral("id"),
-                                                                                             QStringLiteral("manager"),
-                                                                                             QStringLiteral("packages") } },
+         // ---- command.* ----
+         { QStringLiteral("command.run"),        { QStringLiteral("id"),
+                                          QStringLiteral("program"),
+                                          QStringLiteral("arguments") } },
+         { QStringLiteral("command.runShell"),   { QStringLiteral("id"),
+                                               QStringLiteral("script") } },
+         { QStringLiteral("command.installDep"), { QStringLiteral("id"),
+                                                 QStringLiteral("manager"),
+                                                 QStringLiteral("packages") } },
 
-                                                     // ---- ide.* ----
-                                                     { QStringLiteral("ide.build"),     { QStringLiteral("id") } },
-                                                     { QStringLiteral("ide.run"),       { QStringLiteral("id") } },
-                                                     { QStringLiteral("ide.stopRun"),   { QStringLiteral("id") } },
+         // ---- ide.* ----
+         { QStringLiteral("ide.build"),     { QStringLiteral("id") } },
+         { QStringLiteral("ide.run"),       { QStringLiteral("id") } },
+         { QStringLiteral("ide.stopRun"),   { QStringLiteral("id") } },
 
-                                                     // ---- project.* ----
-                                                     { QStringLiteral("project.info"),    { QStringLiteral("id") } },
-                                                     { QStringLiteral("project.targets"), { QStringLiteral("id") } },
+         // ---- project.* ----
+         { QStringLiteral("project.info"),    { QStringLiteral("id") } },
+         { QStringLiteral("project.targets"), { QStringLiteral("id") } },
 
-                                                     // ---- env.* ----
-                                                     { QStringLiteral("env.query"),  { QStringLiteral("id"),
-                                                                                    QStringLiteral("items") } },
-                                                     { QStringLiteral("env.setSdk"), { QStringLiteral("variables") } },
+         // ---- env.* ----
+         { QStringLiteral("env.query"),  { QStringLiteral("id"),
+                                        QStringLiteral("items") } },
+         { QStringLiteral("env.setSdk"), { QStringLiteral("variables") } },
 
-                                                     // ---- meta.* ----
-                                                     { QStringLiteral("meta.batch"), { QStringLiteral("id"),
-                                                                                     QStringLiteral("atomic"),
-                                                                                     QStringLiteral("items") } },
-                                                     { QStringLiteral("meta.abort"), { QStringLiteral("reason") } },
-                                                     { QStringLiteral("meta.done"),  { } },
-                                                     };
+         // ---- meta.* ----
+         { QStringLiteral("meta.batch"), { QStringLiteral("id"),
+                                         QStringLiteral("atomic"),
+                                         QStringLiteral("items") } },
+         { QStringLiteral("meta.abort"), { QStringLiteral("reason") } },
+         { QStringLiteral("meta.done"),  { } },
+         };
     return s_map;
 }
 
