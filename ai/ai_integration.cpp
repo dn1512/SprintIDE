@@ -85,7 +85,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     // ---- 5. 创建聊天面板 ----
     ChatPanel *chatPanel = new ChatPanel(mainWindow);
     chatPanel->setObjectName("AIChatPanel");
-    chatPanel->setWindowTitle("AI 助手");
+    chatPanel->setWindowTitle("AI Agent");
     chatPanel->setFeatures(QDockWidget::DockWidgetClosable |
                            QDockWidget::DockWidgetMovable |
                            QDockWidget::DockWidgetFloatable);
@@ -123,6 +123,8 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     operationBus->registerExecutor(fileExec);
     operationBus->registerExecutor(cmdExec);
     operationBus->registerExecutor(ideExec);
+    QObject::connect(ideExec, &IdeExecutor::deferredResultReady,
+                     operationBus, &OperationBus::onDeferredResultReady);
     operationBus->registerExecutor(projExec);
     operationBus->registerExecutor(envExec);
 
@@ -171,7 +173,7 @@ void handleUserMessage(MainWindow *mainWindow,
                        bool includeContext)
 {
     if (!connMgr || !connMgr->isReady()) {
-        chatPanel->showSystemMessage("AI 助手未连接，请先启动 Agent", true);
+        chatPanel->showSystemMessage("AI Agent 手未连接，请先启动 Agent", true);
         return;
     }
 
@@ -364,7 +366,7 @@ void reportCompileErrors(MainWindow *mainWindow, ChatPanel *chatPanel,
 
             qDebug() << "[AI Integration] 自动修复请求已发送，ID:" << requestId;
         } else {
-            chatPanel->showSystemMessage("❌ AI 助手未连接，无法自动修复", true);
+            chatPanel->showSystemMessage("❌ AI agent 未连接，无法自动修复", true);
         }
     }
 }
@@ -439,7 +441,7 @@ void reportRuntimeError(MainWindow *mainWindow, ChatPanel *chatPanel,
             server->sendRequest("agent.autoFix", params, requestId);
             qDebug() << "[AI Integration] 运行时错误修复请求已发送，ID:" << requestId;
         } else {
-            chatPanel->showSystemMessage("❌ AI 助手未连接，无法分析错误", true);
+            chatPanel->showSystemMessage("❌ AI agent 未连接，无法分析错误", true);
         }
     }
 }

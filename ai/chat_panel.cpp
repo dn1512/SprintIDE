@@ -23,7 +23,7 @@ namespace SprintIDE {
 // 构造函数
 // ============================================================
 ChatPanel::ChatPanel(QWidget *parent)
-    : QDockWidget(tr("AI 助手"), parent)
+    : QDockWidget(tr("AI agent"), parent)
     , m_maxHistorySize(50)
 {
     setObjectName("ChatPanel");
@@ -55,13 +55,13 @@ void ChatPanel::setAIServer(AIServer *server)
         connect(server, &AIServer::agentConnected,
                 this, [this]() {
                     setConnectionStatus(true);
-                    showSystemMessage(tr("AI 助手已连接"), false);
+                    showSystemMessage(tr("AI agent已连接"), false);
                 });
 
         connect(server, &AIServer::agentDisconnected,
                 this, [this]() {
                     setConnectionStatus(false);
-                    showSystemMessage(tr("AI 助手已断开连接"), true);
+                    showSystemMessage(tr("AI agent已断开连接"), true);
                 });
 
         connect(server, &AIServer::streamDataReceived,
@@ -137,20 +137,37 @@ void ChatPanel::createToolbar()
     m_toolbar->setMovable(false);
     m_toolbar->setFloatable(false);
     m_toolbar->setIconSize(QSize(14, 14));
-    m_toolbar->setFixedHeight(32);
+    m_toolbar->setFixedHeight(34);
 
-    // 左：状态
-    m_statusLabel = new QLabel(tr("● 未连接"), this);
+    // ---------- 左：状态点 + 文字 ----------
+    m_statusDot = new QLabel(this);
+    m_statusDot->setObjectName("ChatStatusDot");
+    m_statusDot->setFixedSize(8, 8);
+    m_statusDot->setProperty("connected", false);   // QSS 用它判断颜色
+    m_toolbar->addWidget(m_statusDot);
+
+    m_statusLabel = new QLabel(tr("未连接"), this);
     m_statusLabel->setObjectName("statusLabel");
     m_statusLabel->setProperty("class", "disconnected");
     m_toolbar->addWidget(m_statusLabel);
 
-    // 中：弹性空白
+    // ---------- 重连按钮（默认隐藏） ----------
+    m_reconnectButton = new QPushButton(tr("连接"), this);
+    m_reconnectButton->setObjectName("ChatReconnectButton");
+    m_reconnectButton->setToolTip(tr("立即尝试连接 Agent"));
+    m_reconnectButton->setFixedHeight(22);
+    m_reconnectButton->setVisible(true);
+    connect(m_reconnectButton, &QPushButton::clicked, this, [this]() {
+        if (m_connMgr) m_connMgr->reconnectNow();
+    });
+    m_toolbar->addWidget(m_reconnectButton);
+
+    // ---------- 中：弹性空白 ----------
     QWidget *spacer = new QWidget(this);
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_toolbar->addWidget(spacer);
 
-    // 右：清空 + 复制
+    // ---------- 右：清空 + 复制 ----------
     m_clearButton = new QPushButton(tr("清空"), this);
     m_clearButton->setObjectName("ChatClearButton");
     m_clearButton->setToolTip(tr("清空所有对话消息"));
@@ -351,7 +368,6 @@ bool ChatPanel::appendStreamChunk(const QString &streamId, const QString &chunk)
         qWarning() << "[ChatPanel] 流式消息不存在:" << streamId;
         return false;
     }
-
     if (chunk.isEmpty()) {
         return true;
     }
@@ -359,17 +375,19 @@ bool ChatPanel::appendStreamChunk(const QString &streamId, const QString &chunk)
     QTextCursor cursor = m_streamCursors[streamId];
     m_streamContents[streamId] += chunk;
 
+    // 从 ThemeManager 取色（原来是硬编码 #E0E0E0）
+    ThemeManager& tm = ThemeManager::instance();
+    QColor textColor = tm.color(ThemeManager::UIElement::TextColor);
+
     cursor.beginEditBlock();
     QTextCharFormat format;
-    format.setForeground(QColor("#E0E0E0"));
+    format.setForeground(textColor);
     cursor.setCharFormat(format);
     cursor.insertText(chunk);
     cursor.endEditBlock();
 
-    // 更新光标位置（保持在末尾）
     m_streamCursors[streamId] = cursor;
     updateScrollPosition();
-
     return true;
 }
 
@@ -435,14 +453,15 @@ void ChatPanel::setConnectionStatus(bool connected)
 {
     m_isConnected = connected;
 
+    // ---- 状态点 + 文字 ----
+    if (m_statusDot) {
+        m_statusDot->setProperty("connected", connected);
+        m_statusDot->style()->unpolish(m_statusDot);
+        m_statusDot->style()->polish(m_statusDot);
+    }
     if (m_statusLabel) {
-        if (connected) {
-            m_statusLabel->setText(tr("🟢 已连接"));
-            m_statusLabel->setProperty("class", "connected");
-        } else {
-            m_statusLabel->setText(tr("🔴 未连接"));
-            m_statusLabel->setProperty("class", "disconnected");
-        }
+        m_statusLabel->setText(connected ? tr("已连接") : tr("未连接"));
+        m_statusLabel->setProperty("class", connected ? "connected" : "disconnected");
         m_statusLabel->style()->unpolish(m_statusLabel);
         m_statusLabel->style()->polish(m_statusLabel);
     }
@@ -454,11 +473,7 @@ void ChatPanel::setConnectionStatus(bool connected)
         m_sendButton->setEnabled(connected);
     }
 
-    if (connected) {
-        setWindowTitle(tr("AI 助手 (已连接)"));
-    } else {
-        setWindowTitle(tr("AI 助手 (未连接)"));
-    }
+    setWindowTitle(connected ? tr("AI agent (已连接)") : tr("AI agent (未连接)"));
 
     emit connectionStatusChanged(connected);
 }
@@ -497,6 +512,7 @@ void ChatPanel::setAutoSendContext(bool enabled)
 
 void ChatPanel::setConnectionManager(AiConnectionManager* mgr) {
     m_connMgr = mgr;
+    qDebug() << "[ChatPanel] setConnectionManager called, mgr =" << mgr;
     if (!mgr) return;
 
     connect(mgr, &AiConnectionManager::stateChanged,
@@ -538,22 +554,44 @@ void ChatPanel::onClearClicked()
 // 私有槽：流式数据接收
 // ============================================================
 void ChatPanel::onConnectionStateChanged(AiConnectionManager::State state) {
+    qDebug() << "[ChatPanel] stateChanged: " << static_cast<int>(state);
+    using S = AiConnectionManager::State;
+
     switch (state) {
-    case AiConnectionManager::State::Ready:
+    case S::Ready:
         setConnectionStatus(true);
-        showSystemMessage(tr("AI 助手已连接"), false);
+        showSystemMessage(tr("AI agent已连接"), false);
         break;
-    case AiConnectionManager::State::Disconnected:
-    case AiConnectionManager::State::Failed:
+    case S::Disconnected:
+    case S::Failed:
         setConnectionStatus(false);
-        showSystemMessage(tr("AI 助手已断开连接"), true);
+        showSystemMessage(tr("AI agent已断开连接"), true);
         break;
-    case AiConnectionManager::State::Reconnecting:
+    case S::Reconnecting:
         setConnectionStatus(false);
         showSystemMessage(tr("正在重连..."), false);
         break;
     default:
         break;
+    }
+
+    // 根据状态切换重连按钮可见性
+    if (m_reconnectButton) {
+        using S = AiConnectionManager::State;
+
+        // 按钮常驻；只在"已连接"时禁用，其余状态都可点
+        m_reconnectButton->setVisible(true);
+        m_reconnectButton->setEnabled(state != S::Ready);
+
+        // 文字随状态变化，给用户明确反馈
+        switch (state) {
+        case S::Ready:         m_reconnectButton->setText(tr("连接"));   break;
+        case S::Failed:        m_reconnectButton->setText(tr("重试"));   break;
+        case S::Reconnecting:  m_reconnectButton->setText(tr("重连中")); break;
+        case S::Connecting:    m_reconnectButton->setText(tr("连接中")); break;
+        case S::Disconnected:
+        default:               m_reconnectButton->setText(tr("连接"));   break;
+        }
     }
 }
 
@@ -656,40 +694,90 @@ QString ChatPanel::formatMessage(const QString &sender, const QString &content) 
     const bool isUser = (sender == "user");
     const bool isAI   = (sender == "ai");
 
-    QString displayName = getSenderDisplayName(sender);
-    QString time = QDateTime::currentDateTime().toString("hh:mm");
+    const QString displayName = getSenderDisplayName(sender);
+    const QString time        = QDateTime::currentDateTime().toString("hh:mm");
 
-    QString escapedContent = content.toHtmlEscaped();
-    escapedContent.replace("\n", "<br/>");
+    // 内容转义 + 换行
+    QString escaped = content.toHtmlEscaped();
+    escaped.replace("\n", "<br/>");
 
-    QString alignment = isUser ? "right" : "left";
-    QString bgColor   = isUser
-                          ? tm.colorString(ThemeManager::UIElement::AIChatUserBubble)
-                          : tm.colorString(ThemeManager::UIElement::AIChatAIBubble);
-    QString textColor = tm.colorString(ThemeManager::UIElement::TextColor);
-    QString aiBorder  = tm.colorString(ThemeManager::UIElement::AIChatAIBorder);
+    // ============================================================
+    //  配色
+    // ============================================================
+    const QString textColor      = tm.colorString(ThemeManager::UIElement::TextColor);
+    const QString secondaryColor = tm.colorString(ThemeManager::UIElement::SecondaryTextColor);
 
-    // AI 气泡：左侧 3px 极光青竖条
-    QString aiBar = isAI
-                        ? QString("border-left: 3px solid %1; padding-left: 10px;").arg(aiBorder)
-                        : QString();
+    // 用户：PrimaryColor 填充 + 白字（与 AI 的淡底形成强对比）
+    const QString userBubbleBg  = tm.colorString(ThemeManager::UIElement::PrimaryColor);
+    const QString userBubbleFg  = "#FFFFFF";
+    const QString userMetaColor = "rgba(255,255,255,0.75)";
 
-    return QString(
-               "<div style='text-align: %1; margin-bottom: 10px;'>"
-               "  <div style='display: inline-block; max-width: 78%; "
-               "              background-color: %2; color: %3; "
-               "              border-radius: 8px; padding: 8px 12px; "
-               "              text-align: left; word-wrap: break-word; %4'>"
-               "    <div style='font-size: 11px; color: %5; margin-bottom: 3px;'>%6 · %7</div>"
-               "    <div style='font-size: 13px; line-height: 1.5;'>%8</div>"
-               "  </div>"
-               "</div>"
-               ).arg(alignment)
-        .arg(bgColor)
-        .arg(textColor)
-        .arg(aiBar)
-        .arg(tm.colorString(ThemeManager::UIElement::SecondaryTextColor))
-        .arg(displayName, time, escapedContent);
+    // AI：淡青底 + 正文色 + 极光青左边条
+    const QString aiBubbleBg = tm.colorString(ThemeManager::UIElement::AIChatAIBubble);
+    const QString aiBubbleFg = textColor;
+    const QString aiBorder   = tm.colorString(ThemeManager::UIElement::AIChatAIBorder);
+
+    // ============================================================
+    //  气泡外壳样式
+    //  - 不对称圆角（指向感）
+    //  - 用户气泡：PrimaryColor 填充，白字
+    //  - AI 气泡：淡青底，左侧 3px 极光青边
+    // ============================================================
+    QString bubbleStyle;
+    if (isUser) {
+        bubbleStyle = QString(
+                          "background-color: %1;"
+                          "color: %2;"
+                          "border-radius: 12px 4px 12px 12px;"   // 右上角小
+                          "padding: 8px 12px;"
+                          ).arg(userBubbleBg, userBubbleFg);
+    } else {
+        bubbleStyle = QString(
+                          "background-color: %1;"
+                          "color: %2;"
+                          "border-radius: 4px 12px 12px 12px;"   // 左上角小
+                          "border-left: 3px solid %3;"
+                          "padding: 8px 12px;"
+                          ).arg(aiBubbleBg, aiBubbleFg, aiBorder);
+    }
+
+    const QString metaColor = isUser ? userMetaColor : secondaryColor;
+    const QString metaText  = QString("%1 · %2").arg(displayName, time);
+
+    // ============================================================
+    //  气泡 HTML
+    // ============================================================
+    const QString bubbleHtml = QString(
+                                   "<div style='%1'>"
+                                   "  <div style='font-size: 10px; color: %2; margin-bottom: 3px;'>%3</div>"
+                                   "  <div style='font-size: 13px; line-height: 1.55;'>%4</div>"
+                                   "</div>"
+                                   ).arg(bubbleStyle, metaColor, metaText, escaped);
+
+    // ============================================================
+    //  用 HTML 表格保证左右分列（这是 Qt 里最可靠的方式）
+    //   - AI   → 左 78%，右 22% 空
+    //   - 用户 → 左 22% 空，右 78%
+    // ============================================================
+    if (isUser) {
+        return QString(
+                   "<table width='100%' cellspacing='0' cellpadding='0' style='margin-top: 2px; margin-bottom: 8px;'>"
+                   "  <tr>"
+                   "    <td width='22%'></td>"
+                   "    <td width='78%' align='right'>%1</td>"
+                   "  </tr>"
+                   "</table>"
+                   ).arg(bubbleHtml);
+    } else {
+        return QString(
+                   "<table width='100%' cellspacing='0' cellpadding='0' style='margin-top: 2px; margin-bottom: 8px;'>"
+                   "  <tr>"
+                   "    <td width='78%' align='left'>%1</td>"
+                   "    <td width='22%'></td>"
+                   "  </tr>"
+                   "</table>"
+                   ).arg(bubbleHtml);
+    }
 }
 
 // ============================================================
@@ -697,15 +785,32 @@ QString ChatPanel::formatMessage(const QString &sender, const QString &content) 
 // ============================================================
 QString ChatPanel::formatSystemMessage(const QString &content, bool isError) const
 {
-    QString color = isError ? "#F44336" : "#888888";
-    QString icon = isError ? "⚠️ " : "ℹ️ ";
-    QString escaped = content.toHtmlEscaped();
+    ThemeManager& tm = ThemeManager::instance();
 
+    // 错误用 ErrorColor，正常用 SecondaryTextColor
+    const QString color = isError
+                              ? tm.colorString(ThemeManager::UIElement::ErrorColor)
+                              : tm.colorString(ThemeManager::UIElement::SecondaryTextColor);
+
+    const QString bg = tm.colorString(ThemeManager::UIElement::HoverBackground);
+
+    const QString escaped = content.toHtmlEscaped();
+
+    // 用表格保证水平居中（text-align: center 对块级元素在 Qt 里不可靠）
     return QString(
-               "<div style='text-align: center; margin: 6px 0;'>"
-               "  <span style='color: %1; font-style: italic; font-size: 12px;'>%2%3</span>"
-               "</div>"
-               ).arg(color, icon, escaped);
+               "<table width='100%' cellspacing='0' cellpadding='0' style='margin-top: 8px; margin-bottom: 8px;'>"
+               "  <tr>"
+               "    <td align='center'>"
+               "      <span style='display: inline; "
+               "                    background-color: %1; "
+               "                    color: %2; "
+               "                    border-radius: 10px; "
+               "                    padding: 4px 12px; "
+               "                    font-size: 11px;'>%3</span>"
+               "    </td>"
+               "  </tr>"
+               "</table>"
+               ).arg(bg, color, escaped);
 }
 
 // ============================================================

@@ -3210,6 +3210,24 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     m_currentCompileTaskId.clear();
     m_buildProgressBar->setVisible(false);
     m_buildProgressBar->setValue(0);
+
+    // ---- AI 触发的构建：发信号给 IdeExecutor ----
+    if (m_aiBuildInProgress) {
+        m_aiBuildInProgress = false;
+
+        // 日志截断到 64KB（避免超大输出爆内存/协议消息）
+        QString logText = result.output;
+        constexpr int kMaxLog = 64 * 1024;
+        if (logText.size() > kMaxLog) {
+            logText = logText.left(kMaxLog)
+                      + QStringLiteral("\n...[truncated]");
+        }
+
+        emit aiBuildFinished(result.success,
+                             result.exitCode,
+                             logText,
+                             static_cast<int>(result.compileTime));
+    }
 }
 
 void MainWindow::onCompileError(const QString& taskId, const QString& errorMessage)
@@ -5028,15 +5046,39 @@ QProcess* MainWindow::createRunProcess(const QString& program,
 
     connect(p, &QProcess::readyReadStandardOutput, this, [this, p]() {
         const QString out = QString::fromLocal8Bit(p->readAllStandardOutput());
-        if (!out.isEmpty()) logInfo(out);
+        if (!out.isEmpty()) {
+            logInfo(out);
+            if (m_aiRunInProgress) {
+                m_aiRunOutputBuffer += out;
+            }
+        }
     });
     connect(p, &QProcess::readyReadStandardError, this, [this, p]() {
         const QString err = QString::fromLocal8Bit(p->readAllStandardError());
-        if (!err.isEmpty()) logError(err.toHtmlEscaped());
+        if (!err.isEmpty()) {
+            logError(err.toHtmlEscaped());
+            if (m_aiRunInProgress) {
+                m_aiRunOutputBuffer += err;
+            }
+        }
     });
     connect(p, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, p](int code, QProcess::ExitStatus status) {
         if (m_runningProcess == p) {
+            // 先补读 socket 缓冲（进程被杀时可能有残留没被 readyRead 取走）
+            const QByteArray remainingOut = p->readAllStandardOutput();
+            const QByteArray remainingErr = p->readAllStandardError();
+            if (!remainingOut.isEmpty()) {
+                const QString s = QString::fromLocal8Bit(remainingOut);
+                logInfo(s);
+                if (m_aiRunInProgress) m_aiRunOutputBuffer += s;
+            }
+            if (!remainingErr.isEmpty()) {
+                const QString s = QString::fromLocal8Bit(remainingErr);
+                logError(s.toHtmlEscaped());
+                if (m_aiRunInProgress) m_aiRunOutputBuffer += s;
+            }
+
             if (m_stoppingProcess) {
                 // 主动停止：不管 status 是什么，都是正常的
                 logInfo("程序已停止");
@@ -5050,6 +5092,32 @@ QProcess* MainWindow::createRunProcess(const QString& program,
                              .arg(QTime::currentTime().toString("hh:mm:ss"))
                              .arg(code));
             }
+            // ---- AI 触发的运行：发信号 ----
+            if (m_aiRunStopInProgress) {
+                m_aiRunStopInProgress = false;
+                m_aiRunInProgress = false;
+
+                QString logText = m_aiRunOutputBuffer;
+                constexpr int kMaxLog = 64 * 1024;
+                if (logText.size() > kMaxLog) {
+                    logText = logText.left(kMaxLog)
+                              + QStringLiteral("\n...[truncated]");
+                }
+                m_aiRunOutputBuffer.clear();
+                emit aiRunStopped(code, logText);
+            } else if (m_aiRunInProgress) {
+                m_aiRunInProgress = false;
+
+                QString logText = m_aiRunOutputBuffer;
+                constexpr int kMaxLog = 64 * 1024;
+                if (logText.size() > kMaxLog) {
+                    logText = logText.left(kMaxLog)
+                              + QStringLiteral("\n...[truncated]");
+                }
+                m_aiRunOutputBuffer.clear();
+                emit aiRunFinished(code, logText);
+            }
+
             markProcessFinished();
         }
         p->deleteLater();
@@ -5147,16 +5215,30 @@ void MainWindow::stopRunningProcess()
 // ============================================================================
 void MainWindow::aiRequestBuild()
 {
+    m_aiBuildInProgress = true;
     onBuildProject();
 }
 
 void MainWindow::aiRequestRun()
 {
+    m_aiRunInProgress = true;
+    m_aiRunOutputBuffer.clear();    // 每次新 run 从空开始
     onRun();
 }
 
 void MainWindow::aiRequestStopRun()
 {
+    if (!isRunningProgram()) {
+        // 没在跑：延后一个事件循环再发信号。
+        // 原因：handleStopRun 调用本函数时还没返回，OperationBus 还没设置
+        // m_pending.itemId；如果同步 emit，onDeferredResultReady 会拒绝。
+        QTimer::singleShot(0, this, [this]() {
+            emit aiRunStopped(-1, QString());
+        });
+        return;
+    }
+
+    m_aiRunStopInProgress = true;
     stopRunningProcess();
 }
 

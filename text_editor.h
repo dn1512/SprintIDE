@@ -265,6 +265,8 @@ protected:
 
     void focusOutEvent(QFocusEvent* event) override;
 
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
 private slots:
     void updateLineNumberAreaWidth();
     void highlightCurrentLine();
@@ -417,10 +419,80 @@ private:
     QString leadingWhitespace(const QString& line) const;
 
     void  applyEditorRulesForLanguage(const QString& languageId);
+    
+    // Tab 对齐到 tab stop
+    void  handleTabKey(bool increase);
+
+    // 智能 Home：第一次跳到首个非空白列，再按跳到列 0
+    bool  handleSmartHome(QKeyEvent* event);
+    bool  handleSmartEnd(QKeyEvent* event);
+
+    // 选中文本被引号/括号包裹
+    bool  trySurroundSelection(const QString& input);
+
+    // Backspace 删除空配对（() [] {} "" '' ``）
+    bool  tryDeletePairOnBackspace();
+
+    // 块注释（/** ... */ 或 /* ... */）内回车自动补 " * "
+    bool  tryContinueBlockComment();
+
+    // Tab 按下且前缀命中片段 → 展开；返回 true 表示已处理
+    bool  tryExpandSnippet();
+
+    // ========== include 路径补全 ==========
+    bool  isInIncludeContext(QString* prefixOut = nullptr) const;
+    void  requestIncludeCompletions();
+
+    // ========== 保存时自动格式化 ==========
+    bool  runExternalFormatter(QString* errorOut = nullptr);
+
+    // ========== 滚动条错误标记 ==========
+    void  paintScrollBarMarkers();
+    void  scheduleScrollBarRepaint();
+
+    // 应用一条片段：body 里 $0 表示最终光标位置，$1 等按序 Tab 跳
+    void  applySnippet(const QString& body, int lineIndent);
+
+    // 光标处的前缀（比如 "for" / "if"）
+    QString currentIdentPrefix() const;
+
+    // Alt+↑ / Alt+↓ 移动当前行（或选中行块）
+    void  moveLinesUp();
+    void  moveLinesDown();
+    
+    // else / catch / finally 回车对齐到对应的 if / try
+    bool  tryAlignDedentKeyword();
+
+    // Ctrl+Shift+\ ：跳到不匹配的括号
+    void  jumpToMismatchedBracket();
+
+    // Ctrl+/ ：切换注释
+    bool  handleCommentShortcut(QKeyEvent* event);
+
+    // Ctrl+Enter / Ctrl+Shift+Enter ：上下插入空行
+    void  insertLineBelow();
+    void  insertLineAbove();
+
+    // 括号/引号配色：匹配黄、不匹配红
+    void  matchParenthesesWithColor();
+    QColor m_matchedParenColor;
+    QColor m_unmatchedParenColor;
+
+    // 智能退格：光标在纯空白前缀时，一次退一个缩进级别
+    bool  trySmartBackspace();
+
+    // 双击选词：把 `_` 当词边界
+    QString wordBoundaryAt(const QPoint& pos) const;   // 可选，若用 Qt 默认即可不实现
+    
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+
+    // 快捷键：复制行 / 删除行
+    bool  handleEditorShortcuts(QKeyEvent* event);
 
     // 保存/恢复 modified 状态的辅助函数
     void beginSilentModification();
     void endSilentModification();
+    bool m_formatOnSave = true;
 
     // 补全相关成员
     /*QList<LSPCompletionItem> m_completionItems;

@@ -283,6 +283,7 @@ private:
     QPushButton *m_clearButton = nullptr;    ///< 清空对话按钮
     QLabel *m_statusLabel = nullptr;         ///< 连接状态标签
     QToolBar *m_toolbar = nullptr;           ///< 工具栏
+    QPushButton *m_reconnectButton = nullptr; ///< 重连按钮（未连接时显示）
 
     // ============================================================
     // 数据和状态成员
@@ -303,7 +304,8 @@ private:
 
     // 显示名称配置
     QString m_userName = "我";               ///< 用户显示名称
-    QString m_aiName = "AI 助手";            ///< AI 显示名称
+    QString m_aiName = "AI agent";            ///< AI 显示名称
+    QLabel* m_statusDot = nullptr;          /// 状态圆点（替代 emoji）
 };
 
 } // namespace SprintIDE

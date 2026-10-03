@@ -7,6 +7,7 @@
 
 #include <QJsonDocument>
 #include <QDebug>
+#include <QTimer>
 
 namespace SprintIDE {
 
@@ -30,7 +31,6 @@ void OperationBus::registerExecutor(IExecutor* executor)
 
 void OperationBus::handleAgentMessage(const QJsonObject& message)
 {
-    // 1. 校验信封
     const auto envRes = Validator::validateEnvelope(message);
     if (!envRes.ok) {
         qWarning() << "[OperationBus] envelope invalid:"
@@ -47,40 +47,59 @@ void OperationBus::handleAgentMessage(const QJsonObject& message)
         return;
     }
 
-    // 2. 逐 item 处理
-    int failCount = 0;
-    for (const QJsonValue& v : items) {
-        if (!v.isObject()) continue;
-        const QJsonObject item = v.toObject();
+    processItems(sessionId, requestId, items, 0, items.size(), 0);
+}
+
+void OperationBus::processItems(const QString& sessionId,
+                                const QString& requestId,
+                                const QJsonArray& items,
+                                int startIndex,
+                                int totalCount,
+                                int failCount)
+{
+    for (int i = startIndex; i < items.size(); ++i) {
+        if (!items[i].isObject()) continue;
+        const QJsonObject item = items[i].toObject();
+        const QString type = item.value("type").toString();
+        const QString itemId = item.value("id").toString();
 
         const auto itemRes = Validator::validateItem(item);
         if (!itemRes.ok) {
             if (itemRes.isUnknownType) {
-                qWarning() << "[OperationBus] unknown type, skipping:"
-                           << item.value("type").toString();
+                qWarning() << "[OperationBus] unknown type, skipping:" << type;
                 continue;
             }
             ++failCount;
-            const QString itemId = item.value("id").toString();
             const ExecutionResult r = ExecutionResult::fail(
-                itemId,
-                item.value("type").toString(),
-                itemRes.errorCode,
-                itemRes.errorMessage);
+                itemId, type, itemRes.errorCode, itemRes.errorMessage);
             emit itemExecuted(itemId, r);
-            sendResultForItem(sessionId, requestId,
-                              item.value("type").toString(), r);
+            sendResultForItem(sessionId, requestId, type, r);
             continue;
         }
 
         const ExecutionResult result = executeItem(item);
-        if (result.status == ExecutionResult::Status::Failed) {
-            ++failCount;
-        }
-        emit itemExecuted(item.value("id").toString(), result);
 
-        // ---- 回执 ----
-        const QString type = item.value("type").toString();
+        // ---- 异步挂起 ----
+        if (result.status == ExecutionResult::Status::Pending) {
+            PendingState state;
+            state.itemId     = result.itemId;
+            state.sessionId  = sessionId;
+            state.requestId  = requestId;
+            state.items      = items;
+            state.nextIndex  = i + 1;
+            state.totalCount = totalCount;
+            state.failCount  = failCount;
+
+            m_pendingByRequest.insert(requestId, state);
+            m_itemToRequest.insert(result.itemId, requestId);
+            qDebug() << "[OperationBus] item pending:" << result.itemId
+                     << "requestId:" << requestId;
+            return;
+        }
+
+        if (result.status == ExecutionResult::Status::Failed) ++failCount;
+        emit itemExecuted(itemId, result);
+
         if (type == QStringLiteral("meta.batch")) {
             sendBatchResult(sessionId, requestId, item, result);
         } else {
@@ -88,8 +107,35 @@ void OperationBus::handleAgentMessage(const QJsonObject& message)
         }
     }
 
-    // 3. 全部执行完
-    emit allItemsExecuted(requestId, items.size(), failCount);
+    emit allItemsExecuted(requestId, totalCount, failCount);
+}
+
+void OperationBus::onDeferredResultReady(const QString& itemId,
+                                         const ExecutionResult& result)
+{
+    if (!m_itemToRequest.contains(itemId)) {
+        qWarning() << "[OperationBus] unexpected deferred result:" << itemId;
+        return;
+    }
+
+    const QString requestId = m_itemToRequest.take(itemId);
+    if (!m_pendingByRequest.contains(requestId)) {
+        qWarning() << "[OperationBus] no pending state for requestId:"
+                   << requestId;
+        return;
+    }
+
+    const PendingState state = m_pendingByRequest.take(requestId);
+
+    int failCount = state.failCount;
+    if (result.status == ExecutionResult::Status::Failed) ++failCount;
+
+    emit itemExecuted(itemId, result);
+    sendResultForItem(state.sessionId, state.requestId,
+                      result.itemType, result);
+
+    processItems(state.sessionId, state.requestId, state.items,
+                 state.nextIndex, state.totalCount, failCount);
 }
 
 ExecutionResult OperationBus::executeItem(const QJsonObject& item)

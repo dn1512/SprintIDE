@@ -54,7 +54,20 @@ signals:
                           int totalCount,
                           int failCount);
 
+public slots:
+    /// 异步 Executor 完成时回调
+    void onDeferredResultReady(const QString& itemId,
+                               const SprintIDE::Protocol::ExecutionResult& result);
+
 private:
+    /// 顺序处理 items（支持遇到 Pending 时挂起）
+    void processItems(const QString& sessionId,
+                      const QString& requestId,
+                      const QJsonArray& items,
+                      int startIndex,
+                      int totalCount,
+                      int failCount);
+
     /// 把一条 item 的执行结果发回 Agent（根据 type 选方法）
     void sendResultForItem(const QString& sessionId,
                            const QString& requestId,
@@ -67,8 +80,23 @@ private:
                          const QJsonObject& batchItem,
                          const Protocol::ExecutionResult& result);
 
+    struct PendingState {
+        QString    itemId;
+        QString    sessionId;
+        QString    requestId;
+        QJsonArray items;       // 原始 items（保留，用于后续计数）
+        int        nextIndex  = 0;
+        int        totalCount = 0;
+        int        failCount  = 0;
+    };
+
     AiConnectionManager* m_connMgr = nullptr;
     QMap<QString, Protocol::IExecutor*> m_executors;   // domain → executor
+
+    // 每个 requestId 一条独立的挂起链
+    QMap<QString, PendingState> m_pendingByRequest;
+    // itemId → requestId 反查表（deferred 到达时用）
+    QMap<QString, QString>      m_itemToRequest;
 };
 
 } // namespace SprintIDE

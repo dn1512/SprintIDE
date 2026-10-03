@@ -1215,6 +1215,48 @@ QString ThemeManager::buildStyleSheet() const
                .arg(c(UIElement::DisabledTextColor))        // %9
                .arg(c(UIElement::ErrorColor));              // %10
 
+    // ---------- AI 面板 · 状态圆点 ----------
+    qss += QString(
+               "QLabel#ChatStatusDot {"
+               "  background-color: %1;"        // 未连接 = ErrorColor
+               "  border-radius: 4px;"
+               "}"
+               "QLabel#ChatStatusDot[connected=\"true\"] {"
+               "  background-color: %2;"        // 已连接 = AIColor
+               "}"
+               )
+               .arg(c(UIElement::ErrorColor))
+               .arg(c(UIElement::AIColor));
+
+    // ---------- AI 面板 · 重连按钮 ----------
+    qss += QString(
+               "QPushButton#ChatReconnectButton {"
+               "  background-color: %1;"
+               "  color: %2;"
+               "  border: 1px solid %2;"
+               "  border-radius: 4px;"
+               "  padding: 0 10px;"
+               "  font-size: 11px;"
+               "  min-height: 20px;"
+               "}"
+               "QPushButton#ChatReconnectButton:hover {"
+               "  background-color: %2;"
+               "  color: #FFFFFF;"
+               "}"
+               "QPushButton#ChatReconnectButton:pressed {"
+               "  background-color: %3;"
+               "}"
+               "QPushButton#ChatReconnectButton:disabled {"
+               "  background-color: %1;"
+               "  color: %4;"
+               "  border-color: %1;"
+               "}"
+               )
+               .arg(c(UIElement::EditorBackground))       // %1
+               .arg(c(UIElement::AIColor))                // %2
+               .arg(c(UIElement::SuccessColor))           // %3
+               .arg(c(UIElement::DisabledTextColor));     // %4
+
     // ---------- 项目选择对话框 ----------
     qss += QString(
                "QDialog#ProjectSelectionDialog { background-color: %1; }\n"

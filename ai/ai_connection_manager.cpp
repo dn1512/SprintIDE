@@ -177,7 +177,16 @@ void AiConnectionManager::onTransportMessage(const QByteArray& jsonBody)
 void AiConnectionManager::onTransportError(const QString& error)
 {
     qWarning() << "[AI] Transport error:" << error;
-    // 不在这里调度重连；一般 error 之后会跟一个 disconnected
+
+    // 连接失败时（Connecting / Reconnecting 状态）主动调度下一次重连。
+    // 注意：TCP 连接被拒时只发 errorOccurred，不发 disconnected，
+    // 所以不能指望 onTransportDisconnected 来兜底。
+    if (m_userStopped) return;
+    if (m_state == State::Ready) return;
+    if (m_reconnectTimer->isActive()) return;   // 已经在等下次，不重复调度
+
+    setState(State::Reconnecting);
+    scheduleReconnect();
 }
 
 void AiConnectionManager::onReconnectTimer()
@@ -210,7 +219,6 @@ void AiConnectionManager::sendHandshake()
     caps.append(QStringLiteral("file.rename"));
     caps.append(QStringLiteral("ide.build"));
     caps.append(QStringLiteral("ide.run"));
-    caps.append(QStringLiteral("ide.debug"));
     caps.append(QStringLiteral("command.run"));
     caps.append(QStringLiteral("command.runShell"));
     caps.append(QStringLiteral("env.query"));

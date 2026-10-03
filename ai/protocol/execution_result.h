@@ -19,7 +19,8 @@ struct ExecutionResult {
         Success,
         Failed,
         Skipped,
-        Cancelled
+        Cancelled,
+        Pending       // 异步 item 已接受，等待 deferredResultReady
     };
 
     Status      status      = Status::Success;
@@ -66,6 +67,16 @@ struct ExecutionResult {
         r.itemId   = itemId;
         r.itemType = itemType;
         r.message  = reason;
+        return r;
+    }
+
+    static ExecutionResult pending(const QString& itemId,
+                                   const QString& itemType)
+    {
+        ExecutionResult r;
+        r.status   = Status::Pending;
+        r.itemId   = itemId;
+        r.itemType = itemType;
         return r;
     }
 };

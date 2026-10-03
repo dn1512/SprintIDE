@@ -42,8 +42,6 @@ const QMap<QString, QStringList>& Validator::requiredFieldsMap()
                                                      { QStringLiteral("ide.build"),     { QStringLiteral("id") } },
                                                      { QStringLiteral("ide.run"),       { QStringLiteral("id") } },
                                                      { QStringLiteral("ide.stopRun"),   { QStringLiteral("id") } },
-                                                     { QStringLiteral("ide.debug"),     { QStringLiteral("id") } },
-                                                     { QStringLiteral("ide.stopDebug"), { QStringLiteral("id") } },
 
                                                      // ---- project.* ----
                                                      { QStringLiteral("project.info"),    { QStringLiteral("id") } },

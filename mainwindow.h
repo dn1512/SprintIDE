@@ -278,6 +278,16 @@ signals:
     // 已自动连接到 ProjectPanel::onRefreshRequested()
     void projectPanelRefreshRequested();
 
+    /// AI 触发的构建完成（供 IdeExecutor 使用）
+    void aiBuildFinished(bool success, int exitCode,
+                         const QString& log, int durationMs);
+
+    /// AI 触发的运行结束（供 IdeExecutor 使用）
+    void aiRunFinished(int exitCode, const QString& log);
+    
+    /// AI 触发的运行被停止（供 IdeExecutor 使用）
+    void aiRunStopped(int exitCode, const QString& log);
+    
 private:
     void setupUI();
     void setupMenuBar();
@@ -318,6 +328,10 @@ private:
     CompileManager* m_compileManager = nullptr;
     QString m_currentCompileTaskId;
     bool m_isCompiling = false;
+    bool m_aiBuildInProgress = false;   // AI 触发的构建标志
+    bool m_aiRunInProgress = false;     // AI 触发的运行标志
+    bool m_aiRunStopInProgress = false; // AI 主动停标志
+    QString m_aiRunOutputBuffer;        // AI 触发运行期间的 stdout/stderr 累积
     QElapsedTimer m_compileTimer;
     QMap<QString, QString> m_compilerOutputCache;
     
