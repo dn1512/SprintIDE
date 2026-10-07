@@ -99,7 +99,7 @@ ExecutionResult IdeExecutor::handleRun(const QJsonObject& item)
     if (!m_pendingRunItemId.isEmpty()) {
         return ExecutionResult::fail(
             item.value("id").toString(), QStringLiteral("ide.run"),
-            ErrorCode::InternalError,
+            ErrorCode::MultipleActiveRuns,
             QStringLiteral("Another run is already in progress"));
     }
 
