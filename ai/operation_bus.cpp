@@ -34,8 +34,10 @@ void OperationBus::handleAgentMessage(const QJsonObject& message)
 {
     const auto envRes = Validator::validateEnvelope(message);
     if (!envRes.ok) {
-        qWarning() << "[OperationBus] envelope invalid:"
-                   << envRes.errorCode << envRes.errorMessage;
+        const QString msg = QStringLiteral("Envelope invalid: %1 (%2)")
+                                .arg(envRes.errorMessage, envRes.errorCode);
+        qWarning() << "[OperationBus]" << msg;
+        emit logErrorMessage(msg);
         return;
     }
 
@@ -172,15 +174,41 @@ void OperationBus::processItems(const QString& sessionId,
         const auto itemRes = Validator::validateItem(item);
         if (!itemRes.ok) {
             if (itemRes.isUnknownType) {
-                qWarning() << "[OperationBus] unknown type, skipping:" << type;
+                const QString msg = QStringLiteral("Unknown item type: %1")
+                                        .arg(type);
+                qWarning() << "[OperationBus]" << msg;
+                emit logWarnMessage(msg);
                 continue;
             }
+            const QString msg = QStringLiteral("Protocol error: %1 (type: %2)")
+                                    .arg(itemRes.errorMessage, type);
+            qWarning() << "[OperationBus]" << msg;
+            emit logErrorMessage(msg);
             ++failCount;
             const ExecutionResult r = ExecutionResult::fail(
                 itemId, type, itemRes.errorCode, itemRes.errorMessage);
             emit itemExecuted(itemId, r);
             sendResultForItem(sessionId, requestId, type, r);
             continue;
+        }
+
+        if (type == QStringLiteral("chat.ask")) {
+            m_paused.kind        = PausedState::Kind::Ask;
+            m_paused.sessionId   = sessionId;
+            m_paused.requestId   = requestId;
+            m_paused.items       = items;
+            m_paused.nextIndex   = i;
+            m_paused.totalCount  = totalCount;
+            m_paused.failCount   = failCount;
+            m_paused.askItemId   = itemId;
+            m_paused.askQuestion = item.value(QStringLiteral("question")).toString();
+
+            qDebug() << "[OperationBus] chat.ask paused, itemId:" << itemId;
+            emit askRequired(itemId,
+                             m_paused.askQuestion,
+                             item.value(QStringLiteral("choices")).toArray(),
+                             item.value(QStringLiteral("defaultAnswer")).toString());
+            return;
         }
 
         // ---- 执行 ----
@@ -328,8 +356,10 @@ ExecutionResult OperationBus::executeItem(const QJsonObject& item)
 
     IExecutor* executor = m_executors.value(domain, nullptr);
     if (!executor) {
-        qWarning() << "[OperationBus] no executor for domain:" << domain
-                   << "type:" << type;
+        const QString msg = QStringLiteral("No executor registered for domain '%1' (type: %2)")
+                                .arg(domain, type);
+        qWarning() << "[OperationBus]" << msg;
+        emit logErrorMessage(msg);
         return ExecutionResult::fail(
             itemId, type,
             ErrorCode::InternalError,

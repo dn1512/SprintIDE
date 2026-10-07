@@ -98,6 +98,26 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     // ---- 6 创建 OperationBus 并注册 Executor（阶段 1） ----
     OperationBus* operationBus = new OperationBus(connMgr, mainWindow);
 
+    // 协议层日志 → OutputPanel
+    QObject::connect(operationBus, &OperationBus::logInfoMessage,
+                     mainWindow,
+                     [mainWindow](const QString& message) {
+                         mainWindow->logInfo(message, LogKind::System,
+                                             QStringLiteral("AI"));
+                     });
+    QObject::connect(operationBus, &OperationBus::logWarnMessage,
+                     mainWindow,
+                     [mainWindow](const QString& message) {
+                         mainWindow->logWarn(message, LogKind::System,
+                                             QStringLiteral("AI"));
+                     });
+    QObject::connect(operationBus, &OperationBus::logErrorMessage,
+                     mainWindow,
+                     [mainWindow](const QString& message) {
+                         mainWindow->logError(message, LogKind::System,
+                                              QStringLiteral("AI"));
+                     });
+
     ChatExecutor*    chatExec    = new ChatExecutor(mainWindow);
     MetaExecutor*    metaExec    = new MetaExecutor(operationBus, mainWindow);
     FileExecutor*    fileExec    = new FileExecutor(mainWindow, mainWindow);

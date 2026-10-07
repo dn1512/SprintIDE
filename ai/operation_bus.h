@@ -67,6 +67,11 @@ signals:
                      const QJsonArray& choices,
                      const QString& defaultAnswer);
 
+    /// 协议层日志（由组装层转发到 OutputPanel）
+    void logInfoMessage(const QString& message);
+    void logWarnMessage(const QString& message);
+    void logErrorMessage(const QString& message);
+
 public slots:
     /// 异步 Executor 完成时回调
     void onDeferredResultReady(const QString& itemId,

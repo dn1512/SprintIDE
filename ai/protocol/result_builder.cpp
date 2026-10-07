@@ -39,6 +39,11 @@ QJsonObject ResultBuilder::buildIdeResult(const QString& sessionId,
         case ExecutionResult::Status::Cancelled: payload["status"] = "killed";    break;
         }
     }
+    // 失败时带上 errorCode / message
+    if (r.status != ExecutionResult::Status::Success) {
+        if (!r.errorCode.isEmpty()) payload["error"]   = r.errorCode;
+        if (!r.message.isEmpty())   payload["message"] = r.message;
+    }
     return makeMessage("ideResult", sessionId, requestId, payload);
 }
 
