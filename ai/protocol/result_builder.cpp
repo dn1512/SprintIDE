@@ -97,6 +97,53 @@ QJsonObject ResultBuilder::buildFileContent(const QString& sessionId,
 }
 
 // ------------------------------------------------------------
+// fileResult
+// ------------------------------------------------------------
+QJsonObject ResultBuilder::buildFileResult(const QString& sessionId,
+                                           const QString& requestId,
+                                           const QString& itemType,
+                                           const ExecutionResult& r)
+{
+    QJsonObject payload = r.data;
+    payload["itemType"] = itemType;
+
+    if (r.status == ExecutionResult::Status::Success) {
+        payload["status"] = "completed";
+        if (!payload.contains("applied")) {
+            payload["applied"] = true;
+        }
+    } else if (r.status == ExecutionResult::Status::Skipped) {
+        payload["status"] = "skipped";
+        if (!r.errorCode.isEmpty()) {
+            payload["error"] = r.errorCode;
+        }
+        if (!r.message.isEmpty()) {
+            payload["message"] = r.message;
+        }
+    } else {
+        payload["status"]  = "failed";
+        payload["error"]   = r.errorCode.isEmpty()
+                               ? QStringLiteral("INTERNAL_ERROR")
+                               : r.errorCode;
+        payload["message"] = r.message;
+    }
+    return makeMessage("fileResult", sessionId, requestId, payload);
+}
+
+QJsonObject ResultBuilder::buildChatResult(const QString& sessionId,
+                                           const QString& requestId,
+                                           const QString& itemId,
+                                           const QString& question,
+                                           const QString& userAnswer)
+{
+    QJsonObject payload;
+    payload["itemId"]     = itemId;
+    payload["question"]   = question;
+    payload["userAnswer"] = userAnswer;
+    return makeMessage("chatResult", sessionId, requestId, payload);
+}
+
+// ------------------------------------------------------------
 // batchResult
 // ------------------------------------------------------------
 QJsonObject ResultBuilder::buildBatchResult(const QString& sessionId,

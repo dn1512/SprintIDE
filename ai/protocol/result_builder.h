@@ -55,6 +55,19 @@ public:
                                         const QString& requestId,
                                         const ExecutionResult& r);
 
+    /// fileResult（file.create / file.delete / file.rename / file.edit 的统一回执）
+    static QJsonObject buildFileResult(const QString& sessionId,
+                                       const QString& requestId,
+                                       const QString& itemType,
+                                       const ExecutionResult& r);
+
+    /// chatResult（chat.ask 的回答）
+    static QJsonObject buildChatResult(const QString& sessionId,
+                                       const QString& requestId,
+                                       const QString& itemId,
+                                       const QString& question,
+                                       const QString& userAnswer);
+
     /// batchResult
     static QJsonObject buildBatchResult(const QString& sessionId,
                                         const QString& requestId,

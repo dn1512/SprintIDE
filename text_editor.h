@@ -22,6 +22,7 @@
 #include <QString>
 #include <QListWidget>
 #include <QMap>
+#include <QRegularExpression>
 
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
@@ -72,7 +73,12 @@ public:
      * @return 成功返回 true
      */
     bool reloadFile();
-    bool saveFile();
+    /**
+     * @brief 保存文件
+     * @param source 保存来源："user"（默认，用户）或 "ai"（AI）
+     * @return 保存是否成功
+     */
+    bool saveFile(const QString &source = "user");
     bool saveAs(const QString &filePath);
     bool isModified() const;
     QString filePath() const;
@@ -221,6 +227,58 @@ public:
 
     void setBreakpointEnabled(int line, bool enabled);      /// 设置断点的启用/禁用状态（与 DebugManager 同步用）
 
+    /**
+     * @brief 归一化空白后查找 search 文本
+     *
+     * 归一化规则：
+     *  - 忽略行首缩进（任何空白）
+     *  - 忽略空行
+     *  - 行尾空白忽略
+     *  - 行内非空白字符必须逐字匹配
+     *
+     * @param searchText  要搜索的多行文本
+     * @param startPos    搜索起点（-1 = 从头）
+     * @param endPos      搜索终点（-1 = 到末尾）
+     * @return 所有匹配位置的 QTextCursor（每个 cursor 选中匹配块）
+     */
+    QList<QTextCursor> findByNormalizedWhitespace(const QString& searchText,
+                                                  int startPos = -1,
+                                                  int endPos = -1) const;
+
+    /**
+     * @brief 定位指定方法名的边界
+     *
+     * 宽松匹配：
+     *  - 找所有包含 "<方法名>(" 的行
+     *  - 若只有一行 → 用它作为方法起点
+     *  - 若多行 → 返回所有候选（让上层判定 METHOD_AMBIGUOUS）
+     *
+     * 边界识别：
+     *  - Python → 缩进层级
+     *  - 大括号语言 → { } 配对
+     *
+     * @return 每个候选方法体范围（首行号、末行号，1-based）
+     */
+    struct MethodRange {
+        int signatureLine;   // 方法声明所在行
+        int bodyStartLine;   // 方法体第一行
+        int bodyEndLine;     // 方法体最后一行
+    };
+    QList<MethodRange> findMethodRanges(const QString& methodName) const;
+
+    /**
+     * @brief 用一个新文本替换 cursor 选中的区间，缩进对齐
+     *
+     * @param cursor     选中要替换的区间（来自 findByNormalizedWhitespace）
+     * @param replaceText 新文本
+     *
+     * 缩进对齐规则（方案 C+）：
+     *  1. 计算 offset = (match首行缩进 - replace首行缩进)
+     *  2. replace 每一行加上 offset
+     *  3. 若 tabWidth > 0，每行结果取整到 tabWidth 的倍数
+     */
+    void replaceWithIndentAlignment(QTextCursor& cursor, const QString& replaceText);
+
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -345,6 +403,12 @@ private:
     bool tryExpandPairOnReturn();
 
     void applyLineHeight();
+
+    /// 行首缩进宽度（tab 算 tabWidth 个）
+    int leadingIndentWidth(const QString& line) const;
+
+    /// 按 offset 平移一行缩进
+    QString shiftIndent(const QString& line, int offset) const;
     
     // 跳转定义的视觉反馈
     bool         m_ctrlHeldForDefinition = false;

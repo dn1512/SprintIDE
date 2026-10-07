@@ -32,6 +32,16 @@ QString HistoryVersion::displaySize() const
     }
 }
 
+QString HistoryVersion::displaySource() const
+{
+    if (source == "ai") {
+        return "来自 AI";
+    } else if (source == "user") {
+        return "来自用户";
+    }
+    return "未知来源";
+}
+
 // ============================================================
 // 构造函数/析构函数
 // ============================================================
@@ -93,12 +103,9 @@ void LocalHistory::setProjectRoot(const QString &projectPath)
 // ============================================================
 
 int LocalHistory::saveVersion(const QString &filePath, const QString &content,
-                              const QString &comment)
+                              const QString &comment, const QString &source)
 {
-    qDebug() << "[LocalHistory] saveVersion called, isEnabled=" << isEnabled()
-    << " file=" << filePath;
     if (!isEnabled() || filePath.isEmpty()) {
-        qDebug() << "[LocalHistory] saveVersion skipped (not enabled or empty path)";
         return -1;
     }
 
@@ -108,7 +115,7 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
         return -1;
     }
 
-    // 生成内容哈希（用于检测重复）
+    // 生成内容哈希
     QString hash = calculateHash(content);
 
     // 获取当前版本列表
@@ -118,7 +125,6 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
     if (!versions.isEmpty()) {
         HistoryVersion &latest = versions.last();
         if (latest.contentHash == hash) {
-            // 内容未变化，不保存新版本
             qDebug() << "[LocalHistory] 内容未变化，跳过保存:" << filePath;
             return latest.version;
         }
@@ -134,15 +140,16 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
     version.fileSize = content.toUtf8().size();
     version.contentHash = hash;
     version.comment = comment.isEmpty() ? "自动保存" : comment;
+    version.source = source.isEmpty() ? "user" : source;   // 默认为 user
 
     // 保存版本文件
     QString versionFilePath = getVersionFilePath(filePath, newVersion);
 
-    // 创建父目录
-    QDir dir(QFileInfo(versionFilePath).absoluteDir());
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qWarning() << "[LocalHistory] 无法创建版本文件目录:" << dir.absolutePath();
+    QDir versionDir = QFileInfo(versionFilePath).dir();
+    if (!versionDir.exists()) {
+        if (!versionDir.mkpath(".")) {
+            qWarning() << "[LocalHistory] 无法创建版本目录:"
+                       << versionDir.absolutePath();
             return -1;
         }
     }
@@ -166,6 +173,7 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
 
     qDebug() << "[LocalHistory] 版本已保存:" << filePath
              << "版本号:" << newVersion
+             << "来源:" << version.displaySource()
              << "大小:" << version.displaySize();
 
     emit versionSaved(filePath, newVersion, comment);
@@ -179,9 +187,6 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
 
 QList<HistoryVersion> LocalHistory::getVersions(const QString &filePath) const
 {
-    qDebug() << "[LocalHistory] saveVersion: enabled=" << isEnabled()
-    << " root=" << m_projectRoot
-    << " file=" << filePath;
     return m_metadata.value(filePath);
 }
 
@@ -433,6 +438,7 @@ void LocalHistory::loadMetadata()
             v.fileSize = obj["fileSize"].toInt();
             v.contentHash = obj["contentHash"].toString();
             v.comment = obj["comment"].toString("自动保存");
+            v.source = obj["source"].toString("user");  // 兼容旧数据，默认为 user
             versions.append(v);
         }
 
@@ -465,6 +471,7 @@ void LocalHistory::saveMetadata()
             obj["fileSize"] = (qint64)v.fileSize;
             obj["contentHash"] = v.contentHash;
             obj["comment"] = v.comment;
+            obj["source"] = v.source;
             versionsArray.append(obj);
         }
 

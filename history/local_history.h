@@ -20,10 +20,12 @@ struct HistoryVersion
     qint64 fileSize;        ///< 文件大小（字节）
     QString contentHash;    ///< 内容哈希（用于检测重复）
     QString comment;        ///< 版本注释（可选，如 "AI 自动修复"）
+    QString source;         ///< 来源："user"（用户）或 "ai"（AI）
 
     // 用于显示
     QString displayTime() const;
     QString displaySize() const;
+    QString displaySource() const;
 };
 
 /**
@@ -51,14 +53,16 @@ public:
     void setProjectRoot(const QString &projectPath);
 
     /**
-     * @brief 保存历史版本（在文件保存时自动调用）
+     * @brief 保存历史版本
      * @param filePath 文件路径
      * @param content 文件内容
      * @param comment 版本注释（可选）
-     * @return 新版本号，如果保存失败返回 -1
+     * @param source 来源："user"（默认，用户）或 "ai"（AI）
+     * @return 新版本号，失败返回 -1
      */
     int saveVersion(const QString &filePath, const QString &content,
-                    const QString &comment = QString());
+                    const QString &comment = QString(),
+                    const QString &source = "user");
 
     /**
      * @brief 获取文件的所有历史版本列表

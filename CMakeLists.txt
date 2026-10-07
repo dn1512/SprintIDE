@@ -221,8 +221,6 @@ set(TERMINAL_HEADERS
 )
 
 set(AI_SOURCES
-    src/ai/ai_server.cpp
-    src/ai/ai_action_executor.cpp
     src/ai/chat_panel.cpp
     src/ai/ai_integration.cpp
     ai/ai_settings_page.cpp
@@ -238,11 +236,10 @@ set(AI_SOURCES
     ai/executor/ide_executor.cpp
     ai/executor/project_executor.cpp
     ai/executor/env_executor.cpp
+    ai/policy/policy_engine.cpp
 )
 
 set(AI_HEADERS
-    src/ai/ai_server.h
-    src/ai/ai_action_executor.h
     src/ai/chat_panel.h
     src/ai/ai_integration.h
     ai/ai_settings_page.h
@@ -261,6 +258,7 @@ set(AI_HEADERS
     ai/executor/ide_executor.h
     ai/executor/project_executor.h
     ai/executor/env_executor.h
+    ai/policy/policy_engine.h
 )
 
 set(LANGUAGE_SOURCES
@@ -464,10 +462,6 @@ add_executable(${PROJECT_NAME}
     lsp/lsp_client.cpp
     terminal/terminal_panel.h
     terminal/terminal_panel.cpp
-    ai/ai_server.h
-    ai/ai_server.cpp
-    ai/ai_action_executor.h
-    ai/ai_action_executor.cpp
     ai/chat_panel.h
     ai/chat_panel.cpp
     ai/ai_integration.cpp
@@ -628,6 +622,8 @@ add_executable(${PROJECT_NAME}
     ai/executor/ide_executor.cpp
     ai/executor/project_executor.cpp
     ai/executor/env_executor.cpp
+    ai/policy/policy_engine.h
+    ai/policy/policy_engine.cpp
 )
 
 # ============================================================

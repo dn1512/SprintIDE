@@ -25,6 +25,9 @@ inline const QString RunIdNotFound      = QStringLiteral("RUN_ID_NOT_FOUND");
 inline const QString MultipleActiveRuns = QStringLiteral("MULTIPLE_ACTIVE_RUNS");
 inline const QString BuildFailed        = QStringLiteral("BUILD_FAILED");
 inline const QString NoDefaultTarget    = QStringLiteral("NO_DEFAULT_TARGET");
+inline const QString MethodNotFound     = QStringLiteral("METHOD_NOT_FOUND");
+inline const QString MethodAmbiguous    = QStringLiteral("METHOD_AMBIGUOUS");
+inline const QString FileNotOpen        = QStringLiteral("FILE_NOT_OPEN");
 }
 
 } // namespace Protocol

@@ -30,9 +30,7 @@
 #include "lsp/lsp_manager.h"
 #include "terminal/terminal_panel.h"
 
-#include "ai/ai_action_executor.h"
 #include "ai/ai_integration.h"
-#include "ai/ai_server.h"
 #include "ai/chat_panel.h"
 #include "ai/ai_connection_manager.h"
 
@@ -136,6 +134,9 @@ public slots:
     void onFileSaved(const QString &filePath);
     void onFileRenamed(const QString& oldPath, const QString& newPath);
     void onEditorTextChanged(TextEditor* editor);
+
+    // 按文件路径找已打开的编辑器（供 AI file.edit 使用）
+    TextEditor* findEditorByFilePath(const QString& filePath);
 
     // 项目面板信号处理
     void onProjectItemDoubleClicked(const QModelIndex &index);
@@ -449,11 +450,8 @@ private:
 
     // LSPClient* m_lspClient = nullptr;
     LSPManager *m_lspManager;
-    TextEditor* findEditorByFilePath(const QString& filePath);
     TerminalPanel* m_terminalPanel = nullptr;  // 终端面板
     // AI 模块成员
-    AIServer *m_aiServer = nullptr;
-    AIActionExecutor *m_aiExecutor = nullptr;
     ChatPanel *m_aiChatPanel = nullptr;
     AiConnectionManager *m_aiConnMgr = nullptr;   // 阶段 0：连接管理器
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态

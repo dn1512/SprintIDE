@@ -85,9 +85,7 @@
 #include "lsp/diagnostic_filter.h"
 
 //ai
-#include "ai/ai_action_executor.h"
 #include "ai/ai_integration.h"
-#include "ai/ai_server.h"
 #include "ai/chat_panel.h"
 
 #include "language/language_type.h"
@@ -493,7 +491,7 @@ MainWindow::MainWindow(QWidget *parent)
     // ... 其余调试信号连接（保持不变） ...
 
     // 初始化 AI 模块
-    if (initializeAIIntegration(this, m_aiConnMgr, m_aiExecutor, m_aiChatPanel)) {
+    if (initializeAIIntegration(this, m_aiConnMgr, m_aiChatPanel)) {
         setupAIMenu(this, m_aiChatPanel);
         restoreChatPanelState(m_aiChatPanel);
         if (m_aiChatPanel) {
@@ -4545,10 +4543,11 @@ void MainWindow::showFileHistoryDialog(const QString &filePath)
     // 按版本号从高到低显示（最新的在前）
     for (int i = versions.size() - 1; i >= 0; --i) {
         const HistoryVersion &v = versions[i];
-        QString displayText = QString("v%1  %2  %3  %4")
+        QString displayText = QString("v%1  %2  %3  %4  %5")
                                   .arg(v.version)
                                   .arg(v.displayTime())
                                   .arg(v.displaySize())
+                                  .arg(v.displaySource())
                                   .arg(v.comment);
         QListWidgetItem *item = new QListWidgetItem(displayText, listWidget);
         item->setData(Qt::UserRole, v.version);
@@ -5802,8 +5801,8 @@ void MainWindow::onPerformanceSnapshot(const SprintIDE::PerformanceSnapshot& s)
         s.processMemoryBytes, 1, QLocale::DataSizeTraditionalFormat);
 
     m_performanceLabel->setText(QStringLiteral(
-        "%2"
-        "  MEM %4")
+        "<span style=\"color:%1;\">%2</span>"
+        "  MEM <span style=\"color:%3;\">%4</span>")
         .arg(cpuColor, cpuText.toHtmlEscaped(),
              memColor, memText.toHtmlEscaped()));
 

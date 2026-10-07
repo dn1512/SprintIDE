@@ -13,14 +13,13 @@
 #include <QMap>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMessageBox>
 
 #include "ai_connection_manager.h"
 
 // 前向声明（避免循环包含）
 // 注意：这些类在 SprintIDE 命名空间中，但为了能用于 QPointer，我们只需前向声明
 namespace SprintIDE {
-class AIServer;
-class AIActionExecutor;
 class AiConnectionManager;
 }
 
@@ -57,16 +56,6 @@ public:
     // 设置依赖对象
     // ============================================================
 
-    /**
-     * @brief 设置 AI 服务器指针（用于发送请求和接收响应）
-     */
-    void setAIServer(AIServer *server);
-
-    /**
-     * @brief 设置动作执行器指针（用于获取上下文）
-     */
-    void setActionExecutor(AIActionExecutor *executor);
-    
     /**
      * @brief 设置 AI 连接管理
      */
@@ -164,6 +153,10 @@ signals:
      */
     void connectionStatusChanged(bool connected);
 
+    void askAnswered(const QString& userAnswer);
+
+    void confirmAnswered(bool approved);
+
 public slots:
     // ============================================================
     // 公共槽函数（供外部连接，如 AI 服务器）
@@ -181,6 +174,11 @@ public slots:
 
     /// 接收 Agent 消息（替代原来的 streamDataReceived / responseReceived）
     void onAgentMessageReceived(const QJsonObject& message);
+
+    void onAskRequired(const QString& itemId,
+                       const QString& question,
+                       const QJsonArray& choices,
+                       const QString& defaultAnswer);
     
     /**
      * @brief 处理动作执行器产生的输出（显示操作日志）
@@ -191,6 +189,11 @@ public slots:
      * @brief 滚动到消息显示区域底部（确保最新消息可见）
      */
     void updateScrollPosition();
+
+    void onConfirmRequired(const QString& itemId,
+                           const QString& targetId,
+                           const QString& prompt,
+                           const QString& defaultApprove);
 
 private slots:
     // ============================================================
@@ -283,14 +286,15 @@ private:
     QPushButton *m_clearButton = nullptr;    ///< 清空对话按钮
     QLabel *m_statusLabel = nullptr;         ///< 连接状态标签
     QToolBar *m_toolbar = nullptr;           ///< 工具栏
+    QWidget *m_askBar = nullptr;             ///< chat.ask 提问提示条
+    QLabel  *m_askLabel = nullptr;           ///< 提问文本
+    bool     m_askMode = false;              ///< 是否处于提问模式
+    QString  m_pendingAskItemId;             ///< 待回答的 chat.ask item id
     QPushButton *m_reconnectButton = nullptr; ///< 重连按钮（未连接时显示）
 
     // ============================================================
     // 数据和状态成员
     // ============================================================
-
-    QPointer<AIServer> m_aiServer;           ///< AI 服务器指针（弱引用）
-    QPointer<AIActionExecutor> m_actionExecutor; ///< 动作执行器指针（弱引用）
 
     QPointer<AiConnectionManager> m_connMgr;
 

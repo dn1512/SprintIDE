@@ -4,6 +4,7 @@
 #include "ai/protocol/validator.h"
 #include "ai/protocol/protocol_types.h"
 #include "ai/protocol/result_builder.h"
+#include "ai/policy/policy_engine.h"
 
 #include <QJsonDocument>
 #include <QDebug>
@@ -47,7 +48,21 @@ void OperationBus::handleAgentMessage(const QJsonObject& message)
         return;
     }
 
-    processItems(sessionId, requestId, items, 0, items.size(), 0);
+    // ---- 预扫描 chat.confirm：targetId → prompt / defaultApprove ----
+    QMap<QString, QString> confirmPrompts;
+    QMap<QString, QString> confirmDefaults;
+    for (const QJsonValue& v : items) {
+        if (!v.isObject()) continue;
+        const QJsonObject item = v.toObject();
+        if (item.value("type").toString() != QStringLiteral("chat.confirm")) continue;
+        const QString targetId = item.value("targetId").toString();
+        if (targetId.isEmpty()) continue;
+        confirmPrompts[targetId]  = item.value("prompt").toString();
+        confirmDefaults[targetId] = item.value("defaultApprove").toString();
+    }
+
+    processItems(sessionId, requestId, items, 0, items.size(), 0,
+                 {}, {}, confirmPrompts, confirmDefaults);
 }
 
 void OperationBus::processItems(const QString& sessionId,
@@ -55,14 +70,105 @@ void OperationBus::processItems(const QString& sessionId,
                                 const QJsonArray& items,
                                 int startIndex,
                                 int totalCount,
-                                int failCount)
+                                int failCount,
+                                const QSet<QString>& rejectedTargets,
+                                const QSet<QString>& policyApprovedTargets,
+                                const QMap<QString, QString>& confirmPrompts,
+                                const QMap<QString, QString>& confirmDefaults)
 {
     for (int i = startIndex; i < items.size(); ++i) {
         if (!items[i].isObject()) continue;
         const QJsonObject item = items[i].toObject();
-        const QString type = item.value("type").toString();
+        const QString type   = item.value("type").toString();
         const QString itemId = item.value("id").toString();
 
+        // ---- chat.confirm 自身：跳过（已在预扫描处理） ----
+        if (type == QStringLiteral("chat.confirm")) {
+            continue;
+        }
+
+        // ---- 被拒绝的 item：跳过 ----
+        if (rejectedTargets.contains(itemId)) {
+            ExecutionResult r = ExecutionResult::skipped(
+                itemId, type, QStringLiteral("Rejected by user"));
+            r.errorCode = ErrorCode::UserRejected;
+            emit itemExecuted(itemId, r);
+            sendResultForItem(sessionId, requestId, type, r);
+            continue;
+        }
+
+        // ---- chat.confirm 门禁（Agent 显式要求） ----
+        if (confirmPrompts.contains(itemId)
+            && !policyApprovedTargets.contains(itemId)) {
+
+            m_paused.kind                  = PausedState::Kind::Confirm;
+            m_paused.sessionId             = sessionId;
+            m_paused.requestId             = requestId;
+            m_paused.items                 = items;
+            m_paused.nextIndex             = i;
+            m_paused.totalCount            = totalCount;
+            m_paused.failCount             = failCount;
+            m_paused.rejectedTargets       = rejectedTargets;
+            m_paused.policyApprovedTargets = policyApprovedTargets;
+            m_paused.confirmPrompts        = confirmPrompts;
+            m_paused.confirmDefaults       = confirmDefaults;
+            m_paused.pausedItemId          = itemId;
+            m_paused.pausedTargetId        = itemId;
+            m_paused.pausedPrompt          = confirmPrompts.value(itemId);
+            m_paused.pausedDefaultApprove  = confirmDefaults.value(itemId);
+            m_paused.pausedByPolicy        = false;
+
+            qDebug() << "[OperationBus] confirm required (chat.confirm) for:" << itemId;
+            emit confirmRequired(itemId, itemId,
+                                 m_paused.pausedPrompt,
+                                 m_paused.pausedDefaultApprove);
+            return;
+        }
+
+        // ---- PolicyEngine 检查 ----
+        if (!policyApprovedTargets.contains(itemId)) {
+            const auto dec = PolicyEngine::instance().checkItem(item);
+
+            if (dec == PolicyEngine::Decision::Deny) {
+                ++failCount;
+                ExecutionResult r = ExecutionResult::fail(
+                    itemId, type,
+                    ErrorCode::PermissionDenied,
+                    QStringLiteral("Denied by policy"));
+                emit itemExecuted(itemId, r);
+                sendResultForItem(sessionId, requestId, type, r);
+                continue;
+            }
+
+            if (dec == PolicyEngine::Decision::Confirm) {
+                m_paused.kind                  = PausedState::Kind::Confirm;
+                m_paused.sessionId             = sessionId;
+                m_paused.requestId             = requestId;
+                m_paused.items                 = items;
+                m_paused.nextIndex             = i;
+                m_paused.totalCount            = totalCount;
+                m_paused.failCount             = failCount;
+                m_paused.rejectedTargets       = rejectedTargets;
+                m_paused.policyApprovedTargets = policyApprovedTargets;
+                m_paused.confirmPrompts        = confirmPrompts;
+                m_paused.confirmDefaults       = confirmDefaults;
+                m_paused.pausedItemId          = itemId;
+                m_paused.pausedTargetId        = itemId;
+                m_paused.pausedPrompt          =
+                    QStringLiteral("AI 请求执行「%1」，是否允许？").arg(type);
+                m_paused.pausedDefaultApprove  = QStringLiteral("reject");
+                m_paused.pausedByPolicy        = true;
+
+                qDebug() << "[OperationBus] confirm required (policy) for:"
+                         << itemId << " type:" << type;
+                emit confirmRequired(itemId, itemId,
+                                     m_paused.pausedPrompt,
+                                     m_paused.pausedDefaultApprove);
+                return;
+            }
+        }
+
+        // ---- 校验 ----
         const auto itemRes = Validator::validateItem(item);
         if (!itemRes.ok) {
             if (itemRes.isUnknownType) {
@@ -77,18 +183,21 @@ void OperationBus::processItems(const QString& sessionId,
             continue;
         }
 
+        // ---- 执行 ----
         const ExecutionResult result = executeItem(item);
 
-        // ---- 异步挂起 ----
         if (result.status == ExecutionResult::Status::Pending) {
             PendingState state;
-            state.itemId     = result.itemId;
-            state.sessionId  = sessionId;
-            state.requestId  = requestId;
-            state.items      = items;
-            state.nextIndex  = i + 1;
-            state.totalCount = totalCount;
-            state.failCount  = failCount;
+            state.itemId          = result.itemId;
+            state.sessionId       = sessionId;
+            state.requestId       = requestId;
+            state.items           = items;
+            state.nextIndex       = i + 1;
+            state.totalCount      = totalCount;
+            state.failCount       = failCount;
+            state.rejectedTargets = rejectedTargets;
+            state.confirmPrompts  = confirmPrompts;
+            state.confirmDefaults = confirmDefaults;
 
             m_pendingByRequest.insert(requestId, state);
             m_itemToRequest.insert(result.itemId, requestId);
@@ -135,7 +244,79 @@ void OperationBus::onDeferredResultReady(const QString& itemId,
                       result.itemType, result);
 
     processItems(state.sessionId, state.requestId, state.items,
-                 state.nextIndex, state.totalCount, failCount);
+                 state.nextIndex, state.totalCount, failCount,
+                 state.rejectedTargets,
+                 QSet<QString>(),   // 异步回执恢复时不带 policyApprovedTargets（罕见场景）
+                 state.confirmPrompts, state.confirmDefaults);
+}
+
+void OperationBus::resumeAfterConfirm(bool approved)
+{
+    if (m_paused.pausedTargetId.isEmpty()) {
+        qWarning() << "[OperationBus] no paused confirm to resume";
+        return;
+    }
+
+    const QString sessionId = m_paused.sessionId;
+    const QString requestId = m_paused.requestId;
+    const QJsonArray items  = m_paused.items;
+    const int nextIndex     = m_paused.nextIndex;
+    const int totalCount    = m_paused.totalCount;
+    const int failCount     = m_paused.failCount;
+    QSet<QString> rejected         = m_paused.rejectedTargets;
+    QSet<QString> policyApproved   = m_paused.policyApprovedTargets;
+    QMap<QString, QString> prompts  = m_paused.confirmPrompts;
+    QMap<QString, QString> defaults = m_paused.confirmDefaults;
+    const QString targetId  = m_paused.pausedTargetId;
+    const bool byPolicy     = m_paused.pausedByPolicy;
+
+    m_paused = PausedState();
+
+    if (!approved) {
+        rejected.insert(targetId);
+    } else {
+        policyApproved.insert(targetId);   // 无论来源，都记入 approved
+        if (!byPolicy) {
+            prompts.remove(targetId);
+            defaults.remove(targetId);
+        }
+    }
+
+    qDebug() << "[OperationBus] resume confirm, targetId:" << targetId
+             << " approved:" << approved << " byPolicy:" << byPolicy;
+
+    processItems(sessionId, requestId, items, nextIndex, totalCount, failCount,
+                 rejected, policyApproved, prompts, defaults);
+}
+
+void OperationBus::resumeAfterAsk(const QString& userAnswer)
+{
+    if (m_paused.kind != PausedState::Kind::Ask) {
+        qWarning() << "[OperationBus] resumeAfterAsk: no ask in progress";
+        return;
+    }
+
+    const QString sessionId  = m_paused.sessionId;
+    const QString requestId  = m_paused.requestId;
+    const QString itemId     = m_paused.askItemId;
+    const QString question   = m_paused.askQuestion;
+    const int     totalCount = m_paused.totalCount;
+    const int     failCount  = m_paused.failCount;
+
+    m_paused = PausedState();
+
+    // 发 chatResult 回 Agent
+    if (m_connMgr && m_connMgr->isReady()) {
+        const QJsonObject msg = ResultBuilder::buildChatResult(
+            sessionId, requestId, itemId, question, userAnswer);
+        m_connMgr->sendRaw(msg);
+    }
+
+    // 关键：不恢复队列。chat.ask 之后的所有 items 全部不执行。
+    // Agent 收到 chatResult 后会重新发一条新消息。
+    emit allItemsExecuted(requestId, totalCount, failCount);
+
+    qDebug() << "[OperationBus] chat.ask answered:" << userAnswer;
 }
 
 ExecutionResult OperationBus::executeItem(const QJsonObject& item)
@@ -184,6 +365,11 @@ void OperationBus::sendResultForItem(const QString& sessionId,
 
     } else if (itemType == QStringLiteral("file.read")) {
         msg = ResultBuilder::buildFileContent(sessionId, requestId, result);
+
+    } else if (itemType.startsWith(QStringLiteral("file."))) {
+        // file.create / file.delete / file.rename / file.edit
+        msg = ResultBuilder::buildFileResult(sessionId, requestId,
+                                             itemType, result);
 
     } else {
         // chat.* / file.create / file.delete / file.rename / env.setSdk / meta.*

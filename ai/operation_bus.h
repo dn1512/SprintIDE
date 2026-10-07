@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QMap>
+#include <QSet>
 
 #include "ai/protocol/execution_result.h"
 
@@ -54,10 +55,28 @@ signals:
                           int totalCount,
                           int failCount);
 
+    /// 需要用户确认（chat.confirm 门禁）
+    void confirmRequired(const QString& itemId,
+                         const QString& targetId,
+                         const QString& prompt,
+                         const QString& defaultApprove);
+
+    /// 需要用户回答（chat.ask）
+    void askRequired(const QString& itemId,
+                     const QString& question,
+                     const QJsonArray& choices,
+                     const QString& defaultAnswer);
+
 public slots:
     /// 异步 Executor 完成时回调
     void onDeferredResultReady(const QString& itemId,
                                const SprintIDE::Protocol::ExecutionResult& result);
+
+    /// 用户对 chat.confirm 的回答
+    void resumeAfterConfirm(bool approved);
+
+    /// 用户对 chat.ask 的回答
+    void resumeAfterAsk(const QString& userAnswer);
 
 private:
     /// 顺序处理 items（支持遇到 Pending 时挂起）
@@ -84,19 +103,60 @@ private:
         QString    itemId;
         QString    sessionId;
         QString    requestId;
-        QJsonArray items;       // 原始 items（保留，用于后续计数）
+        QJsonArray items;
         int        nextIndex  = 0;
         int        totalCount = 0;
         int        failCount  = 0;
+        QSet<QString>          rejectedTargets;
+        QMap<QString, QString> confirmPrompts;    // targetId → prompt
+        QMap<QString, QString> confirmDefaults;   // targetId → defaultApprove
     };
 
-    AiConnectionManager* m_connMgr = nullptr;
-    QMap<QString, Protocol::IExecutor*> m_executors;   // domain → executor
+    struct PausedState {
+        enum class Kind { None, Confirm, Ask };
 
-    // 每个 requestId 一条独立的挂起链
+        Kind       kind = Kind::None;
+
+        QString    sessionId;
+        QString    requestId;
+        QJsonArray items;
+        int        nextIndex  = 0;
+        int        totalCount = 0;
+        int        failCount  = 0;
+        QSet<QString>          rejectedTargets;
+        QMap<QString, QString> confirmPrompts;
+        QMap<QString, QString> confirmDefaults;
+        QSet<QString>          policyApprovedTargets;   // 用户通过 policy 检查批准过的
+        bool                   pausedByPolicy = false;  // 本次暂停是 policy 触发还是 chat.confirm 触发
+
+        // chat.confirm 用
+        QString    pausedItemId;
+        QString    pausedTargetId;
+        QString    pausedPrompt;
+        QString    pausedDefaultApprove;
+
+        // chat.ask 用
+        QString    askItemId;
+        QString    askQuestion;
+    };
+
+    void processItems(const QString& sessionId,
+                      const QString& requestId,
+                      const QJsonArray& items,
+                      int startIndex,
+                      int totalCount,
+                      int failCount,
+                      const QSet<QString>& rejectedTargets,
+                      const QSet<QString>& policyApprovedTargets,
+                      const QMap<QString, QString>& confirmPrompts,
+                      const QMap<QString, QString>& confirmDefaults);
+
+    AiConnectionManager* m_connMgr = nullptr;
+    QMap<QString, Protocol::IExecutor*> m_executors;
+
     QMap<QString, PendingState> m_pendingByRequest;
-    // itemId → requestId 反查表（deferred 到达时用）
     QMap<QString, QString>      m_itemToRequest;
+    PausedState                 m_paused;
 };
 
 } // namespace SprintIDE

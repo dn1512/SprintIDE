@@ -102,6 +102,47 @@ void AISettingsPage::setupUI()
     behaviorLayout->addWidget(m_autoContextCheck);
 
     mainLayout->addWidget(behaviorGroup);
+
+    // ========================================================
+    // 组 3：策略（PolicyEngine）
+    // ========================================================
+    QGroupBox* policyGroup = new QGroupBox(tr("AI 操作策略"), this);
+    QVBoxLayout* policyLayout = new QVBoxLayout(policyGroup);
+
+    QLabel* policyHint = new QLabel(
+        tr("勾选 = 该操作需用户确认。\n"
+           "Agent 标 danger=dangerous 时会强制确认，不受此处影响。"),
+        this);
+    policyHint->setStyleSheet("QLabel { color: #888888; font-size: 10pt; }");
+    policyHint->setWordWrap(true);
+    policyLayout->addWidget(policyHint);
+
+    m_fileCreateCheck = new QCheckBox(tr("文件创建"), this);
+    m_fileEditCheck   = new QCheckBox(tr("文件编辑"), this);
+    m_fileDeleteCheck = new QCheckBox(tr("文件删除"), this);
+    m_fileRenameCheck = new QCheckBox(tr("文件重命名"), this);
+    policyLayout->addWidget(m_fileCreateCheck);
+    policyLayout->addWidget(m_fileEditCheck);
+    policyLayout->addWidget(m_fileDeleteCheck);
+    policyLayout->addWidget(m_fileRenameCheck);
+
+    policyLayout->addSpacing(6);
+
+    m_commandRunCheck = new QCheckBox(tr("执行命令"), this);
+    m_runShellCheck   = new QCheckBox(tr("执行 shell 脚本"), this);
+    m_installDepCheck = new QCheckBox(tr("安装依赖"), this);
+    policyLayout->addWidget(m_commandRunCheck);
+    policyLayout->addWidget(m_runShellCheck);
+    policyLayout->addWidget(m_installDepCheck);
+
+    policyLayout->addSpacing(6);
+
+    m_allowShellCheck = new QCheckBox(
+        tr("允许执行 shell（关闭则直接拒绝）"), this);
+    policyLayout->addWidget(m_allowShellCheck);
+
+    mainLayout->addWidget(policyGroup);
+
     mainLayout->addStretch();
 
     // ========================================================
@@ -138,6 +179,15 @@ void AISettingsPage::loadSettings()
     m_autoStartCheck  ->setChecked(cfg->value("AI/AutoStart", true).toBool());
     m_autoFixCheck    ->setChecked(cfg->value("AI/AutoFixErrors", true).toBool());
     m_autoContextCheck->setChecked(cfg->value("AI/AutoIncludeContext", true).toBool());
+    // ---- 策略（默认值与 PolicyEngine 一致） ----
+    m_fileCreateCheck ->setChecked(cfg->value("AI/Policy/FileCreate",       true).toBool());
+    m_fileEditCheck   ->setChecked(cfg->value("AI/Policy/FileEdit",         true).toBool());
+    m_fileDeleteCheck ->setChecked(cfg->value("AI/Policy/FileDelete",       true).toBool());
+    m_fileRenameCheck ->setChecked(cfg->value("AI/Policy/FileRename",       true).toBool());
+    m_commandRunCheck ->setChecked(cfg->value("AI/Policy/CommandRun",       true).toBool());
+    m_runShellCheck   ->setChecked(cfg->value("AI/Policy/CommandRunShell",  true).toBool());
+    m_installDepCheck ->setChecked(cfg->value("AI/Policy/CommandInstallDep",true).toBool());
+    m_allowShellCheck ->setChecked(cfg->value("AI/Policy/AllowShell",       true).toBool());
 
     // 记录“当前运行中”的地址；后续 saveSettings 用它来判断是否需要提示重启
     m_activeHost = m_hostEdit->text().trimmed();
@@ -173,6 +223,14 @@ void AISettingsPage::saveSettings()
     cfg->setValue("AI/AutoStart",         m_autoStartCheck->isChecked());
     cfg->setValue("AI/AutoFixErrors",     m_autoFixCheck->isChecked());
     cfg->setValue("AI/AutoIncludeContext",m_autoContextCheck->isChecked());
+    cfg->setValue("AI/Policy/FileCreate",       m_fileCreateCheck->isChecked());
+    cfg->setValue("AI/Policy/FileEdit",         m_fileEditCheck->isChecked());
+    cfg->setValue("AI/Policy/FileDelete",       m_fileDeleteCheck->isChecked());
+    cfg->setValue("AI/Policy/FileRename",       m_fileRenameCheck->isChecked());
+    cfg->setValue("AI/Policy/CommandRun",       m_commandRunCheck->isChecked());
+    cfg->setValue("AI/Policy/CommandRunShell",  m_runShellCheck->isChecked());
+    cfg->setValue("AI/Policy/CommandInstallDep",m_installDepCheck->isChecked());
+    cfg->setValue("AI/Policy/AllowShell",       m_allowShellCheck->isChecked());
 
     // 地址/端口发生变化 → 提示需要重启才生效
     if (host != m_activeHost || port != m_activePort) {
@@ -252,7 +310,7 @@ void AISettingsPage::onRestartServer()
         tr("⏳ 已发送重启请求：%1:%2").arg(host).arg(port));
     m_statusLabel->setStyleSheet("QLabel { color: #88DDFF; }");
 
-    // 交给外部执行，SettingsPage 不直接依赖 AIServer
+    // 交给外部执行，SettingsPage 不直接依赖连接管理器
     emit aiServerRestartRequested(host, port);
 }
 

@@ -1,6 +1,4 @@
 #include "chat_panel.h"
-#include "ai_server.h"
-#include "ai_action_executor.h"
 #include "ai_connection_manager.h"
 #include "theme_manager.h"
 
@@ -43,64 +41,6 @@ ChatPanel::~ChatPanel()
 {
     qDebug() << "[ChatPanel] 已销毁";
 }
-
-// ============================================================
-// 设置 AI 服务器指针
-// ============================================================
-void ChatPanel::setAIServer(AIServer *server)
-{
-    m_aiServer = server;
-
-    if (server) {
-        connect(server, &AIServer::agentConnected,
-                this, [this]() {
-                    setConnectionStatus(true);
-                    showSystemMessage(tr("AI agent已连接"), false);
-                });
-
-        connect(server, &AIServer::agentDisconnected,
-                this, [this]() {
-                    setConnectionStatus(false);
-                    showSystemMessage(tr("AI agent已断开连接"), true);
-                });
-
-        connect(server, &AIServer::streamDataReceived,
-                this, &ChatPanel::onStreamDataReceived);
-
-        connect(server, &AIServer::responseReceived,
-                this, [this](int requestId, const QJsonObject &result) {
-                    Q_UNUSED(requestId);
-                    QString content = result.value("content").toString();
-                    if (!content.isEmpty()) {
-                        addAIMessage(content);
-                    }
-                });
-
-        connect(server, &AIServer::errorResponseReceived,
-                this, [this](int requestId, int code, const QString &message) {
-                    Q_UNUSED(requestId);
-                    showSystemMessage(QString(tr("AI 错误 (%1): %2")).arg(code).arg(message), true);
-                });
-
-        qDebug() << "[ChatPanel] AI 服务器已设置";
-    }
-}
-
-// ============================================================
-// 设置动作执行器指针
-// ============================================================
-void ChatPanel::setActionExecutor(AIActionExecutor *executor)
-{
-    m_actionExecutor = executor;
-
-    if (executor) {
-        connect(executor, &AIActionExecutor::outputProduced,
-                this, &ChatPanel::onActionOutput);
-    }
-
-    qDebug() << "[ChatPanel] 动作执行器已设置";
-}
-
 // ============================================================
 // 初始化 UI
 // ============================================================
@@ -237,24 +177,70 @@ QWidget* ChatPanel::createInputArea()
     m_sendButton->setObjectName("sendButton");
     m_sendButton->setEnabled(false);
     m_sendButton->setToolTip(tr("发送消息 (Enter)"));
-
-    // 宽度固定 64，高度不设 —— 交给布局拉伸
     m_sendButton->setFixedWidth(64);
-    m_sendButton->setMinimumHeight(36);           // 最小与输入框一致
-    m_sendButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);   // ← 高度可拉伸
-
+    m_sendButton->setMinimumHeight(36);
+    m_sendButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     connect(m_sendButton, &QPushButton::clicked,
             this, &ChatPanel::onSendClicked);
 
+    // ===== chat.ask 提问提示条 =====
+    m_askBar = new QWidget(this);
+    m_askBar->setObjectName("askBar");
+    m_askBar->setVisible(false);
+
+    QHBoxLayout* askLayout = new QHBoxLayout(m_askBar);
+    askLayout->setContentsMargins(12, 6, 12, 6);
+    askLayout->setSpacing(6);
+
+    QLabel* askIcon = new QLabel(QStringLiteral("❓"), m_askBar);
+    askIcon->setObjectName("askIcon");
+    askLayout->addWidget(askIcon);
+
+    m_askLabel = new QLabel(m_askBar);
+    m_askLabel->setObjectName("askLabel");
+    m_askLabel->setWordWrap(true);
+    askLayout->addWidget(m_askLabel, 1);
+
+    {
+        ThemeManager& tm = ThemeManager::instance();
+        m_askBar->setStyleSheet(QString(
+                                    "QWidget#askBar {"
+                                    "  background-color: %1;"
+                                    "  border-top: 1px solid %2;"
+                                    "  border-bottom: 1px solid %2;"
+                                    "}"
+                                    "QLabel#askIcon {"
+                                    "  color: %2;"
+                                    "  font-size: 14px;"
+                                    "  font-weight: 700;"
+                                    "}"
+                                    "QLabel#askLabel {"
+                                    "  color: %3;"
+                                    "  font-size: 12px;"
+                                    "  font-weight: 600;"
+                                    "}"
+                                    ).arg(tm.rgba(ThemeManager::UIElement::WarningColor, 40),
+                                         tm.colorString(ThemeManager::UIElement::WarningColor),
+                                         tm.colorString(ThemeManager::UIElement::TextColor)));
+    }
+
+    // ===== 输入行 =====
     QHBoxLayout* inputRow = new QHBoxLayout();
     inputRow->setContentsMargins(12, 8, 12, 12);
     inputRow->setSpacing(8);
     inputRow->addWidget(m_inputEdit, 1);
-    inputRow->addWidget(m_sendButton);   // 不加 Qt::AlignBottom —— 让按钮跟输入框等高
+    inputRow->addWidget(m_sendButton);
+
+    // ===== 组装：askBar 在上，输入行在下 =====
+    QVBoxLayout* vbox = new QVBoxLayout();
+    vbox->setContentsMargins(0, 0, 0, 0);
+    vbox->setSpacing(0);
+    vbox->addWidget(m_askBar);
+    vbox->addLayout(inputRow);
 
     QWidget* inputContainer = new QWidget(this);
     inputContainer->setObjectName("inputFrame");
-    inputContainer->setLayout(inputRow);
+    inputContainer->setLayout(vbox);
 
     return inputContainer;
 }
@@ -532,13 +518,32 @@ void ChatPanel::onSendClicked()
         return;
     }
 
-    // 清空输入框
     m_inputEdit->clear();
 
-    // 发送消息
-    emit userMessageSent(text, m_autoSendContext);
+    // ===== 提问模式：把答案发给 Agent =====
+    if (m_askMode) {
+        m_askMode = false;
+        m_pendingAskItemId.clear();
 
-    // 添加用户消息到显示
+        if (m_askBar)      m_askBar->setVisible(false);
+        if (m_sendButton) {
+            m_sendButton->setText(tr("发送"));
+            m_sendButton->setToolTip(tr("发送消息 (Enter)"));
+        }
+        if (m_inputEdit) {
+            m_inputEdit->setPlaceholderText(
+                tr("输入消息，按 Enter 发送，Ctrl+Enter 换行..."));
+        }
+
+        // 让用户看到自己答了什么
+        addUserMessage(text);
+
+        emit askAnswered(text);
+        return;
+    }
+
+    // ===== 普通模式：原逻辑 =====
+    emit userMessageSent(text, m_autoSendContext);
     addUserMessage(text);
 }
 
@@ -619,6 +624,61 @@ void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
     }
 }
 
+void ChatPanel::onAskRequired(const QString& itemId,
+                              const QString& question,
+                              const QJsonArray& choices,
+                              const QString& defaultAnswer)
+{
+    // ---- 如果 ChatPanel 被隐藏，先弹出来 ----
+    if (!isVisible()) {
+        setVisible(true);
+    }
+    raise();
+    activateWindow();
+
+    m_askMode = true;
+    m_pendingAskItemId = itemId;
+
+    // ---- 组装显示文本：问题 + 选项 ----
+    QString display = question;
+    if (!choices.isEmpty()) {
+        QStringList ops;
+        for (const QJsonValue& v : choices) {
+            const QString s = v.toString();
+            if (!s.isEmpty()) ops.append(s);
+        }
+        if (!ops.isEmpty()) {
+            display += QStringLiteral("\n选项：") + ops.join(QStringLiteral("  /  "));
+        }
+    }
+
+    if (m_askLabel) {
+        m_askLabel->setText(tr("AI 提问：%1").arg(display));
+    }
+    if (m_askBar) {
+        m_askBar->setVisible(true);
+    }
+
+    // ---- 输入区切换到"回答模式" ----
+    if (m_inputEdit) {
+        m_inputEdit->setPlaceholderText(
+            choices.isEmpty()
+                ? tr("输入你的回答，按 Enter 提交...")
+                : tr("输入答案，或从上面的选项中选择..."));
+        if (!defaultAnswer.isEmpty()) {
+            m_inputEdit->setPlainText(defaultAnswer);
+        }
+        m_inputEdit->setFocus();
+    }
+    if (m_sendButton) {
+        m_sendButton->setText(tr("回答"));
+        m_sendButton->setToolTip(tr("提交回答 (Enter)"));
+    }
+
+    // ---- 在消息流里也留一条系统消息，方便回看 ----
+    showSystemMessage(tr("AI 提问：%1").arg(display), false);
+}
+
 void ChatPanel::onStreamDataReceived(int requestId, const QString &streamId,
                                      const QString &chunk, bool isEnd,
                                      const QString &fullContent)
@@ -657,6 +717,27 @@ void ChatPanel::updateScrollPosition()
     if (scrollBar) {
         scrollBar->setValue(scrollBar->maximum());
     }
+}
+
+void ChatPanel::onConfirmRequired(const QString& itemId,
+                                  const QString& targetId,
+                                  const QString& prompt,
+                                  const QString& defaultApprove)
+{
+    Q_UNUSED(itemId);
+    Q_UNUSED(targetId);
+
+    const QMessageBox::StandardButton defaultBtn =
+        (defaultApprove == QStringLiteral("approve"))
+            ? QMessageBox::Yes : QMessageBox::No;
+
+    const auto reply = QMessageBox::question(
+        this, tr("AI 请求确认"),
+        prompt.isEmpty() ? tr("AI 请求执行一个操作，是否继续？") : prompt,
+        QMessageBox::Yes | QMessageBox::No,
+        defaultBtn);
+
+    emit confirmAnswered(reply == QMessageBox::Yes);
 }
 
 // ============================================================
@@ -846,9 +927,6 @@ QString ChatPanel::getSenderColor(const QString &sender) const
 QJsonObject ChatPanel::buildContext() const
 {
     QJsonObject context;
-    if (m_actionExecutor) {
-        context = m_actionExecutor->getContext();
-    }
     context["history"] = getConversationHistory();
     return context;
 }

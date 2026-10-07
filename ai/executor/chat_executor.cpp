@@ -65,15 +65,11 @@ ExecutionResult ChatExecutor::handleAsk(const QJsonObject& item)
 
 ExecutionResult ChatExecutor::handleConfirm(const QJsonObject& item)
 {
-    const QString targetId       = item.value("targetId").toString();
-    const QString prompt         = item.value("prompt").toString();
-    const QString defaultApprove = item.value("defaultApprove").toString();
-
-    emit confirmRequested(targetId, prompt, defaultApprove);
-
+    // 正常情况下，OperationBus 会拦截 chat.confirm（门禁机制），
+    // 此函数不应被调用。保留为安全垫。
     return ExecutionResult::skipped(item.value("id").toString(),
                                     QStringLiteral("chat.confirm"),
-                                    QStringLiteral("Blocking not yet implemented"));
+                                    QStringLiteral("Handled by OperationBus"));
 }
 
 } // namespace Protocol

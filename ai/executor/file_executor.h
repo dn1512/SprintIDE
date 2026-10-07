@@ -5,6 +5,9 @@
 #include "ai/executor/i_executor.h"
 
 namespace SprintIDE {
+
+class MainWindow;
+
 namespace Protocol {
 
 /**
@@ -17,7 +20,7 @@ class FileExecutor : public QObject, public IExecutor
 {
     Q_OBJECT
 public:
-    explicit FileExecutor(QObject* parent = nullptr);
+    explicit FileExecutor(MainWindow* mw, QObject* parent = nullptr);
 
     QString domain() const override { return QStringLiteral("file"); }
     ExecutionResult execute(const QJsonObject& item) override;
@@ -31,6 +34,7 @@ private:
 
     /// 相对路径 → 绝对路径（基于当前项目根；无项目则基于 cwd）
     QString resolvePath(const QString& rawPath) const;
+    MainWindow* m_mw = nullptr;
 };
 
 } // namespace Protocol

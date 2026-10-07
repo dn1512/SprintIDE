@@ -41,6 +41,15 @@ private:
     QCheckBox*   m_autoStartCheck  = nullptr;
     QCheckBox*   m_autoFixCheck    = nullptr;
     QCheckBox*   m_autoContextCheck= nullptr;
+    // 策略配置（PolicyEngine）
+    QCheckBox*   m_fileCreateCheck    = nullptr;
+    QCheckBox*   m_fileEditCheck      = nullptr;
+    QCheckBox*   m_fileDeleteCheck    = nullptr;
+    QCheckBox*   m_fileRenameCheck    = nullptr;
+    QCheckBox*   m_commandRunCheck    = nullptr;
+    QCheckBox*   m_runShellCheck      = nullptr;
+    QCheckBox*   m_installDepCheck    = nullptr;
+    QCheckBox*   m_allowShellCheck    = nullptr;
     QPushButton* m_testButton      = nullptr;
     QPushButton* m_restartButton   = nullptr;
     QLabel*      m_statusLabel     = nullptr;

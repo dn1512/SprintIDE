@@ -767,7 +767,7 @@ bool TextEditor::reloadFile()
     return success;
 }
 
-bool TextEditor::saveFile()
+bool TextEditor::saveFile(const QString &source)
 {
     if (m_filePath.isEmpty()) {
         QString filePath = QFileDialog::getSaveFileName(
@@ -815,7 +815,11 @@ bool TextEditor::saveFile()
 
     // 保存成功后，记录本地历史
     if (m_localHistory && !m_filePath.isEmpty()) {
-        int version = m_localHistory->saveVersion(m_filePath, toPlainText());
+        int version = m_localHistory->saveVersion(
+            m_filePath,toPlainText(),
+            source == "ai" ? "from AI" : "from user",
+            source
+            );
         if (version > 0) {
             qDebug() << "[TextEditor] 本地历史已保存，版本:" << version;
         }
@@ -3204,6 +3208,320 @@ void TextEditor::setBreakpointEnabled(int line, bool enabled)
         m_disabledBreakpoints.insert(line);
     }
     if (m_lineNumberArea) m_lineNumberArea->update();
+}
+
+// ============================================================================
+//  归一化空白匹配
+//  - 忽略：行首缩进、空行、行尾空白
+//  - 保留：行内非空白字符必须逐字匹配
+// ============================================================================
+QList<QTextCursor> TextEditor::findByNormalizedWhitespace(const QString& searchText,
+                                                          int startPos,
+                                                          int endPos) const
+{
+    QList<QTextCursor> results;
+    if (searchText.isEmpty()) return results;
+
+    // ---- 1. 归一化 search 串：拆成"非空行 + 去首尾空白"的 token 列表 ----
+    const QStringList rawSearchLines = searchText.split(QRegularExpression("[\r\n]"));
+    QStringList searchTokens;
+    for (const QString& line : rawSearchLines) {
+        const QString trimmed = line.trimmed();
+        if (!trimmed.isEmpty()) searchTokens.append(trimmed);
+    }
+    if (searchTokens.isEmpty()) return results;
+
+    QTextDocument* doc = document();
+    if (!doc) return results;
+
+    const int totalBlocks = doc->blockCount();
+
+    // ---- 2. 把全文按"非空行 + 去首尾空白"预计算 ----
+    //    为了方便扫描，把每个 block 的 trimmed 缓存到一个数组里
+    QVector<QString> blockTrimmed;
+    blockTrimmed.reserve(totalBlocks);
+    for (int i = 0; i < totalBlocks; ++i) {
+        blockTrimmed.append(doc->findBlockByNumber(i).text().trimmed());
+    }
+
+    // ---- 3. 扫描所有可能的起点（从 startPos/endPos 决定范围）----
+    //    将 startPos/endPos 转换为 block 号
+    int startBlock = 0;
+    int endBlock   = totalBlocks - 1;
+    if (startPos >= 0) {
+        startBlock = doc->findBlock(startPos).blockNumber();
+    }
+    if (endPos >= 0) {
+        endBlock = doc->findBlock(endPos).blockNumber();
+    }
+
+    const int searchCount = searchTokens.size();
+
+    for (int i = startBlock; i <= endBlock && i < totalBlocks; ++i) {
+        // ---- 首 token 必须匹配 ----
+        if (blockTrimmed[i] != searchTokens[0]) continue;
+
+        // ---- 尝试逐 token 匹配 ----
+        int matchedBlocks = 0;   // 已匹配到的 token 数
+        int lastMatchedLine = i - 1;
+        int j = i;
+        while (j <= endBlock && j < totalBlocks && matchedBlocks < searchCount) {
+            // 跳过空行
+            if (blockTrimmed[j].isEmpty()) {
+                ++j;
+                continue;
+            }
+            // 匹配当前 token
+            if (blockTrimmed[j] == searchTokens[matchedBlocks]) {
+                ++matchedBlocks;
+                lastMatchedLine = j;
+                ++j;
+            } else {
+                // 不匹配 → 中断本次尝试
+                break;
+            }
+        }
+
+        // ---- 全部 token 都匹配 → 记录一段 ----
+        if (matchedBlocks == searchCount) {
+            QTextCursor cursor(doc);
+            QTextBlock firstBlock = doc->findBlockByNumber(i);
+            QTextBlock lastBlock  = doc->findBlockByNumber(lastMatchedLine);
+
+            cursor.setPosition(firstBlock.position());
+            cursor.setPosition(lastBlock.position() + lastBlock.length() - 1,
+                               QTextCursor::KeepAnchor);
+            results.append(cursor);
+
+            // 从 lastMatchedLine 之后继续找下一个起点
+            i = lastMatchedLine;
+        }
+    }
+
+    return results;
+}
+
+// ============================================================================
+//  定位方法边界
+//  宽松匹配：找所有包含 "<方法名>(" 的行
+//  - Python：向下扫描缩进
+//  - 大括号语言：数 { }
+// ============================================================================
+QList<TextEditor::MethodRange> TextEditor::findMethodRanges(const QString& methodName) const
+{
+    QList<MethodRange> results;
+    if (methodName.isEmpty()) return results;
+
+    QTextDocument* doc = document();
+    if (!doc) return results;
+
+    const QString langId = currentLanguageId();
+    const bool isPython = langId.contains("python", Qt::CaseInsensitive);
+
+    const int totalBlocks = doc->blockCount();
+
+    // ---- 1. 宽松匹配：找所有包含 "<methodName>(" 的行 ----
+    //    用词边界确保 "foo(" 不会匹配到 "barfoo(" 或 "foo2("
+    QRegularExpression sigRegex(
+        QStringLiteral("\\b%1\\s*\\(").arg(QRegularExpression::escape(methodName)));
+
+    QVector<int> signatureLines;
+    for (int i = 0; i < totalBlocks; ++i) {
+        const QString text = doc->findBlockByNumber(i).text();
+        // 跳过注释行（简单判断）
+        const QString trimmed = text.trimmed();
+        if (trimmed.startsWith("//") || trimmed.startsWith("#")) continue;
+
+        if (sigRegex.match(text).hasMatch()) {
+            signatureLines.append(i);
+        }
+    }
+
+    // ---- 2. 对每个候选起点，找方法体范围 ----
+    for (int sigLine : signatureLines) {
+        MethodRange range;
+        range.signatureLine = sigLine + 1;   // 1-based
+
+        if (isPython) {
+            // ---- Python：靠缩进 ----
+            const QString sigText = doc->findBlockByNumber(sigLine).text();
+            const int sigIndent = leadingIndentWidth(sigText);
+
+            int bodyEnd = sigLine;
+            for (int i = sigLine + 1; i < totalBlocks; ++i) {
+                const QString t = doc->findBlockByNumber(i).text();
+                if (t.trimmed().isEmpty()) continue;   // 空行跳过
+                if (leadingIndentWidth(t) <= sigIndent) break;
+                bodyEnd = i;
+            }
+
+            range.bodyStartLine = sigLine + 1;   // 1-based
+            range.bodyEndLine   = bodyEnd + 1;
+        } else {
+            // ---- 大括号语言：数 { } ----
+            //   从签名行开始，找第一个 {，然后配对
+            int braceLine = -1;
+            int bracePos  = -1;
+
+            // 先从签名行本身找
+            const QString sigText = doc->findBlockByNumber(sigLine).text();
+            int openIdx = sigText.indexOf('{');
+            if (openIdx >= 0) {
+                braceLine = sigLine;
+                bracePos  = openIdx;
+            } else {
+                // 签名行没有 { → 向下找第一行有 { 的
+                for (int i = sigLine + 1; i < totalBlocks; ++i) {
+                    const QString t = doc->findBlockByNumber(i).text();
+                    int idx = t.indexOf('{');
+                    if (idx >= 0) {
+                        braceLine = i;
+                        bracePos  = idx;
+                        break;
+                    }
+                    // 遇到分号说明是声明不是定义
+                    if (t.contains(';')) return results.size() == 0 ? results : results;
+                }
+            }
+
+            if (braceLine < 0) continue;
+
+            // 从 braceLine 开始配对 { }
+            int depth = 0;
+            int endLine = -1;
+
+            for (int i = braceLine; i < totalBlocks; ++i) {
+                const QString t = doc->findBlockByNumber(i).text();
+                const int startIdx = (i == braceLine) ? bracePos : 0;
+                for (int k = startIdx; k < t.length(); ++k) {
+                    if (t[k] == '{') ++depth;
+                    else if (t[k] == '}') {
+                        --depth;
+                        if (depth == 0) {
+                            endLine = i;
+                            break;
+                        }
+                    }
+                }
+                if (endLine >= 0) break;
+            }
+
+            if (endLine < 0) continue;
+
+            range.bodyStartLine = sigLine + 1;
+            range.bodyEndLine   = endLine + 1;
+        }
+
+        results.append(range);
+    }
+
+    return results;
+}
+
+// ============================================================================
+//  替换 + 缩进对齐（方案 C+）
+//  1. offset = (match首行缩进 - replace首行缩进)
+//  2. replace 每行加 offset
+//  3. 每行结果取整到 tabWidth 的倍数（仅当 useSpaces）
+// ============================================================================
+void TextEditor::replaceWithIndentAlignment(QTextCursor& cursor,
+                                            const QString& replaceText)
+{
+    if (cursor.isNull() || !cursor.hasSelection()) return;
+
+    // ---- 1. 计算原始匹配位置的缩进 ----
+    QTextBlock startBlock = cursor.block();
+    const int origIndent = leadingIndentWidth(startBlock.text());
+
+    // ---- 2. 计算 replace 首行缩进 ----
+    QStringList replaceLines = replaceText.split(QRegularExpression("[\r\n]"));
+    if (replaceLines.isEmpty()) return;
+
+    const int replaceIndent = leadingIndentWidth(replaceLines[0]);
+    const int offset = origIndent - replaceIndent;
+
+    // ---- 3. 平移每行缩进 ----
+    const bool useSpaces = m_useSpacesForTab;
+    const int tabWidth = m_tabWidth;
+
+    for (int i = 0; i < replaceLines.size(); ++i) {
+        QString line = replaceLines[i];
+
+        // 空行不处理
+        if (line.trimmed().isEmpty()) continue;
+
+        // 计算当前行缩进宽度
+        int curIndent = leadingIndentWidth(line);
+        int newIndent = curIndent + offset;
+        if (newIndent < 0) newIndent = 0;
+
+        // C+：取整到 tabWidth 的倍数（仅当使用空格）
+        if (useSpaces && tabWidth > 0) {
+            newIndent = (newIndent / tabWidth) * tabWidth;
+        }
+
+        // 重建该行：新缩进 + 去掉原缩进后的内容
+        const QString content = line.mid(leadingWhitespace(line).length());
+        QString newIndentStr;
+        if (useSpaces) {
+            newIndentStr = QString(newIndent, ' ');
+        } else {
+            // Tab 模式：按 tabWidth 换算
+            const int tabs = newIndent / qMax(1, tabWidth);
+            newIndentStr = QString(tabs, '\t');
+        }
+
+        replaceLines[i] = newIndentStr + content;
+    }
+
+    const QString finalText = replaceLines.join('\n');
+
+    // ---- 4. 执行替换 ----
+    cursor.beginEditBlock();
+    cursor.removeSelectedText();
+    cursor.insertText(finalText);
+    cursor.endEditBlock();
+}
+
+// ============================================================================
+//  辅助：行首缩进宽度
+// ============================================================================
+int TextEditor::leadingIndentWidth(const QString& line) const
+{
+    int width = 0;
+    for (QChar c : line) {
+        if (c == ' ') {
+            width += 1;
+        } else if (c == '\t') {
+            width += qMax(1, m_tabWidth);
+        } else {
+            break;
+        }
+    }
+    return width;
+}
+
+// ============================================================================
+//  辅助：按 offset 平移一行缩进
+// ============================================================================
+QString TextEditor::shiftIndent(const QString& line, int offset) const
+{
+    if (offset == 0) return line;
+
+    const QString ws = leadingWhitespace(line);
+    const int curIndent = leadingIndentWidth(line);
+    int newIndent = curIndent + offset;
+    if (newIndent < 0) newIndent = 0;
+
+    const QString content = line.mid(ws.length());
+    QString indentStr;
+    if (m_useSpacesForTab) {
+        indentStr = QString(newIndent, ' ');
+    } else {
+        const int tabs = newIndent / qMax(1, m_tabWidth);
+        indentStr = QString(tabs, '\t');
+    }
+    return indentStr + content;
 }
 
 void TextEditor::insertCompletion(const QString& insertText)
