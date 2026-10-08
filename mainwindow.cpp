@@ -3033,10 +3033,9 @@ void MainWindow::onCompileProgress(const QString& taskId, int progress, const QS
 
     if (progress % 25 == 0) {
         QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-        QString htmlMessage = QString(tr("[%1] 编译进度: %2%"))
-                                  .arg(timeStr)
-                                  .arg(progress);
-        logError(htmlMessage);
+        logError(QString(tr("[%1] 编译进度: %2%"))
+                     .arg(timeStr)
+                     .arg(progress));
     }
     m_buildProgressBar->setValue(progress);
 }
@@ -3065,26 +3064,20 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
     for (const QString& line : lines) {
         const QString trimmed = line.trimmed();
         if (trimmed.isEmpty()) continue;
-    
-        QString color;
+
         LogLevel level = LogLevel::Info;
         if (errorRegex.match(trimmed).hasMatch()) {
-            color = "#FF5555";
             level = LogLevel::Error;
         } else if (warningRegex.match(trimmed).hasMatch()) {
-            color = "#FFAA00";
             level = LogLevel::Warning;
         } else if (noteRegex.match(trimmed).hasMatch()) {
-            color = "#9999FF";
+            // note 级别 → Info（颜色已交给 LogLevel，不再需要单独颜色）
         } else if (progressRegex.match(trimmed).hasMatch()) {
-            color = "#88DDFF";
+            // 进度 → Info
         } else if (isError) {
-            color = "#FF5555";
             level = LogLevel::Error;
-        } else {
-            color = "#CCCCCC";
         }
-    
+
         appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line));
     }
 }
@@ -3164,10 +3157,9 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
                                      result.errors[i]));
         }
-        QString htmlMessage = QString(tr("[%1] 编译失败! 耗时: %2ms"))
-                                  .arg(timeStr)
-                                  .arg(elapsedMs);
-        logError(htmlMessage);
+        logError(QString(tr("[%1] 编译失败! 耗时: %2ms"))
+                     .arg(timeStr)
+                     .arg(elapsedMs));
 
         m_statusLabel->setText(tr("编译失败"));
 
