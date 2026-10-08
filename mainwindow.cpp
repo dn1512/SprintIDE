@@ -2997,15 +2997,10 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
 
     m_outputPanel->clear();
 
-    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString(tr("[%1] 开始编译: %2"))
-                              .arg(timeStr)
-                              .arg(sourceFile);
     appendLog(LogEntry::make(
-                  LogKind::Compile, LogLevel::Info, "Compile",
-                  QStringLiteral("开始编译: %1").arg(sourceFile),
-                  sourceFile),
-              htmlMessage);
+        LogKind::Compile, LogLevel::Info, "Compile",
+        QStringLiteral("开始编译: %1").arg(sourceFile),
+        sourceFile));
 
     m_statusLabel->setText(QString(tr("正在编译 %1...")).arg(QFileInfo(sourceFile).fileName()));
 
@@ -3090,9 +3085,7 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
             color = "#CCCCCC";
         }
     
-        appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line),
-                  QString("<span style='color:%1;'>%2</span>")
-                      .arg(color, line.toHtmlEscaped()));
+        appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line));
     }
 }
 
@@ -3108,12 +3101,8 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
 
     if (result.success) {
-        QString htmlMessage = QString(tr("[%1] 编译成功! 耗时: %2ms"))
-                                  .arg(timeStr)
-                                  .arg(elapsedMs);
         appendLog(LogEntry::make(LogKind::Compile, LogLevel::Info, "Compile",
-                         QStringLiteral("编译成功，耗时 %1ms").arg(elapsedMs)),
-          htmlMessage);
+                         QStringLiteral("编译成功，耗时 %1ms").arg(elapsedMs)));
 
         if (!result.executablePath.isEmpty()) {
             logInfo(QString("可执行文件: %1")
@@ -3167,11 +3156,9 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
 
     } else {
         appendLog(LogEntry::make(
-                      LogKind::Compile, LogLevel::Error, "Compile",
-                      QStringLiteral("编译失败，耗时 %1ms，错误 %2，警告 %3")
-                          .arg(elapsedMs).arg(result.errors.size()).arg(result.warnings.size())),
-                  QString("[%1] 编译失败! 耗时: %2ms")
-                      .arg(timeStr).arg(elapsedMs));
+              LogKind::Compile, LogLevel::Error, "Compile",
+              QStringLiteral("编译失败，耗时 %1ms，错误 %2，警告 %3")
+                  .arg(elapsedMs).arg(result.errors.size()).arg(result.warnings.size())));
         
         for (int i = 0; i < result.errors.size(); ++i) {
             appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
@@ -3319,12 +3306,7 @@ void MainWindow::onCompileError(const QString& taskId, const QString& errorMessa
 
     m_isCompiling = false;
 
-    QString timeStr = QTime::currentTime().toString("hh:mm:ss");
-    QString htmlMessage = QString(tr("[%1] 编译错误: %2"))
-                              .arg(timeStr)
-                              .arg(errorMessage.toHtmlEscaped());
-    
-    appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",errorMessage),htmlMessage);
+    appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile", errorMessage));
 
     m_statusLabel->setText(tr("编译错误"));
 
@@ -5070,10 +5052,8 @@ QStringList MainWindow::collectProjectFiles(bool forceRescan)
     return m_cachedProjectFiles;
 }
 
-void MainWindow::appendLog(const LogEntry& entry, const QString& html)
+void MainWindow::appendLog(const LogEntry& entry)
 {
-    Q_UNUSED(html);
-
     // 1. 结构化写入 LogBuffer（AI 用）
     if (auto* buf = Application::instance().logBuffer()) {
         buf->append(entry);

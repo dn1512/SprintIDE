@@ -86,6 +86,10 @@ public:
     /// 在 CMakeCache.txt 中读取 CMAKE_RUNTIME_OUTPUT_DIRECTORY
     static QString readCMakeRuntimeOutputDir(const QString& buildDir);
 
+    /// 读取 CMakeCache.txt 里已有的生成器名（"Ninja" / "Unix Makefiles" / ...）
+    /// build 目录无 cache 或无此字段时返回空。
+    static QString detectExistingGenerator(const QString& buildDir);
+
     /// 是否识别为 Qt 项目（CMakeLists 含 find_package(Qt5/Qt6，或存在 *.pro）
     bool isQtProject() const { return m_isQtProject; }
 

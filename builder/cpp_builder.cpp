@@ -148,21 +148,49 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
                    << "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
                    << "-DCMAKE_BUILD_TYPE=" + wantedBuildType;   // 统一传，不再 if-else
 
-        // 生成器：优先 Ninja，不传 -DCMAKE_MAKE_PROGRAM
-        const QString ninja = CppProjectModel::findNinjaExecutable();
-        if (!ninja.isEmpty()) {
-            configArgs << "-G" << "Ninja";
-            configArgs << "-DCMAKE_MAKE_PROGRAM=" + ninja;   // 关键修复
-            qDebug() << "[CppBuilder] 使用 Ninja 生成器（系统 ninja:" << ninja << "）";
+        // ---- 决定生成器 ----
+        //   1) 已有 CMakeCache.txt → 沿用其 CMAKE_GENERATOR（避免冲突报错）
+        //   2) 全新配置 → 优先 Ninja，否则 Unix Makefiles
+        //   3) 都不可用 → 不传 -G，让 CMake 用平台默认生成器
+        const QString existingGen = CppProjectModel::detectExistingGenerator(buildDir);
+        QString chosenGen;
+
+        if (!existingGen.isEmpty()) {
+            chosenGen = existingGen;
+            qDebug() << "[CppBuilder] 沿用已有生成器:" << chosenGen;
         } else {
-            const QString make = CppProjectModel::findMakeExecutable();
-            if (!make.isEmpty()) {
-                configArgs << "-G" << "Unix Makefiles";
-                configArgs << "-DCMAKE_MAKE_PROGRAM=" + make;   // 同样处理 make
-                qDebug() << "[CppBuilder] 使用 Unix Makefiles 生成器";
+            const QString ninja = CppProjectModel::findNinjaExecutable();
+            if (!ninja.isEmpty()) {
+                chosenGen = QStringLiteral("Ninja");
+                qDebug() << "[CppBuilder] 全新配置，使用 Ninja:" << ninja;
             } else {
-                qWarning() << "[CppBuilder] 未找到 Ninja / Make";
+                const QString make = CppProjectModel::findMakeExecutable();
+                if (!make.isEmpty()) {
+                    chosenGen = QStringLiteral("Unix Makefiles");
+                    qDebug() << "[CppBuilder] 全新配置，使用 Unix Makefiles:" << make;
+                } else {
+                    qWarning() << "[CppBuilder] 未找到 Ninja / Make，交由 CMake 使用默认生成器";
+                }
             }
+        }
+
+        if (!chosenGen.isEmpty()) {
+            configArgs << "-G" << chosenGen;
+
+            // 按生成器补 CMAKE_MAKE_PROGRAM（用当前探测到的最新路径）
+            if (chosenGen == QStringLiteral("Ninja")) {
+                const QString ninja = CppProjectModel::findNinjaExecutable();
+                if (!ninja.isEmpty()) {
+                    configArgs << "-DCMAKE_MAKE_PROGRAM=" + ninja;
+                }
+            } else if (chosenGen == QStringLiteral("Unix Makefiles")) {
+                const QString make = CppProjectModel::findMakeExecutable();
+                if (!make.isEmpty()) {
+                    configArgs << "-DCMAKE_MAKE_PROGRAM=" + make;
+                }
+            }
+            // 其他生成器（Xcode / Visual Studio / Ninja Multi-Config ...）：
+            //   只传 -G，CMake 自行决定 make program
         }
 
         // 用户额外参数

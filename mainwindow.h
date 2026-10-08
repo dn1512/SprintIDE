@@ -412,8 +412,8 @@ private:
     void runExecutableAsync(const QString& executablePath);
 
     bool isCppDebugging() const;
-    // entry 必填（结构化）；html 为空时退化为纯文本渲染
-    void appendLog(const LogEntry& entry, const QString& html = QString());
+    // entry 必填（结构化）；颜色由 LogLevel 决定
+    void appendLog(const LogEntry& entry);
 
     QStringList collectProjectFiles(bool forceRescan = false);
     /// 创建并连接一个"运行用"QProcess（统一输出/结束信号处理）

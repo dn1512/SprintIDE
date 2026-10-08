@@ -877,4 +877,33 @@ QString CppProjectModel::readCMakeRuntimeOutputDir(const QString& buildDir)
     return QString();
 }
 
+// ====================================================================
+// 静态：读取 CMakeCache.txt 里已有的生成器名
+// ====================================================================
+QString CppProjectModel::detectExistingGenerator(const QString& buildDir)
+{
+    const QString cacheFile = QDir(buildDir).absoluteFilePath("CMakeCache.txt");
+    QFile file(cacheFile);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QString();   // 无 cache → 全新配置
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        const QString line = in.readLine();
+        // CMake 写入格式：CMAKE_GENERATOR:INTERNAL=Ninja
+        //              或：CMAKE_GENERATOR:INTERNAL=Unix Makefiles
+        if (line.startsWith(QStringLiteral("CMAKE_GENERATOR:"))) {
+            const int eq = line.indexOf(QLatin1Char('='));
+            if (eq > 0) {
+                const QString val = line.mid(eq + 1).trimmed();
+                file.close();
+                return val;
+            }
+        }
+    }
+    file.close();
+    return QString();
+}
+
 } // namespace SprintIDE
