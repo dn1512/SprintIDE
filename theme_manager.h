@@ -88,6 +88,9 @@ public:
         GitOperationBannerBackground,  // merge/rebase 警告横幅背景
         GitOperationBannerBorder,      // 警告横幅边框
         GitOperationBannerText,        // 警告横幅文字（含按钮）
+        // 查找高亮（普通匹配 / 当前匹配）
+        SearchMatchBackground,
+        SearchCurrentMatchBackground,
     };
 
     static ThemeManager& instance();

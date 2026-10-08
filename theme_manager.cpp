@@ -104,6 +104,8 @@ static const ElementNameEntry kElementNames[] = {
     { UIElement::GitOperationBannerBackground, "GitOperationBannerBackground" },
     { UIElement::GitOperationBannerBorder,     "GitOperationBannerBorder"     },
     { UIElement::GitOperationBannerText,       "GitOperationBannerText"       },
+    { UIElement::SearchMatchBackground,        "SearchMatchBackground"        },
+    { UIElement::SearchCurrentMatchBackground, "SearchCurrentMatchBackground" },
     };
 
 static QString elementToKey(UIElement e)
@@ -210,6 +212,11 @@ public:
         colors[UIElement::GitOperationBannerBackground] = QColor(58, 46, 26, 255);
         colors[UIElement::GitOperationBannerBorder]     = QColor("#6B5A38");
         colors[UIElement::GitOperationBannerText]       = QColor("#EBB65B");
+        // 查找高亮 —— 深色主题
+        // 普通匹配：琥珀 40% alpha，深色背景上可见但不刺眼
+        colors[UIElement::SearchMatchBackground]        = QColor(235, 182, 91, 100);   // WarningColor @ 40%
+        // 当前匹配：琥珀 60% alpha + 稍亮，一眼看出"当前在哪"
+        colors[UIElement::SearchCurrentMatchBackground] = QColor(235, 182, 91, 180);   // WarningColor @ 70%
     }
 
     // ------------------------------------------------------------
@@ -342,6 +349,11 @@ public:
         colors[UIElement::GitOperationBannerBackground] = QColor("#F7EDD8");
         colors[UIElement::GitOperationBannerBorder]     = QColor("#D9BE80");
         colors[UIElement::GitOperationBannerText]       = QColor("#8A5A0A");
+        // 查找高亮 —— 浅色主题
+        // 普通匹配：淡黄，白底上柔和
+        colors[UIElement::SearchMatchBackground]        = QColor(255, 235, 120, 140);
+        // 当前匹配：深一点的黄，白底上清晰
+        colors[UIElement::SearchCurrentMatchBackground] = QColor(255, 200, 50, 200);
     }
 };
 

@@ -23,6 +23,7 @@
 #include <QListWidget>
 #include <QMap>
 #include <QRegularExpression>
+#include <QMimeData>
 
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
@@ -324,6 +325,9 @@ protected:
     void focusOutEvent(QFocusEvent* event) override;
 
     bool eventFilter(QObject* obj, QEvent* event) override;
+
+    // 粘贴时按目标缩进基准对齐多行文本
+    void insertFromMimeData(const QMimeData* source) override;
 
 private slots:
     void updateLineNumberAreaWidth();

@@ -24,7 +24,8 @@
 #include <QToolTip>
 #include <QDebug>
 #include <QInputDialog>
-#include <QStringConverter>  // Qt6中用于编码
+#include <QStringConverter>
+#include <limits>
 #include <QFontDatabase>
 #include <QMouseEvent>
 #include <QRegularExpression>
@@ -390,6 +391,17 @@ void TextEditor::initEditor()
     // 滚动条错误标记
     if (verticalScrollBar()) {
         verticalScrollBar()->installEventFilter(this);
+    }
+    // 滚动条显隐时更新查找栏宽度
+    if (verticalScrollBar()) {
+        connect(verticalScrollBar(), &QScrollBar::rangeChanged,
+                this, [this](int /*min*/, int /*max*/) {
+                    if (m_findBar && m_findBarVisible) {
+                        const int sbWidth = verticalScrollBar()->width();
+                        const int barWidth = width() - sbWidth;
+                        m_findBar->setGeometry(0, height() - 40, barWidth, 40);
+                    }
+                });
     }
 }
 
@@ -1551,18 +1563,63 @@ void TextEditor::onErrorMarkerTimer()
 void TextEditor::showFindBar()
 {
     if (!m_findBar) return;
+
+    //   若当前有单行选区，自动带入查找输入框
+    //   - QTextCursor::selectedText() 把段落分隔符转成 U+2029，需要归一化
+    //   - 多行选区在"查找"里没有语义，跳过
+    {
+        const QTextCursor cur = textCursor();
+        if (cur.hasSelection()) {
+            QString sel = cur.selectedText();
+            sel.replace(QChar::ParagraphSeparator, '\n');
+            if (!sel.contains('\n') && !sel.trimmed().isEmpty()) {
+                m_findLineEdit->setText(sel);   // setText 会触发 onFindTextChanged 自动高亮
+            }
+        }
+    }
+
     m_findBarVisible = true;
     m_findBar->setVisible(true);
-    m_findBar->setGeometry(0, height() - 40, width(), 40);
+
+    //   用 viewport 的宽度，而不是整个控件的宽度
+    //   viewport() 不含左侧行号区，也不含右侧滚动条
+    //   但行号区在左侧——查找栏要覆盖整个宽度，所以加上 lineNumberAreaWidth()
+    const int lbWidth = m_showLineNumbers ? lineNumberAreaWidth() : 0;
+    Q_UNUSED(lbWidth);   // 原代码未使用，加宏避免警告
+
+    // 定位：横跨整行，但右侧要避开滚动条
+    const int sbWidth = verticalScrollBar() ? verticalScrollBar()->width() : 0;
+    const int barWidth = width() - sbWidth;
+
+    m_findBar->setGeometry(0, height() - 40, barWidth, 40);
+
     m_findLineEdit->setFocus();
-    m_findLineEdit->selectAll();
+    m_findLineEdit->selectAll();    // 全选：用户直接敲键可覆盖
+
     emit findBarVisibilityChanged(true);
 }
 
 void TextEditor::showFindBarWithReplace()
 {
+    //  与 showFindBar 相同的带入逻辑
+    if (m_findBar) {
+        const QTextCursor cur = textCursor();
+        if (cur.hasSelection()) {
+            QString sel = cur.selectedText();
+            sel.replace(QChar::ParagraphSeparator, '\n');
+            if (!sel.contains('\n') && !sel.trimmed().isEmpty()) {
+                m_findLineEdit->setText(sel);
+            }
+        }
+    }
+
     showFindBar();
-    onToggleReplaceMode();  // 展开替换模式
+
+    // onToggleReplaceMode() 是"切换"不是"打开"，若替换行已经展开会被收起
+    // 所以这里直接展开，避免 Ctrl+H 连按两次的表现不一致
+    if (!m_replaceMode) {
+        onToggleReplaceMode();
+    }
 }
 
 void TextEditor::hideFindBar()
@@ -1652,13 +1709,37 @@ void TextEditor::onFindTextChanged(const QString& text)
         return;
     }
 
-    highlightAllMatches(text, m_caseSensitiveCheck->isChecked(), m_wholeWordCheck->isChecked());
+    // 记录"搜索基准点" —— 用户按 Ctrl+F 时的光标位置
+    // 注意：要在 highlightAllMatches 之前抓，因为之后 m_matchCursors
+    //      的 setExtraSelections 不改文档、不移动光标，但这行更保险。
+    const int basePos = textCursor().selectionStart();
 
-    if (!m_matchCursors.isEmpty()) {
-        m_currentMatchIndex = 0;
-        scrollToMatch(m_currentMatchIndex);
-        m_matchCountLabel->setText(QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
+    highlightAllMatches(text,
+                        m_caseSensitiveCheck->isChecked(),
+                        m_wholeWordCheck->isChecked());
+
+    if (m_matchCursors.isEmpty()) {
+        m_matchCountLabel->setText("0/0");
+        return;
     }
+
+    // ✅ v8.4：就近选择当前匹配
+    //   - 优先取第一个 selectionStart() >= basePos 的匹配
+    //   - 若没有（光标位于最后一个匹配之后），回绕到第 0 个
+    int best = 0;
+    for (int i = 0; i < m_matchCursors.size(); ++i) {
+        if (m_matchCursors[i].selectionStart() >= basePos) {
+            best = i;
+            break;
+        }
+        // 循环跑完还没命中 → 保持 best = 0（回绕）
+        best = 0;
+    }
+
+    m_currentMatchIndex = best;
+    scrollToMatch(m_currentMatchIndex);
+    m_matchCountLabel->setText(
+        QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
 
 void TextEditor::onFindNextClicked()
@@ -1696,19 +1777,23 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
         cursor = found;
     }
 
-    QList<QTextEdit::ExtraSelection> selections;
-    for (const QTextCursor& match : m_matchCursors) {
-        QTextEdit::ExtraSelection sel;
-        sel.cursor = match;
-        sel.format.setBackground(QColor(255, 255, 100, 80));
-        selections.append(sel);
-    }
+    // ★ 从主题取色
+    ThemeManager& tm = ThemeManager::instance();
+    const QColor normalColor = tm.color(ThemeManager::UIElement::SearchMatchBackground);
+    const QColor currentColor = tm.color(ThemeManager::UIElement::SearchCurrentMatchBackground);
 
-    if (!m_matchCursors.isEmpty() && m_currentMatchIndex >= 0 && m_currentMatchIndex < m_matchCursors.size()) {
-        QTextEdit::ExtraSelection currentSel;
-        currentSel.cursor = m_matchCursors[m_currentMatchIndex];
-        currentSel.format.setBackground(QColor(255, 200, 50, 150));
-        selections.append(currentSel);
+    QList<QTextEdit::ExtraSelection> selections;
+    for (int i = 0; i < m_matchCursors.size(); ++i) {
+        QTextEdit::ExtraSelection sel;
+        sel.cursor = m_matchCursors[i];
+
+        // 当前匹配用更显眼的色
+        if (i == m_currentMatchIndex) {
+            sel.format.setBackground(currentColor);
+        } else {
+            sel.format.setBackground(normalColor);
+        }
+        selections.append(sel);
     }
 
     setExtraSelections(selections);
@@ -1717,15 +1802,38 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
 void TextEditor::scrollToMatch(int index)
 {
     if (index < 0 || index >= m_matchCursors.size()) return;
+
     setTextCursor(m_matchCursors[index]);
     centerCursor();
-    highlightAllMatches(m_lastFindText, m_caseSensitiveCheck->isChecked(), m_wholeWordCheck->isChecked());
+
+    ThemeManager& tm = ThemeManager::instance();
+    const QColor normalColor  = tm.color(ThemeManager::UIElement::SearchMatchBackground);
+    const QColor currentColor = tm.color(ThemeManager::UIElement::SearchCurrentMatchBackground);
+
+    QList<QTextEdit::ExtraSelection> selections;
+    selections.reserve(m_matchCursors.size());
+    for (int i = 0; i < m_matchCursors.size(); ++i) {
+        QTextEdit::ExtraSelection sel;
+        sel.cursor = m_matchCursors[i];
+        sel.format.setBackground(i == m_currentMatchIndex ? currentColor : normalColor);
+        selections.append(sel);
+    }
+    setExtraSelections(selections);
 }
 
 void TextEditor::clearHighlights()
 {
     m_matchCursors.clear();
-    setExtraSelections(QList<QTextEdit::ExtraSelection>());
+
+    // 只移除"查找匹配"高亮，保留其他 ExtraSelection
+    QList<QTextEdit::ExtraSelection> all = extraSelections();
+    static const QString kSearchTag = QStringLiteral("searchMatch");
+    for (int i = all.size() - 1; i >= 0; --i) {
+        if (all[i].format.property(QTextFormat::UserProperty).toString() == kSearchTag) {
+            all.removeAt(i);
+        }
+    }
+    setExtraSelections(all);
 }
 
 void TextEditor::onToggleReplaceMode()
@@ -3956,6 +4064,136 @@ void TextEditor::matchParentheses()
     setExtraSelections(extraSelections);
 }
 
+// ============================================================================
+//  粘贴多行文本时的自动缩进对齐
+//
+//  行为（对齐 JetBrains / VSCode）：
+//    - 有选区 → 走基类默认替换逻辑（用户是"覆盖"意图，不对齐）
+//    - 无选区 → 对纯文本做处理：
+//        1. 切分粘贴文本为行
+//        2. 计算"非空行的最小前导空白"（含 tab/空格，按 tab 宽度算）
+//        3. 每行去掉这段公共缩进（块内相对缩进保留）
+//        4. 每非空行前加"光标所在行的缩进"
+//        5. 组装并插入；首行的缩进由 Qt 自动继承光标行的空白，所以首行不加
+//    - 若非纯文本（有 HTML 等）→ 走基类默认（保留富文本粘贴能力）
+//
+//  注意：
+//    - 不处理"全空剪贴板"，直接交给基类
+//    - 不用 m_useSpacesForTab 转换空格↔Tab，否则用户从其他项目粘贴会串味
+//      —— 保留原有空白字符，只做数量上的对齐
+// ============================================================================
+void TextEditor::insertFromMimeData(const QMimeData* source)
+{
+    if (!source) {
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+
+    // ---- 1. 走基类处理"非纯文本"与"有选区"两种场景 ----
+    if (!source->hasText() || textCursor().hasSelection()) {
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+
+    const QString raw = source->text();
+    if (raw.isEmpty()) {
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+
+    // ---- 2. 切行 ----
+    //   Qt 剪贴板的换行统一为 '\n'，但保险起见也兼容 '\r\n'
+    QStringList lines = raw.split(QRegularExpression("[\r\n]"));
+    if (lines.isEmpty()) {
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+
+    // ---- 3. 计算非空行的最小前导空白（按 tab 宽度折算）----
+    const int tabWidth = qMax(1, m_tabWidth);
+    int minIndent = std::numeric_limits<int>::max();
+
+    auto indentWidthOf = [tabWidth](const QString& line) -> int {
+        int w = 0;
+        for (QChar c : line) {
+            if (c == ' ')       w += 1;
+            else if (c == '\t') w += tabWidth;
+            else                break;
+        }
+        return w;
+    };
+
+    for (const QString& l : lines) {
+        if (l.trimmed().isEmpty()) continue;   // 空行不参与
+        const int w = indentWidthOf(l);
+        if (w < minIndent) minIndent = w;
+    }
+    if (minIndent == std::numeric_limits<int>::max()) {
+        // 全是空行 → 走基类
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+
+    // ---- 4. 目标缩进 = 光标所在行的前导空白（原样保留，不转空格）----
+    const QTextBlock curBlock = textCursor().block();
+    const QString targetIndent = leadingWhitespace(curBlock.text());
+
+    // ---- 5. 逐行处理：去掉公共缩进 + 前加目标缩进 ----
+    auto stripIndent = [&](const QString& line) -> QString {
+        if (line.trimmed().isEmpty()) return line;   // 空行原样
+
+        int consumed = 0;
+        int i = 0;
+        while (i < line.length() && consumed < minIndent) {
+            if (line[i] == ' ')       consumed += 1;
+            else if (line[i] == '\t') consumed += tabWidth;
+            else                      break;
+            ++i;
+        }
+        return line.mid(i);
+    };
+
+    QStringList out;
+    out.reserve(lines.size());
+    for (int i = 0; i < lines.size(); ++i) {
+        const QString& l = lines[i];
+
+        if (l.trimmed().isEmpty()) {
+            // 空行：只留一个换行符
+            out.append(QString());
+            continue;
+        }
+
+        QString stripped = stripIndent(l);
+
+        if (i == 0) {
+            // 第一行不手动加 targetIndent：
+            //   Qt 的 insertText 会自动继承当前光标行的前导空白，
+            //   我们再加就会翻倍。让基类去处理首行。
+            out.append(stripped);
+        } else {
+            out.append(targetIndent + stripped);
+        }
+    }
+
+    // ---- 6. 组装 & 插入 ----
+    //   用 '\n' 拼接。首行的缩进由后续 setTextCursor 时的当前行继承机制提供。
+    //   更稳妥的做法：显式插入 '\n' + targetIndent 分隔，让 Qt 不做任何猜想。
+    const QString joined = out.join('\n');
+
+    QTextCursor cursor = textCursor();
+    cursor.beginEditBlock();
+
+    // 先删掉 Qt 默认会插入的"首行缩进"效果 —— 方法是直接把 joined 塞进去
+    // 第一行前的空白：因为我们 strip 过公共缩进，此时 stripped 首行是不带缩进的。
+    // 但光标本身处于 targetIndent 之后，所以文字会紧接着光标位置开始。
+    // 这正是我们要的：粘贴块第一行接在光标后，后续行前面加 targetIndent。
+    cursor.insertText(joined);
+
+    cursor.endEditBlock();
+    setTextCursor(cursor);
+}
+
 void TextEditor::mouseDoubleClickEvent(QMouseEvent* event)
 {
     QTextCursor cursor = cursorForPosition(event->pos());
@@ -4900,6 +5138,12 @@ void TextEditor::resizeEvent(QResizeEvent *event)
                                             lineNumberAreaWidth(), cr.height()));
         // qDebug() << "LineNumberArea geometry:" << m_lineNumberArea->geometry();
     }
+
+    if (m_findBar && m_findBarVisible) {
+        const int sbWidth = verticalScrollBar() ? verticalScrollBar()->width() : 0;
+        const int barWidth = width() - sbWidth;
+        m_findBar->setGeometry(0, height() - 40, barWidth, 40);
+    }
 }
 
 void TextEditor::contextMenuEvent(QContextMenuEvent *event)
@@ -4927,7 +5171,7 @@ void TextEditor::updateLineNumberAreaWidth()
 void TextEditor::highlightCurrentLine()
 {
     if (!m_highlightCurrentLine) return;
-
+    
     //  读取现有 selection（不清空！）
     QList<QTextEdit::ExtraSelection> all = extraSelections();
 
@@ -4944,6 +5188,7 @@ void TextEditor::highlightCurrentLine()
             ThemeManager::UIElement::CurrentLineHighlight);
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+        selection.format.setProperty(QTextFormat::UserProperty, QStringLiteral("searchMatch"));
         selection.cursor = textCursor();
         selection.cursor.clearSelection();
         all.append(selection);

@@ -13,6 +13,40 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+# ============================================================
+# Qt6 查找（带友好提示）
+# ============================================================
+# 先 QUIET 探测一次，便于在"完全找不到"时给出引导
+find_package(Qt6 QUIET COMPONENTS Core)
+
+if(NOT Qt6_FOUND AND NOT DEFINED CMAKE_PREFIX_PATH)
+    message(FATAL_ERROR
+        "\n"
+        "============================================================\n"
+        " 未找到 Qt6。SprintIDE 依赖 Qt 6.5+。\n"
+        "============================================================\n"
+        " 请通过 -DCMAKE_PREFIX_PATH=<Qt安装路径> 指定 Qt6 位置：\n"
+        "\n"
+        "   macOS (Homebrew):\n"
+        "     cmake .. -G Ninja -DCMAKE_PREFIX_PATH=$(brew --prefix qt@6)\n"
+        "\n"
+        "   macOS (Qt 官方安装器):\n"
+        "     cmake .. -G Ninja -DCMAKE_PREFIX_PATH=~/Qt/6.10.1/macos\n"
+        "\n"
+        "   Linux (Debian/Ubuntu 系统包):\n"
+        "     cmake .. -G Ninja\n"
+        "     （apt install qt6-base-dev qt6-tools-dev qt6-svg-dev 后通常能自动找到）\n"
+        "\n"
+        "   Windows (Qt 官方安装器):\n"
+        "     cmake .. -G Ninja -DCMAKE_PREFIX_PATH=C:/Qt/6.10.1/msvc2019_64\n"
+        "\n"
+        " 如果已安装 Qt 但仍报错，请确认 -DCMAKE_PREFIX_PATH 指向的是\n"
+        " “包含 lib/cmake/Qt6 的目录”（例如 /opt/homebrew/opt/qt@6）。\n"
+        "============================================================\n"
+    )
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg)
 # 查找Qt组件
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg)
 
