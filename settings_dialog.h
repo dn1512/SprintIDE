@@ -13,8 +13,16 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QPlainTextEdit>
+#include <QKeySequenceEdit>
+#include <QTableWidget>
+#include <QHeaderView>
 
 
+
+namespace SprintIDE {
+    class MainWindow; 
+}
+using SprintIDE::MainWindow;
 // ========== 设置页面基类 ==========
 class SettingsPage : public QWidget
 {
@@ -105,7 +113,9 @@ class SettingsDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit SettingsDialog(QWidget *parent = nullptr);
+    explicit SettingsDialog(MainWindow* mainWindow, QWidget *parent = nullptr);
+
+    MainWindow* mainWindow() const { return m_mainWindow; }
 
     // 外部调用：跳转到指定名字的设置页（例如 "Git"）
     void showCategory(const QString& name);
@@ -124,6 +134,7 @@ private:
     void saveAllSettings();
     void accept() override;
 
+    MainWindow*      m_mainWindow = nullptr;
     QListWidget      *m_categoryList;
     QStackedWidget   *m_stackedWidget;
     QDialogButtonBox *m_buttonBox;
@@ -148,6 +159,41 @@ private:
     QComboBox* m_langCombo = nullptr;
     QLabel*    m_hintLabel = nullptr;
     QString    m_initialLang;
+};
+
+// ========== 快捷键设置页面 ==========
+class ShortcutSettingsPage : public SettingsPage
+{
+    Q_OBJECT
+public:
+    explicit ShortcutSettingsPage(QWidget* parent = nullptr);
+    void loadSettings() override;
+    void saveSettings() override;
+
+private slots:
+    void onItemDoubleClicked(int row, int column);
+    void onResetRow();
+    void onResetAll();
+    void onKeySequenceEdited(int row, const QKeySequence& seq);
+
+private:
+    void populateTable();
+    void refreshRow(int row);
+    void detectConflicts();
+    int findRowById(const QString& id) const;
+
+    QTableWidget* m_table = nullptr;
+    QPushButton*  m_resetRowBtn = nullptr;
+    QPushButton*  m_resetAllBtn = nullptr;
+    QLabel*       m_statusLabel = nullptr;
+
+    // 表格行缓存（行号 → id / displayName / defaultShortcut）
+    struct RowData {
+        QString      id;
+        QString      displayName;
+        QKeySequence defaultShortcut;
+    };
+    QList<RowData> m_rows;
 };
 
 #endif // SETTINGS_DIALOG_H

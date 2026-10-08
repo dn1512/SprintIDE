@@ -16,6 +16,7 @@
 #include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QKeySequence>
 
 #include "text_editor.h"
 #include "tab_widget.h"
@@ -86,7 +87,34 @@ public:
     QString currentFilePath() const;
     QString projectPath() const;
     bool isCompiling() const;
+    // ========== AI 集成入口（供外部模块调用）==========
+    void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
+    void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
+    void aiRequestStopRun();    ///< 停止正在运行的程序
+    
+    // ========== 快捷键配置（供 ShortcutSettingsPage 使用）==========
+    struct ShortcutEntry {
+        QString    id;
+        QString    displayName;
+        QAction*   action          = nullptr;
+        QKeySequence defaultShortcut;
+    };
 
+    /// 返回所有已注册的可配置快捷键（按注册顺序）
+    QList<ShortcutEntry> configurableShortcuts() const;
+
+    /// 从 QSettings 读取用户自定义快捷键并应用到 action
+    /// 应在 setupMenuBar / setupToolBar 之后调用
+    void applyShortcutsFromConfig();
+
+    /// 更新单个 action 的快捷键（供设置页实时预览用）
+    void setShortcutForAction(const QString& id, const QKeySequence& seq);
+
+    /// 重置单个快捷键为默认值
+    void resetShortcutToDefault(const QString& id);
+
+    /// 重置全部快捷键为默认值
+    void resetAllShortcutsToDefault();
 protected:
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -267,10 +295,7 @@ public slots:
                   LogKind kind = LogKind::System,
                   const QString& source = QStringLiteral("IDE"));
 
-// ========== AI 集成入口（供外部模块调用）==========
-    void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
-    void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
-    void aiRequestStopRun();    ///< 停止正在运行的程序
+    
 
 signals:
     // 请求项目面板刷新
@@ -455,6 +480,15 @@ private:
     ChatPanel *m_aiChatPanel = nullptr;
     AiConnectionManager *m_aiConnMgr = nullptr;   // 阶段 0：连接管理器
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态
+    
+    // ========== 快捷键注册表 ==========
+    /// id → entry。id 用 "domain.action" 格式（如 "file.save"）
+    QMap<QString, ShortcutEntry> m_shortcutRegistry;
+
+    /// 注册一个可配置快捷键（在 action 创建后立即调用）
+    void registerShortcut(const QString& id,
+                          const QString& displayName,
+                          QAction* action);
     // ========== 本地历史管理器指针 ==========
     LocalHistory *m_localHistory = nullptr;
     // 存储每个 LSPClient 对应的 definition 信号连接

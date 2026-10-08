@@ -56,6 +56,7 @@
 #include <QSet>
 #include <QLocale>
 #include <QEvent>
+#include <QKeySequence>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -445,6 +446,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupStatusBar();
     setupDockWidgets();
     setupConnections();
+
+    // 应用用户自定义快捷键（必须在所有 action 创建完之后）
+    applyShortcutsFromConfig();
     setupDebugPanel();
     setupTerminalPanel();
     setupGitPanel();
@@ -829,6 +833,7 @@ void MainWindow::setupMenuBar()
     QAction *newFileAction = newMenu->addAction(QIcon(":/icons/icons/text.svg"), tr("文件..."));
     newFileAction->setShortcut(QKeySequence::New);
     connect(newFileAction, &QAction::triggered, this, &MainWindow::onNewFile);
+    registerShortcut(QStringLiteral("file.new"), tr("新建文件"), newFileAction);
 
     newMenu->addSeparator();
 
@@ -880,24 +885,28 @@ void MainWindow::setupMenuBar()
     quickOpenAction->setShortcut(QKeySequence::Open);          // Ctrl+O / Cmd+O
     quickOpenAction->setStatusTip(tr("输入文件名快速打开 (Ctrl+O)"));
     connect(quickOpenAction, &QAction::triggered, this, &MainWindow::onQuickOpen);
+    registerShortcut(QStringLiteral("file.quickOpen"), tr("快速打开"), quickOpenAction);
 
     // 传统打开对话框（改为 Ctrl+Alt+O，避免与快速打开冲突）
     QAction *openFileAction = openMenu->addAction(
         QIcon(":/icons/icons/open_file.svg"), tr("打开文件..."));
     openFileAction->setShortcut(QKeySequence("Ctrl+Alt+O"));
     connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
+    registerShortcut(QStringLiteral("file.open"), tr("打开文件"), openFileAction);
 
     QAction *openProjectAction = openMenu->addAction(
         QIcon(":/icons/icons/open_project.svg"), tr("项目"));
     openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
     connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
-
+    registerShortcut(QStringLiteral("file.openProject"), tr("打开项目"), openProjectAction);
+    
     fileMenu->addSeparator();
 
     QAction *saveFileAction = fileMenu->addAction(QIcon(":/icons/icons/save_file.svg"), tr("保存(&S)"));
     saveFileAction->setShortcut(QKeySequence::Save);
     connect(saveFileAction, &QAction::triggered, this, &MainWindow::onSaveFile);
-
+    registerShortcut(QStringLiteral("file.save"), tr("保存"), saveFileAction);
+    
     QAction *saveAllAction = fileMenu->addAction(QIcon(":/icons/icons/save_all.svg"), tr("保存全部(&A)"));
     saveAllAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
     connect(saveAllAction, &QAction::triggered, this, [this]() {
@@ -909,6 +918,7 @@ void MainWindow::setupMenuBar()
         }
         logInfo("已保存所有文件");
     });
+    registerShortcut(QStringLiteral("file.saveAll"), tr("保存全部"), saveAllAction);
 
     QAction *saveAsAction = fileMenu->addAction(tr("另存为(&A)"));
     connect(saveAsAction, &QAction::triggered, this, &MainWindow::onSaveAs);
@@ -918,36 +928,43 @@ void MainWindow::setupMenuBar()
     QAction *closeFileAction = fileMenu->addAction(QIcon(":/icons/icons/close_tab.svg"), tr("关闭(&C)"));
     closeFileAction->setShortcut(QKeySequence::Close);
     connect(closeFileAction, &QAction::triggered, this, &MainWindow::onCloseFile);
-
+    registerShortcut(QStringLiteral("file.close"), tr("关闭文件"), closeFileAction);
+    
     QAction *exitAction = fileMenu->addAction(tr("退出(&X)"));
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &MainWindow::onExit);
-
+    registerShortcut(QStringLiteral("file.exit"), tr("退出"), exitAction);
+    
     // ==================== 编辑菜单 ====================
     QMenu *editMenu = menuBar->addMenu(tr("编辑(&E)"));
 
     QAction *undoAction = editMenu->addAction(QIcon(":/icons/icons/undo.svg"), tr("撤销(&U)"));
     undoAction->setShortcut(QKeySequence::Undo);
     connect(undoAction, &QAction::triggered, this, &MainWindow::onUndo);
-
+    registerShortcut(QStringLiteral("edit.undo"), tr("撤销"), undoAction);
+    
     QAction *redoAction = editMenu->addAction(QIcon(":/icons/icons/redo.svg"), tr("重做(&R)"));
     redoAction->setShortcut(QKeySequence::Redo);
     connect(redoAction, &QAction::triggered, this, &MainWindow::onRedo);
-
+    registerShortcut(QStringLiteral("edit.redo"), tr("重做"), redoAction);
+    
     editMenu->addSeparator();
 
     QAction *cutAction = editMenu->addAction(QIcon(":/icons/icons/cut.svg"), tr("剪切(&T)"));
     cutAction->setShortcut(QKeySequence::Cut);
     connect(cutAction, &QAction::triggered, this, &MainWindow::onCut);
-
+    registerShortcut(QStringLiteral("edit.cut"), tr("剪切"), cutAction);
+    
     QAction *copyAction = editMenu->addAction(QIcon(":/icons/icons/copy.svg"), tr("复制(&C)"));
     copyAction->setShortcut(QKeySequence::Copy);
     connect(copyAction, &QAction::triggered, this, &MainWindow::onCopy);
-
+    registerShortcut(QStringLiteral("edit.copy"), tr("复制"), copyAction);
+    
     QAction *pasteAction = editMenu->addAction(QIcon(":/icons/icons/paste.svg"), tr("粘贴(&P)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, &MainWindow::onPaste);
-
+    registerShortcut(QStringLiteral("edit.paste"), tr("粘贴"), pasteAction);
+    
     editMenu->addSeparator();
 
     QAction *copyLineAction = editMenu->addAction(tr("复制行(&D)"));
@@ -958,7 +975,8 @@ void MainWindow::setupMenuBar()
             editor->duplicateLine();
         }
     });
-
+    registerShortcut(QStringLiteral("edit.copyLine"), tr("复制行"), copyLineAction);
+    
     QAction *deleteLineAction = editMenu->addAction(tr("删除行(&Y)"));
     deleteLineAction->setShortcut(QKeySequence("Ctrl+Y"));
     connect(deleteLineAction, &QAction::triggered, this, [this]() {
@@ -967,7 +985,8 @@ void MainWindow::setupMenuBar()
             editor->deleteLine();
         }
     });
-
+    registerShortcut(QStringLiteral("edit.deleteLine"), tr("删除行"), deleteLineAction);
+    
     // ========== Python 菜单 ==========
     QMenu* pythonMenu = menuBar->addMenu("Python(&P)");
 
@@ -1028,47 +1047,56 @@ void MainWindow::setupMenuBar()
     settingsAction->setShortcut(QKeySequence("Ctrl+,"));
     settingsAction->setMenuRole(QAction::PreferencesRole);  // 关键：让其在 macOS 下进入应用程序菜单
     connect(settingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
-
+    registerShortcut(QStringLiteral("edit.settings"), tr("设置"), settingsAction);
+    
     // ---------- 跳转到行 ----------
     QAction *gotoLineAction = editMenu->addAction(tr("跳转到行(&L)..."));
     gotoLineAction->setShortcut(QKeySequence("Ctrl+G"));   // macOS 上 = Cmd+G
     connect(gotoLineAction, &QAction::triggered, this, &MainWindow::onGotoLine);
-
+    registerShortcut(QStringLiteral("edit.gotoLine"), tr("跳转到行"), gotoLineAction);
+    
     editMenu->addSeparator();
 
     QAction *findAction = editMenu->addAction(tr("查找(&F)"));
     findAction->setShortcut(QKeySequence::Find);
     connect(findAction, &QAction::triggered, this, &MainWindow::onFind);
-
+    registerShortcut(QStringLiteral("edit.find"), tr("查找"), findAction);
+    
     QAction *replaceAction = editMenu->addAction(tr("替换(&R)"));
     replaceAction->setShortcut(QKeySequence("Ctrl+Shift+H"));
     connect(replaceAction, &QAction::triggered, this, &MainWindow::onReplace);
-
+    registerShortcut(QStringLiteral("edit.replace"), tr("替换"), replaceAction);
+    
     QAction *searchInFilesAction = editMenu->addAction(tr("在文件中查找(&F)..."));
     searchInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
     searchInFilesAction->setStatusTip(tr("在整个项目中搜索文本 (Ctrl+Shift+F)"));
     connect(searchInFilesAction, &QAction::triggered,
             this, &MainWindow::onSearchInFiles);
-
+    registerShortcut(QStringLiteral("edit.searchInFiles"), tr("在文件中查找"), searchInFilesAction);
+    
     QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), tr("格式化代码(&O)"));
     formatCodeAction->setShortcut(QKeySequence("Ctrl+Alt+L"));
     connect(formatCodeAction, &QAction::triggered, this, &MainWindow::onFormatCode);
-
+    registerShortcut(QStringLiteral("edit.formatCode"), tr("格式化代码"), formatCodeAction);
+    
     QAction *commentAction = editMenu->addAction(QIcon(":/icons/icons/comment_code.svg"), tr("注释(&C)"));
     commentAction->setShortcut(QKeySequence("Ctrl+/"));
     connect(commentAction, &QAction::triggered, this, &MainWindow::onComment);
-
+    registerShortcut(QStringLiteral("edit.comment"), tr("注释"), commentAction);
+    
     // ==================== 构建菜单 ====================
     QMenu *buildMenu = menuBar->addMenu(tr("构建(&B)"));
 
     QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译当前文件(&C)"));
     compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
     connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
-
+    registerShortcut(QStringLiteral("build.compileFile"), tr("编译当前文件"), compileFileAction);
+    
     QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译项目(&P)"));
     compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
     connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
-
+    registerShortcut(QStringLiteral("build.compileProject"), tr("编译项目"), compileProjectAction);
+    
     QAction *cleanBuildAction = buildMenu->addAction(tr("清理构建(&O)"));
     connect(cleanBuildAction, &QAction::triggered, this, &MainWindow::onCleanBuild);
 
@@ -1081,42 +1109,49 @@ void MainWindow::setupMenuBar()
     m_startDebugAction = debugMenu->addAction(QIcon(":/icons/icons/debug.svg"), tr("启动调试(&S)"));
     m_startDebugAction->setShortcut(QKeySequence("Ctrl+Shift+D"));
     connect(m_startDebugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
-
+    registerShortcut(QStringLiteral("debug.start"), tr("启动调试"), m_startDebugAction);
+    
     m_stopDebugAction = debugMenu->addAction(QIcon(":/icons/icons/stop.svg"),tr("停止调试(&T)"));
     m_stopDebugAction->setShortcut(QKeySequence("Ctrl+."));
     m_stopDebugAction->setEnabled(false);
     connect(m_stopDebugAction, &QAction::triggered, this, &MainWindow::onStopDebug);
-
+    registerShortcut(QStringLiteral("debug.stop"), tr("停止调试"), m_stopDebugAction);
+    
     debugMenu->addSeparator();
 
     m_stepOverAction = debugMenu->addAction(QIcon(":/icons/icons/stop_over.svg"), tr("步过(&N)"));
     m_stepOverAction->setShortcut(QKeySequence("F10"));
     m_stepOverAction->setEnabled(false);
     connect(m_stepOverAction, &QAction::triggered, this, &MainWindow::onStepOver);
-
+    registerShortcut(QStringLiteral("debug.stepOver"), tr("步过"), m_stepOverAction);
+    
     m_stepIntoAction = debugMenu->addAction(QIcon(":/icons/icons/step_into.svg"), tr("步入(&S)"));
     m_stepIntoAction->setShortcut(QKeySequence("F11"));
     m_stepIntoAction->setEnabled(false);
     connect(m_stepIntoAction, &QAction::triggered, this, &MainWindow::onStepInto);
-
+    registerShortcut(QStringLiteral("debug.stepInto"), tr("步入"), m_stepIntoAction);
+    
     m_stepOutAction = debugMenu->addAction(QIcon(":/icons/icons/step_out.svg"), tr("步出(&O)"));
     m_stepOutAction->setShortcut(QKeySequence("Shift+F11"));
     m_stepOutAction->setEnabled(false);
     connect(m_stepOutAction, &QAction::triggered, this, &MainWindow::onStepOut);
-
+    registerShortcut(QStringLiteral("debug.stepOut"), tr("步出"), m_stepOutAction);
+    
     debugMenu->addSeparator();
 
     m_continueAction = debugMenu->addAction(QIcon(":/icons/icons/run.svg"), tr("继续(&C)"));
     m_continueAction->setShortcut(QKeySequence("F5"));
     m_continueAction->setEnabled(false);
     connect(m_continueAction, &QAction::triggered, this, &MainWindow::onContinueDebug);
-
+    registerShortcut(QStringLiteral("debug.continue"), tr("继续"), m_continueAction);
+    
     debugMenu->addSeparator();
 
     m_addBreakpointAction = debugMenu->addAction(QIcon(":/icons/icons/toggle_break_point.svg"), tr("添加断点(&B)"));
     m_addBreakpointAction->setShortcut(QKeySequence("Ctrl+F8"));
     connect(m_addBreakpointAction, &QAction::triggered, this, &MainWindow::onAddBreakpoint);
-
+    registerShortcut(QStringLiteral("debug.addBreakpoint"), tr("添加断点"), m_addBreakpointAction);
+    
     // ==================== Git 菜单 ====================
     QMenu *gitMenu = menuBar->addMenu("Git(&G)");
 
@@ -1124,7 +1159,8 @@ void MainWindow::setupMenuBar()
     m_gitToggleAction->setShortcut(QKeySequence("Ctrl+Shift+G"));
     m_gitToggleAction->setStatusTip(tr("显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)"));
     connect(m_gitToggleAction, &QAction::triggered, this, &MainWindow::toggleGitDialog);
-
+    registerShortcut(QStringLiteral("git.toggle"), tr("打开 Git 窗口"), m_gitToggleAction);
+    
     gitMenu->addSeparator();
 
     m_gitInitAction = gitMenu->addAction(tr("初始化仓库(&I)"));
@@ -1133,7 +1169,8 @@ void MainWindow::setupMenuBar()
     m_gitCommitAction = gitMenu->addAction(tr("提交(&C)..."));
     m_gitCommitAction->setShortcut(QKeySequence("Ctrl+K"));
     connect(m_gitCommitAction, &QAction::triggered, this, &MainWindow::onGitCommit);
-
+    registerShortcut(QStringLiteral("git.commit"), tr("Git 提交"), m_gitCommitAction);
+    
     gitMenu->addSeparator();
 
     m_gitFetchAction = gitMenu->addAction(tr("获取(&F)"));
@@ -1150,7 +1187,8 @@ void MainWindow::setupMenuBar()
     m_gitRefreshAction = gitMenu->addAction(tr("刷新状态(&R)"));
     m_gitRefreshAction->setShortcut(QKeySequence("F5"));
     connect(m_gitRefreshAction, &QAction::triggered, this, &MainWindow::onGitRefresh);
-
+    registerShortcut(QStringLiteral("git.refresh"), tr("Git 刷新状态"), m_gitRefreshAction);
+    
     m_gitShowHistoryAction = gitMenu->addAction(tr("查看历史(&H)"));
     connect(m_gitShowHistoryAction, &QAction::triggered, this, &MainWindow::onGitShowHistory);
 
@@ -1187,7 +1225,8 @@ void MainWindow::setupMenuBar()
             m_terminalPanel->setVisible(!m_terminalPanel->isVisible());
         }
     });
-
+    registerShortcut(QStringLiteral("tools.terminal"), tr("终端"), terminalAction);
+    
     // ==================== 视图菜单 ====================
     QMenu *viewMenu = menuBar->addMenu(tr("视图(&V)"));
 
@@ -1203,6 +1242,7 @@ void MainWindow::setupMenuBar()
             m_bottomDockWidget->setVisible(checked);
         }
     });
+    registerShortcut(QStringLiteral("view.bottomPanel"), tr("底部面板"), toggleBottomPanelAction);
     m_toggleBottomPanelAction = toggleBottomPanelAction;   // 存成员，供后面同步状态
 
     viewMenu->addSeparator();
@@ -1219,6 +1259,7 @@ void MainWindow::setupMenuBar()
             d->projectDock->setVisible(checked);
         }
     });
+    registerShortcut(QStringLiteral("view.projectPanel"), tr("项目面板"), toggleProjectPanelAction);
     m_toggleProjectPanelAction = toggleProjectPanelAction;
 
     // ==================== 帮助菜单 ====================
@@ -1258,7 +1299,8 @@ void MainWindow::setupToolBar()
     m_runAction->setShortcut(QKeySequence("Ctrl+R"));
     m_runAction->setToolTip(tr("运行 (Ctrl+R)"));
     connect(m_runAction, &QAction::triggered, this, &MainWindow::onRun);
-
+    registerShortcut(QStringLiteral("build.run"), tr("运行"), m_runAction);
+    
     QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),tr("调试"));
     connect(debugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
 }
@@ -6179,7 +6221,7 @@ void MainWindow::onGitStatusLabelClicked()
 
 void MainWindow::onOpenGitSettingsFromPanel()
 {
-    SettingsDialog dlg(this);
+    SettingsDialog dlg(this, this);
     connect(&dlg, &SettingsDialog::aiServerRestartRequested,
             this, &MainWindow::onAIRestartRequested);
     connect(&dlg, &SettingsDialog::lspSettingsChanged,
@@ -7573,7 +7615,7 @@ QString MainWindow::findDebugger()
 
 void MainWindow::onCompileSettings()
 {
-    SettingsDialog dialog(this);
+    SettingsDialog dialog(this, this);
     connect(&dialog, &SettingsDialog::aiServerRestartRequested,
             this,   &MainWindow::onAIRestartRequested);
     connect(&dialog, &SettingsDialog::lspSettingsChanged,
@@ -7837,6 +7879,82 @@ bool MainWindow::runProject(const QString& projectPath, const QString& projectNa
     Q_UNUSED(projectPath);
     Q_UNUSED(projectName);
     return false;
+}
+
+// ============================================================================
+//  快捷键配置
+// ============================================================================
+
+void MainWindow::registerShortcut(const QString& id,
+                                  const QString& displayName,
+                                  QAction* action)
+{
+    if (!action || id.isEmpty()) return;
+
+    ShortcutEntry entry;
+    entry.id              = id;
+    entry.displayName     = displayName;
+    entry.action          = action;
+    entry.defaultShortcut = action->shortcut();
+
+    m_shortcutRegistry.insert(id, entry);
+}
+
+QList<MainWindow::ShortcutEntry> MainWindow::configurableShortcuts() const
+{
+    return m_shortcutRegistry.values();
+}
+
+void MainWindow::applyShortcutsFromConfig()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    for (auto it = m_shortcutRegistry.constBegin();
+         it != m_shortcutRegistry.constEnd(); ++it) {
+        const ShortcutEntry& entry = it.value();
+        if (!entry.action) continue;
+
+        const QString key = QStringLiteral("Shortcuts/") + entry.id;
+        if (!cfg->contains(key)) {
+            // 用户从未改过 → 保持默认
+            continue;
+        }
+
+        const QString stored = cfg->value(key).toString();
+        if (stored == QLatin1String("__EMPTY__")) {
+            // 用户显式清空（禁用快捷键）
+            entry.action->setShortcut(QKeySequence());
+        } else {
+            entry.action->setShortcut(QKeySequence(stored));
+        }
+    }
+}
+
+void MainWindow::setShortcutForAction(const QString& id, const QKeySequence& seq)
+{
+    auto it = m_shortcutRegistry.find(id);
+    if (it == m_shortcutRegistry.end()) return;
+    if (!it.value().action) return;
+    it.value().action->setShortcut(seq);
+}
+
+void MainWindow::resetShortcutToDefault(const QString& id)
+{
+    auto it = m_shortcutRegistry.find(id);
+    if (it == m_shortcutRegistry.end()) return;
+    if (!it.value().action) return;
+    it.value().action->setShortcut(it.value().defaultShortcut);
+}
+
+void MainWindow::resetAllShortcutsToDefault()
+{
+    for (auto it = m_shortcutRegistry.begin();
+         it != m_shortcutRegistry.end(); ++it) {
+        if (it.value().action) {
+            it.value().action->setShortcut(it.value().defaultShortcut);
+        }
+    }
 }
 
 } // namespace SprintIDE

@@ -4,6 +4,7 @@
 #include "config_manager.h"
 #include "compile_manager.h"
 #include "ai/ai_settings_page.h"
+#include "mainwindow.h"
 
 #include <QFileDialog>
 #include <QGroupBox>
@@ -22,6 +23,18 @@
 #include <QDebug>
 #include <QLabel>
 #include <QCoreApplication>
+#include <QKeySequenceEdit>
+#include <QHeaderView>
+#include <QMap>
+#include <QSet>
+#include <QMessageBox>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QApplication>
 
 #include "python/python_settings_page.h"
 #include "editor_settings_page.h"
@@ -931,11 +944,307 @@ void EnvironmentSettingsPage::onDetectSDK()
 }
 
 // ====================================================================
+// ShortcutSettingsPage 实现
+// ====================================================================
+
+ShortcutSettingsPage::ShortcutSettingsPage(QWidget* parent)
+    : SettingsPage(parent)
+{
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+    QLabel* infoLabel = new QLabel(
+        tr("双击「快捷键」列可修改。同一快捷键被多个操作占用时会标红。\n"
+           "修改后需点击「应用」或「确定」保存。"),
+        this);
+    infoLabel->setWordWrap(true);
+    infoLabel->setStyleSheet(
+        "QLabel { color: #888888; font-size: 10pt; margin-bottom: 8px; }");
+    mainLayout->addWidget(infoLabel);
+
+    // ---------- 表格 ----------
+    m_table = new QTableWidget(this);
+    m_table->setColumnCount(3);
+    m_table->setHorizontalHeaderLabels({tr("操作"), tr("快捷键"), tr("默认值")});
+    m_table->horizontalHeader()->setStretchLastSection(false);
+    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);   // 用双击自定义编辑器
+    m_table->setAlternatingRowColors(false);
+    m_table->verticalHeader()->setVisible(false);
+    mainLayout->addWidget(m_table);
+
+    // ---------- 底部按钮 ----------
+    QHBoxLayout* bottomLayout = new QHBoxLayout;
+    m_resetRowBtn = new QPushButton(tr("重置选中项"), this);
+    m_resetAllBtn = new QPushButton(tr("重置全部"), this);
+    m_statusLabel = new QLabel(this);
+    m_statusLabel->setStyleSheet("QLabel { color: #888888; }");
+
+    bottomLayout->addWidget(m_resetRowBtn);
+    bottomLayout->addWidget(m_resetAllBtn);
+    bottomLayout->addStretch();
+    bottomLayout->addWidget(m_statusLabel);
+
+    mainLayout->addLayout(bottomLayout);
+
+    connect(m_resetRowBtn, &QPushButton::clicked, this, &ShortcutSettingsPage::onResetRow);
+    connect(m_resetAllBtn, &QPushButton::clicked, this, &ShortcutSettingsPage::onResetAll);
+    connect(m_table, &QTableWidget::cellDoubleClicked,
+            this, &ShortcutSettingsPage::onItemDoubleClicked);
+}
+
+void ShortcutSettingsPage::loadSettings()
+{
+    populateTable();
+}
+
+void ShortcutSettingsPage::saveSettings()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    // 把表格的当前状态写回 ConfigManager
+    // 注意：action->setShortcut 已在编辑时实时应用（见 onKeySequenceEdited）
+    for (int row = 0; row < m_rows.size(); ++row) {
+        const RowData& rd = m_rows[row];
+
+        auto* edit = qobject_cast<QKeySequenceEdit*>(m_table->cellWidget(row, 1));
+        const QKeySequence seq = edit ? edit->keySequence()
+                                      : QKeySequence(m_table->item(row, 1)->text());
+        const QString key = QStringLiteral("Shortcuts/") + rd.id;
+
+        if (seq.isEmpty()) {
+            // 用户清空 → 存哨兵值
+            cfg->setValue(key, QStringLiteral("__EMPTY__"));
+        } else if (seq == rd.defaultShortcut) {
+            // 与默认一致 → 删掉配置项（回到"未自定义"状态）
+            cfg->remove(key);
+        } else {
+            cfg->setValue(key, seq.toString(QKeySequence::PortableText));
+        }
+    }
+}
+
+void ShortcutSettingsPage::populateTable()
+{
+    m_rows.clear();
+
+    // 从 MainWindow 拉取所有可配置项
+    // 通过 parent 链往上找 SettingsDialog，再找它的 mainWindow
+    MainWindow* mw = nullptr;
+    QWidget* p = parentWidget();
+    while (p) {
+        if (auto* dlg = qobject_cast<SettingsDialog*>(p)) {
+            mw = dlg->mainWindow();
+            break;
+        }
+        p = p->parentWidget();
+    }
+
+    if (!mw) {
+        m_table->setRowCount(0);
+        m_statusLabel->setText(tr("无法获取快捷键配置（未关联主窗口）"));
+        return;
+    }
+
+    const QList<MainWindow::ShortcutEntry> entries = mw->configurableShortcuts();
+
+    m_table->setRowCount(entries.size());
+    m_rows.reserve(entries.size());
+
+    ConfigManager* cfg = Application::instance().configManager();
+
+    for (int row = 0; row < entries.size(); ++row) {
+        const MainWindow::ShortcutEntry& e = entries[row];
+
+        RowData rd;
+        rd.id              = e.id;
+        rd.displayName     = e.displayName;
+        rd.defaultShortcut = e.defaultShortcut;
+        m_rows.append(rd);
+
+        // 列 0：操作名（只读）
+        auto* nameItem = new QTableWidgetItem(e.displayName);
+        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+        m_table->setItem(row, 0, nameItem);
+
+        // 列 1：QKeySequenceEdit 编辑器（实时应用）
+        auto* edit = new QKeySequenceEdit(this);
+        edit->setClearButtonEnabled(true);
+
+        // 读当前实际快捷键：优先 QSettings，否则默认
+        QKeySequence current = e.defaultShortcut;
+        if (cfg) {
+            const QString key = QStringLiteral("Shortcuts/") + e.id;
+            if (cfg->contains(key)) {
+                const QString stored = cfg->value(key).toString();
+                if (stored == QLatin1String("__EMPTY__")) {
+                    current = QKeySequence();
+                } else {
+                    current = QKeySequence(stored);
+                }
+            }
+        }
+        edit->setKeySequence(current);
+
+        connect(edit, &QKeySequenceEdit::keySequenceChanged,
+                this, [this, row](const QKeySequence& seq) {
+                    onKeySequenceEdited(row, seq);
+                });
+
+        m_table->setCellWidget(row, 1, edit);
+
+        // 列 2：默认值（只读）
+        auto* defItem = new QTableWidgetItem(
+            e.defaultShortcut.toString(QKeySequence::NativeText));
+        defItem->setFlags(defItem->flags() & ~Qt::ItemIsEditable);
+        m_table->setItem(row, 2, defItem);
+    }
+
+    detectConflicts();
+    m_statusLabel->setText(tr("共 %1 项可配置").arg(entries.size()));
+}
+
+void ShortcutSettingsPage::onItemDoubleClicked(int row, int column)
+{
+    if (column != 1) return;
+    // QKeySequenceEdit 自身处理双击进入编辑；这里只是保险
+    if (auto* w = m_table->cellWidget(row, 1)) {
+        w->setFocus();
+    }
+}
+
+void ShortcutSettingsPage::onKeySequenceEdited(int row, const QKeySequence& seq)
+{
+    if (row < 0 || row >= m_rows.size()) return;
+
+    MainWindow* mw = nullptr;
+    QWidget* p = parentWidget();
+    while (p) {
+        if (auto* dlg = qobject_cast<SettingsDialog*>(p)) {
+            mw = dlg->mainWindow();
+            break;
+        }
+        p = p->parentWidget();
+    }
+    if (!mw) return;
+
+    // 实时应用
+    mw->setShortcutForAction(m_rows[row].id, seq);
+
+    detectConflicts();
+}
+
+void ShortcutSettingsPage::onResetRow()
+{
+    const int row = m_table->currentRow();
+    if (row < 0 || row >= m_rows.size()) return;
+
+    MainWindow* mw = nullptr;
+    QWidget* p = parentWidget();
+    while (p) {
+        if (auto* dlg = qobject_cast<SettingsDialog*>(p)) {
+            mw = dlg->mainWindow();
+            break;
+        }
+        p = p->parentWidget();
+    }
+    if (!mw) return;
+
+    const RowData& rd = m_rows[row];
+    mw->resetShortcutToDefault(rd.id);
+
+    // 更新编辑器显示
+    if (auto* edit = qobject_cast<QKeySequenceEdit*>(m_table->cellWidget(row, 1))) {
+        QSignalBlocker b(edit);
+        edit->setKeySequence(rd.defaultShortcut);
+    }
+
+    detectConflicts();
+}
+
+void ShortcutSettingsPage::onResetAll()
+{
+    const auto reply = QMessageBox::question(
+        this, tr("重置全部快捷键"),
+        tr("确定要把所有快捷键恢复为默认值吗？"),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (reply != QMessageBox::Yes) return;
+
+    MainWindow* mw = nullptr;
+    QWidget* p = parentWidget();
+    while (p) {
+        if (auto* dlg = qobject_cast<SettingsDialog*>(p)) {
+            mw = dlg->mainWindow();
+            break;
+        }
+        p = p->parentWidget();
+    }
+    if (!mw) return;
+
+    mw->resetAllShortcutsToDefault();
+
+    for (int row = 0; row < m_rows.size(); ++row) {
+        if (auto* edit = qobject_cast<QKeySequenceEdit*>(m_table->cellWidget(row, 1))) {
+            QSignalBlocker b(edit);
+            edit->setKeySequence(m_rows[row].defaultShortcut);
+        }
+    }
+    detectConflicts();
+}
+
+void ShortcutSettingsPage::detectConflicts()
+{
+    // 收集所有非空快捷键 → 出现次数
+    QMap<QString, int> count;
+    QList<QKeySequence> all;
+
+    for (int row = 0; row < m_rows.size(); ++row) {
+        auto* edit = qobject_cast<QKeySequenceEdit*>(m_table->cellWidget(row, 1));
+        const QKeySequence seq = edit ? edit->keySequence() : QKeySequence();
+        all.append(seq);
+        if (!seq.isEmpty()) {
+            count[seq.toString(QKeySequence::PortableText)]++;
+        }
+    }
+
+    // 标记冲突行
+    const QColor conflictColor(0xFF, 0x55, 0x55, 0x40);   // 淡红
+    for (int row = 0; row < m_rows.size(); ++row) {
+        const QKeySequence& seq = all[row];
+        const bool conflict = !seq.isEmpty()
+                              && count.value(seq.toString(QKeySequence::PortableText)) > 1;
+
+        for (int col = 0; col < 3; ++col) {
+            QTableWidgetItem* item = m_table->item(row, col);
+            if (!item) continue;
+            if (conflict) {
+                item->setBackground(conflictColor);
+            } else {
+                item->setBackground(QBrush());
+            }
+        }
+    }
+}
+
+int ShortcutSettingsPage::findRowById(const QString& id) const
+{
+    for (int i = 0; i < m_rows.size(); ++i) {
+        if (m_rows[i].id == id) return i;
+    }
+    return -1;
+}
+
+// ====================================================================
 // SettingsDialog 实现
 // ====================================================================
 
-SettingsDialog::SettingsDialog(QWidget *parent)
+SettingsDialog::SettingsDialog(MainWindow* mainWindow, QWidget *parent)
     : QDialog(parent)
+    , m_mainWindow(mainWindow)
 {
     setWindowTitle(tr("设置"));
     resize(900, 600);
@@ -970,6 +1279,8 @@ void SettingsDialog::createUI()
 
     m_categoryList->addItem(tr("LSP 诊断"));
 
+    m_categoryList->addItem(tr("快捷键"));
+
     m_categoryList->addItem(tr("语言 / Language"));
 
     // 右侧堆叠页面
@@ -1003,7 +1314,12 @@ void SettingsDialog::createUI()
 
     LspSettingsPage* lspPage = new LspSettingsPage(this);
     m_stackedWidget->addWidget(lspPage);
-    m_pages.append(lspPage);    
+    m_pages.append(lspPage);
+
+    // 快捷键设置页
+    ShortcutSettingsPage* shortcutPage = new ShortcutSettingsPage(this);
+    m_stackedWidget->addWidget(shortcutPage);
+    m_pages.append(shortcutPage);
 
     // 语言设置页（放在最后，符合"系统级"配置的直觉位置）
     LanguageSettingsPage* langPage = new LanguageSettingsPage(this);

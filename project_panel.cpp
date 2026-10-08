@@ -50,7 +50,7 @@ static const QStringList SUPPORTED_EXTENSIONS = {
     "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx",
     "h", "hpp", "hh", "hxx", "h++", "doc", "docx",
     "txt", "md", "json", "xml", "html", "css", "js",
-    "ini", "cfg", "conf", "pro", "pri", "yml",
+    "ini", "cfg", "conf", "pro", "pri", "yml", "ts",
     "lightcppproj", "cmake", "makefile",
     "py", "go", "rs", "java", "cs", "php"
 };
