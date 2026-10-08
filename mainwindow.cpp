@@ -474,6 +474,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(d->projectPanel, &ProjectPanel::fileOpenRequested, this, &MainWindow::openFile);
+    connect(d->projectPanel, &ProjectPanel::fileCreated,       this, &MainWindow::openFile);
 
     // 初始化调试管理器
     m_debugManager = &DebugManager::instance();
@@ -1527,6 +1528,11 @@ void MainWindow::setupConnections()
             this, &MainWindow::onTabCloseRequested);
     connect(d->editorTabs, &TabWidget::currentChanged,
             this, &MainWindow::onTabCurrentChanged);
+    // 编辑器标签栏右键菜单
+    //   TabWidget 内部 CustomTabBar 已经在 contextMenuEvent 里发这个信号了，
+    //   这里只需要接住即可。pos 是全局坐标
+    connect(d->editorTabs, &TabWidget::contextMenuRequested,
+                this, &MainWindow::onTabContextMenuRequested);
     connect(d->projectPanel, &ProjectPanel::runTestRequested,
             this, [this](const QString& filePath, const QString& testFullName) {
                 // 执行测试
@@ -2619,10 +2625,87 @@ void MainWindow::onTabCurrentChanged(int index)
     }
 }
 
+// ============================================================================
+//  编辑器标签栏：右键菜单
+//
+//  信号来自 TabWidget::contextMenuRequested（内部由 CustomTabBar 发出）
+//    - index : 被右键的 tab 索引
+//    - pos   : 全局坐标（CustomTabBar 用的是 event->globalPos()）
+//
+//  关闭批量操作时索引会漂移，所以：
+//    1. 用 QPointer<QWidget> 锁定目标 tab 本身，而不是只记 index
+//    2. 倒序关闭，避免 removeTab 造成的索引错位
+//    3. 用户取消保存时中止整个批处理（与 PyCharm 行为一致）
+// ============================================================================
 void MainWindow::onTabContextMenuRequested(int index, const QPoint &pos)
 {
-    Q_UNUSED(index);
-    Q_UNUSED(pos);
+    if (!d->editorTabs) return;
+    if (index < 0 || index >= d->editorTabs->count()) return;
+
+    // 用 QPointer 锁定目标 tab，防止菜单 exec() 阻塞期间 tab 列表被其他事件改动
+    QPointer<QWidget> target = d->editorTabs->widget(index);
+    if (!target) return;
+
+    const int total = d->editorTabs->count();
+
+    QMenu menu(this);
+    QAction* actClose       = menu.addAction(tr("关闭"));
+    QAction* actCloseLeft   = menu.addAction(tr("关闭左侧文件"));
+    QAction* actCloseRight  = menu.addAction(tr("关闭右侧文件"));
+    QAction* actCloseOthers = menu.addAction(tr("关闭其他文件"));
+
+    // 边界禁用，语义更清晰
+    actCloseLeft  ->setEnabled(index > 0);
+    actCloseRight ->setEnabled(index < total - 1);
+    actCloseOthers->setEnabled(total > 1);
+
+    QAction* chosen = menu.exec(pos);   // pos 已是全局坐标
+    if (!chosen) return;
+
+    // exec() 期间 tab 顺序可能变化 → 用 target 重新定位当前索引
+    const int cur = d->editorTabs->indexOf(target);
+    if (cur < 0) return;                // target 已被别的路径关掉，安全退出
+
+    // ---------- 关闭 ----------
+    if (chosen == actClose) {
+        closeEditorTab(cur);
+        return;
+    }
+
+    // ---------- 关闭左侧 ----------
+    // 倒序：[cur-1, cur-2, ..., 0]
+    if (chosen == actCloseLeft) {
+        for (int i = cur - 1; i >= 0; --i) {
+            if (!closeEditorTab(i)) break;   // 用户取消 → 中止
+        }
+        return;
+    }
+
+    // ---------- 关闭右侧 ----------
+    // 倒序：[count-1, ..., cur+1]
+    if (chosen == actCloseRight) {
+        for (int i = d->editorTabs->count() - 1; i > cur; --i) {
+            if (!closeEditorTab(i)) break;
+        }
+        return;
+    }
+
+    // ---------- 关闭其他 ----------
+    // 先右后左：右侧关闭不影响左侧和 cur 的绝对位置
+    if (chosen == actCloseOthers) {
+        for (int i = d->editorTabs->count() - 1; i > cur; --i) {
+            if (!closeEditorTab(i)) return;
+        }
+        for (int i = cur - 1; i >= 0; --i) {
+            if (!closeEditorTab(i)) return;
+        }
+        // 关完后把 target 切到前台
+        const int finalIdx = d->editorTabs->indexOf(target);
+        if (finalIdx >= 0) {
+            d->editorTabs->setCurrentIndex(finalIdx);
+        }
+        return;
+    }
 }
 
 // ==================== 编辑器信号处理 ====================
@@ -5043,84 +5126,108 @@ QProcess* MainWindow::createRunProcess(const QString& program,
     if (!env.isEmpty())     p->setProcessEnvironment(env);
     p->setProcessChannelMode(QProcess::MergedChannels);
 
-    connect(p, &QProcess::readyReadStandardOutput, this, [this, p]() {
-        const QString out = QString::fromLocal8Bit(p->readAllStandardOutput());
-        if (!out.isEmpty()) {
-            logInfo(out);
+    auto lineBuf = std::make_shared<QByteArray>();
+
+    // 处理一个 chunk：拆出所有完整行，逐行写入日志
+    auto handleChunk = [this, lineBuf](const QByteArray& chunk, bool isError) {
+        if (chunk.isEmpty()) return;
+        lineBuf->append(chunk);
+
+        int pos;
+        while ((pos = lineBuf->indexOf('\n')) >= 0) {
+            QByteArray rawLine = lineBuf->left(pos);
+            lineBuf->remove(0, pos + 1);
+
+            // Windows 的 CRLF：把尾部 '\r' 去掉
+            if (rawLine.endsWith('\r')) rawLine.chop(1);
+
+            const QString line = QString::fromLocal8Bit(rawLine);
+            if (line.isEmpty()) continue;   // 过滤空行，避免 UI 上出现"空白 entry"
+
+            if (isError) logError(line);
+            else         logInfo(line);
+        }
+    };
+
+    connect(p, &QProcess::readyReadStandardOutput, this, [this, p, handleChunk]() {
+            const QByteArray chunk = p->readAllStandardOutput();
+            if (chunk.isEmpty()) return;
             if (m_aiRunInProgress) {
-                m_aiRunOutputBuffer += out;
+                m_aiRunOutputBuffer += QString::fromLocal8Bit(chunk);
             }
-        }
-    });
-    connect(p, &QProcess::readyReadStandardError, this, [this, p]() {
-        const QString err = QString::fromLocal8Bit(p->readAllStandardError());
-        if (!err.isEmpty()) {
-            logError(err.toHtmlEscaped());
+            handleChunk(chunk, /*isError=*/false);
+        });
+
+        connect(p, &QProcess::readyReadStandardError, this, [this, p, handleChunk]() {
+            const QByteArray chunk = p->readAllStandardError();
+            if (chunk.isEmpty()) return;
             if (m_aiRunInProgress) {
-                m_aiRunOutputBuffer += err;
+                m_aiRunOutputBuffer += QString::fromLocal8Bit(chunk);
             }
-        }
-    });
-    connect(p, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, p](int code, QProcess::ExitStatus status) {
-        if (m_runningProcess == p) {
-            // 先补读 socket 缓冲（进程被杀时可能有残留没被 readyRead 取走）
-            const QByteArray remainingOut = p->readAllStandardOutput();
-            const QByteArray remainingErr = p->readAllStandardError();
-            if (!remainingOut.isEmpty()) {
-                const QString s = QString::fromLocal8Bit(remainingOut);
-                logInfo(s);
-                if (m_aiRunInProgress) m_aiRunOutputBuffer += s;
-            }
-            if (!remainingErr.isEmpty()) {
-                const QString s = QString::fromLocal8Bit(remainingErr);
-                logError(s.toHtmlEscaped());
-                if (m_aiRunInProgress) m_aiRunOutputBuffer += s;
-            }
+            handleChunk(chunk, /*isError=*/true);
+        });
 
-            if (m_stoppingProcess) {
-                // 主动停止：不管 status 是什么，都是正常的
-                logInfo("程序已停止");
-            } else if (status == QProcess::NormalExit) {
-                logInfo(QString("[%1] 进程结束，退出码: %2")
-                            .arg(QTime::currentTime().toString("hh:mm:ss"))
-                            .arg(code));
-            } else {
-                // 真正的崩溃（用户没点停止，但 status != NormalExit）
-                logError(QString("[%1] 进程异常崩溃（退出码: %2）")
-                             .arg(QTime::currentTime().toString("hh:mm:ss"))
-                             .arg(code));
-            }
-            // ---- AI 触发的运行：发信号 ----
-            if (m_aiRunStopInProgress) {
-                m_aiRunStopInProgress = false;
-                m_aiRunInProgress = false;
-
-                QString logText = m_aiRunOutputBuffer;
-                constexpr int kMaxLog = 64 * 1024;
-                if (logText.size() > kMaxLog) {
-                    logText = logText.left(kMaxLog)
-                              + QStringLiteral("\n...[truncated]");
+        connect(p, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, [this, p, lineBuf, handleChunk](int code, QProcess::ExitStatus status) {
+            if (m_runningProcess == p) {
+                // ---- 补读 socket 缓冲里可能残留的内容 ----
+                const QByteArray remainingOut = p->readAllStandardOutput();
+                const QByteArray remainingErr = p->readAllStandardError();
+                if (m_aiRunInProgress) {
+                    m_aiRunOutputBuffer += QString::fromLocal8Bit(remainingOut);
+                    m_aiRunOutputBuffer += QString::fromLocal8Bit(remainingErr);
                 }
-                m_aiRunOutputBuffer.clear();
-                emit aiRunStopped(code, logText);
-            } else if (m_aiRunInProgress) {
-                m_aiRunInProgress = false;
+                handleChunk(remainingOut, /*isError=*/false);
+                handleChunk(remainingErr, /*isError=*/true);
 
-                QString logText = m_aiRunOutputBuffer;
-                constexpr int kMaxLog = 64 * 1024;
-                if (logText.size() > kMaxLog) {
-                    logText = logText.left(kMaxLog)
-                              + QStringLiteral("\n...[truncated]");
+                // ---- v8.4 关键：flush 行缓冲里的最后半行 ----
+                // 场景：进程最后一条输出没有 '\n'（比如 C 的 printf 不带 \n 就退出）
+                if (!lineBuf->isEmpty()) {
+                    QByteArray tail = *lineBuf;
+                    lineBuf->clear();
+                    if (tail.endsWith('\r')) tail.chop(1);
+                    const QString line = QString::fromLocal8Bit(tail);
+                    if (!line.isEmpty()) logInfo(line);
                 }
-                m_aiRunOutputBuffer.clear();
-                emit aiRunFinished(code, logText);
-            }
 
-            markProcessFinished();
-        }
-        p->deleteLater();
-    });
+                // ---- 以下为原有 finished 逻辑，保持不变 ----
+                if (m_stoppingProcess) {
+                    logInfo("程序已停止");
+                } else if (status == QProcess::NormalExit) {
+                    logInfo(QString("[%1] 进程结束，退出码: %2")
+                                .arg(QTime::currentTime().toString("hh:mm:ss"))
+                                .arg(code));
+                } else {
+                    logError(QString("[%1] 进程异常崩溃（退出码: %2）")
+                                 .arg(QTime::currentTime().toString("hh:mm:ss"))
+                                 .arg(code));
+                }
+
+                if (m_aiRunStopInProgress) {
+                    m_aiRunStopInProgress = false;
+                    m_aiRunInProgress = false;
+                    QString logText = m_aiRunOutputBuffer;
+                    constexpr int kMaxLog = 64 * 1024;
+                    if (logText.size() > kMaxLog) {
+                        logText = logText.left(kMaxLog) + QStringLiteral("\n...[truncated]");
+                    }
+                    m_aiRunOutputBuffer.clear();
+                    emit aiRunStopped(code, logText);
+                } else if (m_aiRunInProgress) {
+                    m_aiRunInProgress = false;
+                    QString logText = m_aiRunOutputBuffer;
+                    constexpr int kMaxLog = 64 * 1024;
+                    if (logText.size() > kMaxLog) {
+                        logText = logText.left(kMaxLog) + QStringLiteral("\n...[truncated]");
+                    }
+                    m_aiRunOutputBuffer.clear();
+                    emit aiRunFinished(code, logText);
+                }
+
+                markProcessFinished();
+            }
+            p->deleteLater();
+        });
     connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError err) {
         if (m_runningProcess != p) return;
     
@@ -7168,10 +7275,12 @@ void MainWindow::onRun()
 
         // 构建命令参数
         QStringList args;
+        args << "-u";
         args << sourceFile;
 
         // ===== 构造环境变量（保留！后面 QProcess 要用） =====
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert("PYTHONUNBUFFERED", "1");
         if (model && !model->venvPath().isEmpty()) {
 #ifdef Q_OS_WIN
             QString binDir = model->venvPath() + "/Scripts";
