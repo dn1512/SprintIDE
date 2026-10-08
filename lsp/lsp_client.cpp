@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QStandardPaths>
+#include <QUrl>
 
 #include "utils/java_utils.h"
 
@@ -307,6 +308,71 @@ void LSPClient::requestDefinition(const QString& filePath, int line, int column)
     sendMessage(request);
 }
 
+void LSPClient::requestCodeAction(const QString& filePath,
+                                  int startLine, int startColumn,
+                                  int endLine,   int endColumn,
+                                  const QList<LSPDiagnostic>& diagnostics)
+{
+    if (!isReady()) return;
+
+    // ---------- textDocument ----------
+    QJsonObject params;
+    params["textDocument"] = QJsonObject{
+        { "uri", uriFromPath(filePath) }
+    };
+
+    // ---------- range（0-based，调用方已经转过）----------
+    QJsonObject range;
+    range["start"] = QJsonObject{{"line", startLine}, {"character", startColumn}};
+    range["end"]   = QJsonObject{{"line", endLine},   {"character", endColumn}};
+    params["range"] = range;
+
+    // ---------- context.diagnostics ----------
+    //   LSP 要求把"该位置的诊断"原样回传。
+    //   若为空，clangd 会返回空 codeAction 列表。
+    QJsonArray diagArr;
+    for (const LSPDiagnostic& d : diagnostics) {
+        QJsonObject diag;
+        QJsonObject r;
+        // LSPDiagnostic 里 line/column 是 1-based，转回 0-based
+        const int sl = qMax(0, d.line - 1);
+        const int sc = qMax(0, d.column - 1);
+        // 我们没有 end 信息，就把 range 收成一个点；clangd 对此宽容
+        r["start"] = QJsonObject{{"line", sl}, {"character", sc}};
+        r["end"]   = QJsonObject{{"line", sl}, {"character", sc + 1}};
+        diag["range"] = r;
+
+        diag["message"] = d.message;
+        // severity: 1=error, 2=warning, 3=info, 4=hint
+        int sev = 1;
+        if (d.severity == "warning")          sev = 2;
+        else if (d.severity == "information") sev = 3;
+        else if (d.severity == "hint")        sev = 4;
+        diag["severity"] = sev;
+
+        if (!d.code.isEmpty()) diag["code"] = d.code;
+        diag["source"] = "lsp";
+
+        diagArr.append(diag);
+    }
+    params["context"] = QJsonObject{{"diagnostics", diagArr}};
+
+    // ---------- 发包 ----------
+    QJsonObject request;
+    request["jsonrpc"] = "2.0";
+    request["id"]      = m_messageId++;
+    request["method"]  = "textDocument/codeAction";
+    request["params"]  = params;
+
+    m_codeActionRequestId = request["id"].toInt();
+    m_codeActionFilePath  = filePath;
+    m_pendingRequests[m_codeActionRequestId] = "codeAction";
+
+    sendMessage(request);
+    qDebug() << "[LSP] codeAction requested for" << filePath
+             << "line" << startLine << "diagnostics" << diagArr.size();
+}
+
 void LSPClient::handleDefinitionResponse(const QJsonObject& response)
 {
     // 1. 获取 result
@@ -348,6 +414,75 @@ void LSPClient::handleDefinitionResponse(const QJsonObject& response)
     } else {
         qWarning() << "[LSP] targetFile is empty, NOT emitting definitionReceived";
     }
+}
+
+void LSPClient::handleCodeActionResponse(const QJsonObject& response)
+{
+    QList<LSPCodeAction> actions;
+    const QString filePath = m_codeActionFilePath;
+
+    // ---------- 1. 顶层可能是 array 或 null ----------
+    const QJsonValue result = response["result"];
+    if (!result.isArray()) {
+        // null：无可用动作
+        emit codeActionReceived(filePath, actions);
+        return;
+    }
+
+    const QJsonArray arr = result.toArray();
+
+    // ---------- 2. 逐个解析 ----------
+    for (const QJsonValue& v : arr) {
+        if (!v.isObject()) continue;
+        const QJsonObject obj = v.toObject();
+
+        LSPCodeAction action;
+        action.title       = obj["title"].toString();
+        action.kind        = obj["kind"].toString();
+        action.isPreferred = obj["isPreferred"].toBool(false);
+
+        // 只处理带 edit 的（Command 形式暂不支持）
+        const QJsonValue editVal = obj["edit"];
+        if (!editVal.isObject()) continue;
+        const QJsonObject editObj = editVal.toObject();
+
+        // WorkspaceEdit.changes 是 { uri: TextEdit[] }
+        const QJsonObject changes = editObj["changes"].toObject();
+        for (auto it = changes.begin(); it != changes.end(); ++it) {
+            const QString uri = it.key();
+            const QJsonArray edits = it.value().toArray();
+            if (edits.isEmpty()) continue;
+
+            LSPWorkspaceEdit wsEdit;
+            wsEdit.filePath = QUrl(uri).toLocalFile();
+            if (wsEdit.filePath.isEmpty()) continue;
+
+            for (const QJsonValue& ev : edits) {
+                const QJsonObject eo = ev.toObject();
+                const QJsonObject r  = eo["range"].toObject();
+                const QJsonObject s  = r["start"].toObject();
+                const QJsonObject e  = r["end"].toObject();
+
+                LSPTextEdit te;
+                te.startLine   = s["line"].toInt();
+                te.startColumn = s["character"].toInt();
+                te.endLine     = e["line"].toInt();
+                te.endColumn   = e["character"].toInt();
+                te.newText     = eo["newText"].toString();
+                wsEdit.edits.append(te);
+            }
+            if (!wsEdit.edits.isEmpty()) {
+                action.edits.append(wsEdit);
+            }
+        }
+
+        if (!action.edits.isEmpty() && !action.title.isEmpty()) {
+            actions.append(action);
+        }
+    }
+
+    qDebug() << "[LSP] codeAction received" << actions.size() << "for" << filePath;
+    emit codeActionReceived(filePath, actions);
 }
 
 // ========== 文档管理 ==========
@@ -648,8 +783,10 @@ void LSPClient::handleResponse(const QJsonObject& response)
         emit serverStarted();
     } else if (method == "completion") {
         handleCompletionResponse(response);
-    } else if (method == "definition") {   // ⬅️ 新增这一行
+    } else if (method == "definition") {
         handleDefinitionResponse(response);
+    } else if (method == "codeAction") {
+        handleCodeActionResponse(response);
     }
 
     m_pendingRequests.remove(id);

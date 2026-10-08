@@ -18,9 +18,40 @@
 #include <QDir>
 #include <memory>   // std::make_unique
 #include <QStandardPaths>
+#include <QProcess>
 
 // 使用命名空间SprintIDE
 using namespace SprintIDE;
+
+static void adoptLoginShellEnvironment()
+{
+#ifdef Q_OS_MAC
+    // ---- 1. 确定用户的登录 shell ----
+    QString shell = qEnvironmentVariable("SHELL");
+    if (shell.isEmpty()) shell = "/bin/zsh";
+
+    // ---- 2. 启动登录 shell，让 env 输出环境变量 ----
+    QProcess proc;
+    proc.start(shell, {"-l", "-c", "env"});
+    if (!proc.waitForFinished(3000)) {
+        qWarning() << "[main] 获取登录 shell 环境超时，跳过";
+        return;
+    }
+
+    // ---- 3. 只采纳 PATH，其他变量不动 ----
+    const QByteArray raw = proc.readAllStandardOutput();
+    for (const QByteArray& line : raw.split('\n')) {
+        if (!line.startsWith("PATH=")) continue;
+
+        const QString newPath = QString::fromUtf8(line.mid(5));
+        if (!newPath.isEmpty()) {
+            qputenv("PATH", newPath.toUtf8());
+            qDebug() << "[main] PATH 已采纳登录 shell 环境";
+        }
+        break;
+    }
+#endif
+}
 
 /**
  * @brief 应用程序主入口
@@ -30,6 +61,7 @@ using namespace SprintIDE;
  */
 int main(int argc, char *argv[])
 {
+    adoptLoginShellEnvironment();
     // 创建QApplication实例
     QApplication app(argc, argv);
 

@@ -29,6 +29,30 @@ struct LSPCompletionItem {
     int kindCode;      // LSP 原始 kind 码（用于过滤）
 };
 
+/// 一个文本编辑操作（对应 LSP 的 TextEdit）
+struct LSPTextEdit {
+    int startLine    = 0;    // 0-based（LSP 原生）
+    int startColumn  = 0;
+    int endLine      = 0;
+    int endColumn    = 0;
+    QString newText;
+};
+
+/// 一个文件的编辑集
+struct LSPWorkspaceEdit {
+    QString filePath;                 // 本地绝对路径
+    QList<LSPTextEdit> edits;
+};
+
+/// 一个可用的代码动作
+struct LSPCodeAction {
+    QString title;                    // 菜单项显示文字："Insert #include <cstdio>"
+    QString kind;                     // 可选："quickfix", "refactor.rewrite" …
+    bool isPreferred = false;
+    // 简化：只保留 workspace edit；LSP command 形式暂不支持
+    QList<LSPWorkspaceEdit> edits;
+};
+
 class LSPClient : public QObject {
     Q_OBJECT
 
@@ -43,6 +67,20 @@ public:
     bool isServerRunning() const;
 
     void requestDefinition(const QString& filePath, int line, int column);
+    
+    /**
+     * @brief 请求某位置的代码动作（Quick Fix）
+     * @param filePath 文件路径
+     * @param startLine    诊断起止行（0-based）
+     * @param startColumn  诊断起止列（0-based）
+     * @param endLine
+     * @param endColumn
+     * @param diagnostics  该行的诊断列表（原样透传给 LSP）
+     */
+    void requestCodeAction(const QString& filePath,
+                           int startLine, int startColumn,
+                           int endLine,   int endColumn,
+                           const QList<LSPDiagnostic>& diagnostics);
 
     // 文档管理
     void openDocument(const QString& filePath, const QString& content);
@@ -85,6 +123,12 @@ signals:
     void completionReceived(const QString& filePath, const QList<LSPCompletionItem>& items);
 
     void definitionReceived(const QString& filePath, int line, int column);
+    
+    /**
+     * @brief 代码动作响应（可为空列表，表示没有可用修复）
+     */
+    void codeActionReceived(const QString& filePath,
+                            const QList<LSPCodeAction>& actions);
 private slots:
     void onServerReadyRead();
     void onServerErrorRead();
@@ -105,6 +149,10 @@ private:
     QString uriFromPath(const QString& path) const;
     QString pathFromUri(const QString& uri) const;
     QByteArray buildMessage(const QJsonObject& message);
+    
+    void handleCodeActionResponse(const QJsonObject& response);
+    int  m_codeActionRequestId = -1;
+    QString m_codeActionFilePath;
 
     QProcess* m_process;
     int m_messageId;

@@ -295,7 +295,10 @@ public slots:
                   LogKind kind = LogKind::System,
                   const QString& source = QStringLiteral("IDE"));
 
-    
+    // Quick Fix 请求中转
+    void onQuickFixRequested(const QString& filePath,
+                             int startLine, int startColumn,
+                             int endLine,   int endColumn);
 
 signals:
     // 请求项目面板刷新

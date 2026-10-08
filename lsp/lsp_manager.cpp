@@ -455,42 +455,13 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
 
 LSPConfig LSPManager::getPythonLSPConfig() const
 {
-    // 检测 Node.js
-    bool nodeExists = false;
-    QProcess nodeTest;
-    nodeTest.start("node", {"--version"});
-    if (nodeTest.waitForStarted(1000) && nodeTest.waitForFinished(1000)) {
-        nodeExists = (nodeTest.exitCode() == 0);
-    }
-
     LSPConfig config;
     config.languageId = "python";
     config.hasCompileCommands = false;
 
-    if (nodeExists) {
-        // 检测 npx 是否可用
-        QProcess npxTest;
-        npxTest.start("npx", {"--version"});
-        if (npxTest.waitForStarted(2000) && npxTest.waitForFinished(2000) && npxTest.exitCode() == 0) {
-            config.command = "npx";
-            config.arguments = {"pyright-langserver", "--stdio"};
-            config.serverName = "pyright (via npx)";
-        } else {
-            // 尝试直接运行 pyright-langserver
-            QProcess directTest;
-            directTest.start("pyright-langserver", {"--version"});
-            if (directTest.waitForFinished(2000) && directTest.exitCode() == 0) {
-                config.command = "pyright-langserver";
-                config.arguments = {"--stdio"};
-                config.serverName = "pyright (global)";
-            } else {
-                config = getFallbackPythonLSPConfig();
-            }
-        }
-    } else {
-        config = getFallbackPythonLSPConfig();
-    }
-
+    config.serverName = "pylsp";
+    config.command = "pylsp";       // 实际启动时会被替换为 "<interpreter> -m pylsp"
+    config.arguments = {};
     return config;
 }
 

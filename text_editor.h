@@ -39,6 +39,7 @@ namespace SprintIDE {
 // 前向声明
 class LineNumberArea;
 class LanguageHighlighter;
+struct LSPCodeAction;
 
 /**
  * @brief 错误/警告标记
@@ -142,6 +143,8 @@ public:
     bool hasErrorMarker(int line) const;
     bool hasWarningMarker(int line) const;
     QList<ErrorMarker> getErrorMarkers() const;
+    QList<ErrorMarker> getWarningMarkers() const;
+    void setHoveredErrorLine(int line);
 
     // ========== 内联查找栏 ==========
     void showFindBar();
@@ -150,6 +153,20 @@ public:
     bool isFindBarVisible() const;
     void findNext();
     void findPrevious();
+    
+    // ========== Quick Fix（错误修复） ==========
+    /// 显示指定行的 quick-fix 菜单（globalPos 是屏幕坐标）
+    void showQuickFixMenuForLine(int line, const QPoint& globalPos);
+
+    /// 收集指定行可用的修复方案（从缓存的 LSP codeAction 结果里取）
+    QList<LSPCodeAction> codeActionsForLine(int line) const;
+
+    /// 接收到 MainWindow 转发来的 LSP codeAction 结果
+    void onCodeActionReceived(const QString& filePath,
+                              const QList<LSPCodeAction>& actions);
+
+    /// 应用一个 LSP 代码动作到本文档（暂不支持跨文件）
+    bool applyCodeAction(const LSPCodeAction& action);
 
     // ========== 提供对protected成员的访问（用于LineNumberArea）==========
     QTextBlock firstVisibleBlock() const { return QPlainTextEdit::firstVisibleBlock(); }
@@ -296,6 +313,17 @@ signals:
     void replaceCompleted(int count);
 
     void completionRequested(const QString& filePath, int line, int column);
+    
+    /// 用户请求对某行执行 Quick Fix（点击错误标记 / Alt+Enter）
+    /// 参数（均为 1-based，行号从 1 开始）：
+    ///   filePath    —— 触发文件
+    ///   startLine   —— 诊断起止行
+    ///   startColumn —— 起始列
+    ///   endLine     —— 结束行（可等于 startLine）
+    ///   endColumn   —— 结束列
+    void quickFixRequested(const QString& filePath,
+                           int startLine, int startColumn,
+                           int endLine,   int endColumn);
 
     /// 文档内容变化已防抖，供 LSP 发送 didChange 使用
     void documentChangedForLsp(const QString& filePath, const QString& content);
@@ -310,6 +338,8 @@ signals:
     // 当用户输入 a-z 时，把上下文发给 LSP 补全（不同于 completionRequested）
     void completionRequestedAt(const QString& filePath, int line, int column,
                                const QString& prefix);
+                               
+    void quickFixTriggeredByClick(int line, const QPoint& globalPos);
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -448,6 +478,17 @@ private:
     QSet<int> m_disabledBreakpoints;      // 被禁用（灰色）的断点行
 
     QMap<int, QString> m_inlineValues;   // 行号 → 显示的文本
+    
+    // ========== Quick Fix（错误修复） ==========
+    /// 鼠标悬停/光标停留的"错误行"（1-based，-1 = 无）
+    /// 影响：行号区红点变大变实、行内波浪线加粗
+    int m_hoveredErrorLine = -1;
+
+    /// LSP codeAction 结果缓存：起始行（1-based） → 该行的可用修复
+    QHash<int, QList<LSPCodeAction>> m_codeActionsByLine;
+
+    /// 正在等待 LSP codeAction 响应的目标行（-1 = 无）
+    int m_codeActionPendingLine = -1;
 
     // ========== 绘制相关方法 ==========
     void drawBreakpointMarkers(QPainter *painter, const QRect &rect);
@@ -665,9 +706,12 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent* e) override;
+    void leaveEvent(QEvent* e) override;
 
 private:
     TextEditor *m_editor;
+    int m_hoveredLine = -1;
 };
 
 }

@@ -11,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QComboBox>
 #include <QLabel>
+#include <QProcessEnvironment>
 
 namespace SprintIDE {
 
@@ -50,8 +51,10 @@ private:
     void setupUI();
     void appendOutput(const QString& text, bool isError = false);
     void updatePrompt();
-    void updateVenvForDirectory(const QString& dir);  // 新增
-    void updateVenvDisplay();                         // 新增
+    void updateVenvForDirectory(const QString& dir);
+    void updateVenvDisplay();
+    // 构造终端子进程环境（含 SDK 变量 + 虚拟环境）
+    QProcessEnvironment buildChildEnvironment() const;
 
     QTextEdit* m_outputWidget;
     QLineEdit* m_inputWidget;

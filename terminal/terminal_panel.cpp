@@ -13,6 +13,8 @@
 #include "python/python_virtual_env.h"
 #include "python/python_project_model.h"
 #include "theme_manager.h"
+#include "Application.h"
+#include "config_manager.h"
 
 namespace SprintIDE {
 
@@ -160,6 +162,86 @@ QString TerminalPanel::workingDirectory() const
     return m_workingDirectory;
 }
 
+// ============================================================================
+//  helper：把 dir 插到 PATH 头；若 PATH 为空，先用系统默认补齐
+// ============================================================================
+static QString prependToPath(const QProcessEnvironment& env, const QString& dir)
+{
+    QString path = env.value("PATH");
+
+    // macOS GUI 进程的 systemEnvironment 里 PATH 可能为空
+    // 补一个最小可用的默认值，避免后续 shell 找不到基本命令
+    if (path.isEmpty()) {
+        path = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:"
+               "/usr/sbin:/sbin";
+    }
+
+    // 去重：dir 已在 PATH 里先移除，避免重复累积
+    QStringList parts = path.split(QDir::listSeparator(),
+                                   Qt::SkipEmptyParts);
+    parts.removeAll(dir);
+
+    parts.prepend(dir);
+    return parts.join(QDir::listSeparator());
+}
+
+// ============================================================================
+//  构造终端子进程的环境
+//
+//  顺序（后面的覆盖前面的）：
+//    1. 系统环境（systemEnvironment）
+//    2. 项目 SDK 环境（Sdk/Environment 里的所有 key，原样注入）
+//    3. PYTHON_HOME 特判：把它所在的 bin 目录加进 PATH 头部
+//    4. 虚拟环境：把 venv/bin 加进 PATH 头部，并设置 VIRTUAL_ENV
+//
+//  这样 IDE 终端里的 `which python3` 会先命中用户配置的解释器。
+// ============================================================================
+QProcessEnvironment TerminalPanel::buildChildEnvironment() const
+{
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    // ---------- 1. 注入项目 SDK 环境变量 ----------
+    ConfigManager* cfg = Application::instance().configManager();
+    if (cfg) {
+        const QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+        for (auto it = sdkEnv.begin(); it != sdkEnv.end(); ++it) {
+            const QString key = it.key();
+            const QString val = it.value().toString();
+            if (!key.isEmpty() && !val.isEmpty()) {
+                env.insert(key, val);
+            }
+        }
+
+        // ---------- 2. PYTHON_HOME 特判：加 PATH 头 ----------
+        //   PYTHON_HOME 在本项目里的语义是"python 可执行文件完整路径"
+        //   （例如 /usr/local/bin/python3 或 /path/to/venv/bin/python），
+        //   所以取它的 absolutePath() 才是要加进 PATH 的 bin 目录。
+        const QString pyHome = sdkEnv.value("PYTHON_HOME").toString();
+        if (!pyHome.isEmpty()) {
+            QFileInfo fi(pyHome);
+            const QString binDir = fi.isDir() ? pyHome : fi.absolutePath();
+            if (!binDir.isEmpty() && QDir(binDir).exists()) {
+                env.insert("PATH", prependToPath(env, binDir));   // ← 用 helper
+            }
+        }
+    }
+
+    // ---------- 3. 虚拟环境优先（在 SDK 之上） ----------
+    if (!m_currentVenvPath.isEmpty()) {
+    #ifdef Q_OS_WIN
+        const QString binDir = QDir(m_currentVenvPath).absoluteFilePath("Scripts");
+    #else
+        const QString binDir = QDir(m_currentVenvPath).absoluteFilePath("bin");
+    #endif
+        if (QDir(binDir).exists()) {
+            env.insert("PATH", prependToPath(env, binDir));   // ← 用 helper
+            env.insert("VIRTUAL_ENV", m_currentVenvPath);
+        }
+    }
+
+    return env;
+}
+
 void TerminalPanel::executeCommand(const QString& command)
 {
     if (command.trimmed().isEmpty()) {
@@ -192,28 +274,14 @@ void TerminalPanel::executeCommand(const QString& command)
     m_process->setWorkingDirectory(m_workingDirectory);
     m_process->setProcessChannelMode(QProcess::MergedChannels);
 
-    // ========== 关键修改：设置环境变量以激活虚拟环境 ==========
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-
-    // 如果检测到虚拟环境，将虚拟环境的 bin 目录添加到 PATH 最前面
-    if (!m_currentVenvPath.isEmpty()) {
-#ifdef Q_OS_WIN
-        QString binDir = QDir(m_currentVenvPath).absoluteFilePath("Scripts");
-#else
-        QString binDir = QDir(m_currentVenvPath).absoluteFilePath("bin");
-#endif
-        if (QDir(binDir).exists()) {
-            QString path = env.value("PATH");
-            env.insert("PATH", binDir + QDir::listSeparator() + path);
-
-            // 设置 VIRTUAL_ENV 环境变量
-            env.insert("VIRTUAL_ENV", m_currentVenvPath);
-
-            appendOutput(tr("已自动激活虚拟环境: ") + m_currentVenvPath, false);
-        }
-    }
-
+    // 环境 = 系统 + Sdk/Environment（含 PYTHON_HOME）+ 虚拟环境
+    QProcessEnvironment env = buildChildEnvironment();
     m_process->setProcessEnvironment(env);
+
+    // 日志提示（保持原有可观测性）
+    if (!m_currentVenvPath.isEmpty()) {
+        appendOutput(tr("已自动激活虚拟环境: ") + m_currentVenvPath, false);
+    }
 
     connect(m_process, &QProcess::readyReadStandardOutput,
             this, &TerminalPanel::onProcessOutput);

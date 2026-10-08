@@ -2427,6 +2427,8 @@ void MainWindow::openFile(const QString &path)
                     m_cppDebugger->setBreakpoints(m_debugManager->getBreakpoints());
                 }
             });
+    connect(editor, &TextEditor::quickFixRequested,
+                this, &MainWindow::onQuickFixRequested);
     // ---- 应用主题 ----
     bool isDark = ThemeManager::instance().isDarkTheme();
     editor->applyTheme(isDark ? "dark" : "light");
@@ -2468,7 +2470,7 @@ void MainWindow::openFile(const QString &path)
         m_languageLabel->setText("Unknown");
     }
 
-    // ---- LSP 打开文档（原有） ----
+    // ---- LSP 打开文档 ----
     if (m_lspManager) {
         QString projectPath = d->currentProjectPath.isEmpty() ?
                                   QFileInfo(path).absolutePath() :
@@ -2476,13 +2478,10 @@ void MainWindow::openFile(const QString &path)
 
         LSPClient *client = m_lspManager->getClientForFile(path, projectPath);
         if (client) {
-            static QSet<LSPClient*> connectedClients;
-            if (!connectedClients.contains(client)) {
-                connect(client, &LSPClient::diagnosticsReceived,
-                        this, &MainWindow::onLSPDiagnostics);
-                connectedClients.insert(client);
-                qDebug() << "LSP: diagnostics signal connected for client";
-            }
+            // 用 Qt::UniqueConnection 替代函数静态 Set
+            connect(client, &LSPClient::diagnosticsReceived,
+                    this, &MainWindow::onLSPDiagnostics,
+                    Qt::UniqueConnection);
 
             if (client->isReady()) {
                 client->openDocument(path, editor->toPlainText());
@@ -2578,6 +2577,8 @@ void MainWindow::createNewEditorTab(const QString& title)
                 }
             });
     connect(editor, &TextEditor::breakpointToggled, this, &MainWindow::onBreakpointToggled);
+    connect(editor, &TextEditor::quickFixRequested,
+                this, &MainWindow::onQuickFixRequested);
     // qDebug() << "breakpointToggled signal connected for editor:" << editor;
     bool isDark = ThemeManager::instance().isDarkTheme();
     editor->applyTheme(isDark ? "dark" : "light");
@@ -3533,6 +3534,78 @@ void MainWindow::onDefinitionReceived(const QString& file, int line, int column)
     te->gotoLine(line);
     te->setFocus();
     te->highlightLine(line);
+}
+
+void MainWindow::onQuickFixRequested(const QString& filePath,
+                                     int startLine, int startColumn,
+                                     int endLine,   int endColumn)
+{
+    if (filePath.isEmpty() || !m_lspManager) return;
+
+    TextEditor* editor = findEditorByFilePath(filePath);
+    if (!editor) return;
+
+    const QString projectRoot = d->currentProjectPath.isEmpty()
+                                    ? QFileInfo(filePath).absolutePath()
+                                    : d->currentProjectPath;
+
+    LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
+    if (!client) return;
+
+    // ---- 组装该行的诊断列表 ----
+    //   从编辑器里拿 error/warning markers（它们就是 LSP 诊断的镜像）
+    QList<LSPDiagnostic> diags;
+    for (const ErrorMarker& m : editor->getErrorMarkers()) {
+        if (m.line - 1 != startLine) continue;
+        LSPDiagnostic d;
+        d.filePath = m.filePath;
+        d.line     = m.line;
+        d.column   = m.column;
+        d.message  = m.message;
+        d.severity = m.severity;   // "error" / "warning"
+        diags.append(d);
+    }
+    // 警告标记：TextEditor 需要暴露 getWarningMarkers()（如还没有，加上）
+    for (const ErrorMarker& m : editor->getWarningMarkers()) {
+        if (m.line - 1 != startLine) continue;
+        LSPDiagnostic d;
+        d.filePath = m.filePath;
+        d.line     = m.line;
+        d.column   = m.column;
+        d.message  = m.message;
+        d.severity = m.severity;
+        diags.append(d);
+    }
+
+    // ---- codeActionReceived 一次性 connect（成员函数槽 + UniqueConnection）----
+    //   注意：需要在 TextEditor 上接收（因为 onCodeActionReceived 是它的方法）
+    connect(client, &LSPClient::codeActionReceived,
+            editor, &TextEditor::onCodeActionReceived,
+            Qt::UniqueConnection);
+
+    // ---- 客户端未就绪 → 等 serverReady ----
+    if (!client->isReady()) {
+        QPointer<LSPClient> clientPtr = client;
+        auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(client, &LSPClient::serverReady, this,
+                           [clientPtr, filePath, startLine, startColumn,
+                            endLine, endColumn, diags, connPtr]() {
+                               if (clientPtr && clientPtr->isReady()) {
+                                   clientPtr->requestCodeAction(
+                                       filePath,
+                                       startLine, startColumn,
+                                       endLine, endColumn,
+                                       diags);
+                               }
+                               QObject::disconnect(*connPtr);
+                           });
+        return;
+    }
+
+    client->requestCodeAction(filePath,
+                              startLine, startColumn,
+                              endLine, endColumn,
+                              diags);
 }
 
 // 辅助方法

@@ -198,15 +198,19 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
 
             // ========== 4. 错误/警告标记（保留手绘，形状简单更快） ==========
             if (m_editor->hasErrorMarker(lineNumber)) {
-                const int iconSize = 12;
-                const int iconX = width() - 30;
-                const int iconY = static_cast<int>(top + (bottom - top) / 2
-                                                   - iconSize / 2);
-                painter.setBrush(QColor(255, 50, 50));
+                const bool hovered = (lineNumber == m_hoveredLine);
+                const int iconSize = hovered ? 14 : 12;
+                const int iconX = width() - 30 - (hovered ? 1 : 0);
+                const int iconY = static_cast<int>(top + (bottom - top) / 2 - iconSize / 2);
+            
+                QColor errColor(255, 50, 50);
+                if (!hovered) errColor.setAlpha(170);   // 悬停实心、否则半透明
+                painter.setBrush(errColor);
                 painter.setPen(Qt::NoPen);
                 painter.drawEllipse(iconX, iconY, iconSize, iconSize);
+            
                 painter.setPen(QPen(Qt::white, 2));
-                const int pad = 3;
+                const int pad = hovered ? 4 : 3;
                 painter.drawLine(iconX + pad, iconY + pad,
                                  iconX + iconSize - pad, iconY + iconSize - pad);
                 painter.drawLine(iconX + iconSize - pad, iconY + pad,
@@ -253,6 +257,17 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
         return;
     }
 
+    //   圆点区域：x ∈ [width-30-2, width-30+14]
+    const int errIconLeft = width() - 32;
+    const int errIconRight = width() - 16;
+    if (event->button() == Qt::LeftButton
+        && x >= errIconLeft && x <= errIconRight
+        && (m_editor->hasErrorMarker(line) || m_editor->hasWarningMarker(line))) {
+    
+        emit m_editor->quickFixTriggeredByClick(line, event->globalPosition().toPoint());
+        return;
+    }
+
     //    不可折叠行的折叠区不拦截，交给下方断点逻辑
     if (x < foldAreaWidth && m_editor->isFoldableBlock(line)) {
         m_editor->toggleFold(line);
@@ -267,6 +282,27 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
 
     // 4. 落在行号数字区 → 转发给编辑器（选中行、拖选等）
     m_editor->mousePressEvent(event);
+}
+
+void LineNumberArea::mouseMoveEvent(QMouseEvent* e)
+{
+    const int line = m_editor->cursorForPosition(e->pos()).blockNumber() + 1;
+    if (line != m_hoveredLine) {
+        m_hoveredLine = line;
+        m_editor->setHoveredErrorLine(line);   // ← 通知编辑器同步（用于波浪线加粗）
+        update();
+    }
+    QWidget::mouseMoveEvent(e);
+}
+
+void LineNumberArea::leaveEvent(QEvent* e)
+{
+    if (m_hoveredLine != -1) {
+        m_hoveredLine = -1;
+        m_editor->setHoveredErrorLine(-1);
+        update();
+    }
+    QWidget::leaveEvent(e);
 }
 
 TextEditor::TextEditor(QWidget *parent)
@@ -310,6 +346,11 @@ TextEditor::TextEditor(QWidget *parent)
     viewport()->setMouseTracking(true);
 
     setupFindBar();
+    
+    connect(this, &TextEditor::quickFixTriggeredByClick,
+            this, [this](int line, const QPoint& pos) {
+                showQuickFixMenuForLine(line, pos);
+            });
 }
 
 TextEditor::~TextEditor()
@@ -1552,6 +1593,19 @@ QList<ErrorMarker> TextEditor::getErrorMarkers() const
     return m_errorMarkers;
 }
 
+QList<ErrorMarker> TextEditor::getWarningMarkers() const
+{
+    return m_warningMarkers;
+}
+
+void TextEditor::setHoveredErrorLine(int line)
+{
+    if (m_hoveredErrorLine == line) return;
+    m_hoveredErrorLine = line;
+    viewport()->update();
+    if (m_lineNumberArea) m_lineNumberArea->update();
+}
+
 void TextEditor::onErrorMarkerTimer()
 {
     update();
@@ -1657,6 +1711,131 @@ void TextEditor::findPrevious()
     if (m_findBarVisible && !m_matchCursors.isEmpty()) {
         onFindPreviousClicked();
     }
+}
+
+void TextEditor::showQuickFixMenuForLine(int line, const QPoint& globalPos)
+{
+    if (line < 1 || line > lineCount()) return;
+
+    // 1. 若本地缓存里没有，先请求 LSP
+    if (!m_codeActionsByLine.contains(line)) {
+        m_codeActionPendingLine = line;
+
+        // 组装该行的诊断范围（用于 LSP codeAction 的 context）
+        int startCol = 0, endCol = 0;
+        QString msg;
+        bool hasErr = false;
+        for (const ErrorMarker& m : m_errorMarkers) {
+            if (m.line == line) {
+                startCol = qMax(0, m.column - 1);
+                endCol   = startCol + 1;
+                hasErr = true;
+                break;
+            }
+        }
+        if (!hasErr) {
+            for (const ErrorMarker& m : m_warningMarkers) {
+                if (m.line == line) {
+                    startCol = qMax(0, m.column - 1);
+                    endCol   = startCol + 1;
+                    break;
+                }
+            }
+        }
+
+        const QTextBlock block = document()->findBlockByNumber(line - 1);
+        const int endLine0 = line - 1;                  // 0-based
+        const int startLine0 = line - 1;
+
+        // 通知外部：请发 LSP codeAction 请求
+        emit quickFixRequested(m_filePath,
+                               startLine0, startCol,
+                               endLine0,   endCol);
+        // 同时弹一个"正在获取…"占位菜单？ 简单起见，直接返回，
+        // 等 onCodeActionReceived() 再弹。下面第 2 步处理这条路径。
+        Q_UNUSED(block);
+        return;
+    }
+
+    // 2. 有缓存 → 直接弹菜单
+    QMenu menu(this);
+    const QList<LSPCodeAction> actions = m_codeActionsByLine.value(line);
+    if (actions.isEmpty()) {
+        QAction* a = menu.addAction(tr("无可用修复"));
+        a->setEnabled(false);
+    } else {
+        for (const LSPCodeAction& act : actions) {
+            QAction* a = menu.addAction(act.title);
+            if (act.isPreferred) {
+                QFont f = a->font();
+                f.setBold(true);
+                a->setFont(f);
+            }
+            connect(a, &QAction::triggered, this, [this, act]() {
+                applyCodeAction(act);
+            });
+        }
+    }
+    menu.exec(globalPos);
+}
+
+void TextEditor::onCodeActionReceived(const QString& filePath,
+                                      const QList<LSPCodeAction>& actions)
+{
+    if (filePath != m_filePath) return;
+
+    const int line = m_codeActionPendingLine;
+    m_codeActionPendingLine = -1;
+    if (line < 0) return;
+
+    m_codeActionsByLine.insert(line, actions);
+
+    // 用户请求时如果菜单已弹出，这里再弹一次；简单做法就是立刻弹
+    const QPoint globalPos = viewport()->mapToGlobal(
+        cursorRect().bottomLeft());
+    showQuickFixMenuForLine(line, globalPos);
+}
+
+bool TextEditor::applyCodeAction(const LSPCodeAction& action)
+{
+    // 简化：只应用"编辑当前文件"的动作。跨文件编辑暂不支持。
+    QTextCursor cursor(document());
+
+    cursor.beginEditBlock();
+    for (const LSPWorkspaceEdit& wsEdit : action.edits) {
+        if (wsEdit.filePath != m_filePath) continue;   // 跨文件跳过
+
+        // 从后往前应用，避免位置漂移
+        QList<LSPTextEdit> sorted = wsEdit.edits;
+        std::sort(sorted.begin(), sorted.end(),
+                  [](const LSPTextEdit& a, const LSPTextEdit& b) {
+                      if (a.startLine != b.startLine)
+                          return a.startLine > b.startLine;
+                      return a.startColumn > b.startColumn;
+                  });
+
+        for (const LSPTextEdit& e : sorted) {
+            const int sPos =
+                document()->findBlockByNumber(e.startLine).position() + e.startColumn;
+            const int ePos =
+                document()->findBlockByNumber(e.endLine).position() + e.endColumn;
+
+            cursor.setPosition(sPos);
+            cursor.setPosition(ePos, QTextCursor::KeepAnchor);
+            cursor.insertText(e.newText);
+        }
+    }
+    cursor.endEditBlock();
+
+    // 缓存失效：这次编辑后诊断会重算，LSP 会发新的 publishDiagnostics
+    m_codeActionsByLine.clear();
+
+    return true;
+}
+
+QList<LSPCodeAction> TextEditor::codeActionsForLine(int line) const
+{
+    return m_codeActionsByLine.value(line);
 }
 
 // ============================================================
@@ -2269,7 +2448,8 @@ void TextEditor::paintEvent(QPaintEvent *event)
             int y = startY + ((x / waveLength) % 2 == 0 ? -amplitude : amplitude);
             path.lineTo(x + waveLength/2, y);
         }
-        painter.setPen(QPen(QColor(200, 160, 0), 1));
+        const bool hovered = (marker.line == m_hoveredErrorLine);
+        QPen pen(QColor(200, 160, 0), hovered ? 3 : 1);
         painter.drawPath(path);
     }
 
@@ -2679,6 +2859,18 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
                 setCursor(Qt::PointingHandCursor);
             }
             updateDefinitionHighlight();
+        }
+    }
+
+    // Alt+Enter → 当前行 Quick Fix
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+        && (event->modifiers() & Qt::AltModifier)) {
+        const int line = currentLine();
+        if (hasErrorMarker(line) || hasWarningMarker(line)) {
+            const QPoint globalPos = viewport()->mapToGlobal(
+                cursorRect().bottomLeft());
+            showQuickFixMenuForLine(line, globalPos);
+            return;
         }
     }
 
