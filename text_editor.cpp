@@ -860,6 +860,27 @@ bool TextEditor::saveFile(const QString &source)
         }
     }
 
+    // 保存前去除每行行尾空白（trim trailing whitespace）
+    //   避免"连续回车遗留的缩进空白"被写入文件
+    {
+        QTextCursor cur(document());
+        cur.beginEditBlock();
+        QTextBlock block = document()->firstBlock();
+        while (block.isValid()) {
+            QString text = block.text();
+            int end = text.length();
+            while (end > 0 && (text[end-1] == ' ' || text[end-1] == '\t')) --end;
+            if (end < text.length()) {
+                QTextCursor c(block);
+                c.movePosition(QTextCursor::EndOfBlock);
+                c.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, text.length() - end);
+                c.removeSelectedText();
+            }
+            block = block.next();
+        }
+        cur.endEditBlock();
+    }
+
     stream << toPlainText();
     file.close();
 
@@ -4055,9 +4076,9 @@ void TextEditor::autoIndentAfterReturn()
     const QString prevIndent  = leadingWhitespace(prevText);
 
     //  空行不继承缩进
-    if (prevTrimmed.isEmpty()) {
-        return;
-    }
+    // if (prevTrimmed.isEmpty()) {
+        // return;
+    // }
 
     // ---- 先做字符串前缀判断（O(前缀长度)），无触发就快速返回 ----
     const bool mayIndent = m_editorRules.endsWithIndentTrigger(prevTrimmed);
@@ -4492,8 +4513,18 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     }
 
     // ---- 4. 目标缩进 = 光标所在行的前导空白（原样保留，不转空格）----
-    const QTextBlock curBlock = textCursor().block();
-    const QString targetIndent = leadingWhitespace(curBlock.text());
+    const QTextCursor cur = textCursor();
+    const QTextBlock curBlock = cur.block();
+    const int cursorCol = cur.positionInBlock();
+    const int indentCol = leadingIndentWidth(curBlock.text());
+
+    QString targetIndent = leadingWhitespace(curBlock.text());
+    if (cursorCol > indentCol) {
+        // 光标在缩进区之后：补足到光标列的额外空格
+        //   （用空格而非 Tab，因为这一段是"代码中间的对齐"，
+        //    Tab 语义是"缩进级别"，不适合表达"对齐到某一列"）
+        targetIndent += QString(cursorCol - indentCol, ' ');
+    }
 
     // ---- 5. 逐行处理：去掉公共缩进 + 前加目标缩进 ----
     auto stripIndent = [&](const QString& line) -> QString {
