@@ -363,6 +363,7 @@ TextEditor::~TextEditor()
 
 void TextEditor::initEditor()
 {
+    setObjectName("TextEditor");
     setLineWrapMode(QPlainTextEdit::NoWrap);
 
 
@@ -576,19 +577,19 @@ void TextEditor::applyDefaultPalette()
     // 默认情况下，让Qt使用系统主题
 
     // 使用CSS样式确保文本显示一致
-    QString styleSheet = QString(
-                             "QPlainTextEdit {"
-                             "  font-family: '%1', monospace;"
-                             "  font-size: %2pt;"
-                             "  line-height: 1.2;"
-                             "  font-weight: normal;"
-                             "}"
-                             "QPlainTextEdit QTextBlock {"
-                             "  vertical-align: middle;"
-                             "}"
-                             ).arg(font().family()).arg(font().pointSize());
+    // QString styleSheet = QString(
+                             // "QPlainTextEdit {"
+                             // "  font-family: '%1', monospace;"
+                             // "  font-size: %2pt;"
+                             // "  line-height: 1.2;"
+                             // "  font-weight: normal;"
+                             // "}"
+                             // "QPlainTextEdit QTextBlock {"
+                             // "  vertical-align: middle;"
+                             // "}"
+                             // ).arg(font().family()).arg(font().pointSize());
 
-    setStyleSheet(styleSheet);
+    // setStyleSheet(styleSheet);
 
     // 更新当前行高亮设置
     if (!m_highlightCurrentLine) {

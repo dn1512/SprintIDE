@@ -477,7 +477,7 @@ MainWindow::MainWindow(QWidget *parent)
     // }
 
     // 设置深色主题
-    // ThemeManager& tm = ThemeManager::instance();
+    ThemeManager& tm = ThemeManager::instance();
     // tm.setTheme(ThemeManager::ThemeType::Dark);
 
     setupUI();
@@ -493,12 +493,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupTerminalPanel();
     setupGitPanel();
 
-    // connect(&tm, &ThemeManager::themeChanged,
-    //         this, &MainWindow::onThemeChanged);
-    // connect(&tm, &ThemeManager::fontChanged, this, [this]() {
-    //     // 字体或字号变化 → 遍历所有编辑器重新应用
-    //     applyCurrentTheme();
-    // });
+    connect(&tm, &ThemeManager::themeChanged,
+            this, &MainWindow::onThemeChanged);
+    connect(&tm, &ThemeManager::fontChanged, this, [this]() {
+        // 字体或字号变化 → 遍历所有编辑器重新应用
+        applyCurrentTheme();
+    });
 
     // 恢复窗口状态（必须在所有 dock 创建之后）
     restoreWindowState();
