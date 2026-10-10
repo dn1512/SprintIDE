@@ -37,9 +37,14 @@ public:
     /// 主题切换时由 MainWindow::applyCurrentTheme() 调用
     void applyTheme();
 
+    /// 设置 AI 是否可用（转发给内部 LogListView）
+    void setAIAvailable(bool available);
+
 signals:
     void jumpRequested(const QString& file, int line, int column);
     void cleared();
+    /// 用户请求 AI 解释选中的错误（转发自 LogListView）
+    void aiExplainErrorRequested(const QString& errorText);
 
 private slots:
     void onFilterChanged();

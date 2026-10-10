@@ -96,6 +96,18 @@ public:
     // ========== 设置本地历史管理器 ==========
     void setLocalHistory(LocalHistory *history);
 
+    // ========== AI 辅助（供 MainWindow 同步状态） ==========
+    enum class AIAssistKind {
+        ExplainCode,        // 解释选中代码
+        FixCode,            // 修复选中代码
+        GenerateComment,    // 生成注释
+        RenameSuggest,      // 重命名建议
+        CustomAsk           // 自定义提问
+    };
+
+    /// 设置 AI 是否可用（MainWindow 在 AI 状态变化时调用）
+    void setAIAvailable(bool available);
+
     // ========== 编辑器设置相关方法 ==========
     void setShowLineNumbers(bool show);
     void setHighlightCurrentLine(bool highlight);
@@ -153,14 +165,14 @@ public:
     bool isFindBarVisible() const;
     void findNext();
     void findPrevious();
-    
+
     // ========== Quick Fix（错误修复） ==========
     /// 显示指定行的 quick-fix 菜单（globalPos 是屏幕坐标）
     void showQuickFixMenuForLine(int line, const QPoint& globalPos);
 
     /// 收集指定行可用的修复方案（从缓存的 LSP codeAction 结果里取）
     QList<LSPCodeAction> codeActionsForLine(int line) const;
-    
+
     /// 找到 include 区域的插入位置（0-based 行号）
     ///   规则：跳过顶部注释/空行，返回最后一个 #include 之后的行
     int findIncludeInsertLine() const;
@@ -171,7 +183,7 @@ public:
 
     /// 应用一个 LSP 代码动作到本文档（暂不支持跨文件）
     bool applyCodeAction(const LSPCodeAction& action);
-    
+
     // ========== Quick Fix 重试机制 ==========
     int    m_codeActionRetryCount = 0;      ///< 当前已重试次数（0 表示未重试）
     int    m_codeActionRetryLine = -1;      ///< 重试针对的行（1-based）
@@ -322,7 +334,7 @@ signals:
     void replaceCompleted(int count);
 
     void completionRequested(const QString& filePath, int line, int column);
-    
+
     /// 用户请求对某行执行 Quick Fix（点击错误标记 / Alt+Enter）
     /// 参数（均为 1-based，行号从 1 开始）：
     ///   filePath    —— 触发文件
@@ -347,13 +359,23 @@ signals:
     // 当用户输入 a-z 时，把上下文发给 LSP 补全（不同于 completionRequested）
     void completionRequestedAt(const QString& filePath, int line, int column,
                                const QString& prefix);
-                               
+
     void quickFixTriggeredByClick(int line, const QPoint& globalPos);
+
+    // ========== AI 辅助 ==========
+    /// 用户在右键菜单里触发了 AI 操作
+    /// @param prompt    拼好的完整问题（含选中代码）
+    /// @param filePath  触发文件路径
+    /// @param line      光标行号（1-based）
+    /// @param column    光标列号（1-based）
+    void aiAssistRequested(const QString& prompt,
+                           const QString& filePath,
+                           int line, int column);
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
-    void leaveEvent(QEvent *event) override; 
+    void leaveEvent(QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;  // 处理行号区域点击
@@ -457,7 +479,7 @@ private:
 
     /// 按 offset 平移一行缩进
     QString shiftIndent(const QString& line, int offset) const;
-    
+
     // 跳转定义的视觉反馈
     bool         m_ctrlHeldForDefinition = false;
     QPoint       m_lastMousePos;
@@ -492,7 +514,7 @@ private:
     QSet<int> m_disabledBreakpoints;      // 被禁用（灰色）的断点行
 
     QMap<int, QString> m_inlineValues;   // 行号 → 显示的文本
-    
+
     // ========== Quick Fix（错误修复） ==========
     /// 鼠标悬停/光标停留的"错误行"（1-based，-1 = 无）
     /// 影响：行号区红点变大变实、行内波浪线加粗
@@ -542,7 +564,7 @@ private:
     QString leadingWhitespace(const QString& line) const;
 
     void  applyEditorRulesForLanguage(const QString& languageId);
-    
+
     // Tab 对齐到 tab stop
     void  handleTabKey(bool increase);
 
@@ -582,7 +604,7 @@ private:
     // Alt+↑ / Alt+↓ 移动当前行（或选中行块）
     void  moveLinesUp();
     void  moveLinesDown();
-    
+
     // else / catch / finally 回车对齐到对应的 if / try
     bool  tryAlignDedentKeyword();
 
@@ -606,7 +628,7 @@ private:
 
     // 双击选词：把 `_` 当词边界
     QString wordBoundaryAt(const QPoint& pos) const;   // 可选，若用 Qt 默认即可不实现
-    
+
     void mouseDoubleClickEvent(QMouseEvent* event) override;
 
     // 快捷键：复制行 / 删除行
@@ -702,6 +724,17 @@ private:
 
     // 主题切换时调用，清空缓存（让下次绘制重新渲染正确色版本）
     void invalidateIconCache();
+
+    // ========== AI 辅助 ==========
+    void triggerAIAssist(AIAssistKind kind);
+
+    bool      m_aiAvailable       = false;
+    QMenu*    m_aiMenu            = nullptr;
+    QAction*  m_aiExplainAction   = nullptr;
+    QAction*  m_aiFixAction       = nullptr;
+    QAction*  m_aiCommentAction   = nullptr;
+    QAction*  m_aiRenameAction    = nullptr;
+    QAction*  m_aiAskAction       = nullptr;
 };
 
 /**

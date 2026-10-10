@@ -26,6 +26,8 @@ OutputPanel::OutputPanel(QWidget* parent)
             this, &OutputPanel::onScrollBarValueChanged);
     connect(m_view, &LogListView::jumpRequested,
             this, &OutputPanel::jumpRequested);
+    connect(m_view, &LogListView::aiExplainErrorRequested,
+            this, &OutputPanel::aiExplainErrorRequested);
 }
 
 OutputPanel::~OutputPanel() = default;
@@ -188,6 +190,11 @@ void OutputPanel::appendHtml(const QString& html)
     plain.replace("&#39;",  "'");
     plain.replace("&nbsp;", " ");
     appendPlainText(plain);
+}
+
+void OutputPanel::setAIAvailable(bool available)
+{
+    if (m_view) m_view->setAIAvailable(available);
 }
 
 // ============================================================

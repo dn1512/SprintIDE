@@ -118,8 +118,15 @@ int main(int argc, char *argv[])
                 ProjectSelectionDialog selDlg(projectManager->recentProjects());
 
                 if (selDlg.exec() != QDialog::Accepted) {
-                    // 用户取消选择 → 退出程序
+                    // 用户取消选择 → 结束 SprintIDE
+                    // 注意：此时 MainWindow 尚未创建，DebugManager / GitManager
+                    //      也未被 initialize 过，只需做 Application 层的清理即可。
+                    qDebug() << "[main] 用户在项目选择对话框取消，退出程序";
+
                     sprintApp.shutdown();
+
+                    std::fprintf(stderr, "[main] 取消选择，正常退出\n");
+                    std::fflush(stderr);
                     return 0;
                 }
 
@@ -239,7 +246,7 @@ int main(int argc, char *argv[])
         // ============================================================
         std::fprintf(stderr, "\n===== [main] 准备返回 =====\n");
         std::fflush(stderr);
-        
+
         std::fprintf(stderr, "[main] 即将 return result\n");
         std::fflush(stderr);
         return result;

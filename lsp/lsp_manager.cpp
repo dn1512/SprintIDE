@@ -158,14 +158,21 @@ static QString findProjectRoot(const QString& startPath)
 {
     QDir dir(startPath);
     while (!dir.isRoot()) {
-        if (dir.exists("pom.xml") || dir.exists("build.gradle") ||
-            dir.exists("settings.gradle") || dir.exists(".git") ||
+        if (dir.exists("compile_commands.json") ||
+            dir.exists("CMakeLists.txt")        ||
+            dir.exists("pom.xml")               ||
+            dir.exists("build.gradle")          ||
+            dir.exists("settings.gradle")       ||
+            dir.exists("package.json")          ||
+            dir.exists("pyproject.toml")        ||
+            dir.exists("Cargo.toml")            ||
+            dir.exists("go.mod")                ||
+            dir.exists(".git")                  ||
             dir.exists(".lightcppproj")) {
             return dir.absolutePath();
         }
         dir.cdUp();
     }
-    // 没找到，返回原始路径
     return startPath;
 }
 

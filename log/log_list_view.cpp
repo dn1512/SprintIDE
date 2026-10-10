@@ -117,7 +117,43 @@ void LogListView::contextMenuEvent(QContextMenuEvent* e)
     QAction* selAll = menu.addAction(tr("全选(&S)"));
     connect(selAll, &QAction::triggered, this, &LogListView::selectAll);
 
+    // ========== AI 解释此错误 ==========
+    menu.addSeparator();
+    QAction* aiExplain = menu.addAction(tr("AI 解释此错误"));
+    aiExplain->setEnabled(m_aiAvailable);
+    if (!m_aiAvailable) {
+        aiExplain->setToolTip(tr("AI Agent 未连接"));
+    }
+    connect(aiExplain, &QAction::triggered, this, [this]() {
+        // 优先用所有选中行；若无选中，用当前焦点行
+        QModelIndexList rows = selectionModel()->selectedRows();
+        if (rows.isEmpty()) {
+            const QModelIndex cur = currentIndex();
+            if (cur.isValid()) rows.append(cur);
+        }
+        if (rows.isEmpty()) return;
+
+        QStringList texts;
+        for (const QModelIndex& i : rows) {
+            const LogEntry& entry = m_logModel->entryAt(i.row());
+            if (!entry.message.trimmed().isEmpty()) {
+                texts << entry.message;
+            }
+        }
+        if (texts.isEmpty()) return;
+
+        emit aiExplainErrorRequested(texts.join(QLatin1Char('\n')));
+    });
+
     menu.exec(e->globalPos());
+}
+
+// ============================================================================
+//  AI 可用性同步
+// ============================================================================
+void LogListView::setAIAvailable(bool available)
+{
+    m_aiAvailable = available;
 }
 
 void LogListView::onDoubleClicked(const QModelIndex& idx)

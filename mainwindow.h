@@ -91,7 +91,7 @@ public:
     void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
     void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
     void aiRequestStopRun();    ///< 停止正在运行的程序
-    
+
     // ========== 快捷键配置（供 ShortcutSettingsPage 使用）==========
     struct ShortcutEntry {
         QString    id;
@@ -300,6 +300,17 @@ public slots:
                              int startLine, int startColumn,
                              int endLine,   int endColumn);
 
+     // ========== AI 辅助 ==========
+     /// TextEditor 右键菜单触发的 AI 请求
+     void onAIAssistRequested(const QString& prompt,
+                              const QString& filePath,
+                              int line, int column);
+
+     /// OutputPanel 触发的"AI 解释此错误"
+     void onAIExplainError(const QString& errorText);
+
+     void onNewWindow();   // 启动一个新 SprintIDE 实例
+
 signals:
     // 请求项目面板刷新
     // 任何地方想刷新项目面板，只需要：
@@ -313,10 +324,10 @@ signals:
 
     /// AI 触发的运行结束（供 IdeExecutor 使用）
     void aiRunFinished(int exitCode, const QString& log);
-    
+
     /// AI 触发的运行被停止（供 IdeExecutor 使用）
     void aiRunStopped(int exitCode, const QString& log);
-    
+
 private:
     void setupUI();
     void setupMenuBar();
@@ -364,7 +375,7 @@ private:
     QString m_aiRunOutputBuffer;        // AI 触发运行期间的 stdout/stderr 累积
     QElapsedTimer m_compileTimer;
     QMap<QString, QString> m_compilerOutputCache;
-    
+
     // 工具栏运行按钮（运行中会切换成"停止"）
     QAction* m_runAction = nullptr;
 
@@ -462,6 +473,9 @@ private:
 
     /// 是否正在运行程序
     bool isRunningProgram() const { return !m_runningProcess.isNull(); }
+
+    /// AI 连接状态变化时，同步所有编辑器 + OutputPanel
+    void syncAIAvailabilityToEditors();
 private:
     MainWindowPrivate *d;
     // 底部面板相关
@@ -484,7 +498,7 @@ private:
     ChatPanel *m_aiChatPanel = nullptr;
     AiConnectionManager *m_aiConnMgr = nullptr;   // 阶段 0：连接管理器
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态
-    
+
     // ========== 快捷键注册表 ==========
     /// id → entry。id 用 "domain.action" 格式（如 "file.save"）
     QMap<QString, ShortcutEntry> m_shortcutRegistry;
@@ -537,7 +551,7 @@ private:
     QToolButton*         m_viewBreakpointsButton   = nullptr;
     QToolButton*         m_muteBreakpointsButton   = nullptr;
     bool                 m_breakpointsMuted        = false;
-    
+
     // ========== 运行进程管理 ==========
     QPointer<QProcess> m_runningProcess;   ///< 当前正在运行的程序（自动置空）
     QString            m_runningFilePath;  ///< 当前运行源文件（用于状态恢复）

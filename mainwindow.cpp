@@ -126,6 +126,46 @@ using namespace SprintIDE;
 
 namespace SprintIDE {
 
+// ============================================================================
+//  从文件路径向上查找真正的项目根
+//
+//  优先级（第一个命中的目录就是项目根）：
+//    1. compile_commands.json 所在的目录（CMake / clangd 项目的标准位置）
+//    2. CMakeLists.txt 所在的目录
+//    3. .git 所在的目录
+//    4. 其他语言的标识文件（pom.xml / package.json / pyproject.toml / Cargo.toml / go.mod）
+//    5. 都找不到 → 返回文件所在目录
+//
+//  为什么不能用 currentProjectPath：
+//    用户可能在项目 A 里打开项目 B 的文件（临时查看、跳转定义），
+//    LSP 必须按文件归属的项目解析，否则编译参数全错。
+// ============================================================================
+static QString findProjectRootForFile(const QString& filePath)
+{
+    if (filePath.isEmpty()) return QString();
+
+    QDir dir = QFileInfo(filePath).absoluteDir();
+
+    while (!dir.isRoot()) {
+        // 1. CMake 项目：优先 compile_commands.json
+        if (dir.exists("compile_commands.json") ||
+            dir.exists("CMakeLists.txt")         ||
+            dir.exists(".git")                    ||
+            dir.exists("pom.xml")                 ||
+            dir.exists("build.gradle")            ||
+            dir.exists("package.json")            ||
+            dir.exists("pyproject.toml")          ||
+            dir.exists("Cargo.toml")              ||
+            dir.exists("go.mod")) {
+            return dir.absolutePath();
+        }
+        if (!dir.cdUp()) break;
+    }
+
+    // 向上到根还没找到 → 返回文件所在目录
+    return QFileInfo(filePath).absolutePath();
+}
+
 // ========== 辅助函数：根据文件路径检测语言类型 ==========
 static SprintIDE::LanguageType detectLanguageTypeFromPath(const QString& filePath) {
     if (filePath.isEmpty()) {
@@ -507,6 +547,15 @@ MainWindow::MainWindow(QWidget *parent)
             m_aiChatPanel->raise();
         }
         qDebug() << "AI 模块已集成到 MainWindow";
+
+        // AI 状态变化 → 同步到所有编辑器和 OutputPanel
+        if (m_aiConnMgr) {
+            connect(m_aiConnMgr, &AiConnectionManager::stateChanged,
+                    this, [this](AiConnectionManager::State) {
+                        syncAIAvailabilityToEditors();
+                    });
+            syncAIAvailabilityToEditors();
+        }
     } else {
         qDebug() << "AI 模块初始化失败（可能是端口被占用）";
     }
@@ -881,6 +930,13 @@ void MainWindow::setupMenuBar()
     QAction *newProjectAction = newMenu->addAction(QIcon(":/icons/icons/new_project.svg"), tr("项目"));
     connect(newProjectAction, &QAction::triggered, this, &MainWindow::onNewProject);
 
+    // 新窗口（启动新实例，用于多项目并行开发）
+    QAction* newWindowAction = fileMenu->addAction(tr("新窗口(&W)"));
+    newWindowAction->setShortcut(QKeySequence("Ctrl+Shift+N"));   // Cmd+Shift+N
+    newWindowAction->setStatusTip(tr("打开一个新的 SprintIDE 窗口（多实例）"));
+    connect(newWindowAction, &QAction::triggered, this, &MainWindow::onNewWindow);
+    registerShortcut(QStringLiteral("file.newWindow"), tr("新窗口"), newWindowAction);
+
     QMenu *openMenu = fileMenu->addMenu(QIcon(":/icons/icons/open_file.svg"), tr("打开(&O)"));
 
     // 快速打开（Ctrl+O）—— 搜索文件名快速打开
@@ -891,25 +947,25 @@ void MainWindow::setupMenuBar()
     registerShortcut(QStringLiteral("file.quickOpen"), tr("快速打开"), quickOpenAction);
 
     // 传统打开对话框（改为 Ctrl+Alt+O，避免与快速打开冲突）
-    QAction *openFileAction = openMenu->addAction(
-        QIcon(":/icons/icons/open_file.svg"), tr("打开文件..."));
-    openFileAction->setShortcut(QKeySequence("Ctrl+Alt+O"));
-    connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
-    registerShortcut(QStringLiteral("file.open"), tr("打开文件"), openFileAction);
+    // QAction *openFileAction = openMenu->addAction(
+        // QIcon(":/icons/icons/open_file.svg"), tr("打开文件..."));
+    // openFileAction->setShortcut(QKeySequence("Ctrl+Alt+O"));
+    // connect(openFileAction, &QAction::triggered, this, &MainWindow::onOpenFile);
+    // registerShortcut(QStringLiteral("file.open"), tr("打开文件"), openFileAction);
 
-    QAction *openProjectAction = openMenu->addAction(
-        QIcon(":/icons/icons/open_project.svg"), tr("项目"));
-    openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
-    connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
-    registerShortcut(QStringLiteral("file.openProject"), tr("打开项目"), openProjectAction);
-    
+    // QAction *openProjectAction = openMenu->addAction(
+        // QIcon(":/icons/icons/open_project.svg"), tr("项目"));
+    // openProjectAction->setShortcut(QKeySequence("Ctrl+Shift+O"));
+    // connect(openProjectAction, &QAction::triggered, this, &MainWindow::onOpenProject);
+    // registerShortcut(QStringLiteral("file.openProject"), tr("打开项目"), openProjectAction);
+
     fileMenu->addSeparator();
 
     QAction *saveFileAction = fileMenu->addAction(QIcon(":/icons/icons/save_file.svg"), tr("保存(&S)"));
     saveFileAction->setShortcut(QKeySequence::Save);
     connect(saveFileAction, &QAction::triggered, this, &MainWindow::onSaveFile);
     registerShortcut(QStringLiteral("file.save"), tr("保存"), saveFileAction);
-    
+
     QAction *saveAllAction = fileMenu->addAction(QIcon(":/icons/icons/save_all.svg"), tr("保存全部(&A)"));
     saveAllAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
     connect(saveAllAction, &QAction::triggered, this, [this]() {
@@ -932,12 +988,12 @@ void MainWindow::setupMenuBar()
     closeFileAction->setShortcut(QKeySequence::Close);
     connect(closeFileAction, &QAction::triggered, this, &MainWindow::onCloseFile);
     registerShortcut(QStringLiteral("file.close"), tr("关闭文件"), closeFileAction);
-    
+
     QAction *exitAction = fileMenu->addAction(tr("退出(&X)"));
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &MainWindow::onExit);
     registerShortcut(QStringLiteral("file.exit"), tr("退出"), exitAction);
-    
+
     // ==================== 编辑菜单 ====================
     QMenu *editMenu = menuBar->addMenu(tr("编辑(&E)"));
 
@@ -945,29 +1001,29 @@ void MainWindow::setupMenuBar()
     undoAction->setShortcut(QKeySequence::Undo);
     connect(undoAction, &QAction::triggered, this, &MainWindow::onUndo);
     registerShortcut(QStringLiteral("edit.undo"), tr("撤销"), undoAction);
-    
+
     QAction *redoAction = editMenu->addAction(QIcon(":/icons/icons/redo.svg"), tr("重做(&R)"));
     redoAction->setShortcut(QKeySequence::Redo);
     connect(redoAction, &QAction::triggered, this, &MainWindow::onRedo);
     registerShortcut(QStringLiteral("edit.redo"), tr("重做"), redoAction);
-    
+
     editMenu->addSeparator();
 
     QAction *cutAction = editMenu->addAction(QIcon(":/icons/icons/cut.svg"), tr("剪切(&T)"));
     cutAction->setShortcut(QKeySequence::Cut);
     connect(cutAction, &QAction::triggered, this, &MainWindow::onCut);
     registerShortcut(QStringLiteral("edit.cut"), tr("剪切"), cutAction);
-    
+
     QAction *copyAction = editMenu->addAction(QIcon(":/icons/icons/copy.svg"), tr("复制(&C)"));
     copyAction->setShortcut(QKeySequence::Copy);
     connect(copyAction, &QAction::triggered, this, &MainWindow::onCopy);
     registerShortcut(QStringLiteral("edit.copy"), tr("复制"), copyAction);
-    
+
     QAction *pasteAction = editMenu->addAction(QIcon(":/icons/icons/paste.svg"), tr("粘贴(&P)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, &MainWindow::onPaste);
     registerShortcut(QStringLiteral("edit.paste"), tr("粘贴"), pasteAction);
-    
+
     editMenu->addSeparator();
 
     QAction *copyLineAction = editMenu->addAction(tr("复制行(&D)"));
@@ -979,7 +1035,7 @@ void MainWindow::setupMenuBar()
         }
     });
     registerShortcut(QStringLiteral("edit.copyLine"), tr("复制行"), copyLineAction);
-    
+
     QAction *deleteLineAction = editMenu->addAction(tr("删除行(&Y)"));
     deleteLineAction->setShortcut(QKeySequence("Ctrl+Y"));
     connect(deleteLineAction, &QAction::triggered, this, [this]() {
@@ -989,7 +1045,7 @@ void MainWindow::setupMenuBar()
         }
     });
     registerShortcut(QStringLiteral("edit.deleteLine"), tr("删除行"), deleteLineAction);
-    
+
     // ========== Python 菜单 ==========
     QMenu* pythonMenu = menuBar->addMenu("Python(&P)");
 
@@ -1051,42 +1107,42 @@ void MainWindow::setupMenuBar()
     settingsAction->setMenuRole(QAction::PreferencesRole);  // 关键：让其在 macOS 下进入应用程序菜单
     connect(settingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
     registerShortcut(QStringLiteral("edit.settings"), tr("设置"), settingsAction);
-    
+
     // ---------- 跳转到行 ----------
     QAction *gotoLineAction = editMenu->addAction(tr("跳转到行(&L)..."));
     gotoLineAction->setShortcut(QKeySequence("Ctrl+G"));   // macOS 上 = Cmd+G
     connect(gotoLineAction, &QAction::triggered, this, &MainWindow::onGotoLine);
     registerShortcut(QStringLiteral("edit.gotoLine"), tr("跳转到行"), gotoLineAction);
-    
+
     editMenu->addSeparator();
 
     QAction *findAction = editMenu->addAction(tr("查找(&F)"));
     findAction->setShortcut(QKeySequence::Find);
     connect(findAction, &QAction::triggered, this, &MainWindow::onFind);
     registerShortcut(QStringLiteral("edit.find"), tr("查找"), findAction);
-    
+
     QAction *replaceAction = editMenu->addAction(tr("替换(&R)"));
     replaceAction->setShortcut(QKeySequence("Ctrl+Shift+H"));
     connect(replaceAction, &QAction::triggered, this, &MainWindow::onReplace);
     registerShortcut(QStringLiteral("edit.replace"), tr("替换"), replaceAction);
-    
+
     QAction *searchInFilesAction = editMenu->addAction(tr("在文件中查找(&F)..."));
     searchInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
     searchInFilesAction->setStatusTip(tr("在整个项目中搜索文本 (Ctrl+Shift+F)"));
     connect(searchInFilesAction, &QAction::triggered,
             this, &MainWindow::onSearchInFiles);
     registerShortcut(QStringLiteral("edit.searchInFiles"), tr("在文件中查找"), searchInFilesAction);
-    
+
     QAction *formatCodeAction = editMenu->addAction(QIcon(":/icons/icons/format_code.svg"), tr("格式化代码(&O)"));
     formatCodeAction->setShortcut(QKeySequence("Ctrl+Alt+L"));
     connect(formatCodeAction, &QAction::triggered, this, &MainWindow::onFormatCode);
     registerShortcut(QStringLiteral("edit.formatCode"), tr("格式化代码"), formatCodeAction);
-    
+
     QAction *commentAction = editMenu->addAction(QIcon(":/icons/icons/comment_code.svg"), tr("注释(&C)"));
     commentAction->setShortcut(QKeySequence("Ctrl+/"));
     connect(commentAction, &QAction::triggered, this, &MainWindow::onComment);
     registerShortcut(QStringLiteral("edit.comment"), tr("注释"), commentAction);
-    
+
     // ==================== 构建菜单 ====================
     QMenu *buildMenu = menuBar->addMenu(tr("构建(&B)"));
 
@@ -1094,12 +1150,12 @@ void MainWindow::setupMenuBar()
     compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
     connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
     registerShortcut(QStringLiteral("build.compileFile"), tr("编译当前文件"), compileFileAction);
-    
+
     QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译项目(&P)"));
     compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
     connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
     registerShortcut(QStringLiteral("build.compileProject"), tr("编译项目"), compileProjectAction);
-    
+
     QAction *cleanBuildAction = buildMenu->addAction(tr("清理构建(&O)"));
     connect(cleanBuildAction, &QAction::triggered, this, &MainWindow::onCleanBuild);
 
@@ -1113,13 +1169,13 @@ void MainWindow::setupMenuBar()
     m_startDebugAction->setShortcut(QKeySequence("Ctrl+Shift+D"));
     connect(m_startDebugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
     registerShortcut(QStringLiteral("debug.start"), tr("启动调试"), m_startDebugAction);
-    
+
     m_stopDebugAction = debugMenu->addAction(QIcon(":/icons/icons/stop.svg"),tr("停止调试(&T)"));
     m_stopDebugAction->setShortcut(QKeySequence("Ctrl+."));
     m_stopDebugAction->setEnabled(false);
     connect(m_stopDebugAction, &QAction::triggered, this, &MainWindow::onStopDebug);
     registerShortcut(QStringLiteral("debug.stop"), tr("停止调试"), m_stopDebugAction);
-    
+
     debugMenu->addSeparator();
 
     m_stepOverAction = debugMenu->addAction(QIcon(":/icons/icons/stop_over.svg"), tr("步过(&N)"));
@@ -1127,19 +1183,19 @@ void MainWindow::setupMenuBar()
     m_stepOverAction->setEnabled(false);
     connect(m_stepOverAction, &QAction::triggered, this, &MainWindow::onStepOver);
     registerShortcut(QStringLiteral("debug.stepOver"), tr("步过"), m_stepOverAction);
-    
+
     m_stepIntoAction = debugMenu->addAction(QIcon(":/icons/icons/step_into.svg"), tr("步入(&S)"));
     m_stepIntoAction->setShortcut(QKeySequence("F11"));
     m_stepIntoAction->setEnabled(false);
     connect(m_stepIntoAction, &QAction::triggered, this, &MainWindow::onStepInto);
     registerShortcut(QStringLiteral("debug.stepInto"), tr("步入"), m_stepIntoAction);
-    
+
     m_stepOutAction = debugMenu->addAction(QIcon(":/icons/icons/step_out.svg"), tr("步出(&O)"));
     m_stepOutAction->setShortcut(QKeySequence("Shift+F11"));
     m_stepOutAction->setEnabled(false);
     connect(m_stepOutAction, &QAction::triggered, this, &MainWindow::onStepOut);
     registerShortcut(QStringLiteral("debug.stepOut"), tr("步出"), m_stepOutAction);
-    
+
     debugMenu->addSeparator();
 
     m_continueAction = debugMenu->addAction(QIcon(":/icons/icons/run.svg"), tr("继续(&C)"));
@@ -1147,14 +1203,14 @@ void MainWindow::setupMenuBar()
     m_continueAction->setEnabled(false);
     connect(m_continueAction, &QAction::triggered, this, &MainWindow::onContinueDebug);
     registerShortcut(QStringLiteral("debug.continue"), tr("继续"), m_continueAction);
-    
+
     debugMenu->addSeparator();
 
     m_addBreakpointAction = debugMenu->addAction(QIcon(":/icons/icons/toggle_break_point.svg"), tr("添加断点(&B)"));
     m_addBreakpointAction->setShortcut(QKeySequence("Ctrl+F8"));
     connect(m_addBreakpointAction, &QAction::triggered, this, &MainWindow::onAddBreakpoint);
     registerShortcut(QStringLiteral("debug.addBreakpoint"), tr("添加断点"), m_addBreakpointAction);
-    
+
     // ==================== Git 菜单 ====================
     QMenu *gitMenu = menuBar->addMenu("Git(&G)");
 
@@ -1163,7 +1219,7 @@ void MainWindow::setupMenuBar()
     m_gitToggleAction->setStatusTip(tr("显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)"));
     connect(m_gitToggleAction, &QAction::triggered, this, &MainWindow::toggleGitDialog);
     registerShortcut(QStringLiteral("git.toggle"), tr("打开 Git 窗口"), m_gitToggleAction);
-    
+
     gitMenu->addSeparator();
 
     m_gitInitAction = gitMenu->addAction(tr("初始化仓库(&I)"));
@@ -1173,7 +1229,7 @@ void MainWindow::setupMenuBar()
     m_gitCommitAction->setShortcut(QKeySequence("Ctrl+K"));
     connect(m_gitCommitAction, &QAction::triggered, this, &MainWindow::onGitCommit);
     registerShortcut(QStringLiteral("git.commit"), tr("Git 提交"), m_gitCommitAction);
-    
+
     gitMenu->addSeparator();
 
     m_gitFetchAction = gitMenu->addAction(tr("获取(&F)"));
@@ -1191,7 +1247,7 @@ void MainWindow::setupMenuBar()
     m_gitRefreshAction->setShortcut(QKeySequence("F5"));
     connect(m_gitRefreshAction, &QAction::triggered, this, &MainWindow::onGitRefresh);
     registerShortcut(QStringLiteral("git.refresh"), tr("Git 刷新状态"), m_gitRefreshAction);
-    
+
     m_gitShowHistoryAction = gitMenu->addAction(tr("查看历史(&H)"));
     connect(m_gitShowHistoryAction, &QAction::triggered, this, &MainWindow::onGitShowHistory);
 
@@ -1229,7 +1285,7 @@ void MainWindow::setupMenuBar()
         }
     });
     registerShortcut(QStringLiteral("tools.terminal"), tr("终端"), terminalAction);
-    
+
     // ==================== 视图菜单 ====================
     QMenu *viewMenu = menuBar->addMenu(tr("视图(&V)"));
 
@@ -1264,7 +1320,7 @@ void MainWindow::setupMenuBar()
     });
     registerShortcut(QStringLiteral("view.projectPanel"), tr("项目面板"), toggleProjectPanelAction);
     m_toggleProjectPanelAction = toggleProjectPanelAction;
-    
+
     QAction* resetLayoutAction = viewMenu->addAction(tr("重置窗口布局"));
     resetLayoutAction->setStatusTip(tr("恢复窗口到默认大小、位置和面板布局"));
     connect(resetLayoutAction, &QAction::triggered, this, [this]() {
@@ -1272,7 +1328,7 @@ void MainWindow::setupMenuBar()
             this, tr("重置窗口布局"),
             tr("将窗口大小、位置和面板布局恢复为默认值。\n\n继续？"));
         if (reply != QMessageBox::Yes) return;
-    
+
         // 清除保存的状态
         ConfigManager* cfg = Application::instance().configManager();
         if (cfg) {
@@ -1280,7 +1336,7 @@ void MainWindow::setupMenuBar()
             cfg->remove("Window/State");
             cfg->remove("Window/Maximized");
         }
-    
+
         // 恢复默认（可能需要重启才完全生效）
         resize(1600, 1000);
         // 或者更简单地提示用户"下次启动生效"
@@ -1324,7 +1380,7 @@ void MainWindow::setupToolBar()
     m_runAction->setToolTip(tr("运行 (Ctrl+R)"));
     connect(m_runAction, &QAction::triggered, this, &MainWindow::onRun);
     registerShortcut(QStringLiteral("build.run"), tr("运行"), m_runAction);
-    
+
     QAction *debugAction = toolBar->addAction(QIcon(":/icons/icons/debug.svg"),tr("调试"));
     connect(debugAction, &QAction::triggered, this, &MainWindow::onStartDebug);
 }
@@ -1446,6 +1502,8 @@ void MainWindow::setupDockWidgets()
     // 结构化日志面板：LogListModel + LogListView，支持多选复制、过滤、双击跳转
     m_outputPanel = new OutputPanel(m_bottomTabWidget);
     m_outputPanel->setObjectName("OutputPanel");
+    connect(m_outputPanel, &OutputPanel::aiExplainErrorRequested,
+            this, &MainWindow::onAIExplainError);
 
     // 双击跳转：错误日志带 file:line 时打开文件定位
     connect(m_outputPanel, &OutputPanel::jumpRequested,
@@ -2447,6 +2505,10 @@ void MainWindow::openFile(const QString &path)
     int index = d->editorTabs->addTab(editor, editor->fileName());
     d->editorTabs->setCurrentIndex(index);
     logInfo(QString("已打开: %1").arg(path));
+    // AI 辅助：连接信号 + 同步可用状态
+    connect(editor, &TextEditor::aiAssistRequested,
+            this, &MainWindow::onAIAssistRequested);
+    editor->setAIAvailable(m_aiConnMgr && m_aiConnMgr->isReady());
 
     // ---- 其他信号连接（原有） ----
     connect(editor, &TextEditor::modificationChanged,
@@ -2540,9 +2602,7 @@ void MainWindow::openFile(const QString &path)
 
     // ---- LSP 打开文档 ----
     if (m_lspManager) {
-        QString projectPath = d->currentProjectPath.isEmpty() ?
-                                  QFileInfo(path).absolutePath() :
-                                  d->currentProjectPath;
+        QString projectPath = findProjectRootForFile(path);
 
         LSPClient *client = m_lspManager->getClientForFile(path, projectPath);
         if (client) {
@@ -3189,7 +3249,28 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
             level = LogLevel::Error;
         }
 
-        appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line));
+        SprintIDE::ErrorMarker marker = parseErrorLine(trimmed);
+        if (marker.line > 0 && !marker.filePath.isEmpty()) {
+            // 相对路径 → 依次尝试相对项目根 / <项目根>/build 解析成绝对路径
+            QString absPath = marker.filePath;
+            if (!QFileInfo(absPath).isAbsolute()) {
+                const QString projRoot = d->currentProjectPath;
+                if (!projRoot.isEmpty()) {
+                    const QString cand1 = QDir(projRoot).absoluteFilePath(marker.filePath);
+                    const QString cand2 = QDir(projRoot + "/build").absoluteFilePath(marker.filePath);
+                    if (QFileInfo::exists(cand1))      absPath = cand1;
+                    else if (QFileInfo::exists(cand2)) absPath = cand2;
+                }
+            }
+
+            appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput",
+                                     line,                                   // message
+                                     absPath,                                // filePath
+                                     marker.line,                            // lineNumber
+                                     marker.column > 0 ? marker.column : 1));
+        } else {
+            appendLog(LogEntry::make(LogKind::Compile, level, "CompileOutput", line));
+        }
     }
 }
 
@@ -3263,10 +3344,32 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
               LogKind::Compile, LogLevel::Error, "Compile",
               QStringLiteral("编译失败，耗时 %1ms，错误 %2，警告 %3")
                   .arg(elapsedMs).arg(result.errors.size()).arg(result.warnings.size())));
-        
+
         for (int i = 0; i < result.errors.size(); ++i) {
-            appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
-                                     result.errors[i]));
+            const QString& errLine = result.errors[i];
+            SprintIDE::ErrorMarker marker = parseErrorLine(errLine);
+
+            if (marker.line > 0 && !marker.filePath.isEmpty()) {
+                QString absPath = marker.filePath;
+                if (!QFileInfo(absPath).isAbsolute()) {
+                    const QString projRoot = d->currentProjectPath;
+                    if (!projRoot.isEmpty()) {
+                        const QString cand1 = QDir(projRoot).absoluteFilePath(marker.filePath);
+                        const QString cand2 = QDir(projRoot + "/build").absoluteFilePath(marker.filePath);
+                        if (QFileInfo::exists(cand1))      absPath = cand1;
+                        else if (QFileInfo::exists(cand2)) absPath = cand2;
+                    }
+                }
+
+                appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
+                                         errLine,
+                                         absPath,
+                                         marker.line,
+                                         marker.column > 0 ? marker.column : 1));
+            } else {
+                appendLog(LogEntry::make(LogKind::Compile, LogLevel::Error, "Compile",
+                                         errLine));
+            }
         }
         logError(QString(tr("[%1] 编译失败! 耗时: %2ms"))
                      .arg(timeStr)
@@ -3287,9 +3390,32 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         if (!result.errors.isEmpty()) {
             logError("错误列表:");
             for (int i = 0; i < qMin(5, result.errors.size()); i++) {
-                logError(QString(" %1. %2")
-                                           .arg(i + 1)
-                                           .arg(result.errors[i].toHtmlEscaped()));
+                const QString& errLine = result.errors[i];
+                SprintIDE::ErrorMarker marker = parseErrorLine(errLine);
+                const QString prefix = QString(" %1. ").arg(i + 1);
+
+                if (marker.line > 0 && !marker.filePath.isEmpty()) {
+                    // 相对路径 → 尝试相对项目根 / <项目根>/build 解析成绝对路径
+                    QString absPath = marker.filePath;
+                    if (!QFileInfo(absPath).isAbsolute()) {
+                        const QString projRoot = d->currentProjectPath;
+                        if (!projRoot.isEmpty()) {
+                            const QString cand1 = QDir(projRoot).absoluteFilePath(marker.filePath);
+                            const QString cand2 = QDir(projRoot + "/build").absoluteFilePath(marker.filePath);
+                            if (QFileInfo::exists(cand1))      absPath = cand1;
+                            else if (QFileInfo::exists(cand2)) absPath = cand2;
+                        }
+                    }
+
+                    appendLog(LogEntry::make(
+                        LogKind::Compile, LogLevel::Error, "Compile",
+                        prefix + errLine.toHtmlEscaped(),
+                        absPath,
+                        marker.line,
+                        marker.column > 0 ? marker.column : 1));
+                } else {
+                    logError(prefix + errLine.toHtmlEscaped());
+                }
             }
             if (result.errors.size() > 5) {
                 logError(QString("... 还有 %1 个错误未显示")
@@ -5251,7 +5377,7 @@ void MainWindow::runExecutableAsync(const QString& executablePath)
         QStringList(),
         QFileInfo(executablePath).absolutePath(),
         QProcessEnvironment());
-    
+
     process->start();
     if (!process->waitForStarted(3000)) {
         logError("启动失败: " + process->errorString());
@@ -5380,23 +5506,23 @@ QProcess* MainWindow::createRunProcess(const QString& program,
         });
     connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError err) {
         if (m_runningProcess != p) return;
-    
+
         // 主动停止时，QProcess 会发 Crashed 错误，忽略
         if (m_stoppingProcess) return;
-    
+
         // FailedToStart 是真正的错误（程序根本起不来）
         if (err == QProcess::FailedToStart) {
             logError("进程启动失败: " + p->errorString());
             return;
         }
-    
+
         // 其他错误：Crashed / Timedout / ReadError / WriteError
         // 如果是 Timedout，不算崩溃，只是超时
         if (err == QProcess::Timedout) {
             logWarn("进程超时: " + p->errorString());
             return;
         }
-    
+
         logError(QString("进程错误: %1 (%2)")
                      .arg(p->errorString())
                      .arg(static_cast<int>(err)));
@@ -5455,7 +5581,7 @@ void MainWindow::stopRunningProcess()
     }
 
     logInfo("正在停止程序...");
-    m_stoppingProcess = true; 
+    m_stoppingProcess = true;
 
     p->terminate();
     if (!p->waitForFinished(3000)) {
@@ -7529,7 +7655,7 @@ void MainWindow::onRun()
             task.extraArgs,
             QFileInfo(executablePath).absolutePath(),
             QProcessEnvironment());   // 空 env，用系统默认
-        
+
         process->start();
         if (!process->waitForStarted(3000)) {
             logError("启动失败: " + process->errorString());
@@ -8090,6 +8216,91 @@ void MainWindow::resetAllShortcutsToDefault()
         if (it.value().action) {
             it.value().action->setShortcut(it.value().defaultShortcut);
         }
+    }
+}
+
+// ============================================================================
+//  AI 辅助：状态同步
+// ============================================================================
+void MainWindow::syncAIAvailabilityToEditors()
+{
+    const bool available = (m_aiConnMgr && m_aiConnMgr->isReady());
+
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        if (auto* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i))) {
+            ed->setAIAvailable(available);
+        }
+    }
+    if (m_outputPanel) {
+        m_outputPanel->setAIAvailable(available);
+    }
+}
+
+// ============================================================================
+//  AI 辅助：编辑器右键菜单触发的请求
+// ============================================================================
+void MainWindow::onAIAssistRequested(const QString& prompt,
+                                     const QString& filePath,
+                                     int line, int column)
+{
+    if (!m_aiConnMgr || !m_aiConnMgr->isReady()) {
+        if (m_aiChatPanel) {
+            m_aiChatPanel->showSystemMessage(
+                tr("AI Agent 未连接，请先启动 Agent。"), true);
+            m_aiChatPanel->setVisible(true);
+            m_aiChatPanel->raise();
+            m_aiChatPanel->activateWindow();
+        }
+        return;
+    }
+
+    QJsonObject payload;
+    payload["message"] = prompt;
+
+    QJsonObject context;
+    context["activeFile"]   = filePath;
+    context["cursorLine"]   = line;
+    context["cursorColumn"] = column;
+    payload["context"] = context;
+
+    const QString requestId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_aiConnMgr->sendMethod("chat.send", payload, requestId);
+
+    if (m_aiChatPanel) {
+        m_aiChatPanel->addUserMessage(prompt);
+        m_aiChatPanel->setVisible(true);
+        m_aiChatPanel->raise();
+        m_aiChatPanel->activateWindow();
+    }
+
+    logInfo(QStringLiteral("AI 助手请求已发送：%1")
+                .arg(prompt.left(80).replace(QLatin1Char('\n'), QLatin1Char(' '))));
+}
+
+// ============================================================================
+//  AI 辅助：OutputPanel 触发"解释错误"
+// ============================================================================
+void MainWindow::onAIExplainError(const QString& errorText)
+{
+    if (errorText.trimmed().isEmpty()) return;
+
+    const QString prompt =
+        tr("请解释下面这条编译/运行错误，说明原因和修复方法：\n```\n%1\n```")
+            .arg(errorText);
+
+    onAIAssistRequested(prompt, QString(), 0, 0);
+}
+
+void MainWindow::onNewWindow()
+{
+    // 启动一个新的 SprintIDE 进程
+    //   不传参数 → 新实例会弹出项目选择对话框（或空白主窗口）
+    //   QProcess::startDetached 让新进程独立于当前实例，父进程退出不影响它
+    const QString appPath = QCoreApplication::applicationFilePath();
+    if (appPath.isEmpty()) return;
+
+    if (!QProcess::startDetached(appPath, QStringList())) {
+        logError(tr("无法启动新窗口：") + appPath);
     }
 }
 

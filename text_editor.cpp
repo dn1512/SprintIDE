@@ -202,13 +202,13 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
                 const int iconSize = hovered ? 14 : 12;
                 const int iconX = width() - 30 - (hovered ? 1 : 0);
                 const int iconY = static_cast<int>(top + (bottom - top) / 2 - iconSize / 2);
-            
+
                 QColor errColor(255, 50, 50);
                 if (!hovered) errColor.setAlpha(170);   // 悬停实心、否则半透明
                 painter.setBrush(errColor);
                 painter.setPen(Qt::NoPen);
                 painter.drawEllipse(iconX, iconY, iconSize, iconSize);
-            
+
                 painter.setPen(QPen(Qt::white, 2));
                 const int pad = hovered ? 4 : 3;
                 painter.drawLine(iconX + pad, iconY + pad,
@@ -263,7 +263,7 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton
         && x >= errIconLeft && x <= errIconRight
         && (m_editor->hasErrorMarker(line) || m_editor->hasWarningMarker(line))) {
-    
+
         emit m_editor->quickFixTriggeredByClick(line, event->globalPosition().toPoint());
         return;
     }
@@ -346,7 +346,7 @@ TextEditor::TextEditor(QWidget *parent)
     viewport()->setMouseTracking(true);
 
     setupFindBar();
-    
+
     connect(this, &TextEditor::quickFixTriggeredByClick,
             this, [this](int line, const QPoint& pos) {
                 showQuickFixMenuForLine(line, pos);
@@ -756,6 +756,31 @@ void TextEditor::createContextMenu()
 
     // 修复：连接到一个实际的槽函数，而不是不存在的信号
     m_gotoLineAction = m_contextMenu->addAction(tr("跳转到行 (Ctrl+G)..."), this, &TextEditor::onGotoLineAction);
+    // ========== AI 辅助子菜单 ==========
+    m_contextMenu->addSeparator();
+
+    m_aiMenu          = m_contextMenu->addMenu(tr("AI agent"));
+    m_aiExplainAction = m_aiMenu->addAction(tr("解释选中代码"));
+    m_aiFixAction     = m_aiMenu->addAction(tr("修复选中代码"));
+    m_aiCommentAction = m_aiMenu->addAction(tr("生成注释"));
+    m_aiRenameAction  = m_aiMenu->addAction(tr("重命名建议"));
+    m_aiMenu->addSeparator();
+    m_aiAskAction     = m_aiMenu->addAction(tr("自定义提问..."));
+
+    connect(m_aiExplainAction, &QAction::triggered, this,
+            [this]() { triggerAIAssist(AIAssistKind::ExplainCode); });
+    connect(m_aiFixAction,     &QAction::triggered, this,
+            [this]() { triggerAIAssist(AIAssistKind::FixCode); });
+    connect(m_aiCommentAction, &QAction::triggered, this,
+            [this]() { triggerAIAssist(AIAssistKind::GenerateComment); });
+    connect(m_aiRenameAction,  &QAction::triggered, this,
+            [this]() { triggerAIAssist(AIAssistKind::RenameSuggest); });
+    connect(m_aiAskAction,     &QAction::triggered, this,
+            [this]() { triggerAIAssist(AIAssistKind::CustomAsk); });
+
+    // 初始未连接 → 禁用
+    m_aiMenu->setEnabled(false);
+    m_aiMenu->setToolTip(tr("AI Agent 未连接"));
 }
 
 bool TextEditor::loadFile(const QString &filePath)
@@ -2754,7 +2779,7 @@ bool TextEditor::tryExpandPairOnReturn()
 
     // 上下文保护：字符串/注释里不展开
     if (m_editorRules.needsContextGuard() && isInsideStringOrComment(pos)) {
-        
+
         return false;
     }
 
@@ -4075,10 +4100,16 @@ void TextEditor::autoIndentAfterReturn()
     const QString prevTrimmed = prevText.trimmed();
     const QString prevIndent  = leadingWhitespace(prevText);
 
-    //  空行不继承缩进
-    // if (prevTrimmed.isEmpty()) {
-        // return;
-    // }
+    // ✅ v8.4：空行也继承缩进
+    //   之前是 `if (prevTrimmed.isEmpty()) return;`，
+    //   导致"连续按回车"时第二次起缩进丢失。
+    //   JetBrains 的行为是：空行按回车 → 新行保持同样的缩进级别。
+    if (prevTrimmed.isEmpty()) {
+        if (!prevIndent.isEmpty()) {
+            cursor.insertText(prevIndent);
+        }
+        return;
+    }
 
     // ---- 先做字符串前缀判断（O(前缀长度)），无触发就快速返回 ----
     const bool mayIndent = m_editorRules.endsWithIndentTrigger(prevTrimmed);
@@ -4101,10 +4132,7 @@ void TextEditor::autoIndentAfterReturn()
         if (mayIndent) {
             newIndent = prevIndent + indentUnit();
         } else if (mayDedent) {
-            const QString unit = indentUnit();
-            if (prevIndent.endsWith(unit)) {
-                newIndent = prevIndent.left(prevIndent.length() - unit.length());
-            }
+            newIndent = prevIndent;
         }
     }
 
@@ -5475,6 +5503,78 @@ void TextEditor::endSilentModification()
 }
 
 // ============================================================================
+//  AI 辅助：可用性同步
+// ============================================================================
+void TextEditor::setAIAvailable(bool available)
+{
+    m_aiAvailable = available;
+    if (m_aiMenu) {
+        m_aiMenu->setEnabled(available);
+        m_aiMenu->setToolTip(available ? QString()
+                                       : tr("AI Agent 未连接"));
+    }
+}
+
+// ============================================================================
+//  AI 辅助：触发一个操作
+//  1. 取选中文本（无选中 → 取当前整行）
+//  2. 按 kind 拼 prompt
+//  3. emit aiAssistRequested 让 MainWindow 转给 AI 模块
+// ============================================================================
+void TextEditor::triggerAIAssist(AIAssistKind kind)
+{
+    // ---- 1. 取代码 ----
+    QString code = textCursor().selectedText();
+    if (code.isEmpty()) {
+        // 无选中 → 用光标所在整行
+        code = textCursor().block().text();
+    }
+    // 选区里的段落分隔符归一化为 '\n'
+    code.replace(QChar::ParagraphSeparator, '\n');
+
+    if (code.trimmed().isEmpty()) {
+        QMessageBox::information(this, tr("AI 助手"),
+                                 tr("请先选中代码，或把光标放到有代码的行上。"));
+        return;
+    }
+
+    // ---- 2. 拼 prompt ----
+    QString prompt;
+    switch (kind) {
+    case AIAssistKind::ExplainCode:
+        prompt = tr("请解释这段代码：\n```\n%1\n```").arg(code);
+        break;
+
+    case AIAssistKind::FixCode:
+        prompt = tr("请修复这段代码里的问题，说明修改理由：\n```\n%1\n```").arg(code);
+        break;
+
+    case AIAssistKind::GenerateComment:
+        prompt = tr("请为这段代码生成简洁的中文注释：\n```\n%1\n```").arg(code);
+        break;
+
+    case AIAssistKind::RenameSuggest:
+        prompt = tr("请给这段代码里的变量、函数起更好的名字，并说明理由：\n```\n%1\n```").arg(code);
+        break;
+
+    case AIAssistKind::CustomAsk: {
+        bool ok = false;
+        const QString q = QInputDialog::getMultiLineText(
+            this,
+            tr("AI 自定义提问"),
+            tr("请输入你的问题（会自动附带选中的代码）："),
+            QString(), &ok);
+        if (!ok || q.trimmed().isEmpty()) return;
+        prompt = q + QStringLiteral("\n\n```\n") + code + QStringLiteral("\n```");
+        break;
+    }
+    }
+
+    // ---- 3. 发信号 ----
+    emit aiAssistRequested(prompt, m_filePath, currentLine(), currentColumn());
+}
+
+// ============================================================================
 //  SVG 图标缓存
 //  - 第一次调用：用 QSvgRenderer 渲染到 QPixmap，存进 m_iconCache
 //  - 后续调用：直接命中缓存（O(1) hash 查表）
@@ -5543,6 +5643,11 @@ void TextEditor::contextMenuEvent(QContextMenuEvent *event)
         m_copyAction->setEnabled(textCursor().hasSelection());
         m_pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
 
+        // AI 子菜单：每次弹出时再同步一次可用状态（防止状态过期）
+        if (m_aiMenu) {
+            m_aiMenu->setEnabled(m_aiAvailable);
+        }
+
         m_contextMenu->exec(event->globalPos());
     }
 }
@@ -5559,7 +5664,7 @@ void TextEditor::updateLineNumberAreaWidth()
 void TextEditor::highlightCurrentLine()
 {
     if (!m_highlightCurrentLine) return;
-    
+
     //  读取现有 selection（不清空！）
     QList<QTextEdit::ExtraSelection> all = extraSelections();
 
