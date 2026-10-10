@@ -1713,56 +1713,66 @@ void TextEditor::findPrevious()
     }
 }
 
+// ============================================================
+//  用户入口：Alt+Enter / 点击红点
+//
+//  职责：
+//    - 有缓存 → 直接弹菜单（调 showCodeActionMenu）
+//    - 无缓存 → 只发 LSP 请求，不弹菜单
+//              响应到达后由 onCodeActionReceived 弹菜单
+//
+//  ⚠️ 关键：本函数在"无缓存"分支中**不能**自己弹菜单，
+//     否则会和 onCodeActionReceived 互相触发，形成无限循环。
+// ============================================================
 void TextEditor::showQuickFixMenuForLine(int line, const QPoint& globalPos)
 {
     if (line < 1 || line > lineCount()) return;
 
-    // 1. 若本地缓存里没有，先请求 LSP
-    if (!m_codeActionsByLine.contains(line)) {
-        m_codeActionPendingLine = line;
-
-        // 组装该行的诊断范围（用于 LSP codeAction 的 context）
-        int startCol = 0, endCol = 0;
-        QString msg;
-        bool hasErr = false;
-        for (const ErrorMarker& m : m_errorMarkers) {
-            if (m.line == line) {
-                startCol = qMax(0, m.column - 1);
-                endCol   = startCol + 1;
-                hasErr = true;
-                break;
-            }
-        }
-        if (!hasErr) {
-            for (const ErrorMarker& m : m_warningMarkers) {
-                if (m.line == line) {
-                    startCol = qMax(0, m.column - 1);
-                    endCol   = startCol + 1;
-                    break;
-                }
-            }
-        }
-
-        const QTextBlock block = document()->findBlockByNumber(line - 1);
-        const int endLine0 = line - 1;                  // 0-based
-        const int startLine0 = line - 1;
-
-        // 通知外部：请发 LSP codeAction 请求
-        emit quickFixRequested(m_filePath,
-                               startLine0, startCol,
-                               endLine0,   endCol);
-        // 同时弹一个"正在获取…"占位菜单？ 简单起见，直接返回，
-        // 等 onCodeActionReceived() 再弹。下面第 2 步处理这条路径。
-        Q_UNUSED(block);
+    // ---- 情况 1：有缓存 → 直接弹菜单，不再请求 ----
+    const QList<LSPCodeAction> cached = m_codeActionsByLine.value(line);
+    if (!cached.isEmpty()) {
+        showCodeActionMenu(line, globalPos, cached);
         return;
     }
 
-    // 2. 有缓存 → 直接弹菜单
+    // ---- 情况 2：无缓存 → 重置重试状态 + 发请求 ----
+    m_codeActionRetryCount     = 0;
+    m_codeActionRetryLine      = line;
+    m_codeActionRetryGlobalPos = globalPos;
+    m_codeActionPendingLine    = line;
+
+    // 显示"正在查询"提示（3 秒超时自动消失）
+    //   重试成功的路径会在 onCodeActionReceived 里显式 hideText
+    QToolTip::showText(globalPos, tr("正在查询修复..."), this, QRect(), 3000);
+
+    const QTextBlock block = document()->findBlockByNumber(line - 1);
+    const int lineLen = block.isValid() ? block.length() - 1 : 0;
+
+    emit quickFixRequested(m_filePath,
+                           line - 1, 0,
+                           line - 1, lineLen);
+}
+
+// ============================================================
+//  私有辅助：只弹菜单，不发请求，不改缓存
+//  调用者：showQuickFixMenuForLine（有缓存）、onCodeActionReceived（响应后）
+// ============================================================
+void TextEditor::showCodeActionMenu(int line,
+                                    const QPoint& globalPos,
+                                    const QList<LSPCodeAction>& actions)
+{
+    Q_UNUSED(line);
+
     QMenu menu(this);
-    const QList<LSPCodeAction> actions = m_codeActionsByLine.value(line);
+
     if (actions.isEmpty()) {
-        QAction* a = menu.addAction(tr("无可用修复"));
+        // 走到这里 = 已重试 2 次仍空
+        QAction* a = menu.addAction(tr("未找到可用修复"));
         a->setEnabled(false);
+        menu.addSeparator();
+        // B 方案：给用户一个"为什么"，避免误以为 IDE 坏了
+        QAction* b = menu.addAction(tr("clangd 可能仍在索引，请稍后重试"));
+        b->setEnabled(false);
     } else {
         for (const LSPCodeAction& act : actions) {
             QAction* a = menu.addAction(act.title);
@@ -1776,9 +1786,20 @@ void TextEditor::showQuickFixMenuForLine(int line, const QPoint& globalPos)
             });
         }
     }
+
     menu.exec(globalPos);
 }
 
+// ============================================================
+//  LSP codeAction 响应到达
+//
+//  三种情况：
+//    1. 非空 → 缓存 + 弹菜单（正常成功路径）
+//    2. 空 + 未超重试上限 → 主动触发 didChange 催 clangd，延迟重试
+//    3. 空 + 超重试上限 → 弹"无可用修复"菜单
+//
+//   约束：本函数不调用 showQuickFixMenuForLine，避免递归
+// ============================================================
 void TextEditor::onCodeActionReceived(const QString& filePath,
                                       const QList<LSPCodeAction>& actions)
 {
@@ -1788,33 +1809,126 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
     m_codeActionPendingLine = -1;
     if (line < 0) return;
 
-    m_codeActionsByLine.insert(line, actions);
+    // ---------- 情况 1：非空 → 缓存 + 弹菜单 ----------
+    if (!actions.isEmpty()) {
+        m_codeActionsByLine.insert(line, actions);
+        m_codeActionRetryCount = 0;
+        QToolTip::hideText();
+        showCodeActionMenu(line, m_codeActionRetryGlobalPos, actions);
+        return;
+    }
 
-    // 用户请求时如果菜单已弹出，这里再弹一次；简单做法就是立刻弹
-    const QPoint globalPos = viewport()->mapToGlobal(
-        cursorRect().bottomLeft());
-    showQuickFixMenuForLine(line, globalPos);
+        // ---------- 情况 2：空 + 还能重试 ----------
+    constexpr int kMaxRetries = 2;
+    if (m_codeActionRetryCount < kMaxRetries) {
+        ++m_codeActionRetryCount;
+
+        const int    savedLine = m_codeActionRetryLine;
+        const QPoint savedPos  = m_codeActionRetryGlobalPos;
+
+        //   让 clangd 认为"内容真的变了"
+        //   clangd 对"内容相同"的 didChange 会跳过分析 → 诊断不更新 → 还是空
+        //   所以发两次 didChange：
+        //     第一次：末尾加一个空格（内容真的变了）
+        //     第二次：250ms 后恢复原样（此时第一次已发出去）
+        //   两次间隔必须 > LSPClient::changeDocument 的 200ms 防抖窗口，
+        //   否则第二次的 pendingContent 会覆盖第一次，只发一次
+        if (!m_filePath.isEmpty()) {
+            emit documentChangedForLsp(m_filePath,
+                                       toPlainText() + QStringLiteral(" "));
+        }
+
+        // 250ms 后发第二次 didChange（恢复原样）
+        QTimer::singleShot(250, this, [this, savedLine, savedPos]() {
+            if (!isVisible() || currentLine() != savedLine) {
+                m_codeActionRetryCount = 0;
+                QToolTip::hideText();
+                return;
+            }
+
+            if (!m_filePath.isEmpty()) {
+                emit documentChangedForLsp(m_filePath, toPlainText());
+            }
+
+            // 再等 300ms 让 clangd 完成分析 + 诊断回传到 IDE
+            QTimer::singleShot(300, this, [this, savedLine, savedPos]() {
+                if (!isVisible() || currentLine() != savedLine) {
+                    m_codeActionRetryCount = 0;
+                    QToolTip::hideText();
+                    return;
+                }
+
+                m_codeActionPendingLine = savedLine;
+
+                const QTextBlock block =
+                    document()->findBlockByNumber(savedLine - 1);
+                const int lineLen = block.isValid() ? block.length() - 1 : 0;
+
+                emit quickFixRequested(m_filePath,
+                                       savedLine - 1, 0,
+                                       savedLine - 1, lineLen);
+                Q_UNUSED(savedPos);
+            });
+        });
+        return;
+    }
+
+    // ---------- 情况 3：重试耗尽 → 弹"无可用修复" ----------
+    m_codeActionRetryCount = 0;
+    QToolTip::hideText();
+    showCodeActionMenu(line, m_codeActionRetryGlobalPos, actions);
 }
 
 bool TextEditor::applyCodeAction(const LSPCodeAction& action)
 {
-    // 简化：只应用"编辑当前文件"的动作。跨文件编辑暂不支持。
     QTextCursor cursor(document());
 
     cursor.beginEditBlock();
     for (const LSPWorkspaceEdit& wsEdit : action.edits) {
         if (wsEdit.filePath != m_filePath) continue;   // 跨文件跳过
 
+        // ============================================================
+        //  先把"插入 #include"的 edit 重定位到 include 区域
+        //
+        //  clangd 返回的插入位置紧贴使用点（比如 printf 上方），
+        //  对用户不友好。这里检测出 include 插入，把位置改到文件顶部的
+        //  include 区域末尾。
+        //
+        //  判定条件：
+        //    - 纯插入（start == end，没有删除内容）
+        //    - newText 去除首尾空白后以 "#include" 开头
+        // ============================================================
+        QList<LSPTextEdit> adjusted;
+        adjusted.reserve(wsEdit.edits.size());
+        for (const LSPTextEdit& e : wsEdit.edits) {
+            LSPTextEdit te = e;
+
+            const bool isPureInsert =
+                (te.startLine  == te.endLine &&
+                 te.startColumn == te.endColumn);
+            const QString trimmedNew = te.newText.trimmed();
+            const bool isIncludeInsert =
+                isPureInsert && trimmedNew.startsWith(QLatin1String("#include"));
+
+            if (isIncludeInsert) {
+                const int targetLine = findIncludeInsertLine();
+                te.startLine   = targetLine;
+                te.startColumn = 0;
+                te.endLine     = targetLine;
+                te.endColumn   = 0;
+            }
+            adjusted.append(te);
+        }
+
         // 从后往前应用，避免位置漂移
-        QList<LSPTextEdit> sorted = wsEdit.edits;
-        std::sort(sorted.begin(), sorted.end(),
+        std::sort(adjusted.begin(), adjusted.end(),
                   [](const LSPTextEdit& a, const LSPTextEdit& b) {
                       if (a.startLine != b.startLine)
                           return a.startLine > b.startLine;
                       return a.startColumn > b.startColumn;
                   });
 
-        for (const LSPTextEdit& e : sorted) {
+        for (const LSPTextEdit& e : adjusted) {
             const int sPos =
                 document()->findBlockByNumber(e.startLine).position() + e.startColumn;
             const int ePos =
@@ -1827,7 +1941,6 @@ bool TextEditor::applyCodeAction(const LSPCodeAction& action)
     }
     cursor.endEditBlock();
 
-    // 缓存失效：这次编辑后诊断会重算，LSP 会发新的 publishDiagnostics
     m_codeActionsByLine.clear();
 
     return true;
@@ -1836,6 +1949,57 @@ bool TextEditor::applyCodeAction(const LSPCodeAction& action)
 QList<LSPCodeAction> TextEditor::codeActionsForLine(int line) const
 {
     return m_codeActionsByLine.value(line);
+}
+
+// ============================================================================
+//  找到 include 区域的插入位置
+// ============================================================================
+int TextEditor::findIncludeInsertLine() const
+{
+    QTextDocument* doc = document();
+    if (!doc) return 0;
+
+    const int total = doc->blockCount();
+    if (total == 0) return 0;
+
+    int lastIncludeLine = -1;    // 最后一个 #include 的行号（0-based）
+    bool inBlockComment = false;
+
+    for (int i = 0; i < total; ++i) {
+        const QString text    = doc->findBlockByNumber(i).text();
+        const QString trimmed = text.trimmed();
+
+        // ---------- 块注释内部 ----------
+        if (inBlockComment) {
+            if (trimmed.contains("*/")) inBlockComment = false;
+            continue;
+        }
+        if (trimmed.startsWith("/*")) {
+            if (!trimmed.contains("*/")) inBlockComment = true;
+            continue;
+        }
+
+        // ---------- 空行 / 行注释 ----------
+        if (trimmed.isEmpty())      continue;
+        if (trimmed.startsWith("//")) continue;
+
+        // ---------- 预处理指令（#include / #pragma / #define ...）----------
+        if (trimmed.startsWith('#')) {
+            if (trimmed.startsWith("#include")) {
+                lastIncludeLine = i;
+            }
+            // 其他 # 指令也属于文件顶部区域，继续往下
+            continue;
+        }
+
+        // ---------- 遇到第一行真正的代码 → 停 ----------
+        break;
+    }
+
+    if (lastIncludeLine >= 0) {
+        return lastIncludeLine + 1;   // 插到最后一个 include 之后
+    }
+    return 0;                          // 没有任何 include → 插到文件头
 }
 
 // ============================================================
@@ -2866,6 +3030,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
     if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
         && (event->modifiers() & Qt::AltModifier)) {
         const int line = currentLine();
+
         if (hasErrorMarker(line) || hasWarningMarker(line)) {
             const QPoint globalPos = viewport()->mapToGlobal(
                 cursorRect().bottomLeft());

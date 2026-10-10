@@ -334,12 +334,18 @@ void LSPClient::requestCodeAction(const QString& filePath,
     for (const LSPDiagnostic& d : diagnostics) {
         QJsonObject diag;
         QJsonObject r;
-        // LSPDiagnostic 里 line/column 是 1-based，转回 0-based
+
+        // LSPDiagnostic 里 line/column/endLine/endColumn 都是 1-based，
+        // 转回 0-based 发回给 clangd
         const int sl = qMax(0, d.line - 1);
         const int sc = qMax(0, d.column - 1);
-        // 我们没有 end 信息，就把 range 收成一个点；clangd 对此宽容
+        const int el = qMax(0, d.endLine > 0 ? d.endLine - 1 : sl);
+        const int ec = qMax(0, d.endColumn > 0 ? d.endColumn - 1 : sc + 1);
+
+        // range 必须和 clangd 原发的诊断完全一致
+        // clangd 用 Diagnostic 全等比较，range 差一个字符就不匹配
         r["start"] = QJsonObject{{"line", sl}, {"character", sc}};
-        r["end"]   = QJsonObject{{"line", sl}, {"character", sc + 1}};
+        r["end"]   = QJsonObject{{"line", el}, {"character", ec}};
         diag["range"] = r;
 
         diag["message"] = d.message;
@@ -351,7 +357,7 @@ void LSPClient::requestCodeAction(const QString& filePath,
         diag["severity"] = sev;
 
         if (!d.code.isEmpty()) diag["code"] = d.code;
-        diag["source"] = "lsp";
+        diag["source"] = d.source.isEmpty() ? QStringLiteral("clang") : d.source;
 
         diagArr.append(diag);
     }
@@ -369,8 +375,6 @@ void LSPClient::requestCodeAction(const QString& filePath,
     m_pendingRequests[m_codeActionRequestId] = "codeAction";
 
     sendMessage(request);
-    qDebug() << "[LSP] codeAction requested for" << filePath
-             << "line" << startLine << "diagnostics" << diagArr.size();
 }
 
 void LSPClient::handleDefinitionResponse(const QJsonObject& response)
@@ -441,13 +445,30 @@ void LSPClient::handleCodeActionResponse(const QJsonObject& response)
         action.kind        = obj["kind"].toString();
         action.isPreferred = obj["isPreferred"].toBool(false);
 
-        // 只处理带 edit 的（Command 形式暂不支持）
-        const QJsonValue editVal = obj["edit"];
-        if (!editVal.isObject()) continue;
-        const QJsonObject editObj = editVal.toObject();
+        // 兼容两种 LSP 形式的 CodeAction
+        //   形式 A：{"edit": WorkspaceEdit, ...}
+        //   形式 B：{"command": "clangd.applyFix", "arguments": [{"changes": {...}}, ...]}
+        //   clangd 走形式 B，且 arguments[0].changes 就是完整的 WorkspaceEdit
+        QJsonObject editObj;
 
-        // WorkspaceEdit.changes 是 { uri: TextEdit[] }
+        if (obj["edit"].isObject()) {
+            editObj = obj["edit"].toObject();
+        } else if (obj["command"].isString()) {
+            const QJsonArray args = obj["arguments"].toArray();
+            if (!args.isEmpty()) {
+                const QJsonObject arg0 = args.first().toObject();
+                if (arg0.contains("changes")) {
+                    editObj = QJsonObject{{"changes", arg0["changes"]}};
+                } else if (arg0.contains("documentChanges")) {
+                    editObj = QJsonObject{{"documentChanges", arg0["documentChanges"]}};
+                }
+            }
+        }
+
+        if (editObj.isEmpty()) continue;
+
         const QJsonObject changes = editObj["changes"].toObject();
+        // ... 后续解析不变
         for (auto it = changes.begin(); it != changes.end(); ++it) {
             const QString uri = it.key();
             const QJsonArray edits = it.value().toArray();
@@ -695,7 +716,6 @@ void LSPClient::onServerErrorRead()
 
             // ========== 过滤 clangd 的正常 INFO 日志 ==========
             if (trimmed.startsWith("I[")) {
-                qDebug() << "clangd INFO:" << trimmed;
                 continue;
             }
 
@@ -818,6 +838,7 @@ void LSPClient::handlePublishDiagnostics(const QJsonObject& params)
         info.filePath = filePath;
         info.message = diag["message"].toString();
         info.code = diag["code"].toString();
+        info.source = diag["source"].toString();
 
         // 严重程度: 1=error, 2=warning, 3=info, 4=hint
         int severity = diag["severity"].toInt();
@@ -831,8 +852,13 @@ void LSPClient::handlePublishDiagnostics(const QJsonObject& params)
         // 位置（LSP 使用 0-based，需要转换为 1-based）
         QJsonObject range = diag["range"].toObject();
         QJsonObject start = range["start"].toObject();
-        info.line = start["line"].toInt() + 1;
-        info.column = start["character"].toInt() + 1;
+        QJsonObject end   = range["end"].toObject();
+
+        info.line      = start["line"].toInt()      + 1;
+        info.column    = start["character"].toInt() + 1;
+        // 把 end 位置也存下来 —— codeAction 请求必须原样回传
+        info.endLine   = end["line"].toInt()        + 1;
+        info.endColumn = end["character"].toInt()   + 1;
 
         diagnostics.append(info);
     }

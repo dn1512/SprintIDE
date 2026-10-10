@@ -459,6 +459,9 @@ MainWindow::MainWindow(QWidget *parent)
     //     // 字体或字号变化 → 遍历所有编辑器重新应用
     //     applyCurrentTheme();
     // });
+
+    // 恢复窗口状态（必须在所有 dock 创建之后）
+    restoreWindowState();
     applyCurrentTheme();
 
     // 初始化 LSP 管理器
@@ -1261,6 +1264,27 @@ void MainWindow::setupMenuBar()
     });
     registerShortcut(QStringLiteral("view.projectPanel"), tr("项目面板"), toggleProjectPanelAction);
     m_toggleProjectPanelAction = toggleProjectPanelAction;
+    
+    QAction* resetLayoutAction = viewMenu->addAction(tr("重置窗口布局"));
+    resetLayoutAction->setStatusTip(tr("恢复窗口到默认大小、位置和面板布局"));
+    connect(resetLayoutAction, &QAction::triggered, this, [this]() {
+        const auto reply = QMessageBox::question(
+            this, tr("重置窗口布局"),
+            tr("将窗口大小、位置和面板布局恢复为默认值。\n\n继续？"));
+        if (reply != QMessageBox::Yes) return;
+    
+        // 清除保存的状态
+        ConfigManager* cfg = Application::instance().configManager();
+        if (cfg) {
+            cfg->remove("Window/Geometry");
+            cfg->remove("Window/State");
+            cfg->remove("Window/Maximized");
+        }
+    
+        // 恢复默认（可能需要重启才完全生效）
+        resize(1600, 1000);
+        // 或者更简单地提示用户"下次启动生效"
+    });
 
     // ==================== 帮助菜单 ====================
     QMenu *helpMenu = menuBar->addMenu(tr("帮助(&H)"));
@@ -2058,7 +2082,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         m_lspManager->shutdownAll();
     }
 
-    saveSession();
+    saveSession();          // 项目级 session
+    saveWindowState();      // 全局窗口状态
 
     // 保存 AI 面板状态
     if (m_aiChatPanel) {
@@ -2168,9 +2193,52 @@ void MainWindow::updateWindowTitle()
     setWindowTitle(title);
 }
 
+void MainWindow::restoreWindowState()
+{
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    // ---- 窗口几何 ----
+    const QByteArray geometry = cfg->value("Window/Geometry").toByteArray();
+    if (!geometry.isEmpty()) {
+        // restoreGeometry 会做屏幕有效性检查，失效则返回 false
+        const bool ok = restoreGeometry(geometry);
+        if (!ok) {
+            qDebug() << "[Window] 恢复窗口几何失败（屏幕配置可能已变），使用默认布局";
+            resize(1600, 1000);   // 你的默认尺寸
+        }
+    } else {
+        // 首次启动：用默认尺寸
+        resize(1600, 1000);
+    }
+
+    // ---- Dock 布局 ----
+    const QByteArray state = cfg->value("Window/State").toByteArray();
+    if (!state.isEmpty()) {
+        const bool ok = restoreState(state);
+        if (!ok) {
+            qDebug() << "[Window] 恢复 Dock 布局失败，使用默认布局";
+        }
+    }
+
+    qDebug() << "[Window] 窗口状态已恢复";
+}
+
 void MainWindow::saveWindowState()
 {
-    // 窗口状态保存留空，后续实现
+    ConfigManager* cfg = Application::instance().configManager();
+    if (!cfg) return;
+
+    // ---- 窗口几何 + 最大化状态 ----
+    cfg->setValue("Window/Geometry", saveGeometry());
+
+    // ---- Dock 布局（项目面板宽度、底部面板高度、可见性等） ----
+    cfg->setValue("Window/State", saveState());
+
+    // ---- 显式记录"上次是否最大化"（saveGeometry 已含，但独立存更直观） ----
+    cfg->setValue("Window/Maximized", isMaximized());
+
+    qDebug() << "[Window] 窗口状态已保存";
 }
 
 // ==================== 项目操作 ====================
@@ -3487,6 +3555,9 @@ void MainWindow::onLSPDiagnostics(const QString& filePath,
     TextEditor* editor = findEditorByFilePath(filePath);
     if (!editor) return;
 
+    // 缓存本次诊断的完整信息（含 source / code），供后续 codeAction 请求原样回传
+    m_lastDiagnosticsByFile[filePath] = diagnostics;
+
     editor->clearAllMarkers();
 
     DiagnosticFilter& filter = DiagnosticFilter::instance();
@@ -3533,7 +3604,7 @@ void MainWindow::onDefinitionReceived(const QString& file, int line, int column)
 
     te->gotoLine(line);
     te->setFocus();
-    te->highlightLine(line);
+    // te->highlightLine(line);
 }
 
 void MainWindow::onQuickFixRequested(const QString& filePath,
@@ -3552,33 +3623,25 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
     LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
     if (!client) return;
 
-    // ---- 组装该行的诊断列表 ----
-    //   从编辑器里拿 error/warning markers（它们就是 LSP 诊断的镜像）
+    // 从缓存里取该行的原始诊断（保留 source / code）
+    // 不再从 ErrorMarker 现拼，避免丢失 clangd 需要的字段
     QList<LSPDiagnostic> diags;
-    for (const ErrorMarker& m : editor->getErrorMarkers()) {
-        if (m.line - 1 != startLine) continue;
-        LSPDiagnostic d;
-        d.filePath = m.filePath;
-        d.line     = m.line;
-        d.column   = m.column;
-        d.message  = m.message;
-        d.severity = m.severity;   // "error" / "warning"
-        diags.append(d);
-    }
-    // 警告标记：TextEditor 需要暴露 getWarningMarkers()（如还没有，加上）
-    for (const ErrorMarker& m : editor->getWarningMarkers()) {
-        if (m.line - 1 != startLine) continue;
-        LSPDiagnostic d;
-        d.filePath = m.filePath;
-        d.line     = m.line;
-        d.column   = m.column;
-        d.message  = m.message;
-        d.severity = m.severity;
+    const QList<LSPDiagnostic> allDiags =
+        m_lastDiagnosticsByFile.value(filePath);
+    for (const LSPDiagnostic& d : allDiags) {
+        // 诊断 range 与请求 range 有重叠 → 纳入
+        // 支持跨多行的诊断（Python 缩进错误 / Java 泛型错误等）
+        const int dStartLine = d.line - 1;                        // 0-based
+        const int dEndLine   = (d.endLine > 0 ? d.endLine : d.line) - 1;
+
+        // 无重叠 → 跳过
+        if (dEndLine < startLine || dStartLine > endLine) continue;
+
+        // 起始行在同一行时，检查列范围（粗略）
         diags.append(d);
     }
 
-    // ---- codeActionReceived 一次性 connect（成员函数槽 + UniqueConnection）----
-    //   注意：需要在 TextEditor 上接收（因为 onCodeActionReceived 是它的方法）
+    // ---- codeActionReceived 一次性 connect（保留原有逻辑） ----
     connect(client, &LSPClient::codeActionReceived,
             editor, &TextEditor::onCodeActionReceived,
             Qt::UniqueConnection);

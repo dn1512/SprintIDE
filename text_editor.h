@@ -160,6 +160,10 @@ public:
 
     /// 收集指定行可用的修复方案（从缓存的 LSP codeAction 结果里取）
     QList<LSPCodeAction> codeActionsForLine(int line) const;
+    
+    /// 找到 include 区域的插入位置（0-based 行号）
+    ///   规则：跳过顶部注释/空行，返回最后一个 #include 之后的行
+    int findIncludeInsertLine() const;
 
     /// 接收到 MainWindow 转发来的 LSP codeAction 结果
     void onCodeActionReceived(const QString& filePath,
@@ -167,6 +171,11 @@ public:
 
     /// 应用一个 LSP 代码动作到本文档（暂不支持跨文件）
     bool applyCodeAction(const LSPCodeAction& action);
+    
+    // ========== Quick Fix 重试机制 ==========
+    int    m_codeActionRetryCount = 0;      ///< 当前已重试次数（0 表示未重试）
+    int    m_codeActionRetryLine = -1;      ///< 重试针对的行（1-based）
+    QPoint m_codeActionRetryGlobalPos;      ///< 菜单最终弹出的屏幕坐标
 
     // ========== 提供对protected成员的访问（用于LineNumberArea）==========
     QTextBlock firstVisibleBlock() const { return QPlainTextEdit::firstVisibleBlock(); }
@@ -397,6 +406,11 @@ private:
     void initFontMetrics();
     void fixFontRendering();
     void testFontMetrics();
+
+    // 私有辅助——只弹菜单，不发请求。避免和 onCodeActionReceived 互触发
+    void showCodeActionMenu(int line,
+                            const QPoint& globalPos,
+                            const QList<LSPCodeAction>& actions);
 
     // ========== 错误标记绘制 ==========
     void drawErrorMarkers(QPainter* painter);

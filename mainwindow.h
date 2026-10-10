@@ -324,7 +324,7 @@ private:
     void setupStatusBar();
     void setupDockWidgets();
     void setupConnections();
-    void setupDebugPanel(); 
+    void setupDebugPanel();
     void setupTerminalPanel();
     void setupGitPanel();
     void setupBreakpointListPanel();
@@ -336,6 +336,7 @@ private:
     bool confirmUnsavedChanges();
     void updateStatusBarPosition(TextEditor* editor);
     void updateWindowTitle();
+    void restoreWindowState();
     void saveWindowState();
 
     void applyCurrentTheme();
@@ -543,6 +544,8 @@ private:
     bool               m_stoppingProcess = false;  ///< 是否正在主动停止进程
     // 窗口激活防抖定时器
     QTimer* m_projectPanelRefreshDebounce = nullptr;
+    // 按文件缓存最近一次 LSP 诊断的完整信息（保留 source / code）供 onQuickFixRequested 组装 codeAction 的 context.diagnostics 使用
+    QHash<QString, QList<LSPDiagnostic>> m_lastDiagnosticsByFile;
 };
 
 } // namespace SprintIDE

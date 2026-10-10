@@ -16,9 +16,12 @@ struct LSPDiagnostic {
     QString filePath;
     int line;          // 1-based
     int column;        // 1-based
+    int endLine = 0;   // 诊断结束行（1-based，0 表示未设置）
+    int endColumn = 0; // 诊断结束列（1-based，0 表示未设置）
     QString message;
     QString severity;  // "error", "warning", "information", "hint"
     QString code;
+    QString source;    // 诊断来源
 };
 
 struct LSPCompletionItem {
