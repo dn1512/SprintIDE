@@ -1321,16 +1321,10 @@ QString ThemeManager::buildStyleSheet() const
                "  border: 1px solid %4;"
                "  border-radius: 4px;"
                "  font-family: 'Menlo', 'Consolas', monospace;"
+               "  padding: 6px 8px;"
+               "  selection-background-color: %5;"   // 选中底色
+               "  selection-color: %3;"              // 选中文字色
                "} "
-               "QLineEdit#TerminalInput {"
-               "  background-color: %2;"
-               "  color: %3;"
-               "  border: 1px solid %4;"
-               "  border-radius: 4px;"
-               "  padding: 4px 8px;"
-               "  font-family: 'Menlo', 'Consolas', monospace;"
-               "} "
-               "QLineEdit#TerminalInput:focus { border: 1px solid %5; } "
                "QLabel#TerminalPrompt {"
                "  color: %6;"                                   // 绿色提示符
                "  font-weight: bold;"
