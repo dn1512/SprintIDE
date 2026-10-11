@@ -27,7 +27,7 @@ ProjectSelectionDialog::ProjectSelectionDialog(const QMap<QString, QDateTime>& r
     m_createNewProject(false)
 {
     setWindowTitle(tr("选择或创建项目"));
-    setMinimumSize(600, 400);
+    setMinimumSize(800, 800);
     setModal(true);
 
     initUI();
