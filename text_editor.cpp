@@ -4541,17 +4541,26 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         return;
     }
 
-    // ---- 4. 目标缩进 = 光标所在行的前导空白（原样保留，不转空格）----
+    // ---- 4. 目标缩进 ----
+    //   JetBrains 规则（分三种场景）：
+    //     1. 光标在行尾（cursorCol == 行可见长度）
+    //        → 按"新行"处理，用行首缩进
+    //        例：  aaa|  粘贴 x\ny\nz  →  y、z 缩进到 aaa 的行首缩进
+    //     2. 光标在行中间且光标列 > 缩进列
+    //        → 按光标列对齐
+    //        例：  foo(|bar)  粘贴 x\ny  →  y 对齐到光标列
+    //     3. 光标在缩进区内
+    //        → 用行首缩进
     const QTextCursor cur = textCursor();
     const QTextBlock curBlock = cur.block();
     const int cursorCol = cur.positionInBlock();
     const int indentCol = leadingIndentWidth(curBlock.text());
+    const int lineLen   = curBlock.length() - 1;   // 可见字符数（不含换行符）
+
+    const bool cursorAtEndOfLine = (cursorCol >= lineLen);
 
     QString targetIndent = leadingWhitespace(curBlock.text());
-    if (cursorCol > indentCol) {
-        // 光标在缩进区之后：补足到光标列的额外空格
-        //   （用空格而非 Tab，因为这一段是"代码中间的对齐"，
-        //    Tab 语义是"缩进级别"，不适合表达"对齐到某一列"）
+    if (cursorCol > indentCol && !cursorAtEndOfLine) {
         targetIndent += QString(cursorCol - indentCol, ' ');
     }
 

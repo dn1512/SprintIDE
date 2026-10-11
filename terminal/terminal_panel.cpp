@@ -158,11 +158,61 @@ void TerminalPanel::printPrompt()
 }
 
 // ============================================================================
+//  过滤 nroff 退格序列
+//
+//  nroff / less / git diff 等工具为了在终端里表现"加粗"或"下划线"，
+//  会输出形如 X\bX 或 _\bX 的序列。真实终端靠"光标回退 + 覆盖"实现视觉效果，
+//  但 QTextEdit 不是终端 → 必须把它们压成一个字符。
+//
+//  规则：
+//    X \b X  →  X       （nroff 加粗）
+//    _ \b X  →  X       （nroff 下划线）
+//    单独的 \b → 丢弃   （进度条擦除等场景，不重放）
+// ============================================================================
+static QString stripOverstrike(const QString& in)
+{
+    QString out;
+    out.reserve(in.size());
+
+    constexpr QChar BS = QChar(0x08);
+
+    int i = 0;
+    while (i < in.size()) {
+        const QChar c = in[i];
+
+        // 模式 1 & 2：X\bX 或 _\bX
+        if (i + 2 < in.size() && in[i + 1] == BS) {
+            const QChar next = in[i + 2];
+            if (c == next || c == QLatin1Char('_')) {
+                out.append(next);
+                i += 3;
+                continue;
+            }
+        }
+
+        // 单独的 \b：直接跳过
+        if (c == BS) {
+            ++i;
+            continue;
+        }
+
+        out.append(c);
+        ++i;
+    }
+
+    return out;
+}
+
+// ============================================================================
 //  追加进程原始输出（原样，不加换行）
 // ============================================================================
 void TerminalPanel::appendRaw(const QString& text)
 {
     if (!m_outputWidget || text.isEmpty()) return;
+
+    // 过滤退格序列
+    const QString cleaned = stripOverstrike(text);
+    if (cleaned.isEmpty()) return;
 
     ThemeManager& tm = ThemeManager::instance();
 
@@ -172,7 +222,7 @@ void TerminalPanel::appendRaw(const QString& text)
     QTextCursor c(m_outputWidget->document());
     c.movePosition(QTextCursor::End);
 
-    const QStringList lines = text.split(QLatin1Char('\n'), Qt::KeepEmptyParts);
+    const QStringList lines = cleaned.split(QLatin1Char('\n'), Qt::KeepEmptyParts);
     for (int i = 0; i < lines.size(); ++i) {
         const QString& line = lines.at(i);
         const bool isErr = errorRe.match(line).hasMatch();
@@ -479,6 +529,13 @@ static QString prependToPath(const QProcessEnvironment& env, const QString& dir)
 QProcessEnvironment TerminalPanel::buildChildEnvironment() const
 {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    // 禁用所有交互式 pager
+    //   - man / git / less 检测到 PAGER=cat 会直接全量输出，不挂住
+    //   - 这是 IDE 终端的标准做法（VSCode / CLion 都这么做）
+    env.insert(QStringLiteral("PAGER"),     QStringLiteral("cat"));
+    env.insert(QStringLiteral("MANPAGER"),  QStringLiteral("cat"));
+    env.insert(QStringLiteral("GIT_PAGER"), QStringLiteral("cat"));
 
     ConfigManager* cfg = Application::instance().configManager();
     if (cfg) {
