@@ -5597,6 +5597,10 @@ void MainWindow::stopRunningProcess()
 
     p->terminate();
     if (!p->waitForFinished(3000)) {
+        if (m_runningProcess.isNull()) {
+            return;   // 已经被 finished 处理清空 → 结束
+        }
+
         logWarn("程序未响应，强制结束");
         p->kill();
         p->waitForFinished(1000);

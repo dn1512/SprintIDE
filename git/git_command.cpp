@@ -31,28 +31,20 @@ GitCommand::GitCommand(QObject* parent)
 
 GitCommand::~GitCommand()
 {
-    // 析构时不调用 cancelAsync()：
-    //   1. 对象正在析构，emit finished 会引发接收者访问已失效对象
-    //   2. m_process / m_timer 是 this 的子对象，~QObject 会删除它们，
-    //      手动 deleteLater 反而有双重删除风险
-    // 只做：断开所有信号 + 同步 kill 掉正在运行的进程
-
-    // 断开所有向外发的信号（防止 finished 在析构过程中被触发）
     disconnect(this, nullptr, nullptr, nullptr);
 
     if (m_process) {
-        // 先断开 QProcess 到 this 的连接，防止 kill 时同步回调 onProcessFinished
-        m_process->disconnect(this);
+        // 断开 m_process 的所有信号（不只是到 this 的）
+        m_process->disconnect();
         if (m_process->state() != QProcess::NotRunning) {
             m_process->kill();
             m_process->waitForFinished(1000);
         }
-        // 不手动 delete：m_process 的 parent 是 this，~QObject 会作为析构的一部分删除它
+        // 不手动 delete：m_process 的 parent 是 this，~QObject 会自动删除
     }
     if (m_timer) {
         m_timer->stop();
-        m_timer->disconnect(this);
-        // 同上，由 ~QObject 自动删除
+        m_timer->disconnect();
     }
 }
 
@@ -210,19 +202,18 @@ void GitCommand::cancelAsync()
     }
     if (m_process) {
         m_cancelled = true;
+
+        // 先断开 m_process → this 的所有信号连接，
+        // 这样 waitForFinished 期间即使派发事件循环、即使 finished 被发出，
+        // 也不会有任何槽（onProcessFinished）响应 → m_process 不会被中途置空
+        m_process->disconnect(this);
+
         if (m_process->state() != QProcess::NotRunning) {
             m_process->kill();
-            // ⚠️ waitForFinished 会派发事件循环，
-            //    QProcess::finished 同步触发 onProcessFinished，
-            //    后者把 m_process 置为 nullptr。
-            //    等待后必须重新检查 m_process，否则下一行 deleteLater 会 UAF。
-            m_process->waitForFinished(1000);
+            m_process->waitForFinished(1000);   // 无需事后检查，因为信号已断
         }
-        // m_process 可能在 waitForFinished 里被 onProcessFinished 置空
-        if (m_process) {
-            m_process->deleteLater();
-            m_process = nullptr;
-        }
+        m_process->deleteLater();
+        m_process = nullptr;
     }
 }
 
@@ -238,10 +229,22 @@ void GitCommand::onTimeout()
 {
     if (!m_process) return;
     m_cancelled = true;
+
+    // ★ kill 之前先断开信号，
+    //   防止 kill 触发的 finished 在本函数返回前回调 onProcessFinished
+    m_process->disconnect(this);
+
     if (m_process->state() != QProcess::NotRunning) {
         m_process->kill();
     }
-    // onProcessFinished 会被随后触发
+    // 注意：这里没有 waitForFinished，
+    //   所以 m_process 的清理交给后续事件循环里的 onProcessFinished 处理 —— 但
+    //   上面已经把信号断开了，所以不会再有 onProcessFinished 被调用！
+    //   下面这行直接清理 m_process，避免残留：
+    if (m_process) {
+        m_process->deleteLater();
+        m_process = nullptr;
+    }
 }
 
 void GitCommand::onProcessFinished(int exitCode, QProcess::ExitStatus status)
@@ -268,6 +271,7 @@ void GitCommand::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         m_timer->deleteLater();
         m_timer = nullptr;
     }
+    m_process->disconnect(this);
     m_process->deleteLater();
     m_process = nullptr;
 
@@ -291,6 +295,7 @@ void GitCommand::onProcessError(QProcess::ProcessError error)
         m_timer->deleteLater();
         m_timer = nullptr;
     }
+    m_process->disconnect(this);
     m_process->deleteLater();
     m_process = nullptr;
 
