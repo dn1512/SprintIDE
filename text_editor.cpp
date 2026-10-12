@@ -355,10 +355,46 @@ TextEditor::TextEditor(QWidget *parent)
 
 TextEditor::~TextEditor()
 {
-    delete m_lineNumberArea;
-    delete m_highlighter;
+    // ============================================================
+    //  修复析构期 UAF
+    //
+    //  问题：
+    //    m_highlighter 的析构会触发 QSyntaxHighlighter::setDocument(nullptr)
+    //    → QTextDocumentPrivate::finishEdit()
+    //    → QPlainTextDocumentLayout::documentChanged
+    //    → QWidgetTextControl::updateRequest
+    //    → emit TextEditor::updateRequest(rect, dy)
+    //    → 回调到 TextEditor::updateLineNumberArea
+    //    → 访问 m_lineNumberArea->width()
+    //    如果此时 m_lineNumberArea 已被 delete → 崩
+    //
+    //  修复：
+    //    1. 先断开 document 与自身的所有信号连接（避免回调）
+    //    2. 按"后创建的先删"的顺序删除成员
+    //       m_highlighter 依赖 document → 先删
+    //       m_lineNumberArea 被其他析构回调访问 → 后删
+    //    3. m_contextMenu / m_errorMarkerTimer 无依赖 → 任意顺序
+    // ============================================================
+
+    // 1. 断开 document 的所有信号（防止任何回调）
+    if (document()) {
+        disconnect(document(), nullptr, this, nullptr);
+    }
+    // 2. 断开自身的所有信号（避免析构期间 emit 到其他接收者）
+    disconnect(this, nullptr, nullptr, nullptr);
+
+    // 3. 按依赖顺序删除
+    delete m_highlighter;        // 先删 → 其析构会触发 document 更新，但已断信号
+    m_highlighter = nullptr;
+
+    delete m_lineNumberArea;     // 后删 → 此时已无回调
+    m_lineNumberArea = nullptr;
+
     delete m_contextMenu;
+    m_contextMenu = nullptr;
+
     delete m_errorMarkerTimer;
+    m_errorMarkerTimer = nullptr;
 }
 
 void TextEditor::initEditor()
@@ -4109,9 +4145,9 @@ void TextEditor::autoIndentAfterReturn()
 
     const QString prevText    = prevBlock.text();
     const QString prevTrimmed = prevText.trimmed();
-    const QString prevIndent  = leadingWhitespace(prevText);
+    const QString prevIndent  = findLogicalLineIndent(prevBlock);
 
-    // ✅ v8.4：空行也继承缩进
+    //   空行也继承缩进
     //   之前是 `if (prevTrimmed.isEmpty()) return;`，
     //   导致"连续按回车"时第二次起缩进丢失。
     //   JetBrains 的行为是：空行按回车 → 新行保持同样的缩进级别。
@@ -4526,9 +4562,29 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         return;
     }
 
-    // ---- 3. 计算非空行的最小前导空白（按 tab 宽度折算）----
+    // ============================================================
+    //  粘贴缩进 —— "拼接判断 + 第二行基准" 策略
+    //
+    //  步骤：
+    //    1. 第一行：去掉所有前导缩进，从光标位置粘贴
+    //    2. x = 粘贴后第一行的实际缩进
+    //           = min(光标列, 行首缩进宽度)
+    //           （光标在缩进区内 → 光标列；光标在代码区 → 行首缩进）
+    //    3. 判断"是否开启块"：用**拼接后的完整第一行**（不是剪贴板第一行）
+    //           拼接后 = 光标前这一行的文本（去前导空白）
+    //                  + 剪贴板第一行（去前导空白）
+    //           例：光标在 "    if |"，剪贴板第一行 "(x == 1) {"
+    //               → 拼接后 "if (x == 1) {" → 行末 { → 开启块
+    //    4. 期望第二行缩进：
+    //           - 开启块：x + tabWidth
+    //           - 不开启：x
+    //    5. delta = 剪贴板第二行缩进 - 期望
+    //    6. 从第二行到最后一行，每行缩进减 delta
+    //       - delta > 0：去掉 delta 宽度的前导空白
+    //       - delta < 0：补 |delta| 个空格（罕见，对称处理）
+    // ============================================================
+
     const int tabWidth = qMax(1, m_tabWidth);
-    int minIndent = std::numeric_limits<int>::max();
 
     auto indentWidthOf = [tabWidth](const QString& line) -> int {
         int w = 0;
@@ -4540,92 +4596,93 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         return w;
     };
 
-    for (const QString& l : lines) {
-        if (l.trimmed().isEmpty()) continue;   // 空行不参与
-        const int w = indentWidthOf(l);
-        if (w < minIndent) minIndent = w;
+    auto stripIndentByWidth = [&](const QString& line, int width) -> QString {
+        if (width <= 0) return line;
+
+        int consumed = 0;
+        int i = 0;
+        while (i < line.length() && consumed < width) {
+            const QChar c = line[i];
+            if (c == ' ')       { consumed += 1;       ++i; }
+            else if (c == '\t') { consumed += tabWidth; ++i; }
+            else                break;
+        }
+        return line.mid(i);
+    };
+
+    // ---- 3. 找剪贴板第一个非空行 ----
+    int firstIdx = -1;
+    for (int i = 0; i < lines.size(); ++i) {
+        if (!lines[i].trimmed().isEmpty()) {
+            firstIdx = i;
+            break;
+        }
     }
-    if (minIndent == std::numeric_limits<int>::max()) {
+    if (firstIdx < 0) {
         // 全是空行 → 走基类
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
 
-    // ---- 4. 目标缩进 ----
-    //   JetBrains 规则（分三种场景）：
-    //     1. 光标在行尾（cursorCol == 行可见长度）
-    //        → 按"新行"处理，用行首缩进
-    //        例：  aaa|  粘贴 x\ny\nz  →  y、z 缩进到 aaa 的行首缩进
-    //     2. 光标在行中间且光标列 > 缩进列
-    //        → 按光标列对齐
-    //        例：  foo(|bar)  粘贴 x\ny  →  y 对齐到光标列
-    //     3. 光标在缩进区内
-    //        → 用行首缩进
+    // ---- 4. x = 粘贴后第一行的实际缩进 ----
     const QTextCursor cur = textCursor();
     const QTextBlock curBlock = cur.block();
     const int cursorCol = cur.positionInBlock();
     const int indentCol = leadingIndentWidth(curBlock.text());
-    const int lineLen   = curBlock.length() - 1;   // 可见字符数（不含换行符）
+    const int x = qMin(cursorCol, indentCol);
 
-    const bool cursorAtEndOfLine = (cursorCol >= lineLen);
+    // ---- 5. 拼接后的完整第一行（用于判断"是否开启块"） ----
+    const QString beforeCursor = curBlock.text().left(cursorCol);
+    const QString combinedLine = beforeCursor.trimmed() + lines[firstIdx].trimmed();
+    const bool triggers = m_editorRules.endsWithIndentTrigger(combinedLine);
 
-    QString targetIndent = leadingWhitespace(curBlock.text());
-    if (cursorCol > indentCol && !cursorAtEndOfLine) {
-        targetIndent += QString(cursorCol - indentCol, ' ');
+    // ---- 6. 剪贴板第二行的缩进（若无第二行，delta = 0） ----
+    int secondIdx = -1;
+    int cb_second = 0;
+    for (int i = firstIdx + 1; i < lines.size(); ++i) {
+        if (lines[i].trimmed().isEmpty()) continue;
+        secondIdx = i;
+        cb_second = indentWidthOf(lines[i]);
+        break;
     }
 
-    // ---- 5. 逐行处理：去掉公共缩进 + 前加目标缩进 ----
-    auto stripIndent = [&](const QString& line) -> QString {
-        if (line.trimmed().isEmpty()) return line;   // 空行原样
+    // ---- 7. delta ----
+    int delta = 0;
+    if (secondIdx >= 0) {
+        const int expected = triggers ? (x + tabWidth) : x;
+        delta = cb_second - expected;
+    }
 
-        int consumed = 0;
-        int i = 0;
-        while (i < line.length() && consumed < minIndent) {
-            if (line[i] == ' ')       consumed += 1;
-            else if (line[i] == '\t') consumed += tabWidth;
-            else                      break;
-            ++i;
-        }
-        return line.mid(i);
-    };
-
+    // ---- 8. 逐行组装 ----
     QStringList out;
     out.reserve(lines.size());
     for (int i = 0; i < lines.size(); ++i) {
         const QString& l = lines[i];
 
         if (l.trimmed().isEmpty()) {
-            // 空行：只留一个换行符
             out.append(QString());
             continue;
         }
 
-        QString stripped = stripIndent(l);
-
-        if (i == 0) {
-            // 第一行不手动加 targetIndent：
-            //   Qt 的 insertText 会自动继承当前光标行的前导空白，
-            //   我们再加就会翻倍。让基类去处理首行。
-            out.append(stripped);
+        if (i == firstIdx) {
+            // 第一行：去掉所有前导缩进，接在光标后
+            out.append(l.mid(leadingWhitespace(l).length()));
         } else {
-            out.append(targetIndent + stripped);
+            // 第二行到末行：每行缩进减 delta
+            if (delta >= 0) {
+                out.append(stripIndentByWidth(l, delta));
+            } else {
+                out.append(QString(-delta, ' ') + l);
+            }
         }
     }
 
-    // ---- 6. 组装 & 插入 ----
-    //   用 '\n' 拼接。首行的缩进由后续 setTextCursor 时的当前行继承机制提供。
-    //   更稳妥的做法：显式插入 '\n' + targetIndent 分隔，让 Qt 不做任何猜想。
+    // ---- 9. 组装 & 插入 ----
     const QString joined = out.join('\n');
 
     QTextCursor cursor = textCursor();
     cursor.beginEditBlock();
-
-    // 先删掉 Qt 默认会插入的"首行缩进"效果 —— 方法是直接把 joined 塞进去
-    // 第一行前的空白：因为我们 strip 过公共缩进，此时 stripped 首行是不带缩进的。
-    // 但光标本身处于 targetIndent 之后，所以文字会紧接着光标位置开始。
-    // 这正是我们要的：粘贴块第一行接在光标后，后续行前面加 targetIndent。
     cursor.insertText(joined);
-
     cursor.endEditBlock();
     setTextCursor(cursor);
 }
@@ -5523,6 +5580,144 @@ void TextEditor::endSilentModification()
 }
 
 // ============================================================================
+//  返回一行的净括号变化（开括号数 - 关括号数）
+//
+//  用途：识别"续行锚点"
+//    - 某行 bracketDelta > 0（有未闭合开括号）
+//    - 且下一行缩进更深 → 下一行是这行的续行
+//
+//  实现：
+//    - 跳过字符串（"" '' ``）内的括号
+//    - 跳过行注释 // 和块注释 /* */ 内的括号
+//    - 忽略 <>（避免 C++ 模版 / 比较运算符误判）
+//
+//  局限：不处理跨行字符串
+// ============================================================================
+int TextEditor::bracketDelta(const QString& line) const
+{
+    int d = 0;
+    bool inDq = false, inSq = false, inBt = false, escaped = false;
+    bool inLineComment = false;
+    bool inBlockComment = false;
+
+    for (int i = 0; i < line.length(); ++i) {
+        const QChar c = line[i];
+
+        if (inLineComment) break;
+        if (inBlockComment) {
+            if (c == '*' && i + 1 < line.length() && line[i + 1] == '/') {
+                inBlockComment = false;
+                ++i;
+            }
+            continue;
+        }
+        if (escaped) { escaped = false; continue; }
+        if (c == '\\') { escaped = true; continue; }
+
+        // 引号状态切换（互斥）
+        if (c == '"'  && !inSq && !inBt) { inDq = !inDq; continue; }
+        if (c == '\'' && !inDq && !inBt) { inSq = !inSq; continue; }
+        if (c == '`'  && !inDq && !inSq) { inBt = !inBt; continue; }
+
+        if (inDq || inSq || inBt) continue;
+
+        // 注释起始
+        if (c == '/' && i + 1 < line.length()) {
+            if (line[i + 1] == '/') { inLineComment  = true; continue; }
+            if (line[i + 1] == '*') { inBlockComment = true; ++i; continue; }
+        }
+
+        // 括号计数
+        if      (c == '(' || c == '[' || c == '{') ++d;
+        else if (c == ')' || c == ']' || c == '}') --d;
+    }
+
+    return d;
+}
+
+// ============================================================================
+//  返回 block 所在"逻辑行"的缩进
+//
+//  三种情况：
+//    1. block 是空行 / 缩进 0        → 返回自身缩进
+//    2. block 的上一行缩进 == 自身   → 同级续行（如参数列表内），返回自身缩进
+//    3. 向上找"缩进更浅 + bracketDelta > 0"的锚点行 → 返回锚点行缩进
+//       找不到 → 返回自身缩进
+//
+//  示例：
+//    t = threading.Thread(target=handle_client,
+//                         args=(conn, addr), daemon=True)
+//      ↑ 光标在 `args=...` 这行按回车时：
+//        - `args=...` 缩进 21，上一行 `t = ...` 缩进 0 ≠ 21
+//        - 向上扫到 `t = ...`，bracketDelta = +1 > 0 → 返回 0
+//
+//    foo(
+//        a,
+//        b,
+//        c            ← 光标在这行按回车
+//    )
+//      - `c` 缩进 4，上一行 `b,` 缩进 4 == 4 → 同级续行，返回 4
+// ============================================================================
+QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
+{
+    if (!block.isValid()) return QString();
+
+    const QString text = block.text();
+    const QString selfIndent = leadingWhitespace(text);
+    const int selfIndentWidth = leadingIndentWidth(text);
+
+    // 空行 / 零缩进 → 自身
+    if (text.trimmed().isEmpty() || selfIndentWidth == 0) {
+        return selfIndent;
+    }
+
+    // ---- 1. 上一行缩进相同 → 同级续行（如参数列表中间行）----
+    const QTextBlock prevBlock = block.previous();
+    if (prevBlock.isValid()) {
+        const QString pt = prevBlock.text();
+        if (!pt.trimmed().isEmpty()) {
+            const int pWidth = leadingIndentWidth(pt);
+            if (pWidth == selfIndentWidth) {
+                // 同级 → 保持自身缩进
+                return selfIndent;
+            }
+        }
+    }
+
+    // ---- 2. 向上找"缩进更浅 + 含未闭合开括号"的锚点行 ----
+    constexpr int kMaxScanUp = 200;
+    int scanned = 0;
+    QTextBlock b = block.previous();
+    while (b.isValid() && scanned < kMaxScanUp) {
+        const QString bt = b.text();
+
+        if (bt.trimmed().isEmpty()) {
+            b = b.previous();
+            ++scanned;
+            continue;
+        }
+
+        const int bWidth = leadingIndentWidth(bt);
+
+        if (bWidth < selfIndentWidth) {
+            // 找到缩进更浅的行 → 检查是否含未闭合开括号
+            if (bracketDelta(bt) > 0) {
+                // ✅ 是续行锚点 → 返回它的缩进
+                return leadingWhitespace(bt);
+            }
+            // 缩进更浅但无未闭合开括号（如 `def foo():`）→ 不是续行
+            break;
+        }
+
+        b = b.previous();
+        ++scanned;
+    }
+
+    // ---- 3. 找不到锚点 → 用自身缩进 ----
+    return selfIndent;
+}
+
+// ============================================================================
 //  AI 辅助：可用性同步
 // ============================================================================
 void TextEditor::setAIAvailable(bool available)
@@ -5674,6 +5869,9 @@ void TextEditor::contextMenuEvent(QContextMenuEvent *event)
 
 void TextEditor::updateLineNumberAreaWidth()
 {
+    // 析构期间可能被回调，加防御
+    if (!m_lineNumberArea) return;
+
     if (m_showLineNumbers) {
         setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
     } else {
@@ -5712,6 +5910,9 @@ void TextEditor::highlightCurrentLine()
 
 void TextEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
+    //   防御性空指针检查
+    if (!m_lineNumberArea) return;
+
     if (dy != 0) {
         m_lineNumberArea->scroll(0, dy);
     } else {

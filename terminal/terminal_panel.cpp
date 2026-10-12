@@ -666,6 +666,7 @@ void TerminalPanel::stopCurrentCommand()
 {
     if (m_isCommandRunning && m_process) {
         appendSystemLine(tr("正在停止命令..."), false);
+        m_process->disconnect(this);
         m_process->terminate();
         if (!m_process->waitForFinished(2000)) {
             // 期间 finished 可能已经触发 onProcessFinished → m_process = nullptr

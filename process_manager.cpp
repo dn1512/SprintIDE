@@ -254,8 +254,13 @@ bool ProcessManager::stopProcess(const QString& processId)
     // 终止进程
     data.process->terminate();
     if (!data.process->waitForFinished(5000)) {
-        data.process->kill();
-        data.process->waitForFinished(1000);
+        // 防止未来 onProcessFinished 里清理 data.process 或 m_processes.remove
+        if (!m_processes.contains(processId)) return true;
+        ProcessData& d2 = m_processes[processId];
+        if (!d2.process) return true;
+
+        d2.process->kill();
+        d2.process->waitForFinished(1000);
     }
 
     return true;
@@ -513,8 +518,12 @@ void ProcessManager::onTimeout()
         // 终止进程
         data.process->terminate();
         if (!data.process->waitForFinished(5000)) {
-            data.process->kill();
-            data.process->waitForFinished(1000);
+            if (!m_processes.contains(processId)) return;
+            ProcessData& d2 = m_processes[processId];
+            if (!d2.process) return;
+
+            d2.process->kill();
+            d2.process->waitForFinished(1000);
         }
 
         // 更新结果

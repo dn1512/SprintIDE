@@ -169,11 +169,24 @@ bool DebugManager::startDebugging(const DebugConfig& config)
 
     // ========== 2. 清理残留进程 ==========
     if (d->debuggerProcess->state() != QProcess::NotRunning) {
+        // 先断开信号，避免 waitForFinished 期间 onDebuggerFinished 触发
+        d->debuggerProcess->disconnect(this);
+
         d->debuggerProcess->terminate();
         if (!d->debuggerProcess->waitForFinished(3000)) {
             d->debuggerProcess->kill();
             d->debuggerProcess->waitForFinished(1000);
         }
+
+        // 断开后信号不再触发，需要重新建立连接（这是后续 initialize 用的 QProcess）
+        connect(d->debuggerProcess, &QProcess::readyReadStandardOutput,
+                this, &DebugManager::onDebuggerReadyRead);
+        connect(d->debuggerProcess, &QProcess::readyReadStandardError,
+                this, &DebugManager::onDebuggerReadyReadError);
+        connect(d->debuggerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, &DebugManager::onDebuggerFinished);
+        connect(d->debuggerProcess, &QProcess::errorOccurred,
+                this, &DebugManager::onDebuggerErrorOccurred);
     }
 
     // ========== 3. 重置所有状态 ==========
@@ -752,6 +765,12 @@ bool DebugManager::startJavaDebugging(const DebugConfig& config)
 
     // 启动进程
     if (d->debuggerProcess) {
+        // 先断开信号，防止 deleteLater 之后仍有异步信号回调到 this
+        d->debuggerProcess->disconnect(this);
+        if (d->debuggerProcess->state() != QProcess::NotRunning) {
+            d->debuggerProcess->terminate();
+            d->debuggerProcess->waitForFinished(1000);
+        }
         d->debuggerProcess->deleteLater();
     }
     d->debuggerProcess = new QProcess(this);

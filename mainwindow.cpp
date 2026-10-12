@@ -5594,6 +5594,7 @@ void MainWindow::stopRunningProcess()
 
     logInfo("正在停止程序...");
     m_stoppingProcess = true;
+    p->disconnect(this);        // ★ 断开所有信号，防止 waitForFinished 期间 finished 触发 markProcessFinished
 
     p->terminate();
     if (!p->waitForFinished(3000)) {
