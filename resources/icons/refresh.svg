@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <g transform="rotate(25, 12, 12)">
-    <path d="M4 12 A8 8 0 1 1 12 20" fill="none" stroke="#6B4226"/>
-    <polyline points="4,8 4,12 8,12" fill="none" stroke="#6B4226"/>
+    <!-- 上方弧线（从左到右，经过顶部） -->
+    <path d="M6 8.5 A7 7 0 0 1 18 8.5" stroke="#6B4226"/>
+    <!-- 上方弧线箭头 -->
+    <polyline points="16.3,9.5 18,8.5 19.7,7.5" fill="none" stroke="#6B4226"/>
+    
+    <!-- 下方弧线（从右到左，经过底部） -->
+    <path d="M18 15.5 A7 7 0 0 1 6 15.5" stroke="#6B4226"/>
+    <!-- 下方弧线箭头 -->
+    <polyline points="7.7,14.5 6,15.5 4.3,16.5" fill="none" stroke="#6B4226"/>
   </g>
 </svg>

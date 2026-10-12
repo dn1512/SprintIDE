@@ -539,7 +539,7 @@ private:
     QAction* m_gitRefreshAction     = nullptr;
     QAction* m_gitShowHistoryAction = nullptr;
     QAction* m_gitToggleAction      = nullptr;   // 打开/关闭 Git 窗口
-
+    QTimer* m_gitRefreshDebounce = nullptr;      // git防抖
     // 状态栏 Git 指示器
     QLabel*  m_gitStatusLabel = nullptr;
 

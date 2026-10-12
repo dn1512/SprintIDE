@@ -2951,8 +2951,20 @@ void MainWindow::onFileSaved(const QString &filePath)
     }
 
     // Git 状态刷新（文件保存后对应的 git status 可能变化）
+    // 防抖：快速连按 Ctrl+S 时只触发一次刷新，避免反复
+    //   runAsync → cancelAsync → deleteLater 撞上生命周期问题
     if (Git::GitManager::instance().isActive()) {
-        Git::GitManager::instance().refreshStatus();
+        if (!m_gitRefreshDebounce) {
+            m_gitRefreshDebounce = new QTimer(this);
+            m_gitRefreshDebounce->setSingleShot(true);
+            m_gitRefreshDebounce->setInterval(300);
+            connect(m_gitRefreshDebounce, &QTimer::timeout, this, []() {
+                if (Git::GitManager::instance().isActive()) {
+                    Git::GitManager::instance().refreshStatus();
+                }
+            });
+        }
+        m_gitRefreshDebounce->start();
     }
 }
 

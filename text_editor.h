@@ -660,6 +660,8 @@ private:
     QList<LSPCompletionItem> m_pendingLspItems;
     bool              m_lspResponseWaiting = false;
 
+    bool m_saving = false;   // 防重入
+
 
     // 菜单动作
     QAction *m_undoAction;

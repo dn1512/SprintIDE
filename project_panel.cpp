@@ -859,14 +859,14 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
 {
     QWidget* toolbar = new QWidget(this);
     toolbar->setObjectName("ProjectPanelToolbar");
-    toolbar->setFixedHeight(22);                              // 26 → 22，更紧凑
+    toolbar->setFixedHeight(26);                              // 26 → 22，更紧凑
     toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QHBoxLayout* tl = new QHBoxLayout(toolbar);
     tl->setContentsMargins(6, 2, 6, 2);
     tl->setSpacing(4);
 
-    // ★ 关键 1：stretch 放最前面 → 后续控件全部靠右
+    // 1：stretch 放最前面 → 后续控件全部靠右
     tl->addStretch(1);
 
     // ============================================================
@@ -884,8 +884,8 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
     m_locateButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     // 图标 12×12，按钮 12×12
-    m_locateButton->setIconSize(QSize(14, 14));
-    m_locateButton->setFixedSize(14, 14);
+    m_locateButton->setIconSize(QSize(18, 18));
+    m_locateButton->setFixedSize(18, 18);
 
     m_locateButton->setIcon(QIcon(":icons/icons/locate.svg"));
 
@@ -897,7 +897,7 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
     //  刷新按钮
     // ============================================================
     m_refreshButton = new QToolButton(toolbar);
-    // m_refreshButton->setIcon(QIcon(":icons/icons/refresh.svg"));
+    m_refreshButton->setIcon(QIcon(":icons/icons/refresh.svg"));
     m_refreshButton->setObjectName("ProjectPanelRefreshButton");
     m_refreshButton->setToolTip(tr("刷新项目面板（重新加载根目录下的所有内容）"));
     m_refreshButton->setAutoRaise(true);
@@ -905,11 +905,11 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
     m_refreshButton->setCursor(Qt::PointingHandCursor);
 
     m_refreshButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_refreshButton->setIconSize(QSize(14, 14));
-    m_refreshButton->setFixedSize(14, 14);
+    m_refreshButton->setIconSize(QSize(18, 18));
+    m_refreshButton->setFixedSize(18, 18);
 
-    m_refreshButton->setIcon(
-        style()->standardIcon(QStyle::SP_BrowserReload));
+    // m_refreshButton->setIcon(
+        // style()->standardIcon(QStyle::SP_BrowserReload));
 
     connect(m_refreshButton, &QToolButton::clicked,
             this, &ProjectPanel::onRefreshRequested);

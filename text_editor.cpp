@@ -848,11 +848,20 @@ bool TextEditor::reloadFile()
 
 bool TextEditor::saveFile(const QString &source)
 {
+
+    if (m_saving) {
+        qDebug() << "[TextEditor] saveFile 重入，已忽略";
+        return false;
+    }
+
+    m_saving = true;
+
     if (m_filePath.isEmpty()) {
         QString filePath = QFileDialog::getSaveFileName(
             this, tr("保存文件"), "", tr("C++文件 (*.cpp *.h *.hpp);;所有文件 (*.*)"));
 
         if (filePath.isEmpty()) {
+            m_saving = false;
             return false;
         }
 
@@ -865,6 +874,7 @@ bool TextEditor::saveFile(const QString &source)
         QMessageBox::warning(this, tr("文件保存失败"),
                              QString(tr("无法保存文件：%1\n错误：%2"))
                                  .arg(m_filePath).arg(file.errorString()));
+        m_saving = false;
         return false;
     }
 
@@ -928,7 +938,7 @@ bool TextEditor::saveFile(const QString &source)
     emit fileSaved(m_filePath);
     emit modificationChanged(false);
 
-
+    m_saving = false;
     return true;
 }
 
