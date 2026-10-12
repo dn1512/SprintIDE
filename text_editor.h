@@ -649,7 +649,7 @@ private:
     ///   - 都没找到 → 返回自身缩进
     QString findLogicalLineIndent(const QTextBlock& block) const;
 
-    bool m_formatOnSave = true;
+    bool m_formatOnSave = false;
 
     // 补全相关成员
     /*QList<LSPCompletionItem> m_completionItems;
