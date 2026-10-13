@@ -6835,9 +6835,28 @@ void MainWindow::onAIRestartRequested(const QString& host, quint16 port)
 void MainWindow::onComment()
 {
     TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->commentSelection();
-    }
+    if (!editor) return;
+
+    // ✅ v8.5：先记录"注释前"的列（0-based）
+    //   必须在 commentSelection 之前取——因为注释会改变光标在行内的位置
+    //   （加了 `// ` 前缀后光标绝对位置往后移，列号也会变）
+    const int colBefore = editor->textCursor().positionInBlock();
+
+    // commentSelection 内部会自动判断"全已注释 → 反注释"
+    //   所以这里一次调用就覆盖"注释"和"取消注释"两种情况
+    editor->commentSelection();
+
+    // 光标下移到下一行
+    QTextCursor c = editor->textCursor();
+    QTextBlock next = c.block().next();
+    if (!next.isValid()) return;   // 已在最后一行 → 不动
+
+    const QString nextText = next.text();
+    // 若下一行不够长 → 落到行尾（不能超过行末）
+    const int targetCol = qMin(colBefore, nextText.length());
+
+    c.setPosition(next.position() + targetCol);
+    editor->setTextCursor(c);
 }
 
 void MainWindow::onGotoLine()

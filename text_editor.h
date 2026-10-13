@@ -572,6 +572,13 @@ private:
     bool  handleSmartHome(QKeyEvent* event);
     bool  handleSmartEnd(QKeyEvent* event);
 
+    ///   智能"选到行首"——不含前导缩进
+    ///   macOS：Cmd+Shift+Left
+    ///   Windows/Linux：Shift+Home
+    ///   - 活动端在代码区 → 选到首个非空白列
+    ///   - 再按一次     → 扩到列 0
+    bool  handleSmartHomeSelection(QKeyEvent* event);
+
     // 选中文本被引号/括号包裹
     bool  trySurroundSelection(const QString& input);
 

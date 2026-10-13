@@ -3210,6 +3210,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
     }
 
     // ========== 5. 智能 Home / End ==========
+    if (handleSmartHomeSelection(event)) return;
     if (handleSmartHome(event)) return;
     if (handleSmartEnd(event))  return;
 
@@ -4928,6 +4929,7 @@ bool TextEditor::handleSmartHome(QKeyEvent* event)
 {
     if (event->key() != Qt::Key_Home) return false;
     if (event->modifiers() & Qt::ControlModifier) return false;  // Ctrl+Home 保留
+    if (event->modifiers() & Qt::ShiftModifier) return false;
 
     QTextCursor cursor = textCursor();
     const QString line = cursor.block().text();
@@ -4963,6 +4965,76 @@ bool TextEditor::handleSmartEnd(QKeyEvent* event)
     cursor.movePosition(QTextCursor::StartOfBlock);
     cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, targetCol);
     setTextCursor(cursor);
+    return true;
+}
+
+// ============================================================================
+//   智能"选到行首"——不含前导缩进
+//
+//
+//  触发键：
+//    macOS：       Cmd+Shift+Left
+//    Win/Linux：   Shift+Home
+//
+//  实现要点：
+//    - 保留锚点（anchor）不动，只移动"活动端"（cursor.position）
+//    - 用 block 相对位置判断"活动端在缩进区内 / 代码区"
+// ============================================================================
+bool TextEditor::handleSmartHomeSelection(QKeyEvent* event)
+{
+        // ---- 1. 只处理指定的组合键（宽松匹配 + 调试日志） ----
+    const Qt::KeyboardModifiers mods = event->modifiers();
+
+    // 宽松匹配：Left + Shift + (Cmd 或 Ctrl 任一)
+    //   不要求 modifier 完全相等——避免被 KeypadModifier 等额外标志干扰
+    const bool isMacStyle =
+        (event->key() == Qt::Key_Left)
+        && (mods & Qt::ShiftModifier)
+        && ((mods & Qt::ControlModifier) || (mods & Qt::MetaModifier));
+
+    // Windows/Linux: Shift+Home（不含 Ctrl/Cmd）
+    const bool isHomeStyle =
+        (event->key() == Qt::Key_Home)
+        && (mods & Qt::ShiftModifier)
+        && !(mods & Qt::ControlModifier)
+        && !(mods & Qt::MetaModifier);
+
+    if (!isMacStyle && !isHomeStyle) return false;
+
+    // ---- 2. 拿当前光标 + 区块信息 ----
+    QTextCursor cursor = textCursor();
+    const QTextBlock block = cursor.block();
+    if (!block.isValid()) return false;
+
+    const QString line = block.text();
+    int firstNonWs = 0;
+    while (firstNonWs < line.length() && line[firstNonWs].isSpace()) {
+        ++firstNonWs;
+    }
+
+    // 活动端（选区 active end）相对本行的列
+    const int activeCol = cursor.position() - block.position();
+    const int anchorPos = cursor.anchor();   // 保持锚点
+
+    // ---- 3. 决定目标列 ----
+    int targetCol;
+    if (activeCol <= 0) {
+        // 已在行首 → 什么都不做
+        return true;
+    } else if (activeCol > firstNonWs) {
+        // 在代码区 → 选到首个非空白列
+        targetCol = firstNonWs;
+    } else {
+        // 已在缩进区 / 正好在首个非空白列 → 扩到列 0
+        targetCol = 0;
+    }
+
+    // ---- 4. 应用新选区（锚点不变，活动端移动） ----
+    const int newPos = block.position() + targetCol;
+    QTextCursor newCursor(document());
+    newCursor.setPosition(newPos);
+    newCursor.setPosition(anchorPos, QTextCursor::KeepAnchor);
+    setTextCursor(newCursor);
     return true;
 }
 
