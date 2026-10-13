@@ -378,7 +378,7 @@ TextEditor::~TextEditor()
 
     // 1. 断开 document 的所有信号（防止任何回调）
     if (document()) {
-        disconnect(document(), nullptr, this, nullptr);
+        disconnect(document(), nullptr, nullptr, nullptr);
     }
     // 2. 断开自身的所有信号（避免析构期间 emit 到其他接收者）
     disconnect(this, nullptr, nullptr, nullptr);

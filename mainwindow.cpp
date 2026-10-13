@@ -617,6 +617,21 @@ MainWindow::~MainWindow()
         m_lspManager->shutdownAll();
     }
     qDebug() << "[MainWindow] 显式关闭 LSP";
+    // ========== 3.5 预断开所有 editor 的 document 信号 ==========
+    //   在删除 TextEditor 之前，先把所有 document 到 MainWindow
+    //   的信号连接全部切断。
+    //   原因：TextEditor 的析构会触发 document->finishEdit() →
+    //   contentsChanged 信号 → MainWindow::onEditorTextChanged，
+    //   而那时 MainWindow 的 d 可能已删或即将被删。
+    if (d && d->editorTabs) {
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            if (auto* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i))) {
+                if (ed->document()) {
+                    disconnect(ed->document(), nullptr, nullptr, nullptr);
+                }
+            }
+        }
+    }
     // ========== 4. 清理编辑器标签 ==========
     if (d && d->editorTabs) {
         while (d->editorTabs->count() > 0) {
@@ -2233,6 +2248,7 @@ void MainWindow::updateStatusBarPosition(TextEditor* editor)
 
 void MainWindow::updateWindowTitle()
 {
+    if (!d) return;
     QString title = "SprintIDE";
 
     TextEditor* editor = currentEditor();
@@ -2505,6 +2521,13 @@ void MainWindow::openFile(const QString &path)
     int index = d->editorTabs->addTab(editor, editor->fileName());
     d->editorTabs->setCurrentIndex(index);
     logInfo(QString("已打开: %1").arg(path));
+
+    // 打开/新建文件后，让编辑器接管焦点
+    QTimer::singleShot(0, editor, [editor]() {
+        if (editor) {
+            editor->setFocus();
+        }
+    });
     // AI 辅助：连接信号 + 同步可用状态
     connect(editor, &TextEditor::aiAssistRequested,
             this, &MainWindow::onAIAssistRequested);
@@ -3058,6 +3081,7 @@ void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
 void MainWindow::onEditorTextChanged(TextEditor* editor)
 {
     if (!editor) return;
+    if (!d) return;   // MainWindow 析构期间可能被回调，d 已删
     QTextDocument* doc = qobject_cast<QTextDocument*>(sender());
     if (!doc) return;
 
