@@ -461,8 +461,16 @@ void TextEditor::initEditor()
     connect(m_lspChangeTimer, &QTimer::timeout, this, [this]() {
         if (!m_pendingLspChange) return;
         m_pendingLspChange = false;
-        if (!m_filePath.isEmpty()) {
-            emit documentChangedForLsp(m_filePath, toPlainText());
+        if (m_filePath.isEmpty()) return;
+
+        // 一次性拿内容，同时给 LSP 和 LocalHistory 用
+        const QString content = toPlainText();
+
+        emit documentChangedForLsp(m_filePath, content);
+
+        // 通知 LocalHistory（内部会做节流）
+        if (m_localHistory) {
+            m_localHistory->onFileEdited(m_filePath, content);
         }
     });
 
@@ -1741,7 +1749,18 @@ void TextEditor::showFindBar()
     m_findBar->setGeometry(0, height() - 40, barWidth, 40);
 
     m_findLineEdit->setFocus();
-    m_findLineEdit->selectAll();    // 全选：用户直接敲键可覆盖
+    m_findLineEdit->selectAll();
+
+    // 若查找框已有内容但当前没有高亮 → 重新执行一次搜索
+    //   场景：关闭查找栏（Esc）→ clearHighlights 清空了 m_matchCursors，
+    //   但查找框文本仍保留；重新 Ctrl+F 时需恢复高亮。
+    //
+    //   若 m_matchCursors 非空 → 说明高亮还在（比如只是焦点切走又切回），
+    //   不重复触发。
+    if (m_findLineEdit && !m_findLineEdit->text().isEmpty()
+        && m_matchCursors.isEmpty()) {
+        onFindTextChanged(m_findLineEdit->text());
+    }
 
     emit findBarVisibilityChanged(true);
 }
@@ -2213,7 +2232,7 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
         cursor = found;
     }
 
-    // ★ 从主题取色
+    // 从主题取色
     ThemeManager& tm = ThemeManager::instance();
     const QColor normalColor = tm.color(ThemeManager::UIElement::SearchMatchBackground);
     const QColor currentColor = tm.color(ThemeManager::UIElement::SearchCurrentMatchBackground);
@@ -2229,10 +2248,15 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
         } else {
             sel.format.setBackground(normalColor);
         }
+
+        // 打上"搜索匹配"的 tag，供 clearHighlights 精准清除
+        sel.format.setProperty(QTextFormat::UserProperty,
+                               QStringLiteral("searchMatchHighlight"));
+
         selections.append(sel);
     }
 
-    setExtraSelections(selections);
+    applySearchHighlights(selections);
 }
 
 void TextEditor::scrollToMatch(int index)
@@ -2252,9 +2276,12 @@ void TextEditor::scrollToMatch(int index)
         QTextEdit::ExtraSelection sel;
         sel.cursor = m_matchCursors[i];
         sel.format.setBackground(i == m_currentMatchIndex ? currentColor : normalColor);
+        sel.format.setProperty(QTextFormat::UserProperty,
+                                QStringLiteral("searchMatchHighlight"));
         selections.append(sel);
     }
-    setExtraSelections(selections);
+    applySearchHighlights(selections);
+
 }
 
 void TextEditor::clearHighlights()
@@ -2263,7 +2290,7 @@ void TextEditor::clearHighlights()
 
     // 只移除"查找匹配"高亮，保留其他 ExtraSelection
     QList<QTextEdit::ExtraSelection> all = extraSelections();
-    static const QString kSearchTag = QStringLiteral("searchMatch");
+    static const QString kSearchTag = QStringLiteral("searchMatchHighlight");
     for (int i = all.size() - 1; i >= 0; --i) {
         if (all[i].format.property(QTextFormat::UserProperty).toString() == kSearchTag) {
             all.removeAt(i);
@@ -4083,6 +4110,21 @@ QString TextEditor::shiftIndent(const QString& line, int offset) const
     return indentStr + content;
 }
 
+void TextEditor::applySearchHighlights(const QList<QTextEdit::ExtraSelection>& searchSels)
+{
+    QList<QTextEdit::ExtraSelection> kept = extraSelections();
+    static const QString kTag = QStringLiteral("searchMatchHighlight");
+
+    for (int i = kept.size() - 1; i >= 0; --i) {
+        if (kept[i].format.property(QTextFormat::UserProperty).toString() == kTag) {
+            kept.removeAt(i);
+        }
+    }
+
+    kept.append(searchSels);
+    setExtraSelections(kept);
+}
+
 void TextEditor::insertCompletion(const QString& insertText)
 {
     QTextCursor cursor = textCursor();
@@ -4633,8 +4675,10 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     const int x = qMin(cursorCol, indentCol);
 
     // ---- 5. 拼接后的完整第一行（用于判断"是否开启块"） ----
+    //  ⚠️ 用 lines[0]（剪贴板真正的第一行），不是 lines[firstIdx]：
     const QString beforeCursor = curBlock.text().left(cursorCol);
-    const QString combinedLine = beforeCursor.trimmed() + lines[firstIdx].trimmed();
+    const QString firstClipLine = lines.isEmpty() ? QString() : lines[0];
+    const QString combinedLine = beforeCursor.trimmed() + firstClipLine.trimmed();
     const bool triggers = m_editorRules.endsWithIndentTrigger(combinedLine);
 
     // ---- 6. 剪贴板第二行的缩进（若无第二行，delta = 0） ----
@@ -4654,6 +4698,39 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         delta = cb_second - expected;
     }
 
+    // ---- 7.5 修正 delta：保证最小缩进非负 ----
+    // ============================================================
+    //  问题：
+    //    上面用"第一行 + 第二行"推 delta，是近似值。
+    //    第一行缩进可能被用户手动去掉，判断"是否开启块"也可能误判，
+    //    delta 偏大时，应用到"缩进较浅的行"就会算出负数——
+    //    比如某行原缩进 0，delta = -8 → 结果 -8，不可表达。
+    //
+    //  修正策略：
+    //    扫描第二行到最后一行的原始缩进，找最小值 minOrig。
+    //    如果 minOrig + delta < 0，说明所有行里最浅的那一行会被
+    //    扣成负数——把 delta 调整到让那一行恰好缩进 0。
+    //      新 delta = -minOrig
+    //
+    //  效果：
+    //    - 保证每一行的最终缩进 ≥ 0；
+    //    - 相对结构尽量保留（只是不再"越界"扣）；
+    //    - 用户描述的场景"某行算成 -8" → 自动校正为 0。
+    // ============================================================
+    if (secondIdx >= 0 && delta > 0) {
+        int minOrigIndent = std::numeric_limits<int>::max();
+        for (int i = secondIdx; i < lines.size(); ++i) {
+            if (lines[i].trimmed().isEmpty()) continue;
+            const int w = indentWidthOf(lines[i]);
+            if (w < minOrigIndent) minOrigIndent = w;
+        }
+
+        if (minOrigIndent != std::numeric_limits<int>::max()
+            && minOrigIndent < delta) {
+            delta = 0;   // 有行会被扣成"负缩进" → 放弃调整，整块原样
+        }
+    }
+
     // ---- 8. 逐行组装 ----
     QStringList out;
     out.reserve(lines.size());
@@ -4665,11 +4742,11 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             continue;
         }
 
-        if (i == firstIdx) {
-            // 第一行：去掉所有前导缩进，接在光标后
+        if (i == 0) {
+            // 剪贴板第一行（非空）：去掉前导缩进，接在光标后
             out.append(l.mid(leadingWhitespace(l).length()));
         } else {
-            // 第二行到末行：每行缩进减 delta
+            // 第二行到最后：按 delta 平移
             if (delta >= 0) {
                 out.append(stripIndentByWidth(l, delta));
             } else {
@@ -5971,7 +6048,8 @@ void TextEditor::highlightCurrentLine()
             ThemeManager::UIElement::CurrentLineHighlight);
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
-        selection.format.setProperty(QTextFormat::UserProperty, QStringLiteral("searchMatch"));
+        selection.format.setProperty(QTextFormat::UserProperty,
+                                     QStringLiteral("currentLineHighlight"));
         selection.cursor = textCursor();
         selection.cursor.clearSelection();
         all.append(selection);

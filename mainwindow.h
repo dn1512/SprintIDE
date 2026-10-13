@@ -476,6 +476,9 @@ private:
 
     /// AI 连接状态变化时，同步所有编辑器 + OutputPanel
     void syncAIAvailabilityToEditors();
+
+    void snapshotModifiedFilesForHistory(const QString& reason);
+
 private:
     MainWindowPrivate *d;
     // 底部面板相关

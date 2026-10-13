@@ -480,6 +480,10 @@ private:
     /// 按 offset 平移一行缩进
     QString shiftIndent(const QString& line, int offset) const;
 
+    /// ✅ v8.5：只替换"搜索匹配"高亮，保留其他 ExtraSelection
+    ///   （当前行高亮、括号匹配、定义链接等）
+    void applySearchHighlights(const QList<QTextEdit::ExtraSelection>& searchSels);
+
     // 跳转定义的视觉反馈
     bool         m_ctrlHeldForDefinition = false;
     QPoint       m_lastMousePos;
@@ -645,12 +649,12 @@ private:
     void beginSilentModification();
     void endSilentModification();
 
-    /// ✅ v8.5：返回一行的"净括号变化"（开括号数 - 关括号数）
+    ///   返回一行的"净括号变化"（开括号数 - 关括号数）
     ///   跳过字符串、注释、字符字面量
     ///   用途：识别"续行锚点"——上一行 bracketDelta > 0 说明当前行是它的续行
     int bracketDelta(const QString& line) const;
 
-    /// ✅ v8.5：返回 block 所在"逻辑行"的缩进
+    ///   返回 block 所在"逻辑行"的缩进
     ///   - 上一行缩进相同 → 同级续行，返回自身缩进
     ///   - 向上找缩进更浅的"锚点行"（bracketDelta > 0）→ 返回锚点行缩进
     ///   - 都没找到 → 返回自身缩进

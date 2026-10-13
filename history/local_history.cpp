@@ -34,11 +34,11 @@ QString HistoryVersion::displaySize() const
 
 QString HistoryVersion::displaySource() const
 {
-    if (source == "ai") {
-        return "来自 AI";
-    } else if (source == "user") {
-        return "来自用户";
-    }
+    if (source == "user")         return "手动保存";
+    if (source == "edit")         return "编辑";
+    if (source == "before-build") return "编译前";
+    if (source == "before-run")   return "运行前";
+    if (source == "ai")           return "来自 AI";
     return "未知来源";
 }
 
@@ -50,6 +50,13 @@ LocalHistory::LocalHistory(QObject *parent)
     : QObject(parent)
 {
     qDebug() << "[LocalHistory] 已创建";
+
+    // 自动快照 tick 定时器（5 秒一次）
+    m_autoSnapshotTimer = new QTimer(this);
+    m_autoSnapshotTimer->setInterval(5000);
+    connect(m_autoSnapshotTimer, &QTimer::timeout,
+            this, &LocalHistory::onAutoSnapshotTick);
+    m_autoSnapshotTimer->start();
 }
 
 LocalHistory::~LocalHistory()
@@ -179,6 +186,24 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
     emit versionSaved(filePath, newVersion, comment);
 
     return newVersion;
+}
+
+// ============================================================================
+//  编辑期间调用——只更新"待快照"状态，不立即保存
+// ============================================================================
+void LocalHistory::onFileEdited(const QString& filePath, const QString& content)
+{
+    if (!isEnabled() || filePath.isEmpty()) return;
+
+    auto& p = m_pending[filePath];
+    p.content    = content;
+    p.lastEdited = QDateTime::currentDateTime();
+
+    // 首次编辑 → 初始化 lastSnapshot 为"当前时间"
+    //   这样 afterForceSecs 的强制周期从"打开文件"开始算
+    if (!p.lastSnapshot.isValid()) {
+        p.lastSnapshot = p.lastEdited;
+    }
 }
 
 // ============================================================
@@ -336,6 +361,60 @@ void LocalHistory::setMaxVersions(int count)
     }
 
     m_maxVersions = count;
+}
+
+// ============================================================================
+//  自动快照 tick —— 每 5 秒检查一次所有"待快照"文件
+//
+//  触发条件（满足其一）：
+//    1. 空闲触发：距最后编辑 >= autoIdleSecs  且  距上次快照 >= autoThrottleSecs
+//    2. 强制触发：距上次快照 >= autoForceSecs（不管有没有在编辑）
+//
+//  去重：
+//    内容哈希与上次快照相同 → 只更新时间戳，不存版本
+// ============================================================================
+void LocalHistory::onAutoSnapshotTick()
+{
+    if (!isEnabled() || m_pending.isEmpty()) return;
+
+    const QDateTime now = QDateTime::currentDateTime();
+    QStringList toSnapshot;
+
+    for (auto it = m_pending.constBegin(); it != m_pending.constEnd(); ++it) {
+        const PendingSnapshot& p = it.value();
+
+        const qint64 idleSecs  = p.lastEdited.secsTo(now);
+        const qint64 sinceSecs = p.lastSnapshot.secsTo(now);
+
+        const bool idleTrigger  = (idleSecs >= m_autoIdleSecs
+                                   && sinceSecs >= m_autoThrottleSecs);
+        const bool forceTrigger = (sinceSecs >= m_autoForceSecs);
+
+        if (idleTrigger || forceTrigger) {
+            toSnapshot.append(it.key());
+        }
+    }
+
+    for (const QString& fp : toSnapshot) {
+        auto it = m_pending.find(fp);
+        if (it == m_pending.end()) continue;
+
+        PendingSnapshot& p = it.value();
+        const QString newHash = calculateHash(p.content);
+
+        if (newHash == p.lastSnapshotHash) {
+            // 内容没变 → 只更新时间戳，不存版本
+            p.lastSnapshot = now;
+            continue;
+        }
+
+        // 内容变了 → 存一个版本
+        const int v = saveVersion(fp, p.content, "自动保存", "edit");
+        if (v > 0) {
+            p.lastSnapshot     = now;
+            p.lastSnapshotHash = newHash;
+        }
+    }
 }
 
 // ============================================================

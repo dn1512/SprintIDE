@@ -3847,6 +3847,7 @@ TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 // ==================== 调试菜单槽函数 ====================
 
 void MainWindow::onStartDebug() {
+    snapshotModifiedFilesForHistory("before-build");
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, tr("提示"), tr("请先打开一个文件再开始调试。"));
@@ -7212,8 +7213,42 @@ void MainWindow::onCloseProject()
     closeProject();
 }
 
+// ============================================================================
+//  编译/运行前，为所有"已修改但未保存"的文件打一个历史快照
+//    来源标记 "before-build" / "before-run"
+//
+//  为什么需要：
+//    - 用户可能改了 5 个文件但没保存
+//    - 编译前打快照 → 出问题时能回退到"编译前的状态"
+// ============================================================================
+void MainWindow::snapshotModifiedFilesForHistory(const QString& reason)
+{
+    if (!m_localHistory || !m_localHistory->isEnabled()) return;
+
+    const QString comment = (reason == "before-build")
+                                ? QStringLiteral("编译前")
+                                : QStringLiteral("运行前");
+
+    int count = 0;
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
+        if (!ed) continue;
+        if (ed->filePath().isEmpty()) continue;
+        if (!ed->isModified()) continue;   // 只对已修改的文件打快照
+
+        m_localHistory->saveVersion(
+            ed->filePath(), ed->toPlainText(), comment, reason);
+        ++count;
+    }
+
+    if (count > 0) {
+        logInfo(QString("已为 %1 个修改过的文件打历史快照").arg(count));
+    }
+}
+
 void MainWindow::onBuildProject()
 {
+    snapshotModifiedFilesForHistory("before-build");
     // ============================================================
     // 第一步：智能获取项目路径
     // ============================================================
@@ -7558,6 +7593,7 @@ void MainWindow::onCompile() {
 
 void MainWindow::onRun()
 {
+    snapshotModifiedFilesForHistory("before-run");
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件进行运行。");
