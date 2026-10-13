@@ -12,7 +12,7 @@ static EditorRules makeCppLike()
     r.blockCommentStart  = "/*";
     r.blockCommentEnd    = "*/";
 
-    r.indentTriggers     = {"{"};
+    r.indentTriggers     = {"{", "public:", "private:", "protected:"};
     r.dedentTriggers     = {"}"};
     r.dedentLineStarters = {};           // C 语言不做输入时反缩进
 

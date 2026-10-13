@@ -6,7 +6,6 @@
 #include <QMap>
 #include <QDateTime>
 #include <QList>
-#include <QTimer>
 
 namespace SprintIDE {
 
@@ -64,25 +63,6 @@ public:
     int saveVersion(const QString &filePath, const QString &content,
                     const QString &comment = QString(),
                     const QString &source = "user");
-    /**
-    * @brief 编辑期间调用——通知有新的编辑内容
-    *
-    * 不立即保存，只更新"待快照"状态。
-    * 真正的保存由内部 tick 定时器按节流规则触发。
-    *
-    * @param filePath 文件路径
-    * @param content  当前内容（最新）
-    */
-   void onFileEdited(const QString& filePath, const QString& content);
-
-   // ========== 自动快照参数（可配） ==========
-   void setAutoSnapshotIdleSeconds(int secs)      { m_autoIdleSecs     = qMax(1, secs); }
-   void setAutoSnapshotThrottleSeconds(int secs)  { m_autoThrottleSecs = qMax(1, secs); }
-   void setAutoSnapshotForceSeconds(int secs)     { m_autoForceSecs    = qMax(1, secs); }
-
-   int  autoSnapshotIdleSeconds() const     { return m_autoIdleSecs; }
-   int  autoSnapshotThrottleSeconds() const { return m_autoThrottleSecs; }
-   int  autoSnapshotForceSeconds() const    { return m_autoForceSecs; }
 
     /**
      * @brief 获取文件的所有历史版本列表
@@ -148,9 +128,6 @@ signals:
      */
     void historyCleaned(const QString &filePath, int removedCount);
 
-private slots:
-    /// 自动快照的 tick 检查（每 5 秒触发一次）
-    void onAutoSnapshotTick();
 private:
     /**
      * @brief 获取文件的历史存储目录
@@ -189,24 +166,11 @@ private:
 
     // 成员变量
     QString m_projectRoot;
-    int m_maxVersions = 200;
+    int m_maxVersions = 100;
 
     // 元数据缓存：文件路径 → 版本列表
     QMap<QString, QList<HistoryVersion>> m_metadata;
     bool m_metadataLoaded = false;
-    struct PendingSnapshot {
-        QString   content;
-        QDateTime lastEdited;
-        QDateTime lastSnapshot;
-        QString   lastSnapshotHash;
-    };
-
-    QMap<QString, PendingSnapshot> m_pending;
-    QTimer* m_autoSnapshotTimer = nullptr;
-
-    int m_autoIdleSecs     = 30;    // 空闲多少秒触发
-    int m_autoThrottleSecs = 60;    // 距上次快照至少多少秒
-    int m_autoForceSecs    = 300;   // 强制快照周期（5 分钟）
 };
 
 } // namespace SprintIDE

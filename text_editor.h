@@ -24,6 +24,7 @@
 #include <QMap>
 #include <QRegularExpression>
 #include <QMimeData>
+#include <QDateTime>
 
 #include "language/language_highlighter.h"
 #include "history/local_history.h"
@@ -318,6 +319,12 @@ public:
      */
     void replaceWithIndentAlignment(QTextCursor& cursor, const QString& replaceText);
 
+    bool autoSave();
+
+    /// 上次手动/自动保存成功的时间（用于冲突检测）
+    QDateTime lastSaveTime() const { return m_lastSaveTime; }
+    void setLastSaveTime(const QDateTime& t) { m_lastSaveTime = t; }
+
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -371,6 +378,10 @@ signals:
     void aiAssistRequested(const QString& prompt,
                            const QString& filePath,
                            int line, int column);
+
+    void autoSaved(const QString& filePath);
+    void externalModificationDetected(const QString& filePath);
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -760,6 +771,9 @@ private:
     QAction*  m_aiCommentAction   = nullptr;
     QAction*  m_aiRenameAction    = nullptr;
     QAction*  m_aiAskAction       = nullptr;
+
+    QTimer* m_autoSaveTimer = nullptr;
+    QDateTime m_lastSaveTime;
 };
 
 /**

@@ -461,16 +461,8 @@ void TextEditor::initEditor()
     connect(m_lspChangeTimer, &QTimer::timeout, this, [this]() {
         if (!m_pendingLspChange) return;
         m_pendingLspChange = false;
-        if (m_filePath.isEmpty()) return;
-
-        // 一次性拿内容，同时给 LSP 和 LocalHistory 用
-        const QString content = toPlainText();
-
-        emit documentChangedForLsp(m_filePath, content);
-
-        // 通知 LocalHistory（内部会做节流）
-        if (m_localHistory) {
-            m_localHistory->onFileEdited(m_filePath, content);
+        if (!m_filePath.isEmpty()) {
+            emit documentChangedForLsp(m_filePath, toPlainText());
         }
     });
 
@@ -489,6 +481,13 @@ void TextEditor::initEditor()
                     }
                 });
     }
+
+    m_autoSaveTimer = new QTimer(this);
+    m_autoSaveTimer->setSingleShot(true);
+    m_autoSaveTimer->setInterval(15000);   // JetBrains 默认 15 秒
+    connect(m_autoSaveTimer, &QTimer::timeout, this, [this]() {
+        autoSave();
+    });
 }
 
 void TextEditor::setupFindBar()
@@ -865,6 +864,8 @@ bool TextEditor::loadFile(const QString &filePath)
     m_isModified = false;
     document()->setModified(false);
 
+    // 记录加载时的磁盘 mtime，用于后续冲突检测
+    m_lastSaveTime = QFileInfo(filePath).lastModified();
     // 发出加载完成信号
     emit fileLoaded(filePath);
 
@@ -892,7 +893,26 @@ bool TextEditor::reloadFile()
 
 bool TextEditor::saveFile(const QString &source)
 {
+    const QFileInfo fi(m_filePath);
+    if (fi.exists() && m_lastSaveTime.isValid()
+        && fi.lastModified() > m_lastSaveTime) {
 
+        const auto reply = QMessageBox::warning(this,
+            tr("文件冲突"),
+            tr("文件 %1 已被外部修改。\n\n"
+               "「覆盖」= 用编辑器内容覆盖磁盘\n"
+               "「重新加载」= 丢弃编辑器的修改，从磁盘读取")
+                .arg(QFileInfo(m_filePath).fileName()),
+            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+        // Save = 覆盖，Discard = 重新加载，Cancel = 放弃
+
+        if (reply == QMessageBox::Cancel) return false;
+        if (reply == QMessageBox::Discard) {
+            reloadFile();
+            return true;
+        }
+        // reply == Save → 继续往下走（覆盖磁盘）
+    }
     if (m_saving) {
         qDebug() << "[TextEditor] saveFile 重入，已忽略";
         return false;
@@ -907,6 +927,33 @@ bool TextEditor::saveFile(const QString &source)
         if (filePath.isEmpty()) {
             m_saving = false;
             return false;
+        }
+
+        // 手动保存前的冲突检测
+        // 若磁盘在 IDE 上次保存之后被外部修改 → 弹对话框
+        {
+            QFileInfo fi(m_filePath);
+            if (fi.exists() && m_lastSaveTime.isValid()
+                && fi.lastModified() > m_lastSaveTime) {
+
+                const auto reply = QMessageBox::warning(this,
+                    tr("文件冲突"),
+                    tr("文件 %1 已被外部修改。\n\n"
+                       "「保存」= 用编辑器内容覆盖磁盘\n"
+                       "「放弃」= 丢弃编辑器内容，从磁盘重新加载\n"
+                       "「取消」= 中止本次保存")
+                        .arg(QFileInfo(m_filePath).fileName()),
+                    QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+
+                if (reply == QMessageBox::Cancel) {
+                    return false;
+                }
+                if (reply == QMessageBox::Discard) {
+                    reloadFile();
+                    return true;
+                }
+                // 走到这里 = 用户选了「保存」→ 继续往下执行写盘
+            }
         }
 
         m_filePath = filePath;
@@ -966,6 +1013,8 @@ bool TextEditor::saveFile(const QString &source)
 
     m_isModified = false;
     document()->setModified(false);
+
+    m_lastSaveTime = QDateTime::currentDateTime();
 
     // 保存成功后，记录本地历史
     if (m_localHistory && !m_filePath.isEmpty()) {
@@ -4069,6 +4118,46 @@ void TextEditor::replaceWithIndentAlignment(QTextCursor& cursor,
     cursor.endEditBlock();
 }
 
+//  轻量化自动保存
+bool TextEditor::autoSave()
+{
+    if (m_filePath.isEmpty())     return false;
+    if (!isModified())            return false;
+
+    // ---- 冲突检测：磁盘 mtime 是否在 IDE 保存之后被外部改动 ----
+    const QFileInfo fi(m_filePath);
+    if (fi.exists() && m_lastSaveTime.isValid()
+        && fi.lastModified() > m_lastSaveTime) {
+        emit externalModificationDetected(m_filePath);
+        return false;
+    }
+
+    // ---- 写盘（不 trim）----
+    QFile file(m_filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "[TextEditor] autoSave 打开失败:" << m_filePath;
+        return false;
+    }
+    QTextStream stream(&file);
+    stream.setEncoding(QStringConverter::Utf8);
+    stream << toPlainText();
+    file.close();
+
+    // ---- 状态更新 ----
+    m_isModified = false;
+    document()->setModified(false);
+    m_lastSaveTime = QDateTime::currentDateTime();
+
+    // ---- LocalHistory 记录 ----
+    if (m_localHistory) {
+        m_localHistory->saveVersion(m_filePath, toPlainText(),
+                                    "自动保存", "auto");
+    }
+
+    emit autoSaved(m_filePath);
+    return true;
+}
+
 // ============================================================================
 //  辅助：行首缩进宽度
 // ============================================================================
@@ -5815,19 +5904,76 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
     const QString selfIndent = leadingWhitespace(text);
     const int selfIndentWidth = leadingIndentWidth(text);
 
+    // ============================================================
+    //  ✅ v8.5：闭合行特殊处理（**必须放在最前面**）
+    //
+    //  "闭合行" = trimmed 去掉 `}` / `)` / `]` / `;` / `,` / 空白后为空
+    //   例：`}`、`});`、`);`、`]`
+    //
+    //  处理：取本行**最后一个**闭合字符，向前扫描找配对的**开括号**，
+    //       返回开括号所在行的缩进。
+    //
+    //  ⚠️ 为什么必须放最前：
+    //    后面的"上一行缩进相同 → 同级续行"启发式会误判闭合行：
+    //      connect(a, &B::sig,
+    //              this, &B::slot);    ← 上一行缩进也是 12
+    //    会提前返回 selfIndent(12)，而不是配对的 connect 行的 4。
+    //    闭合行有明确的配对目标，优先级高于启发式。
+    // ============================================================
+    if (!text.trimmed().isEmpty()) {
+        QString onlyClosers = text.trimmed();
+        onlyClosers.remove(QRegularExpression(R"([\}\]\);,\s])"));
+
+        if (onlyClosers.isEmpty()) {
+            const QString t = text.trimmed();
+            QChar lastCloser = QChar::Null;
+            for (int i = t.length() - 1; i >= 0; --i) {
+                const QChar c = t[i];
+                if (c == '}' || c == ')' || c == ']') {
+                    lastCloser = c;
+                    break;
+                }
+            }
+
+            QChar matchOpen;
+            if      (lastCloser == '}') matchOpen = '{';
+            else if (lastCloser == ')') matchOpen = '(';
+            else if (lastCloser == ']') matchOpen = '[';
+
+            if (!matchOpen.isNull()) {
+                int depth = 1;
+                int pos = block.position() - 1;
+                while (pos >= 0 && depth > 0) {
+                    const QChar c = document()->characterAt(pos);
+                    if      (c == lastCloser) ++depth;
+                    else if (c == matchOpen) {
+                        --depth;
+                        if (depth == 0) {
+                            QTextBlock openBlock = document()->findBlock(pos);
+                            if (openBlock.isValid()) {
+                                return leadingWhitespace(openBlock.text());
+                            }
+                        }
+                    }
+                    --pos;
+                }
+            }
+            return selfIndent;
+        }
+    }
+
     // 空行 / 零缩进 → 自身
     if (text.trimmed().isEmpty() || selfIndentWidth == 0) {
         return selfIndent;
     }
 
-    // ---- 1. 上一行缩进相同 → 同级续行（如参数列表中间行）----
+    // ---- 1. 上一行缩进相同 → 同级续行 ----
     const QTextBlock prevBlock = block.previous();
     if (prevBlock.isValid()) {
         const QString pt = prevBlock.text();
         if (!pt.trimmed().isEmpty()) {
             const int pWidth = leadingIndentWidth(pt);
             if (pWidth == selfIndentWidth) {
-                // 同级 → 保持自身缩进
                 return selfIndent;
             }
         }
@@ -5849,12 +5995,9 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
         const int bWidth = leadingIndentWidth(bt);
 
         if (bWidth < selfIndentWidth) {
-            // 找到缩进更浅的行 → 检查是否含未闭合开括号
             if (bracketDelta(bt) > 0) {
-                // ✅ 是续行锚点 → 返回它的缩进
                 return leadingWhitespace(bt);
             }
-            // 缩进更浅但无未闭合开括号（如 `def foo():`）→ 不是续行
             break;
         }
 
@@ -6106,6 +6249,10 @@ void TextEditor::onTextChanged()
     }
 
     // updateFolding();
+
+    if (m_autoSaveTimer && !m_filePath.isEmpty()) {
+        m_autoSaveTimer->start();   // 重置为 15 秒
+    }
 }
 
 void TextEditor::onGotoLineAction()

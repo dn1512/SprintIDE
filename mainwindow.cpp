@@ -2132,10 +2132,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
         stopRunningProcess();
     }
 
-    if (!confirmUnsavedChanges()) {
-        event->ignore();
-        return;
-    }
+    autoSaveAllFiles();
 
     if (m_isCompiling) {
         int reply = QMessageBox::question(this, tr("正在编译"),
@@ -2188,6 +2185,14 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 // ============================================================
 void MainWindow::changeEvent(QEvent* event)
 {
+    // 窗口失焦时，保存所有打开的文件
+    if (event->type() == QEvent::WindowDeactivate) {
+        for (int i = 0; i < d->editorTabs->count(); ++i) {
+            if (auto* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i))) {
+                ed->autoSave();
+            }
+        }
+    }
     if (event->type() == QEvent::WindowActivate) {
         if (m_projectPanelRefreshDebounce) {
             m_projectPanelRefreshDebounce->start();
@@ -2265,6 +2270,18 @@ void MainWindow::updateWindowTitle()
     }
 
     setWindowTitle(title);
+}
+
+//  遍历所有编辑器执行 autoSave() 用途：失焦 / 编译前 / 运行前 / 关闭 IDE 前
+void MainWindow::autoSaveAllFiles()
+{
+    if (!d || !d->editorTabs) return;
+
+    for (int i = 0; i < d->editorTabs->count(); ++i) {
+        if (auto* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i))) {
+            ed->autoSave();
+        }
+    }
 }
 
 void MainWindow::restoreWindowState()
@@ -2542,6 +2559,22 @@ void MainWindow::openFile(const QString &path)
             this, &MainWindow::onFileLoaded);
     connect(editor, &TextEditor::fileSaved,
             this, &MainWindow::onFileSaved);
+    connect(editor, &TextEditor::autoSaved,
+    this, [this](const QString& path) {
+        m_statusLabel->setText(
+            QString(tr("已自动保存: %1"))
+                .arg(QFileInfo(path).fileName()));
+        // 3 秒后恢复
+        QTimer::singleShot(3000, this, [this]() {
+            if (m_statusLabel) m_statusLabel->setText(tr("就绪"));
+        });
+    });
+    connect(editor, &TextEditor::externalModificationDetected,
+    this, [this](const QString& path) {
+        m_statusLabel->setText(
+            QString(tr("⚠ 文件已被外部修改，自动保存已跳过: %1"))
+                .arg(QFileInfo(path).fileName()));
+    });
     connect(editor->document(), &QTextDocument::contentsChanged,
             this, [this, editor]() {
                 onEditorTextChanged(editor);
@@ -2730,6 +2763,23 @@ void MainWindow::createNewEditorTab(const QString& title)
     connect(editor, &TextEditor::breakpointToggled, this, &MainWindow::onBreakpointToggled);
     connect(editor, &TextEditor::quickFixRequested,
                 this, &MainWindow::onQuickFixRequested);
+    connect(editor, &TextEditor::autoSaved,
+        this, [this](const QString& path) {
+            m_statusLabel->setText(
+                QString(tr("已自动保存: %1"))
+                    .arg(QFileInfo(path).fileName()));
+            // 3 秒后恢复
+            QTimer::singleShot(3000, this, [this]() {
+                if (m_statusLabel) m_statusLabel->setText(tr("就绪"));
+            });
+        });
+
+    connect(editor, &TextEditor::externalModificationDetected,
+        this, [this](const QString& path) {
+            m_statusLabel->setText(
+                QString(tr("⚠ 文件已被外部修改，自动保存已跳过: %1"))
+                    .arg(QFileInfo(path).fileName()));
+        });
     // qDebug() << "breakpointToggled signal connected for editor:" << editor;
     bool isDark = ThemeManager::instance().isDarkTheme();
     editor->applyTheme(isDark ? "dark" : "light");
@@ -3847,7 +3897,8 @@ TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 // ==================== 调试菜单槽函数 ====================
 
 void MainWindow::onStartDebug() {
-    snapshotModifiedFilesForHistory("before-build");
+    autoSaveAllFiles();
+
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, tr("提示"), tr("请先打开一个文件再开始调试。"));
@@ -7213,42 +7264,9 @@ void MainWindow::onCloseProject()
     closeProject();
 }
 
-// ============================================================================
-//  编译/运行前，为所有"已修改但未保存"的文件打一个历史快照
-//    来源标记 "before-build" / "before-run"
-//
-//  为什么需要：
-//    - 用户可能改了 5 个文件但没保存
-//    - 编译前打快照 → 出问题时能回退到"编译前的状态"
-// ============================================================================
-void MainWindow::snapshotModifiedFilesForHistory(const QString& reason)
-{
-    if (!m_localHistory || !m_localHistory->isEnabled()) return;
-
-    const QString comment = (reason == "before-build")
-                                ? QStringLiteral("编译前")
-                                : QStringLiteral("运行前");
-
-    int count = 0;
-    for (int i = 0; i < d->editorTabs->count(); ++i) {
-        TextEditor* ed = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (!ed) continue;
-        if (ed->filePath().isEmpty()) continue;
-        if (!ed->isModified()) continue;   // 只对已修改的文件打快照
-
-        m_localHistory->saveVersion(
-            ed->filePath(), ed->toPlainText(), comment, reason);
-        ++count;
-    }
-
-    if (count > 0) {
-        logInfo(QString("已为 %1 个修改过的文件打历史快照").arg(count));
-    }
-}
-
 void MainWindow::onBuildProject()
 {
-    snapshotModifiedFilesForHistory("before-build");
+    autoSaveAllFiles();
     // ============================================================
     // 第一步：智能获取项目路径
     // ============================================================
@@ -7593,7 +7611,7 @@ void MainWindow::onCompile() {
 
 void MainWindow::onRun()
 {
-    snapshotModifiedFilesForHistory("before-run");
+    autoSaveAllFiles();
     TextEditor* editor = currentEditor();
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件进行运行。");
