@@ -7624,6 +7624,8 @@ void MainWindow::onRun()
         return;
     }
 
+    m_outputPanel->clear();
+
     LanguageType lang = detectLanguageTypeFromPath(sourceFile);
 
     // ========== Python 特殊处理（异步执行） ==========
