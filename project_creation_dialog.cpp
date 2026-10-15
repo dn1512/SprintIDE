@@ -344,6 +344,31 @@ void ProjectCreationDialog::accept()
     m_result.reset();
     m_result.language = currentLanguage();   // 把语言写进结果
 
+    // ============================================================
+    // 仅注册模式 —— 不创建任何文件夹和文件
+    // ============================================================
+    if (m_registerOnly) {
+        const QString projectName = ui->projectNameLineEdit->text().trimmed();
+        const QString projectPath = ui->locationLineEdit->text().trimmed();
+        const QString fullProjectPath =
+            QDir(projectPath).absoluteFilePath(projectName);
+
+        // 仅写入 m_result，不碰磁盘
+        m_result.success     = true;
+        m_result.projectPath = fullProjectPath;
+        m_result.projectName = projectName;
+        m_result.displayName = ui->displayNameLineEdit->text().trimmed();
+        m_result.language    = currentLanguage();
+        m_result.projectType = getCurrentTemplate().type;
+        m_result.createdTime = QDateTime::currentDateTime();
+        // createdFiles / createdDirectories 保持为空
+
+        qDebug() << "[PCD] register-only mode, path:" << fullProjectPath;
+
+        QDialog::accept();
+        return;
+    }
+
     // 创建项目目录结构
     if (!createProjectStructure()) {
         m_result.errorMessage = tr("无法创建项目目录结构");
@@ -878,7 +903,7 @@ void ProjectCreationDialog::initTemplates()
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/python.svg";
         t.defaultFiles = {"main.py", "requirements.txt"};
-        t.directories = {"src", "tests"};
+        t.directories = {};
 
         ProjectTemplate::ExampleFile f;
         f.path = "main.py";
@@ -903,7 +928,8 @@ void ProjectCreationDialog::initTemplates()
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/go.svg";
         t.defaultFiles = {"main.go", "go.mod"};
-        t.directories = {"cmd", "internal", "pkg"};
+        // t.directories = {"cmd", "internal", "pkg"};
+        t.directories = {};
 
         ProjectTemplate::ExampleFile f;
         f.path = "main.go";
@@ -928,7 +954,7 @@ void ProjectCreationDialog::initTemplates()
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/rust.svg";
         t.defaultFiles = {"Cargo.toml", "src/main.rs"};
-        t.directories = {"src", "tests"};
+        t.directories = {"src", "target", "assets"};
 
         ProjectTemplate::ExampleFile f;
         f.path = "src/main.rs";
@@ -953,7 +979,7 @@ void ProjectCreationDialog::initTemplates()
         t.type = ProjectType::EmptyProject;
         t.icon = ":/icons/icons/node.svg";
         t.defaultFiles = {"package.json", "index.js"};
-        t.directories = {"src"};
+        t.directories = {};
 
         ProjectTemplate::ExampleFile f;
         f.path = "index.js";
@@ -1153,15 +1179,22 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
     m_languageSpecificForm  = new QFormLayout(m_languageSpecificGroup);
     m_languageSpecificForm->setLabelAlignment(Qt::AlignRight);
 
-    // ★ 所有子控件的 parent 都指向 m_languageSpecificGroup
-    //   这样它们跟随 group 一起隐藏，不会在布局外"漏出"到对话框左上角
+    // 所有子控件的 parent 都指向 m_languageSpecificGroup
+    // 这样它们跟随 group 一起隐藏，不会在布局外"漏出"到对话框左上角
 
     // ---- Python ----
-    m_pythonVenvCheckBox = new QCheckBox(tr("创建虚拟环境 (.venv)"), m_languageSpecificGroup);
+    m_pythonVenvCheckBox = new QCheckBox(tr("创建虚拟环境"), m_languageSpecificGroup);
     m_pythonVenvCheckBox->setChecked(true);
-    m_pythonInterpreterEdit = new QLineEdit(m_languageSpecificGroup);
-    m_pythonInterpreterEdit->setPlaceholderText(tr("留空则自动探测 python3 / py"));
-    m_pythonEntryLabel = new QLabel("main.py", m_languageSpecificGroup);
+    m_pythonVenvNameEdit = new QLineEdit(".venv", m_languageSpecificGroup);
+    m_pythonVenvNameEdit->setPlaceholderText(tr("例如 .venv 或 venv"));
+    m_pythonEntryLabel   = new QLabel("main.py", m_languageSpecificGroup);
+
+    // 勾选框联动：未勾选时环境名称输入框禁用
+    connect(m_pythonVenvCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (m_pythonVenvNameEdit) {
+            m_pythonVenvNameEdit->setEnabled(checked);
+        }
+    });
 
     // ---- Go ----
     m_goModuleEdit = new QLineEdit(m_languageSpecificGroup);
@@ -1224,6 +1257,23 @@ void ProjectCreationDialog::createLanguageSpecificGroup()
         qWarning() << "[ProjectCreationDialog] 未能确定语言特有选项组的插入点";
     }
 
+    // 关键修复：创建即隐藏所有动态控件。
+    //   这些 widget 的 parent 是 m_languageSpecificGroup，但尚未加入 QFormLayout。
+    //   一旦 group 变为可见（哪怕只闪一下），它们会全部悬浮在 group 左上角——
+    //   由于后加入的 addRow 会覆盖或挤出可视区，用户通常只能看到"最后一个"
+    //   （也就是 m_genericCleanEdit）浮在界面上。因此这里必须显式 hide()。
+    m_pythonVenvCheckBox->hide();
+    m_pythonVenvNameEdit->hide();
+    m_pythonEntryLabel->hide();
+    m_goModuleEdit->hide();
+    m_rustKindCombo->hide();
+    m_nodeVariantCombo->hide();
+    m_nodePmCombo->hide();
+    m_nodeEntryEdit->hide();
+    m_genericBuildEdit->hide();
+    m_genericRunEdit->hide();
+    m_genericCleanEdit->hide();
+
     m_languageSpecificGroup->setVisible(false);
 }
 
@@ -1278,6 +1328,18 @@ ProjectLanguage ProjectCreationDialog::currentLanguage() const
 void ProjectCreationDialog::refreshLanguageSpecificUI()
 {
     if (!m_languageSpecificGroup || !m_languageSpecificForm) return;
+
+    if (m_pythonVenvCheckBox) m_pythonVenvCheckBox->hide();
+    if (m_pythonVenvNameEdit) m_pythonVenvNameEdit->hide();
+    if (m_pythonEntryLabel)   m_pythonEntryLabel->hide();
+    if (m_goModuleEdit)       m_goModuleEdit->hide();
+    if (m_rustKindCombo)      m_rustKindCombo->hide();
+    if (m_nodeVariantCombo)   m_nodeVariantCombo->hide();
+    if (m_nodePmCombo)        m_nodePmCombo->hide();
+    if (m_nodeEntryEdit)      m_nodeEntryEdit->hide();
+    if (m_genericBuildEdit)   m_genericBuildEdit->hide();
+    if (m_genericRunEdit)     m_genericRunEdit->hide();
+    if (m_genericCleanEdit)   m_genericCleanEdit->hide();
 
     // 1. 清空所有行（QFormLayout 会移除对 widget 的引用，但不会 delete）
     // while (m_languageSpecificForm->rowCount() > 0) {
@@ -1335,8 +1397,9 @@ void ProjectCreationDialog::refreshLanguageSpecificUI()
         m_languageSpecificForm->addRow(QString(), m_pythonVenvCheckBox);
         m_pythonVenvCheckBox->show();
 
-        m_languageSpecificForm->addRow(tr("解释器路径:"), m_pythonInterpreterEdit);
-        m_pythonInterpreterEdit->show();
+        m_languageSpecificForm->addRow(tr("环境名称:"), m_pythonVenvNameEdit);
+        m_pythonVenvNameEdit->setEnabled(m_pythonVenvCheckBox->isChecked());
+        m_pythonVenvNameEdit->show();
         break;
 
     case ProjectLanguage::Go:
@@ -1641,14 +1704,37 @@ bool ProjectCreationDialog::generatePythonProject()
     }
     m_result.createdFiles.append(cfgPath);
 
-    // ---- 4. 创建虚拟环境（如果用户勾选） ----
+        // ---- 4. 创建虚拟环境（如果用户勾选） ----
     if (m_pythonVenvCheckBox && m_pythonVenvCheckBox->isChecked()) {
-        QString py = m_pythonInterpreterEdit->text().trimmed();
-        if (py.isEmpty()) py = "python3";
+        QString venvName = m_pythonVenvNameEdit
+                               ? m_pythonVenvNameEdit->text().trimmed()
+                               : QString();
+        if (venvName.isEmpty()) {
+            venvName = ".venv";
+        }
+
+        // 安全校验：拒绝路径穿越 / 非法字符，防止用户误输入写到项目外
+        const bool illegal = venvName.contains(QLatin1Char('/'))
+                          || venvName.contains(QLatin1Char('\\'))
+                          || venvName.contains(QStringLiteral(".."))
+                          || venvName.startsWith(QLatin1Char('.'));
+        // 允许 .venv / venv，但拒绝 "." ".." "./x" 这类
+        const bool reallyIllegal = venvName == QStringLiteral(".")
+                                || venvName == QStringLiteral("..")
+                                || venvName.contains(QLatin1Char('/'))
+                                || venvName.contains(QLatin1Char('\\'))
+                                || venvName.contains(QStringLiteral(".."));
+
+        if (reallyIllegal) {
+            qWarning() << "[ProjectCreationDialog] 非法虚拟环境名称:" << venvName
+                       << "，回退到默认 .venv";
+            venvName = ".venv";
+        }
+        Q_UNUSED(illegal);
 
         QProcess p;
         p.setWorkingDirectory(m_projectConfig.projectPath());
-        p.start(py, {"-m", "venv", ".venv"});
+        p.start("python3", {"-m", "venv", venvName});
         if (!p.waitForFinished(60000)) {
             // 超时不视为致命错误，用户可稍后手动创建
             qWarning() << "[ProjectCreationDialog] venv 创建超时（可稍后手动创建）";
@@ -1915,9 +2001,12 @@ void ProjectCreationDialog::updateTemplateDescription()
         fileList += "• " + file + "\n";
     }
 
-    fileList += tr("\n目录结构:\n");
-    for (const QString& dir : currentTemplate.directories) {
-        fileList += "• " + dir + "/\n";
+    // 只有真的有预置目录时才打印"目录结构"段
+    if (!currentTemplate.directories.isEmpty()) {
+        fileList += tr("\n目录结构:\n");
+        for (const QString& dir : currentTemplate.directories) {
+            fileList += "• " + dir + "/\n";
+        }
     }
 
     ui->templateFilesLabel->setText(fileList);

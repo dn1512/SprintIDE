@@ -173,21 +173,16 @@
 <context>
     <name>LspSettingsPage</name>
     <message>
-        <source>控制 LSP 服务器返回的诊断信息如何显示。
-错误（error）始终显示，不受此设置影响。</source>
-        <translation type="vanished">Controls how diagnostics returned by the LSP server are displayed.
-Errors are always shown and are not affected by this setting.</translation>
-    </message>
-    <message>
         <location filename="../settings_dialog.cpp" line="251"/>
         <source>控制 LSP 服务器返回的诊断信息如何显示。
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Controls how diagnostics returned by the LSP server are displayed.
+</translation>
     </message>
     <message>
         <location filename="../settings_dialog.cpp" line="252"/>
         <source>错误（error）始终显示，不受此设置影响。</source>
-        <translation type="unfinished"></translation>
+        <translation>Errors are always shown and are not affected by this setting.</translation>
     </message>
     <message>
         <location filename="../settings_dialog.cpp" line="259"/>
@@ -243,7 +238,7 @@ line too long
     <message>
         <location filename="../mainwindow.ui" line="14"/>
         <source>MainWindow</source>
-        <translation type="unfinished"></translation>
+        <translation>MainWindow</translation>
     </message>
 </context>
 <context>
@@ -252,187 +247,187 @@ line too long
         <location filename="../project_creation_dialog.ui" line="14"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="378"/>
         <source>创建新项目</source>
-        <translation type="unfinished">Create New Project</translation>
+        <translation>Create New Project</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="24"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="390"/>
         <source>基本信息</source>
-        <translation type="unfinished"></translation>
+        <translation>Basic Information</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="30"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="379"/>
         <source>项目信息</source>
-        <translation type="unfinished"></translation>
+        <translation>Project Information</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="36"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="380"/>
         <source>项目名称:</source>
-        <translation type="unfinished"></translation>
+        <translation>Project Name:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="50"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="381"/>
         <source>显示名称:</source>
-        <translation type="unfinished"></translation>
+        <translation>Display Name:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="60"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="382"/>
         <source>项目位置:</source>
-        <translation type="unfinished"></translation>
+        <translation>Project Location:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="72"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="383"/>
         <source>浏览...</source>
-        <translation type="unfinished">Browse...</translation>
+        <translation>Browse...</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="81"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="384"/>
         <source>路径预览</source>
-        <translation type="unfinished"></translation>
+        <translation>Path Preview</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="91"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="385"/>
         <source>项目模板:</source>
-        <translation type="unfinished"></translation>
+        <translation>Project Template:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="104"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="386"/>
         <source>模板信息</source>
-        <translation type="unfinished"></translation>
+        <translation>Template Information</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="110"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="387"/>
         <source>模板描述</source>
-        <translation type="unfinished"></translation>
+        <translation>Template Description</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="120"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="388"/>
         <source>文件列表</source>
-        <translation type="unfinished"></translation>
+        <translation>File List</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="132"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="389"/>
         <source>查看示例代码</source>
-        <translation type="unfinished"></translation>
+        <translation>View Example Code</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="158"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="402"/>
         <source>编译设置</source>
-        <translation type="unfinished"></translation>
+        <translation>Build Settings</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="164"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="391"/>
         <source>编译模式</source>
-        <translation type="unfinished"></translation>
+        <translation>Build Mode</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="170"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="392"/>
         <source>简单模式 (推荐初学者使用，自动配置最佳编译选项)</source>
-        <translation type="unfinished"></translation>
+        <translation>Simple Mode (recommended for beginners; automatically picks the best compiler options)</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="180"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="393"/>
         <source>高级模式 (允许自定义所有编译选项，适合有经验的学习者)</source>
-        <translation type="unfinished"></translation>
+        <translation>Advanced Mode (allows full customization of build options; suitable for experienced users)</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="190"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="394"/>
         <source>高级编译配置</source>
-        <translation type="unfinished"></translation>
+        <translation>Advanced Build Configuration</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="199"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="395"/>
         <source>编译器:</source>
-        <translation type="unfinished"></translation>
+        <translation>Compiler:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="209"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="396"/>
         <source>C++标准:</source>
-        <translation type="unfinished"></translation>
+        <translation>C++ Standard:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="219"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="397"/>
         <source>优化级别:</source>
-        <translation type="unfinished"></translation>
+        <translation>Optimization Level:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="229"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="398"/>
         <source>警告级别:</source>
-        <translation type="unfinished"></translation>
+        <translation>Warning Level:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="239"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="399"/>
         <source>调试信息:</source>
-        <translation type="unfinished"></translation>
+        <translation>Debug Info:</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="246"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="400"/>
         <source>包含调试信息 (便于调试程序)</source>
-        <translation type="unfinished"></translation>
+        <translation>Include debug info (for easier debugging)</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="259"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="401"/>
         <source>更多高级配置...</source>
-        <translation type="unfinished"></translation>
+        <translation>More Advanced Options...</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="280"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="407"/>
         <source>高级选项</source>
-        <translation type="unfinished"></translation>
+        <translation>Advanced Options</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="286"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="403"/>
         <source>项目选项</source>
-        <translation type="unfinished"></translation>
+        <translation>Project Options</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="292"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="404"/>
         <source>创建后自动打开项目</source>
-        <translation type="unfinished"></translation>
+        <translation>Open the project automatically after creation</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="302"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="405"/>
         <source>创建Git仓库 (需要安装Git)</source>
-        <translation type="unfinished"></translation>
+        <translation>Create a Git repository (requires Git)</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="309"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="406"/>
         <source>添加.gitignore文件 (忽略编译输出等文件)</source>
-        <translation type="unfinished"></translation>
+        <translation>Add a .gitignore file (ignores build outputs, etc.)</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.ui" line="354"/>
         <location filename="../build/SprintIDE_autogen/include/ui_project_creation_dialog.h" line="409"/>
         <source>重置为默认设置</source>
-        <translation type="unfinished"></translation>
+        <translation>Reset to Defaults</translation>
     </message>
 </context>
 <context>
@@ -630,53 +625,54 @@ Default is 127.0.0.1:9876; make sure the Agent listens on the same address.</tra
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="109"/>
         <source>AI 操作策略</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Action Policy</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="113"/>
         <source>勾选 = 该操作需用户确认。
 Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
-        <translation type="unfinished"></translation>
+        <translation>Checked = the action requires user confirmation.
+Actions marked danger=dangerous by the Agent will always require confirmation, regardless of this setting.</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="120"/>
         <source>文件创建</source>
-        <translation type="unfinished"></translation>
+        <translation>File Creation</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="121"/>
         <source>文件编辑</source>
-        <translation type="unfinished"></translation>
+        <translation>File Editing</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="122"/>
         <source>文件删除</source>
-        <translation type="unfinished"></translation>
+        <translation>File Deletion</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="123"/>
         <source>文件重命名</source>
-        <translation type="unfinished"></translation>
+        <translation>File Renaming</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="131"/>
         <source>执行命令</source>
-        <translation type="unfinished"></translation>
+        <translation>Execute Command</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="132"/>
         <source>执行 shell 脚本</source>
-        <translation type="unfinished"></translation>
+        <translation>Execute Shell Script</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="133"/>
         <source>安装依赖</source>
-        <translation type="unfinished">Install Dependencies</translation>
+        <translation>Install Dependencies</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="141"/>
         <source>允许执行 shell（关闭则直接拒绝）</source>
-        <translation type="unfinished"></translation>
+        <translation>Allow shell execution (when off, requests are rejected outright)</translation>
     </message>
     <message>
         <location filename="../ai/ai_settings_page.cpp" line="215"/>
@@ -733,14 +729,11 @@ Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
 <context>
     <name>SprintIDE::BreakpointListPanel</name>
     <message>
-        <source>共 %1 个断点，%2 个已启用</source>
-        <translation type="vanished">%1 breakpoints, %2 enabled</translation>
-    </message>
-    <message>
         <location filename="../breakpoint_list_panel.cpp" line="106"/>
         <source>%1
 行: %2%3</source>
-        <translation type="unfinished"></translation>
+        <translation>%1
+Line: %2%3</translation>
     </message>
     <message>
         <location filename="../breakpoint_list_panel.cpp" line="142"/>
@@ -767,55 +760,31 @@ Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
         <source>删除断点</source>
         <translation>Remove Breakpoint</translation>
     </message>
-    <message>
-        <source>行: %2%3</source>
-        <translation type="vanished">Line: %2%3</translation>
-    </message>
-    <message>
-        <source>条件: %1</source>
-        <translation type="vanished">Condition: %1</translation>
-    </message>
 </context>
 <context>
     <name>SprintIDE::ChatPanel</name>
     <message>
-        <source>AI 助手</source>
-        <translation type="vanished">AI Assistant</translation>
-    </message>
-    <message>
-        <source>AI 助手已连接</source>
-        <translation type="vanished">AI Assistant connected</translation>
-    </message>
-    <message>
-        <source>AI 助手已断开连接</source>
-        <translation type="vanished">AI Assistant disconnected</translation>
-    </message>
-    <message>
-        <source>AI 错误 (%1): %2</source>
-        <translation type="vanished">AI error (%1): %2</translation>
-    </message>
-    <message>
         <location filename="../ai/chat_panel.cpp" line="24"/>
         <source>AI agent</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Agent</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="89"/>
         <location filename="../ai/chat_panel.cpp" line="449"/>
         <source>未连接</source>
-        <translation type="unfinished"></translation>
+        <translation>Disconnected</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="95"/>
         <location filename="../ai/chat_panel.cpp" line="593"/>
         <location filename="../ai/chat_panel.cpp" line="598"/>
         <source>连接</source>
-        <translation type="unfinished"></translation>
+        <translation>Connect</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="97"/>
         <source>立即尝试连接 Agent</source>
-        <translation type="unfinished"></translation>
+        <translation>Try connecting to the Agent now</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="111"/>
@@ -866,108 +835,91 @@ Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
 
 --- 完整内容 ---
 </source>
-        <translation type="unfinished"></translation>
+        <translation>
+
+--- Full content ---
+</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="449"/>
         <source>已连接</source>
-        <translation type="unfinished"></translation>
+        <translation>Connected</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="462"/>
         <source>AI agent (已连接)</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Agent (Connected)</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="462"/>
         <source>AI agent (未连接)</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Agent (Disconnected)</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="568"/>
         <source>AI agent已连接</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Agent connected</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="573"/>
         <source>AI agent已断开连接</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Agent disconnected</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="577"/>
         <source>正在重连...</source>
-        <translation type="unfinished"></translation>
+        <translation>Reconnecting...</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="594"/>
         <source>重试</source>
-        <translation type="unfinished"></translation>
+        <translation>Retry</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="595"/>
         <source>重连中</source>
-        <translation type="unfinished"></translation>
+        <translation>Reconnecting</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="596"/>
         <source>连接中</source>
-        <translation type="unfinished"></translation>
+        <translation>Connecting</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="656"/>
         <location filename="../ai/chat_panel.cpp" line="679"/>
         <source>AI 提问：%1</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Question: %1</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="666"/>
         <source>输入你的回答，按 Enter 提交...</source>
-        <translation type="unfinished"></translation>
+        <translation>Type your answer and press Enter to submit...</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="667"/>
         <source>输入答案，或从上面的选项中选择...</source>
-        <translation type="unfinished"></translation>
+        <translation>Type an answer, or choose from the options above...</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="674"/>
         <source>回答</source>
-        <translation type="unfinished"></translation>
+        <translation>Answer</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="675"/>
         <source>提交回答 (Enter)</source>
-        <translation type="unfinished"></translation>
+        <translation>Submit answer (Enter)</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="735"/>
         <source>AI 请求确认</source>
-        <translation type="unfinished"></translation>
+        <translation>AI Confirmation Required</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="736"/>
         <source>AI 请求执行一个操作，是否继续？</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>● 未连接</source>
-        <translation type="vanished">● Disconnected</translation>
-    </message>
-    <message>
-        <source>🟢 已连接</source>
-        <translation type="vanished">🟢 Connected</translation>
-    </message>
-    <message>
-        <source>🔴 未连接</source>
-        <translation type="vanished">🔴 Disconnected</translation>
-    </message>
-    <message>
-        <source>AI 助手 (已连接)</source>
-        <translation type="vanished">AI Assistant (Connected)</translation>
-    </message>
-    <message>
-        <source>AI 助手 (未连接)</source>
-        <translation type="vanished">AI Assistant (Disconnected)</translation>
+        <translation>The AI is requesting to perform an action. Continue?</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="432"/>
@@ -981,17 +933,9 @@ Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
         <translation>User: </translation>
     </message>
     <message>
-        <source>AI: </source>
-        <translation type="vanished">AI: </translation>
-    </message>
-    <message>
         <location filename="../ai/chat_panel.cpp" line="907"/>
         <source>系统</source>
         <translation>System</translation>
-    </message>
-    <message>
-        <source>--- 完整内容 ---</source>
-        <translation type="vanished">--- Full content ---</translation>
     </message>
 </context>
 <context>
@@ -1086,10 +1030,6 @@ Agent 标 danger=dangerous 时会强制确认，不受此处影响。</source>
         <source>调试控制台</source>
         <translation>Debug Console</translation>
     </message>
-    <message>
-        <source>Loading...</source>
-        <translation type="vanished">Loading...</translation>
-    </message>
 </context>
 <context>
     <name>SprintIDE::EditorSettingsPage</name>
@@ -1168,7 +1108,14 @@ int main() {
     return 0;
 }
 </source>
-        <translation type="unfinished"></translation>
+        <translation>// This code reflects font and indentation settings in real time
+#include &lt;iostream&gt;
+
+int main() {
+    std::cout &lt;&lt; &quot;Hello, SprintIDE!&quot; &lt;&lt; std::endl;
+    return 0;
+}
+</translation>
     </message>
 </context>
 <context>
@@ -1212,57 +1159,9 @@ int main() {
 <context>
     <name>SprintIDE::Git::GitDiffDialog</name>
     <message>
-        <source>Git Diff</source>
-        <translation type="vanished">Git Diff</translation>
-    </message>
-    <message>
-        <source>打开文件</source>
-        <translation type="vanished">Open File</translation>
-    </message>
-    <message>
-        <source>复制</source>
-        <translation type="vanished">Copy</translation>
-    </message>
-    <message>
-        <source>复制全部 diff</source>
-        <translation type="vanished">Copy entire diff</translation>
-    </message>
-    <message>
-        <source>✕</source>
-        <translation type="vanished">✕</translation>
-    </message>
-    <message>
-        <source>关闭</source>
-        <translation type="vanished">Close</translation>
-    </message>
-    <message>
-        <source>Diff - %1</source>
-        <translation type="vanished">Diff - %1</translation>
-    </message>
-    <message>
-        <source>Commit - %1</source>
-        <translation type="vanished">Commit - %1</translation>
-    </message>
-    <message>
-        <source>已复制</source>
-        <translation type="vanished">Copied</translation>
-    </message>
-    <message>
-        <source>无差异</source>
-        <translation type="vanished">No differences</translation>
-    </message>
-    <message>
         <location filename="../git/git_diff_dialog.cpp" line="153"/>
         <source>此文件没有任何差异。</source>
         <translation>This file has no differences.</translation>
-    </message>
-    <message>
-        <source>+%1  −%2</source>
-        <translation type="vanished">+%1  −%2</translation>
-    </message>
-    <message>
-        <source>  （共 %1 行，仅显示前 %2 行）</source>
-        <translation type="vanished">  (total %1 lines, showing first %2 lines only)</translation>
     </message>
     <message>
         <location filename="../git/git_diff_dialog.cpp" line="259"/>
@@ -1272,30 +1171,6 @@ int main() {
 </context>
 <context>
     <name>SprintIDE::Git::GitFileHistoryDialog</name>
-    <message>
-        <source>历史 - %1</source>
-        <translation type="vanished">History - %1</translation>
-    </message>
-    <message>
-        <source>文件: &lt;b&gt;%1&lt;/b&gt;</source>
-        <translation type="vanished">File: &lt;b&gt;%1&lt;/b&gt;</translation>
-    </message>
-    <message>
-        <source>关闭</source>
-        <translation type="vanished">Close</translation>
-    </message>
-    <message>
-        <source>共 %1 条提交</source>
-        <translation type="vanished">%1 commits</translation>
-    </message>
-    <message>
-        <source>(该文件没有任何提交记录)</source>
-        <translation type="vanished">(This file has no commit history)</translation>
-    </message>
-    <message>
-        <source>提示</source>
-        <translation type="vanished">Notice</translation>
-    </message>
     <message>
         <location filename="../git/git_file_history_dialog.cpp" line="112"/>
         <source>无法获取该 commit 的 diff。</source>
@@ -1379,10 +1254,6 @@ Click &quot;Initialize Repository&quot; above to get started.</translation>
         <translation>Staged Changes (%1)</translation>
     </message>
     <message>
-        <source>−</source>
-        <translation type="vanished">−</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="268"/>
         <source>全部取消暂存</source>
         <translation>Unstage All</translation>
@@ -1396,10 +1267,6 @@ Click &quot;Initialize Repository&quot; above to get started.</translation>
         <location filename="../git/git_panel.cpp" line="574"/>
         <source>更改 (%1)</source>
         <translation>Changes (%1)</translation>
-    </message>
-    <message>
-        <source>+</source>
-        <translation type="vanished">+</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="302"/>
@@ -1435,119 +1302,123 @@ Click &quot;Initialize Repository&quot; above to get started.</translation>
     <message>
         <location filename="../git/git_panel.cpp" line="885"/>
         <source>确认切换到分支：&lt;b&gt;%1&lt;/b&gt; ？</source>
-        <translation type="unfinished"></translation>
+        <translation>Confirm switching to branch: &lt;b&gt;%1&lt;/b&gt; ?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1021"/>
         <source>分支名包含非法字符。</source>
-        <translation type="unfinished"></translation>
+        <translation>Branch name contains invalid characters.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1022"/>
         <source>不允许：</source>
-        <translation type="unfinished"></translation>
+        <translation>Not allowed: </translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1023"/>
         <location filename="../git/git_panel.cpp" line="1024"/>
         <source>不允许以</source>
-        <translation type="unfinished"></translation>
+        <translation>cannot start with</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1023"/>
         <source>开头，</source>
-        <translation type="unfinished"></translation>
+        <translation>,</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1024"/>
         <source>或</source>
-        <translation type="unfinished"></translation>
+        <translation>or</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1024"/>
         <source>结尾。</source>
-        <translation type="unfinished"></translation>
+        <translation>at the end.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1170"/>
         <source>将把当前分支 &lt;b&gt;%1&lt;/b&gt; 的所有提交重放到 &lt;b&gt;%2&lt;/b&gt; 之上。&lt;br&gt;&lt;br&gt;Rebase 会重写当前分支的提交历史。&lt;br&gt;如果该分支已推送到远程，之后需要 &lt;code&gt;git push --force&lt;/code&gt;。&lt;br&gt;冲突时 ours/theirs 语义与 merge 相反。&lt;br&gt;&lt;br&gt;确定继续？</source>
-        <translation type="unfinished"></translation>
+        <translation>All commits on the current branch &lt;b&gt;%1&lt;/b&gt; will be replayed onto &lt;b&gt;%2&lt;/b&gt;.&lt;br&gt;&lt;br&gt;Rebase rewrites the commit history of the current branch.&lt;br&gt;If the branch has been pushed to a remote, you&apos;ll need &lt;code&gt;git push --force&lt;/code&gt; afterwards.&lt;br&gt;During conflicts, ours/theirs semantics are reversed compared to merge.&lt;br&gt;&lt;br&gt;Continue?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1199"/>
         <source>确定要中止当前的</source>
-        <translation type="unfinished"></translation>
+        <translation>Abort the current</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1199"/>
         <source>吗</source>
-        <translation type="unfinished"></translation>
+        <translation>?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1200"/>
         <source>工作区里已解决的改动会保留，未提交的改动不会丢失。</source>
-        <translation type="unfinished"></translation>
+        <translation>Resolved changes in the working tree will be kept; uncommitted changes will not be lost.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1264"/>
         <source>提交前需要先配置 Git 身份。&lt;br&gt;&lt;br&gt;在终端运行以下命令：&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;code&gt;%2&lt;/code&gt;&lt;br&gt;&lt;br&gt;或打开设置对话框，在 &lt;b&gt;Git&lt;/b&gt; 页填写并保存。</source>
-        <translation type="unfinished"></translation>
+        <translation>Git identity must be configured before committing.&lt;br&gt;&lt;br&gt;Run the following commands in a terminal:&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;code&gt;%2&lt;/code&gt;&lt;br&gt;&lt;br&gt;Or open the Settings dialog and fill in the &lt;b&gt;Git&lt;/b&gt; page.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1271"/>
         <source>你的名字</source>
-        <translation type="unfinished"></translation>
+        <translation>Your Name</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1273"/>
         <source>你的邮箱</source>
-        <translation type="unfinished"></translation>
+        <translation>you@example.com</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1294"/>
         <location filename="../git/git_panel.cpp" line="1523"/>
         <source>提示</source>
-        <translation type="unfinished">Notice</translation>
+        <translation>Notice</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1411"/>
         <source>冲突时，保留你正在重放的提交的内容
 底层执行：</source>
-        <translation type="unfinished"></translation>
+        <translation>On a rebase conflict, keep the content of the commit being replayed.
+Underlying command: </translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1420"/>
         <source>Rebase 冲突时，保留目标分支（base）的内容
 底层执行：</source>
-        <translation type="unfinished"></translation>
+        <translation>On a rebase conflict, keep the target branch (base) content.
+Underlying command: </translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1431"/>
         <source>保留当前分支（HEAD）的内容
 底层执行：</source>
-        <translation type="unfinished"></translation>
+        <translation>Keep the content of the current branch (HEAD).
+Underlying command: </translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1441"/>
         <source>保留被合入分支的内容
 底层执行：</source>
-        <translation type="unfinished"></translation>
+        <translation>Keep the content of the incoming branch.
+Underlying command: </translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1487"/>
         <source>确定要删除以下未跟踪文件吗？</source>
-        <translation type="unfinished"></translation>
+        <translation>Delete the following untracked file?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1488"/>
         <location filename="../git/git_panel.cpp" line="1490"/>
         <source>此操作不可恢复。</source>
-        <translation type="unfinished"></translation>
+        <translation>This action cannot be undone.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1489"/>
         <source>确定要丢弃对该文件的所有未提交更改吗？</source>
-        <translation type="unfinished"></translation>
+        <translation>Discard all uncommitted changes to this file?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1555"/>
@@ -1568,7 +1439,8 @@ Click &quot;Initialize Repository&quot; above to get started.</translation>
         <location filename="../git/git_panel.cpp" line="533"/>
         <source>%1
 [已暂存] %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1
+[Staged] %2</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="556"/>
@@ -1577,7 +1449,11 @@ Click &quot;Initialize Repository&quot; above to get started.</translation>
 存在冲突
 右键「打开编辑器手动解决」或选择接受某一侧
 （当前为 %2 冲突，右键菜单会相应调整语义）</source>
-        <translation type="unfinished"></translation>
+        <translation>%1
+
+Conflict
+Right-click &quot;Open in editor to resolve manually&quot; or choose to accept one side
+(currently a %2 conflict; the context menu adjusts its semantics accordingly)</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="591"/>
@@ -1612,7 +1488,9 @@ You are not on any branch. Create a branch to save your commits.</translation>
         <source>此目录尚未初始化为 Git 仓库。
 
  点击上方「初始化仓库」按钮开始使用。</source>
-        <translation type="unfinished"></translation>
+        <translation>This directory is not yet a Git repository.
+
+ Click &quot;Initialize Repository&quot; above to get started.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="806"/>
@@ -1649,12 +1527,12 @@ Continue?</translation>
     <message>
         <location filename="../git/git_panel.cpp" line="852"/>
         <source>当前处于 &lt;b&gt;游离 HEAD&lt;/b&gt; 状态（%1）。&lt;br&gt;切走后，此处的提交将不属于任何分支，&lt;b&gt;可能难以找回&lt;/b&gt;。</source>
-        <translation type="unfinished"></translation>
+        <translation>You are currently in a &lt;b&gt;detached HEAD&lt;/b&gt; state (%1).&lt;br&gt;After switching away, commits here will not belong to any branch and &lt;b&gt;may be hard to recover&lt;/b&gt;.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="858"/>
         <source>当前有 &lt;b&gt;%1&lt;/b&gt; 个未提交的更改（含 %2 个未跟踪文件）。&lt;br&gt;切换分支时可能产生冲突或被合并到其他基线。</source>
-        <translation type="unfinished"></translation>
+        <translation>There are &lt;b&gt;%1&lt;/b&gt; uncommitted changes (including %2 untracked files).&lt;br&gt;Switching branches may cause conflicts or merge them into a different baseline.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="866"/>
@@ -1666,14 +1544,6 @@ Continue?</translation>
         <location filename="../git/git_panel.cpp" line="867"/>
         <source>切换到分支：%1 ？</source>
         <translation>Switch to branch: %1 ?</translation>
-    </message>
-    <message>
-        <source>  当前处于 &lt;b&gt;游离 HEAD&lt;/b&gt; 状态（%1）。&lt;br&gt;切走后，此处的提交将不属于任何分支，&lt;b&gt;可能难以找回&lt;/b&gt;。</source>
-        <translation type="vanished">  You are currently in a &lt;b&gt;detached HEAD&lt;/b&gt; state (%1).&lt;br&gt;After switching away, commits here will not belong to any branch and &lt;b&gt;may be hard to recover&lt;/b&gt;.</translation>
-    </message>
-    <message>
-        <source>  当前有 &lt;b&gt;%1&lt;/b&gt; 个未提交的更改（含 %2 个未跟踪文件）。&lt;br&gt;切换分支时可能产生冲突或被合并到其他基线。</source>
-        <translation type="vanished">  There are &lt;b&gt;%1&lt;/b&gt; uncommitted changes (including %2 untracked files).&lt;br&gt;Switching branches may cause conflicts or merge them into a different baseline.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="888"/>
@@ -1704,81 +1574,9 @@ Continue?</translation>
         <translation>New Branch</translation>
     </message>
     <message>
-        <source>例如 feature/diff-window</source>
-        <translation type="vanished">e.g. feature/diff-window</translation>
-    </message>
-    <message>
-        <source>分支名:</source>
-        <translation type="vanished">Branch name:</translation>
-    </message>
-    <message>
-        <source>当前 HEAD（%1）</source>
-        <translation type="vanished">Current HEAD (%1)</translation>
-    </message>
-    <message>
-        <source>(detached: %1)</source>
-        <translation type="vanished">(detached: %1)</translation>
-    </message>
-    <message>
-        <source>基点:</source>
-        <translation type="vanished">Base:</translation>
-    </message>
-    <message>
-        <source>创建后立即切换到新分支</source>
-        <translation type="vanished">Switch to the new branch immediately after creation</translation>
-    </message>
-    <message>
-        <source>创建</source>
-        <translation type="vanished">Create</translation>
-    </message>
-    <message>
-        <source>分支名不能为空。</source>
-        <translation type="vanished">Branch name cannot be empty.</translation>
-    </message>
-    <message>
-        <source>分支名包含非法字符。&lt;br&gt;&lt;br&gt;不允许：&lt;code&gt;空格 ~ ^ : ? * [ \\ .. &lt;/code&gt;，&lt;br&gt;不允许以 &lt;code&gt;- . /&lt;/code&gt; 开头，&lt;br&gt;不允许以 &lt;code&gt;.lock&lt;/code&gt; 或 &lt;code&gt;/&lt;/code&gt; 结尾。</source>
-        <translation type="vanished">Branch name contains invalid characters.&lt;br&gt;&lt;br&gt;Not allowed: &lt;code&gt;space ~ ^ : ? * [ \\ .. &lt;/code&gt;,&lt;br&gt;cannot start with &lt;code&gt;- . /&lt;/code&gt;,&lt;br&gt;cannot end with &lt;code&gt;.lock&lt;/code&gt; or &lt;code&gt;/&lt;/code&gt;.</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="992"/>
         <source>分支 &lt;b&gt;%1&lt;/b&gt; 已存在。</source>
         <translation>Branch &lt;b&gt;%1&lt;/b&gt; already exists.</translation>
-    </message>
-    <message>
-        <source>合并分支</source>
-        <translation type="vanished">Merge Branch</translation>
-    </message>
-    <message>
-        <source>选择要合并到当前分支 &lt;b&gt;%1&lt;/b&gt; 的分支：</source>
-        <translation type="vanished">Choose the branch to merge into the current branch &lt;b&gt;%1&lt;/b&gt;:</translation>
-    </message>
-    <message>
-        <source>确定</source>
-        <translation type="vanished">OK</translation>
-    </message>
-    <message>
-        <source>没有其他可选的本地分支。</source>
-        <translation type="vanished">No other local branches are available.</translation>
-    </message>
-    <message>
-        <source>合并</source>
-        <translation type="vanished">Merge</translation>
-    </message>
-    <message>
-        <source>已有进行中的操作：%1，请先处理。</source>
-        <translation type="vanished">An operation is already in progress: %1. Please handle it first.</translation>
-    </message>
-    <message>
-        <source>确认合并</source>
-        <translation type="vanished">Confirm Merge</translation>
-    </message>
-    <message>
-        <source>将把 &lt;b&gt;%1&lt;/b&gt; 合并到 &lt;b&gt;%2&lt;/b&gt;。&lt;br&gt;&lt;br&gt;继续？</source>
-        <translation type="vanished">&lt;b&gt;%1&lt;/b&gt; will be merged into &lt;b&gt;%2&lt;/b&gt;.&lt;br&gt;&lt;br&gt;Continue?</translation>
-    </message>
-    <message>
-        <source>Rebase</source>
-        <translation type="vanished">Rebase</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1150"/>
@@ -1786,30 +1584,10 @@ Continue?</translation>
         <translation>The working tree has &lt;b&gt;%1&lt;/b&gt; uncommitted changes.&lt;br&gt;&lt;br&gt;Please commit or stash before rebasing.</translation>
     </message>
     <message>
-        <source>把当前分支 &lt;b&gt;%1&lt;/b&gt; rebase 到：</source>
-        <translation type="vanished">Rebase current branch &lt;b&gt;%1&lt;/b&gt; onto:</translation>
-    </message>
-    <message>
-        <source>确认 Rebase</source>
-        <translation type="vanished">Confirm Rebase</translation>
-    </message>
-    <message>
-        <source>将把当前分支 &lt;b&gt;%1&lt;/b&gt; 的所有提交重放到 &lt;b&gt;%2&lt;/b&gt; 之上。&lt;br&gt;&lt;br&gt;  Rebase 会重写当前分支的提交历史。&lt;br&gt;  如果该分支已推送到远程，之后需要 &lt;code&gt;git push --force&lt;/code&gt;。&lt;br&gt;  冲突时 ours/theirs 语义与 merge 相反。&lt;br&gt;&lt;br&gt;确定继续？</source>
-        <translation type="vanished">All commits on the current branch &lt;b&gt;%1&lt;/b&gt; will be replayed onto &lt;b&gt;%2&lt;/b&gt;.&lt;br&gt;...</translation>
-    </message>
-    <message>
-        <source>开始 Rebase</source>
-        <translation type="vanished">Start Rebase</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="1198"/>
         <location filename="../git/git_panel.cpp" line="1208"/>
         <source>中止操作</source>
         <translation>Abort Operation</translation>
-    </message>
-    <message>
-        <source>确定要中止当前的 &lt;b&gt;%1&lt;/b&gt; 吗？&lt;br&gt;&lt;br&gt;工作区里已解决的改动会保留，未提交的改动不会丢失。</source>
-        <translation type="vanished">Abort the current &lt;b&gt;%1&lt;/b&gt;?...</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1209"/>
@@ -1830,10 +1608,6 @@ Continue?</translation>
         <location filename="../git/git_panel.cpp" line="1260"/>
         <source>Git 身份未配置</source>
         <translation>Git Identity Not Configured</translation>
-    </message>
-    <message>
-        <source>提交前需要先配置 Git 身份。&lt;br&gt;&lt;br&gt;在终端运行以下命令：&lt;br&gt;&lt;code&gt;git config --global user.name &quot;你的名字&quot;&lt;/code&gt;&lt;br&gt;&lt;code&gt;git config --global user.email &quot;你的邮箱&quot;&lt;/code&gt;&lt;br&gt;&lt;br&gt;或打开设置对话框，在 &lt;b&gt;Git&lt;/b&gt; 页填写并保存。</source>
-        <translation type="vanished">Git identity must be configured before committing.&lt;br&gt;&lt;br&gt;Run the following in a terminal:&lt;br&gt;&lt;code&gt;git config --global user.name &quot;Your Name&quot;&lt;/code&gt;&lt;br&gt;&lt;code&gt;git config --global user.email &quot;you@example.com&quot;&lt;/code&gt;&lt;br&gt;&lt;br&gt;Or open the Settings dialog and fill in the &lt;b&gt;Git&lt;/b&gt; page.</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1277"/>
@@ -1883,21 +1657,9 @@ Continue?</translation>
         <translation>Accept my commit (the version being replayed)</translation>
     </message>
     <message>
-        <source>Rebase 冲突时，保留你正在重放的提交的内容
-底层执行：git checkout --theirs</source>
-        <translation type="vanished">On a rebase conflict, keep the content of the commit being replayed.
-Underlying command: git checkout --theirs</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="1419"/>
         <source>接受目标分支（base 上的版本）</source>
         <translation>Accept target branch (the base version)</translation>
-    </message>
-    <message>
-        <source>Rebase 冲突时，保留目标分支（base）的内容
-底层执行：git checkout --ours</source>
-        <translation type="vanished">On a rebase conflict, keep the target branch (base) content.
-Underlying command: git checkout --ours</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1430"/>
@@ -1905,30 +1667,14 @@ Underlying command: git checkout --ours</translation>
         <translation>Accept current branch (local version)</translation>
     </message>
     <message>
-        <source>保留当前分支（HEAD）的内容
-底层执行：git checkout --ours</source>
-        <translation type="vanished">Keep the content of the current branch (HEAD).
-Underlying command: git checkout --ours</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="1440"/>
         <source>接受被合入的分支（外来的版本）</source>
         <translation>Accept the incoming branch (the other version)</translation>
     </message>
     <message>
-        <source>保留被合入分支的内容
-底层执行：git checkout --theirs</source>
-        <translation type="vanished">Keep the content of the incoming branch.
-Underlying command: git checkout --theirs</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="1450"/>
         <source>标记为已解决</source>
         <translation>Mark as resolved</translation>
-    </message>
-    <message>
-        <source>（git add）</source>
-        <translation type="vanished"> (git add)</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1457"/>
@@ -1958,14 +1704,6 @@ Underlying command: git checkout --theirs</translation>
         <translation>Delete File</translation>
     </message>
     <message>
-        <source>确定要删除以下未跟踪文件吗？&lt;br&gt;&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;br&gt;此操作不可恢复。</source>
-        <translation type="vanished">Delete the following untracked file?&lt;br&gt;&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;br&gt;This action cannot be undone.</translation>
-    </message>
-    <message>
-        <source>确定要丢弃对该文件的所有未提交更改吗？&lt;br&gt;&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;br&gt;此操作不可恢复。</source>
-        <translation type="vanished">Discard all uncommitted changes to this file?&lt;br&gt;&lt;br&gt;&lt;code&gt;%1&lt;/code&gt;&lt;br&gt;&lt;br&gt;This action cannot be undone.</translation>
-    </message>
-    <message>
         <location filename="../git/git_panel.cpp" line="1499"/>
         <source>删除</source>
         <translation>Delete</translation>
@@ -1981,12 +1719,15 @@ Underlying command: git checkout --theirs</translation>
 分支: %2
 消息: %3
 时间: %4</source>
-        <translation type="unfinished"></translation>
+        <translation>%1
+Branch: %2
+Message: %3
+Time: %4</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1567"/>
         <source>(未知)</source>
-        <translation type="unfinished"></translation>
+        <translation>(unknown)</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1583"/>
@@ -2039,10 +1780,6 @@ Underlying command: git checkout --theirs</translation>
         <location filename="../git/git_panel.cpp" line="1645"/>
         <source>删除此 Stash</source>
         <translation>Delete This Stash</translation>
-    </message>
-    <message>
-        <source>删除 Stash</source>
-        <translation type="vanished">Delete Stash</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="1649"/>
@@ -2194,41 +1931,53 @@ Underlying command: git checkout --theirs</translation>
     <message>
         <location filename="../text_editor.cpp" line="90"/>
         <source>编辑断点条件...</source>
-        <translation type="unfinished">Edit Breakpoint Condition...</translation>
+        <translation>Edit Breakpoint Condition...</translation>
     </message>
     <message>
         <location filename="../text_editor.cpp" line="91"/>
         <source>移除断点</source>
-        <translation type="unfinished">Remove Breakpoint</translation>
+        <translation>Remove Breakpoint</translation>
     </message>
     <message>
         <location filename="../text_editor.cpp" line="99"/>
         <source>断点条件</source>
-        <translation type="unfinished">Breakpoint Condition</translation>
+        <translation>Breakpoint Condition</translation>
     </message>
     <message>
         <location filename="../text_editor.cpp" line="100"/>
         <source>第 %1 行的断点条件（空 = 无条件）:</source>
-        <translation type="unfinished">Breakpoint condition at line %1 (empty = none):</translation>
+        <translation>Breakpoint condition at line %1 (empty = none):</translation>
     </message>
 </context>
 <context>
-    <name>SprintIDE::LocalHistory</name>
+    <name>SprintIDE::HistoryVersion</name>
+    <message>
+        <source>手动保存</source>
+        <translation>Manual Save</translation>
+    </message>
     <message>
         <source>自动保存</source>
-        <translation type="vanished">Auto Save</translation>
+        <translation>Auto Save</translation>
     </message>
     <message>
-        <source> B</source>
-        <translation type="vanished"> B</translation>
+        <source>编辑</source>
+        <translation>Edit</translation>
     </message>
     <message>
-        <source> KB</source>
-        <translation type="vanished"> KB</translation>
+        <source>编译前</source>
+        <translation>Before Build</translation>
     </message>
     <message>
-        <source> MB</source>
-        <translation type="vanished"> MB</translation>
+        <source>运行前</source>
+        <translation>Before Run</translation>
+    </message>
+    <message>
+        <source>来自 AI</source>
+        <translation>From AI</translation>
+    </message>
+    <message>
+        <source>未知来源</source>
+        <translation>Unknown Source</translation>
     </message>
 </context>
 <context>
@@ -2236,31 +1985,21 @@ Underlying command: git checkout --theirs</translation>
     <message>
         <location filename="../log/log_list_view.cpp" line="108"/>
         <source>复制选中(&amp;C)</source>
-        <translation type="unfinished"></translation>
+        <translation>Copy Selection (&amp;C)</translation>
     </message>
     <message>
         <location filename="../log/log_list_view.cpp" line="113"/>
         <source>复制全部(&amp;A)</source>
-        <translation type="unfinished"></translation>
+        <translation>Copy All (&amp;A)</translation>
     </message>
     <message>
         <location filename="../log/log_list_view.cpp" line="117"/>
         <source>全选(&amp;S)</source>
-        <translation type="unfinished"></translation>
+        <translation>Select All (&amp;S)</translation>
     </message>
 </context>
 <context>
     <name>SprintIDE::MainWindow</name>
-    <message>
-        <source>AI 服务器</source>
-        <translation type="vanished">AI Server</translation>
-    </message>
-    <message>
-        <source>重启失败：无法在 %1:%2 上监听。
-请检查端口是否被占用，或地址是否合法。</source>
-        <translation type="vanished">Failed to restart: cannot listen on %1:%2.
-Check whether the port is occupied or the address is valid.</translation>
-    </message>
     <message>
         <location filename="../mainwindow.cpp" line="1354"/>
         <source>性能监控</source>
@@ -2303,6 +2042,11 @@ Check whether the port is occupied or the address is valid.</translation>
         <translation>File(&amp;F)</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="828"/>
+        <source>新窗口</source>
+        <translation>New Window</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="830"/>
         <source>新建(&amp;N)</source>
         <translation>New(&amp;N)</translation>
@@ -2315,7 +2059,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="836"/>
         <source>新建文件</source>
-        <translation type="unfinished">New File</translation>
+        <translation>New File</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="841"/>
@@ -2406,12 +2150,12 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="895"/>
         <source>打开文件</source>
-        <translation type="unfinished">Open File</translation>
+        <translation>Open File</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="901"/>
         <source>打开项目</source>
-        <translation type="unfinished">Open Project</translation>
+        <translation>Open Project</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="905"/>
@@ -2427,7 +2171,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="921"/>
         <source>保存全部</source>
-        <translation type="unfinished"></translation>
+        <translation>Save All</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="923"/>
@@ -2442,7 +2186,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="931"/>
         <source>关闭文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Close File</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="933"/>
@@ -2452,7 +2196,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="936"/>
         <source>退出</source>
-        <translation type="unfinished"></translation>
+        <translation>Exit</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="939"/>
@@ -2467,7 +2211,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="944"/>
         <source>撤销</source>
-        <translation type="unfinished"></translation>
+        <translation>Undo</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="946"/>
@@ -2477,7 +2221,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="949"/>
         <source>重做</source>
-        <translation type="unfinished"></translation>
+        <translation>Redo</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="953"/>
@@ -2487,7 +2231,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="956"/>
         <source>剪切</source>
-        <translation type="unfinished"></translation>
+        <translation>Cut</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="958"/>
@@ -2497,7 +2241,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="961"/>
         <source>复制</source>
-        <translation type="unfinished">Copy</translation>
+        <translation>Copy</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="963"/>
@@ -2507,7 +2251,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="966"/>
         <source>粘贴</source>
-        <translation type="unfinished"></translation>
+        <translation>Paste</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="970"/>
@@ -2517,7 +2261,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="978"/>
         <source>复制行</source>
-        <translation type="unfinished"></translation>
+        <translation>Duplicate Line</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="980"/>
@@ -2527,7 +2271,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="988"/>
         <source>删除行</source>
-        <translation type="unfinished"></translation>
+        <translation>Delete Line</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="993"/>
@@ -2574,7 +2318,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1050"/>
         <source>设置</source>
-        <translation type="unfinished">Settings</translation>
+        <translation>Settings</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1053"/>
@@ -2584,7 +2328,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1056"/>
         <source>跳转到行</source>
-        <translation type="unfinished">Go to Line</translation>
+        <translation>Go to Line</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1060"/>
@@ -2594,7 +2338,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1063"/>
         <source>查找</source>
-        <translation type="unfinished">Find</translation>
+        <translation>Find</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1065"/>
@@ -2604,7 +2348,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1068"/>
         <source>替换</source>
-        <translation type="unfinished">Replace</translation>
+        <translation>Replace</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1070"/>
@@ -2629,7 +2373,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1085"/>
         <source>注释</source>
-        <translation type="unfinished"></translation>
+        <translation>Comment</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1088"/>
@@ -2644,7 +2388,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1093"/>
         <source>编译当前文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Compile Current File</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1095"/>
@@ -2654,7 +2398,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1098"/>
         <source>编译项目</source>
-        <translation type="unfinished"></translation>
+        <translation>Build Project</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1100"/>
@@ -2674,7 +2418,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1112"/>
         <source>启动调试</source>
-        <translation type="unfinished"></translation>
+        <translation>Start Debugging</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1114"/>
@@ -2684,7 +2428,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1118"/>
         <source>停止调试</source>
-        <translation type="unfinished"></translation>
+        <translation>Stop Debugging</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1122"/>
@@ -2694,7 +2438,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1126"/>
         <source>步过</source>
-        <translation type="unfinished">Step Over</translation>
+        <translation>Step Over</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1128"/>
@@ -2704,7 +2448,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1132"/>
         <source>步入</source>
-        <translation type="unfinished">Step Into</translation>
+        <translation>Step Into</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1134"/>
@@ -2714,7 +2458,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1138"/>
         <source>步出</source>
-        <translation type="unfinished">Step Out</translation>
+        <translation>Step Out</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1142"/>
@@ -2724,7 +2468,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1146"/>
         <source>继续</source>
-        <translation type="unfinished">Continue</translation>
+        <translation>Continue</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1150"/>
@@ -2734,7 +2478,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1153"/>
         <source>添加断点</source>
-        <translation type="unfinished"></translation>
+        <translation>Add Breakpoint</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1158"/>
@@ -2749,7 +2493,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1162"/>
         <source>打开 Git 窗口</source>
-        <translation type="unfinished"></translation>
+        <translation>Show Git window</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1166"/>
@@ -2764,7 +2508,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1172"/>
         <source>Git 提交</source>
-        <translation type="unfinished"></translation>
+        <translation>Commit</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1176"/>
@@ -2789,7 +2533,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1190"/>
         <source>Git 刷新状态</source>
-        <translation type="unfinished"></translation>
+        <translation>Refresh Status</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1192"/>
@@ -2854,7 +2598,7 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="1245"/>
         <source>底部面板</source>
-        <translation type="unfinished"></translation>
+        <translation>Bottom Panel</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1251"/>
@@ -2904,17 +2648,17 @@ Check whether the port is occupied or the address is valid.</translation>
     <message>
         <location filename="../mainwindow.cpp" line="5279"/>
         <source>停止</source>
-        <translation type="unfinished">Stop</translation>
+        <translation>Stop</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="5280"/>
         <source>停止运行 (Ctrl+R)</source>
-        <translation type="unfinished"></translation>
+        <translation>Stop Running (Ctrl+R)</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="5304"/>
         <source>运行完成</source>
-        <translation type="unfinished"></translation>
+        <translation>Run completed</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="908"/>
@@ -2982,7 +2726,7 @@ Check whether the port is occupied or the address is valid.</translation>
         <location filename="../mainwindow.cpp" line="1300"/>
         <location filename="../mainwindow.cpp" line="5299"/>
         <source>运行 (Ctrl+R)</source>
-        <translation type="unfinished"></translation>
+        <translation>Run (Ctrl+R)</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1955"/>
@@ -3078,17 +2822,17 @@ Save changes?</translation>
     <message>
         <location filename="../mainwindow.cpp" line="2695"/>
         <source>关闭左侧文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Close the files on the left</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="2696"/>
         <source>关闭右侧文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Close the files on the right</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="2697"/>
         <source>关闭其他文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Close other files</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="2780"/>
@@ -3116,10 +2860,6 @@ Save changes?</translation>
         <translation>=== Debug session ended ===</translation>
     </message>
     <message>
-        <source>[%1] 开始编译: %2</source>
-        <translation type="vanished">[%1] Build started: %2</translation>
-    </message>
-    <message>
         <location filename="../mainwindow.cpp" line="3047"/>
         <source>正在编译 %1...</source>
         <translation>Compiling %1...</translation>
@@ -3138,10 +2878,6 @@ Save changes?</translation>
         <location filename="../mainwindow.cpp" line="3078"/>
         <source>[%1] 编译进度: %2%</source>
         <translation>[%1] Build progress: %2%</translation>
-    </message>
-    <message>
-        <source>[%1] 编译成功! 耗时: %2ms</source>
-        <translation type="vanished">[%1] Build succeeded! Time: %2 ms</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="3148"/>
@@ -3167,10 +2903,6 @@ Save changes?</translation>
         <location filename="../mainwindow.cpp" line="3212"/>
         <source>错误: %1, 警告: %2</source>
         <translation>Errors: %1, Warnings: %2</translation>
-    </message>
-    <message>
-        <source>[%1] 编译错误: %2</source>
-        <translation type="vanished">[%1] Build error: %2</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="3345"/>
@@ -3310,121 +3042,9 @@ Save changes?</translation>
         <translation>Debug error</translation>
     </message>
     <message>
-        <source>项目创建成功！</source>
-        <translation type="vanished">Project created successfully!</translation>
-    </message>
-    <message>
-        <source>项目名称: %1</source>
-        <translation type="vanished">Project name: %1</translation>
-    </message>
-    <message>
-        <source>项目类型: %1</source>
-        <translation type="vanished">Project type: %1</translation>
-    </message>
-    <message>
-        <source>项目路径: %1</source>
-        <translation type="vanished">Project path: %1</translation>
-    </message>
-    <message>
-        <source>已创建项目: %1</source>
-        <translation type="vanished">Project created: %1</translation>
-    </message>
-    <message>
-        <source>无法创建项目:
-    %1</source>
-        <translation type="vanished">Cannot create project:
-    %1</translation>
-    </message>
-    <message>
-        <source>控制台应用程序</source>
-        <translation type="vanished">Console Application</translation>
-    </message>
-    <message>
-        <source>简单游戏</source>
-        <translation type="vanished">Simple Game</translation>
-    </message>
-    <message>
-        <source>图形界面程序</source>
-        <translation type="vanished">GUI Application</translation>
-    </message>
-    <message>
-        <source>空白项目</source>
-        <translation type="vanished">Empty Project</translation>
-    </message>
-    <message>
-        <source>未知类型</source>
-        <translation type="vanished">Unknown Type</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行格式化。</source>
-        <translation type="vanished">Open a file before formatting.</translation>
-    </message>
-    <message>
-        <source>代码为空，无需格式化。</source>
-        <translation type="vanished">The code is empty; nothing to format.</translation>
-    </message>
-    <message>
-        <source>无法创建临时文件。</source>
-        <translation type="vanished">Cannot create a temporary file.</translation>
-    </message>
-    <message>
-        <source>Python 代码格式化完成。</source>
-        <translation type="vanished">Python code formatted.</translation>
-    </message>
-    <message>
-        <source>Python 格式化失败: </source>
-        <translation type="vanished">Python formatting failed: </translation>
-    </message>
-    <message>
-        <source>未找到 Black 格式化工具。
-    请安装: pip install black</source>
-        <translation type="vanished">Black formatter not found.
-    Install it with: pip install black</translation>
-    </message>
-    <message>
-        <source>未找到Clang Format工具，请确保已安装。</source>
-        <translation type="vanished">Clang Format not found. Make sure it is installed.</translation>
-    </message>
-    <message>
-        <source>Clang Format执行超时。</source>
-        <translation type="vanished">Clang Format timed out.</translation>
-    </message>
-    <message>
-        <source>Clang Format错误: %1</source>
-        <translation type="vanished">Clang Format error: %1</translation>
-    </message>
-    <message>
-        <source>代码格式化完成。</source>
-        <translation type="vanished">Code formatted.</translation>
-    </message>
-    <message>
-        <source>格式化后代码为空，可能是输入代码有问题。</source>
-        <translation type="vanished">The formatted code is empty; the input may be invalid.</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行跳转。</source>
-        <translation type="vanished">Open a file before jumping.</translation>
-    </message>
-    <message>
-        <source>请输入行号:</source>
-        <translation type="vanished">Enter line number:</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行查找。</source>
-        <translation type="vanished">Open a file before searching.</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行替换。</source>
-        <translation type="vanished">Open a file before replacing.</translation>
-    </message>
-    <message>
         <location filename="../mainwindow.cpp" line="1075"/>
         <source>在文件中查找</source>
         <translation>Find in Files</translation>
-    </message>
-    <message>
-        <source>请先打开一个项目或文件。</source>
-        <translation type="vanished">Open a project or a file first.</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="888"/>
@@ -3432,291 +3052,9 @@ Save changes?</translation>
         <translation>Quick Open</translation>
     </message>
     <message>
-        <source>项目中没有可打开的文件。</source>
-        <translation type="vanished">No files to open in the project.</translation>
-    </message>
-    <message>
-        <source>文件不存在: %1</source>
-        <translation type="vanished">File does not exist: %1</translation>
-    </message>
-    <message>
-        <source>无法保存文件。</source>
-        <translation type="vanished">Cannot save the file.</translation>
-    </message>
-    <message>
-        <source>没有打开的文件可以保存。</source>
-        <translation type="vanished">No open file to save.</translation>
-    </message>
-    <message>
-        <source>另存为</source>
-        <translation type="vanished">Save As</translation>
-    </message>
-    <message>
-        <source>C++ 文件 (*.cpp *.h *.hpp);;所有文件 (*.*)</source>
-        <translation type="vanished">C++ Files (*.cpp *.h *.hpp);;All Files (*.*)</translation>
-    </message>
-    <message>
-        <source>已另存为: %1</source>
-        <translation type="vanished">Saved as: %1</translation>
-    </message>
-    <message>
-        <source>没有打开的文件可以另存。</source>
-        <translation type="vanished">No open file to save as.</translation>
-    </message>
-    <message>
-        <source>已保存所有文件</source>
-        <translation type="vanished">All files saved</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行编译。</source>
-        <translation type="vanished">Open a file before compiling.</translation>
-    </message>
-    <message>
-        <source>文件未保存</source>
-        <translation type="vanished">File Not Saved</translation>
-    </message>
-    <message>
-        <source>请先保存文件再进行编译。</source>
-        <translation type="vanished">Save the file before compiling.</translation>
-    </message>
-    <message>
-        <source>无法保存文件，编译中止。</source>
-        <translation type="vanished">Cannot save file; compilation aborted.</translation>
-    </message>
-    <message>
-        <source>无法启动编译任务。</source>
-        <translation type="vanished">Cannot start the compilation task.</translation>
-    </message>
-    <message>
-        <source>请先打开一个文件进行运行。</source>
-        <translation type="vanished">Open a file before running.</translation>
-    </message>
-    <message>
-        <source>请先保存文件再进行运行。</source>
-        <translation type="vanished">Save the file before running.</translation>
-    </message>
-    <message>
-        <source>无法保存文件，运行中止。</source>
-        <translation type="vanished">Cannot save file; run aborted.</translation>
-    </message>
-    <message>
-        <source>编译并运行</source>
-        <translation type="vanished">Compile and Run</translation>
-    </message>
-    <message>
-        <source>文件尚未编译或已过期，是否现在编译并运行?</source>
-        <translation type="vanished">The file has not been compiled or is out of date. Compile and run now?</translation>
-    </message>
-    <message>
-        <source>使用可执行文件: %1</source>
-        <translation type="vanished">Using executable: %1</translation>
-    </message>
-    <message>
-        <source>使用 Python 解释器: %1</source>
-        <translation type="vanished">Using Python interpreter: %1</translation>
-    </message>
-    <message>
-        <source>工作目录: %1</source>
-        <translation type="vanished">Working directory: %1</translation>
-    </message>
-    <message>
-        <source>无法确定项目路径。请先打开一个文件，或通过 &quot;文件 → 打开项目&quot; 打开项目根目录。</source>
-        <translation type="vanished">Cannot determine the project path. Open a file, or use &quot;File → Open Project&quot; to open the project root.</translation>
-    </message>
-    <message>
-        <source>无法识别项目类型</source>
-        <translation type="vanished">Unknown Project Type</translation>
-    </message>
-    <message>
-        <source>未能识别项目语言。请确保项目根目录包含对应的构建文件（如 pom.xml, CMakeLists.txt 等）。</source>
-        <translation type="vanished">Could not identify the project language. Make sure the project root contains the corresponding build file (e.g. pom.xml, CMakeLists.txt).</translation>
-    </message>
-    <message>
-        <source>无法自动识别项目语言，请确保项目根目录包含相应的构建文件。</source>
-        <translation type="vanished">Could not auto-detect the project language. Make sure the project root contains the corresponding build file.</translation>
-    </message>
-    <message>
-        <source>清理构建</source>
-        <translation type="vanished">Clean Build</translation>
-    </message>
-    <message>
-        <source>确定要清理编译产物吗？这将删除所有生成的文件。</source>
-        <translation type="vanished">Clean build outputs? This will delete all generated files.</translation>
-    </message>
-    <message>
-        <source>清理构建完成</source>
-        <translation type="vanished">Clean completed</translation>
-    </message>
-    <message>
-        <source>清理构建失败</source>
-        <translation type="vanished">Clean failed</translation>
-    </message>
-    <message>
-        <source>清理构建失败: </source>
-        <translation type="vanished">Clean failed: </translation>
-    </message>
-    <message>
-        <source>检测到的编译器:</source>
-        <translation type="vanished">Detected compilers:</translation>
-    </message>
-    <message>
-        <source>Qt 项目，切换到项目构建模式</source>
-        <translation type="vanished">Qt project; switching to project build mode</translation>
-    </message>
-    <message>
-        <source>C++ 项目构建系统: CMake</source>
-        <translation type="vanished">C++ build system: CMake</translation>
-    </message>
-    <message>
-        <source>C++ 项目构建系统: Makefile</source>
-        <translation type="vanished">C++ build system: Makefile</translation>
-    </message>
-    <message>
-        <source>C++ 项目构建系统: SingleFile</source>
-        <translation type="vanished">C++ build system: Single File</translation>
-    </message>
-    <message>
-        <source>Qt SDK: %1</source>
-        <translation type="vanished">Qt SDK: %1</translation>
-    </message>
-    <message>
-        <source>警告：未在设置里配置 QT_DIR，CMake 将依赖系统自动探测 Qt。</source>
-        <translation type="vanished">Warning: QT_DIR is not configured in settings; CMake will rely on system auto-detection for Qt.</translation>
-    </message>
-    <message>
-        <source>快速开始指南</source>
-        <translation type="vanished">Quick Start Guide</translation>
-    </message>
-    <message>
-        <source>SprintIDE 快速开始：
-    1. 新建或打开C++文件
-    2. 编写代码
-    3. 保存文件
-    4. 编译运行</source>
-        <translation type="vanished">SprintIDE Quick Start:
-    1. Create or open a C++ file
-    2. Write your code
-    3. Save the file
-    4. Compile and run</translation>
-    </message>
-    <message>
-        <source>关于 SprintIDE</source>
-        <translation type="vanished">About SprintIDE</translation>
-    </message>
-    <message>
-        <source>SprintIDE v1.0.0
-    轻量级 C++ 集成开发环境
-    刘腾骏胡乱做的</source>
-        <translation type="vanished">SprintIDE v1.0.0
-    A lightweight C++ IDE
-    Made by Liu Tengjun</translation>
-    </message>
-    <message>
-        <source>已切换到深色主题</source>
-        <translation type="vanished">Switched to dark theme</translation>
-    </message>
-    <message>
-        <source>主题已切换为深色</source>
-        <translation type="vanished">Theme switched to dark</translation>
-    </message>
-    <message>
-        <source>已切换到浅色主题</source>
-        <translation type="vanished">Switched to light theme</translation>
-    </message>
-    <message>
-        <source>主题已切换为浅色</source>
-        <translation type="vanished">Theme switched to light</translation>
-    </message>
-    <message>
-        <source>请输入文件名（含扩展名）:
-    例如: main.cpp, test.py, app.js, index.html</source>
-        <translation type="vanished">Enter the file name (with extension):
-    e.g. main.cpp, test.py, app.js, index.html</translation>
-    </message>
-    <message>
-        <source>文件已存在</source>
-        <translation type="vanished">File Already Exists</translation>
-    </message>
-    <message>
-        <source>文件 &apos;%1&apos; 已存在，是否打开它？</source>
-        <translation type="vanished">File &apos;%1&apos; already exists. Open it?</translation>
-    </message>
-    <message>
-        <source>无法创建目录:
-    %1</source>
-        <translation type="vanished">Cannot create directory:
-    %1</translation>
-    </message>
-    <message>
-        <source>无法创建文件:
-    %1
-    错误: %2</source>
-        <translation type="vanished">Cannot create file:
-    %1
-    Error: %2</translation>
-    </message>
-    <message>
-        <source>已创建文件: %1</source>
-        <translation type="vanished">File created: %1</translation>
-    </message>
-    <message>
-        <source>已创建: %1</source>
-        <translation type="vanished">Created: %1</translation>
-    </message>
-    <message>
-        <source>本地历史 - %1</source>
-        <translation type="vanished">Local History - %1</translation>
-    </message>
-    <message>
-        <source>本地历史</source>
-        <translation type="vanished">Local History</translation>
-    </message>
-    <message>
-        <source>该文件没有历史记录。
-    保存文件时会自动创建历史版本。</source>
-        <translation type="vanished">This file has no history.
-    History versions are created automatically when you save the file.</translation>
-    </message>
-    <message>
-        <source>共 %1 个版本</source>
-        <translation type="vanished">%1 versions</translation>
-    </message>
-    <message>
-        <source>恢复到选中版本</source>
-        <translation type="vanished">Restore Selected Version</translation>
-    </message>
-    <message>
         <location filename="../mainwindow.cpp" line="2694"/>
         <source>关闭</source>
         <translation>Close</translation>
-    </message>
-    <message>
-        <source>差异对比（选中版本 vs 当前文件）</source>
-        <translation type="vanished">Diff (selected version vs current file)</translation>
-    </message>
-    <message>
-        <source>无法读取版本内容</source>
-        <translation type="vanished">Cannot read version content</translation>
-    </message>
-    <message>
-        <source>请先选择一个版本</source>
-        <translation type="vanished">Please select a version first</translation>
-    </message>
-    <message>
-        <source>恢复失败</source>
-        <translation type="vanished">Restore Failed</translation>
-    </message>
-    <message>
-        <source>恢复成功</source>
-        <translation type="vanished">Restore Succeeded</translation>
-    </message>
-    <message>
-        <source>已恢复到版本 %1</source>
-        <translation type="vanished">Restored to version %1</translation>
-    </message>
-    <message>
-        <source>无法写入文件</source>
-        <translation type="vanished">Cannot write file</translation>
     </message>
 </context>
 <context>
@@ -3725,30 +3063,6 @@ Save changes?</translation>
         <location filename="../log/output_panel.cpp" line="49"/>
         <source>在输出中过滤...</source>
         <translation>Filter output...</translation>
-    </message>
-    <message>
-        <source>错误</source>
-        <translation type="vanished">Error</translation>
-    </message>
-    <message>
-        <source>警告</source>
-        <translation type="vanished">Warning</translation>
-    </message>
-    <message>
-        <source>信息</source>
-        <translation type="vanished">Info</translation>
-    </message>
-    <message>
-        <source>↓ 跟随</source>
-        <translation type="vanished">↓ Follow</translation>
-    </message>
-    <message>
-        <source>自动滚动到最新</source>
-        <translation type="vanished">Auto-scroll to latest</translation>
-    </message>
-    <message>
-        <source>清空</source>
-        <translation type="vanished">Clear</translation>
     </message>
     <message>
         <location filename="../log/output_panel.cpp" line="367"/>
@@ -3792,61 +3106,6 @@ Save changes?</translation>
     </message>
 </context>
 <context>
-    <name>SprintIDE::ProcessManager</name>
-    <message>
-        <source>命令不可用或不存在: %1</source>
-        <translation type="vanished">Command unavailable or not found: %1</translation>
-    </message>
-    <message>
-        <source>无法启动进程: %1</source>
-        <translation type="vanished">Cannot start process: %1</translation>
-    </message>
-    <message>
-        <source>进程执行超时 (%1 毫秒)</source>
-        <translation type="vanished">Process timed out (%1 ms)</translation>
-    </message>
-    <message>
-        <source>进程被中断</source>
-        <translation type="vanished">Process interrupted</translation>
-    </message>
-    <message>
-        <source>进程退出码: %1</source>
-        <translation type="vanished">Process exit code: %1</translation>
-    </message>
-    <message>
-        <source>进程不存在</source>
-        <translation type="vanished">Process does not exist</translation>
-    </message>
-    <message>
-        <source>进程启动失败</source>
-        <translation type="vanished">Process failed to start</translation>
-    </message>
-    <message>
-        <source>进程崩溃</source>
-        <translation type="vanished">Process crashed</translation>
-    </message>
-    <message>
-        <source>进程超时</source>
-        <translation type="vanished">Process timed out</translation>
-    </message>
-    <message>
-        <source>读取错误</source>
-        <translation type="vanished">Read error</translation>
-    </message>
-    <message>
-        <source>写入错误</source>
-        <translation type="vanished">Write error</translation>
-    </message>
-    <message>
-        <source>未知进程错误</source>
-        <translation type="vanished">Unknown process error</translation>
-    </message>
-    <message>
-        <source>进程执行超时</source>
-        <translation type="vanished">Process timed out</translation>
-    </message>
-</context>
-<context>
     <name>SprintIDE::ProjectCreationDialog</name>
     <message>
         <location filename="../project_creation_dialog.cpp" line="225"/>
@@ -3880,18 +3139,42 @@ node_modules/
 .DS_Store
 Thumbs.db
 </source>
-        <translation type="unfinished"></translation>
+        <translation># Build output
+bin/
+build/
+dist/
+target/
+*.o
+*.obj
+*.exe
+*.so
+*.dylib
+*.dll
+__pycache__/
+.venv/
+node_modules/
+
+# IDE configuration files
+.idea/
+*.user
+*.sln
+*.vcxproj
+
+# System files
+.DS_Store
+Thumbs.db
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1086"/>
         <source>检查 .ui 文件是否包含该控件，或 uic 输出是否过期。</source>
-        <translation type="unfinished"></translation>
+        <translation>Check whether the .ui file contains this widget, or whether the uic output is out of date.</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1094"/>
         <location filename="../project_creation_dialog.cpp" line="1101"/>
         <source>无法自动插入语言选择器。</source>
-        <translation type="unfinished"></translation>
+        <translation>Cannot automatically insert the language selector.</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1110"/>
@@ -3903,7 +3186,8 @@ Thumbs.db
         <location filename="../project_creation_dialog.cpp" line="1134"/>
         <source>[ProjectCreationDialog] templateComboBox 位于 QGridLayout 中，无法自动插入语言选择器。
 请在 Qt Designer 中把 templateComboBox 所在的父布局改为 QFormLayout 或 QVBoxLayout。</source>
-        <translation type="unfinished"></translation>
+        <translation>[ProjectCreationDialog] templateComboBox is inside a QGridLayout, so the language selector cannot be inserted automatically.
+Please change the parent layout of templateComboBox to QFormLayout or QVBoxLayout in Qt Designer.</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1152"/>
@@ -3938,12 +3222,12 @@ Thumbs.db
     <message>
         <location filename="../project_creation_dialog.cpp" line="1237"/>
         <source>templateComboBox 不可用</source>
-        <translation type="unfinished"></translation>
+        <translation>templateComboBox is not available</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1242"/>
         <source>languageComboBox 尚未创建</source>
-        <translation type="unfinished"></translation>
+        <translation>languageComboBox has not been created yet</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1332"/>
@@ -3995,14 +3279,17 @@ Thumbs.db
         <location filename="../project_creation_dialog.cpp" line="1913"/>
         <source>将创建以下文件:
 </source>
-        <translation type="unfinished"></translation>
+        <translation>The following files will be created:
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1918"/>
         <source>
 目录结构:
 </source>
-        <translation type="unfinished"></translation>
+        <translation>
+Directory structure:
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1193"/>
@@ -4156,14 +3443,6 @@ Thumbs.db
         <translation>Cannot create directory: </translation>
     </message>
     <message>
-        <source>无法生成配置文件:
-
-</source>
-        <translation type="vanished">Cannot generate config file:
-
-</translation>
-    </message>
-    <message>
         <location filename="../project_creation_dialog.cpp" line="1619"/>
         <source>无法创建 main.py</source>
         <translation>Cannot create main.py</translation>
@@ -4191,7 +3470,7 @@ Thumbs.db
     <message>
         <location filename="../project_creation_dialog.cpp" line="1742"/>
         <source>无法创建 </source>
-        <translation type="unfinished"></translation>
+        <translation>Cannot create </translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1796"/>
@@ -4256,7 +3535,8 @@ Future versions will let you set:
         <location filename="../project_creation_dialog.cpp" line="1569"/>
         <source>无法生成配置文件:
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Cannot generate config file:
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1871"/>
@@ -4277,26 +3557,6 @@ Future versions will let you set:
         <location filename="../project_creation_dialog.cpp" line="1891"/>
         <source>(将创建新目录)</source>
         <translation>(New directory will be created)</translation>
-    </message>
-    <message>
-        <source>将创建以下文件:
-
-</source>
-        <translation type="vanished">The following files will be created:
-
-</translation>
-    </message>
-    <message>
-        <source>
-
-目录结构:
-
-</source>
-        <translation type="vanished">
-
-Directory structure:
-
-</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="786"/>
@@ -4426,13 +3686,17 @@ Commands are written to the .lightcppproj file.</translation>
 
 请在 `.lightcppproj` 的 `generic_build` 字段中配置命令。
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Created by SprintIDE&apos;s AI Generic Adapter.
+
+Please configure commands in the `generic_build` field of `.lightcppproj`.
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1026"/>
         <source>检测到以下编译器:
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Detected the following compilers:
+</translation>
     </message>
     <message>
         <location filename="../project_creation_dialog.cpp" line="1060"/>
@@ -4440,65 +3704,9 @@ Commands are written to the .lightcppproj file.</translation>
         <translation>AI Generic Adapter</translation>
     </message>
     <message>
-        <source>未知</source>
-        <translation type="vanished">Unknown</translation>
-    </message>
-    <message>
         <location filename="../project_creation_dialog.cpp" line="1600"/>
         <source>无法写入文件: </source>
         <translation>Cannot write file: </translation>
-    </message>
-    <message>
-        <source>项目文件生成失败</source>
-        <translation type="vanished">Failed to generate project files</translation>
-    </message>
-    <message>
-        <source>创建一个空白 Python 项目。
-    包含 main.py、requirements.txt 和可选的虚拟环境 (.venv)。</source>
-        <translation type="vanished">Create a blank Python project.
-    Includes main.py, requirements.txt and an optional virtual environment (.venv).</translation>
-    </message>
-    <message>
-        <source>创建一个 Go 模块项目。
-    包含 main.go 和 go.mod，可直接用 go build 构建。</source>
-        <translation type="vanished">Create a Go module project.
-    Includes main.go and go.mod; buildable with go build directly.</translation>
-    </message>
-    <message>
-        <source>创建一个 Rust 项目（可执行或库）。
-    包含 Cargo.toml 与 src/ 目录，可直接用 cargo build 构建。</source>
-        <translation type="vanished">Create a Rust project (binary or library).
-    Includes Cargo.toml and src/; buildable with cargo build directly.</translation>
-    </message>
-    <message>
-        <source>创建一个 Node.js 项目，使用 JavaScript。
-    包含 package.json 与 index.js。</source>
-        <translation type="vanished">Create a Node.js project using JavaScript.
-    Includes package.json and index.js.</translation>
-    </message>
-    <message>
-        <source>创建一个 Node.js 项目，使用 TypeScript。
-    包含 package.json、tsconfig.json 与 src/index.ts。</source>
-        <translation type="vanished">Create a Node.js project using TypeScript.
-    Includes package.json, tsconfig.json and src/index.ts.</translation>
-    </message>
-    <message>
-        <source>适用于任意语言 / 工具链的空项目。
-    可在下方指定 build / run / clean 命令，或让 AI 自动补全。
-    命令会被写入 .lightcppproj 文件。</source>
-        <translation type="vanished">An empty project for any language / toolchain.
-    You can specify build / run / clean commands below, or let AI complete them.
-    Commands are written to the .lightcppproj file.</translation>
-    </message>
-    <message>
-        <source>由 SprintIDE 的 AI 通用适配器创建。
-
-    请在 `.lightcppproj` 的 `generic_build` 字段中配置命令。
-    </source>
-        <translation type="vanished">Created by SprintIDE&apos;s AI Generic Adapter.
-
-    Please configure commands in the `generic_build` field of `.lightcppproj`.
-    </translation>
     </message>
 </context>
 <context>
@@ -4558,7 +3766,8 @@ Commands are written to the .lightcppproj file.</translation>
         <location filename="../project_panel.cpp" line="319"/>
         <source>
 错误: </source>
-        <translation type="unfinished"></translation>
+        <translation>
+Error: </translation>
     </message>
     <message>
         <location filename="../project_panel.cpp" line="345"/>
@@ -4599,12 +3808,12 @@ Commands are written to the .lightcppproj file.</translation>
     <message>
         <location filename="../project_panel.cpp" line="878"/>
         <source>定位到当前正在编辑的文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Locate the file currently being edited</translation>
     </message>
     <message>
         <location filename="../project_panel.cpp" line="902"/>
         <source>刷新项目面板（重新加载根目录下的所有内容）</source>
-        <translation type="unfinished"></translation>
+        <translation>Refresh the project panel (reload everything under the root)</translation>
     </message>
     <message>
         <location filename="../project_panel.cpp" line="1019"/>
@@ -4647,98 +3856,6 @@ Commands are written to the .lightcppproj file.</translation>
         <location filename="../project_panel.cpp" line="1377"/>
         <source>测试 (pytest)</source>
         <translation>Tests (pytest)</translation>
-    </message>
-    <message>
-        <source>Git</source>
-        <translation type="vanished">Git</translation>
-    </message>
-    <message>
-        <source>提交...</source>
-        <translation type="vanished">Commit...</translation>
-    </message>
-    <message>
-        <source>添加</source>
-        <translation type="vanished">Add</translation>
-    </message>
-    <message>
-        <source>使用 Git 追溯注解</source>
-        <translation type="vanished">Annotate with Git</translation>
-    </message>
-    <message>
-        <source>显示差异</source>
-        <translation type="vanished">Show Diff</translation>
-    </message>
-    <message>
-        <source>与修订比较...</source>
-        <translation type="vanished">Compare with Revision...</translation>
-    </message>
-    <message>
-        <source>与分支比较...</source>
-        <translation type="vanished">Compare with Branch...</translation>
-    </message>
-    <message>
-        <source>显示历史记录</source>
-        <translation type="vanished">Show History</translation>
-    </message>
-    <message>
-        <source>显示当前修订</source>
-        <translation type="vanished">Show Current Revision</translation>
-    </message>
-    <message>
-        <source>回滚...</source>
-        <translation type="vanished">Rollback...</translation>
-    </message>
-    <message>
-        <source>推送...</source>
-        <translation type="vanished">Push...</translation>
-    </message>
-    <message>
-        <source>拉取...</source>
-        <translation type="vanished">Pull...</translation>
-    </message>
-    <message>
-        <source>提取</source>
-        <translation type="vanished">Fetch</translation>
-    </message>
-    <message>
-        <source>合并...</source>
-        <translation type="vanished">Merge...</translation>
-    </message>
-    <message>
-        <source>变基...</source>
-        <translation type="vanished">Rebase...</translation>
-    </message>
-    <message>
-        <source>分支...</source>
-        <translation type="vanished">Branches...</translation>
-    </message>
-    <message>
-        <source>新建分支...</source>
-        <translation type="vanished">New Branch...</translation>
-    </message>
-    <message>
-        <source>新建标记...</source>
-        <translation type="vanished">New Tag...</translation>
-    </message>
-    <message>
-        <source>重置 HEAD...</source>
-        <translation type="vanished">Reset HEAD...</translation>
-    </message>
-    <message>
-        <source>存储变更...</source>
-        <translation type="vanished">Stash Changes...</translation>
-    </message>
-    <message>
-        <source>取消存储变更...</source>
-        <translation type="vanished">Unstash Changes...</translation>
-    </message>
-    <message>
-        <source>管理远程...</source>
-        <translation type="vanished">Manage Remotes...</translation>
-    </message>
-    <message>
-        <source>将在后续版本实现</source>
-        <translation type="vanished">To be implemented in a future release</translation>
     </message>
 </context>
 <context>
@@ -4818,22 +3935,22 @@ Commands are written to the .lightcppproj file.</translation>
     <message>
         <location filename="../project_selection_dialog.cpp" line="337"/>
         <source>项目名称:</source>
-        <translation type="unfinished"></translation>
+        <translation>Project name:</translation>
     </message>
     <message>
         <location filename="../project_selection_dialog.cpp" line="338"/>
         <source>项目路径:</source>
-        <translation type="unfinished"></translation>
+        <translation>Project path:</translation>
     </message>
     <message>
         <location filename="../project_selection_dialog.cpp" line="339"/>
         <source>配置文件大小:</source>
-        <translation type="unfinished"></translation>
+        <translation>Config file size:</translation>
     </message>
     <message>
         <location filename="../project_selection_dialog.cpp" line="340"/>
         <source>上次修改时间:</source>
-        <translation type="unfinished"></translation>
+        <translation>Last modified:</translation>
     </message>
     <message>
         <location filename="../project_selection_dialog.cpp" line="350"/>
@@ -4850,14 +3967,6 @@ Commands are written to the .lightcppproj file.</translation>
 Last opened: %2
 
 Right-click to remove from history</translation>
-    </message>
-    <message>
-        <source>项目名称: &lt;b&gt;%1&lt;/b&gt;&lt;br&gt;项目路径: &lt;b&gt;%2&lt;/b&gt;&lt;br&gt;配置文件大小: &lt;b&gt;%3&lt;/b&gt;&lt;br&gt;上次修改时间: &lt;b&gt;%4&lt;/b&gt;</source>
-        <translation type="vanished">Project name: &lt;b&gt;%1&lt;/b&gt;&lt;br&gt;Project path: &lt;b&gt;%2&lt;/b&gt;&lt;br&gt;Config file size: &lt;b&gt;%3&lt;/b&gt;&lt;br&gt;Last modified: &lt;b&gt;%4&lt;/b&gt;</translation>
-    </message>
-    <message>
-        <source> KB</source>
-        <translation type="vanished"> KB</translation>
     </message>
 </context>
 <context>
@@ -4936,67 +4045,67 @@ Right-click to remove from history</translation>
     <message>
         <location filename="../replace_dialog.cpp" line="18"/>
         <source>查找与替换</source>
-        <translation type="unfinished"></translation>
+        <translation>Find and Replace</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="23"/>
         <source>查找内容...</source>
-        <translation type="unfinished"></translation>
+        <translation>Search text...</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="28"/>
         <source>替换为...</source>
-        <translation type="unfinished">Replace with...</translation>
+        <translation>Replace with...</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="31"/>
         <source>大小写敏感</source>
-        <translation type="unfinished">Case sensitive</translation>
+        <translation>Case sensitive</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="32"/>
         <source>全字匹配</source>
-        <translation type="unfinished">Whole word</translation>
+        <translation>Whole word</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="34"/>
         <source>查找下一个</source>
-        <translation type="unfinished">Find Next</translation>
+        <translation>Find Next</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="38"/>
         <source>替换</source>
-        <translation type="unfinished">Replace</translation>
+        <translation>Replace</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="42"/>
         <source>全部替换</source>
-        <translation type="unfinished">Replace All</translation>
+        <translation>Replace All</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="46"/>
         <source>关闭</source>
-        <translation type="unfinished">Close</translation>
+        <translation>Close</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="52"/>
         <source>查找:</source>
-        <translation type="unfinished">Find:</translation>
+        <translation>Find:</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="58"/>
         <source>替换:</source>
-        <translation type="unfinished"></translation>
+        <translation>Replace:</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="97"/>
         <source>提示</source>
-        <translation type="unfinished">Notice</translation>
+        <translation>Notice</translation>
     </message>
     <message>
         <location filename="../replace_dialog.cpp" line="97"/>
         <source>请输入要查找的内容</source>
-        <translation type="unfinished"></translation>
+        <translation>Please enter the text to search for</translation>
     </message>
 </context>
 <context>
@@ -5094,123 +4203,107 @@ Right-click to remove from history</translation>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="76"/>
         <source>输入命令...</source>
-        <translation type="unfinished"></translation>
+        <translation>Type a command...</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="86"/>
         <source>停止当前命令</source>
-        <translation type="unfinished"></translation>
+        <translation>Stop the current command</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="92"/>
         <source>清空</source>
-        <translation type="unfinished">Clear</translation>
+        <translation>Clear</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="95"/>
         <source>清空输出</source>
-        <translation type="unfinished">Clear output</translation>
+        <translation>Clear output</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="102"/>
         <source>终端已准备就绪。输入命令并按 Enter 执行。</source>
-        <translation type="unfinished"></translation>
+        <translation>Terminal is ready. Type a command and press Enter to execute.</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="151"/>
         <source>工作目录已切换至: </source>
-        <translation type="unfinished"></translation>
+        <translation>Working directory changed to: </translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="170"/>
         <source>命令已在运行中，请先停止</source>
-        <translation type="unfinished"></translation>
+        <translation>A command is already running; stop it first</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="212"/>
         <source>已自动激活虚拟环境: </source>
-        <translation type="unfinished"></translation>
+        <translation>Virtual environment automatically activated: </translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="237"/>
         <location filename="../terminal/terminal_panel.cpp" line="416"/>
         <source>[运行中] </source>
-        <translation type="unfinished"></translation>
+        <translation>[Running] </translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="242"/>
         <source>启动命令失败: </source>
-        <translation type="unfinished"></translation>
+        <translation>Failed to launch command: </translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="262"/>
         <source>正在停止命令...</source>
-        <translation type="unfinished"></translation>
+        <translation>Stopping command...</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="312"/>
         <source>进程结束，退出码: </source>
-        <translation type="unfinished"></translation>
+        <translation>Process finished, exit code: </translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="315"/>
         <source>进程异常结束</source>
-        <translation type="unfinished"></translation>
+        <translation>Process terminated abnormally</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="328"/>
         <source>启动失败</source>
-        <translation type="unfinished"></translation>
+        <translation>Failed to start</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="329"/>
         <source>进程崩溃</source>
-        <translation type="unfinished">Process crashed</translation>
+        <translation>Process crashed</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="330"/>
         <source>超时</source>
-        <translation type="unfinished"></translation>
+        <translation>Timed out</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="331"/>
         <source>写入错误</source>
-        <translation type="unfinished">Write error</translation>
+        <translation>Write error</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="332"/>
         <source>读取错误</source>
-        <translation type="unfinished">Read error</translation>
+        <translation>Read error</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="333"/>
         <source>未知错误</source>
-        <translation type="unfinished"></translation>
+        <translation>Unknown error</translation>
     </message>
     <message>
         <location filename="../terminal/terminal_panel.cpp" line="335"/>
         <source>进程错误: </source>
-        <translation type="unfinished"></translation>
+        <translation>Process error: </translation>
     </message>
 </context>
 <context>
     <name>SprintIDE::TextEditor</name>
-    <message>
-        <source>第 %1 行的断点条件（空 = 无条件）:</source>
-        <translation type="vanished">Breakpoint condition at line %1 (empty = none):</translation>
-    </message>
-    <message>
-        <source>编辑断点条件...</source>
-        <translation type="vanished">Edit Breakpoint Condition...</translation>
-    </message>
-    <message>
-        <source>移除断点</source>
-        <translation type="vanished">Remove Breakpoint</translation>
-    </message>
-    <message>
-        <source>断点条件</source>
-        <translation type="vanished">Breakpoint Condition</translation>
-    </message>
     <message>
         <location filename="../text_editor.cpp" line="412"/>
         <source>查找:</source>
@@ -5369,37 +4462,6 @@ Error: %2</translation>
         <location filename="../text_editor.cpp" line="5005"/>
         <source>行号:</source>
         <translation>Line number:</translation>
-    </message>
-</context>
-<context>
-    <name>SprintIDE::ToolchainDialog</name>
-    <message>
-        <source>缺少依赖组件</source>
-        <translation type="vanished">Missing Dependency</translation>
-    </message>
-    <message>
-        <source>在终端中执行：</source>
-        <translation type="vanished">Run in terminal:</translation>
-    </message>
-    <message>
-        <source>复制命令</source>
-        <translation type="vanished">Copy Command</translation>
-    </message>
-    <message>
-        <source>查看详情</source>
-        <translation type="vanished">View Details</translation>
-    </message>
-    <message>
-        <source>稍后</source>
-        <translation type="vanished">Later</translation>
-    </message>
-    <message>
-        <source>我已安装，重新检测</source>
-        <translation type="vanished">I&apos;ve installed it, re-check</translation>
-    </message>
-    <message>
-        <source>已复制 ✓</source>
-        <translation type="vanished">Copied ✓</translation>
     </message>
 </context>
 </TS>

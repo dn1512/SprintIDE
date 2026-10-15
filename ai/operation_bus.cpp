@@ -389,6 +389,7 @@ void OperationBus::sendResultForItem(const QString& sessionId,
         msg = ResultBuilder::buildCommandResult(sessionId, requestId, result);
 
     } else if (itemType.startsWith(QStringLiteral("project.")) ||
+               itemType.startsWith(QStringLiteral("system.")) ||
                itemType == QStringLiteral("env.query")) {
         msg = ResultBuilder::buildQueryResult(sessionId, requestId,
                                               itemType, result);
@@ -397,13 +398,10 @@ void OperationBus::sendResultForItem(const QString& sessionId,
         msg = ResultBuilder::buildFileContent(sessionId, requestId, result);
 
     } else if (itemType.startsWith(QStringLiteral("file."))) {
-        // file.create / file.delete / file.rename / file.edit
         msg = ResultBuilder::buildFileResult(sessionId, requestId,
                                              itemType, result);
 
     } else {
-        // chat.* / file.create / file.delete / file.rename / env.setSdk / meta.*
-        // 目前没有独立的回执方法，阶段 1 先不发
         return;
     }
 

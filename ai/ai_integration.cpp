@@ -17,6 +17,7 @@
 #include "ai/executor/ide_executor.h"
 #include "ai/executor/project_executor.h"
 #include "ai/executor/env_executor.h"
+#include "ai/executor/system_executor.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -134,7 +135,16 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     QObject::connect(ideExec, &IdeExecutor::deferredResultReady,
                      operationBus, &OperationBus::onDeferredResultReady);
     operationBus->registerExecutor(projExec);
+
+    // ProjectExecutor 也支持异步，需要连接 deferredResultReady
+    QObject::connect(projExec, &ProjectExecutor::deferredResultReady,
+                     operationBus, &OperationBus::onDeferredResultReady);
+
     operationBus->registerExecutor(envExec);
+
+    // SystemExecutor 处理 system.* 域
+    SystemExecutor* sysExec = new SystemExecutor(mainWindow);
+    operationBus->registerExecutor(sysExec);
 
     // ChatExecutor 的 notify → ChatPanel 系统消息
     QObject::connect(chatExec, &ChatExecutor::notifyRequested,

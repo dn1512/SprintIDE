@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QDateTime>
 #include <QList>
+#include <QCoreApplication>
 
 namespace SprintIDE {
 
@@ -26,6 +27,9 @@ struct HistoryVersion
     QString displayTime() const;
     QString displaySize() const;
     QString displaySource() const;
+
+    // 给非 QObject 的结构体提供 tr()，上下文为 "SprintIDE::HistoryVersion"
+    Q_DECLARE_TR_FUNCTIONS(SprintIDE::HistoryVersion);
 };
 
 /**

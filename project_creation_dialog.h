@@ -142,6 +142,17 @@ public:
     bool                     loadTemplates();
     QList<ProjectTemplate>   availableTemplates() const;
 
+    /**
+    * @brief 设置"仅注册"模式
+    *
+    * 为 true 时，accept() 不会创建文件夹、文件、示例代码，
+    * 只把用户填写的路径写入 m_result。
+    *
+    * 用途：AI Agent 通过 project.register 注册已有目录时，
+    *       或用户在 UI 上只想登记项目而不生成文件。
+    */
+   void setRegisterOnly(bool enable) { m_registerOnly = enable; }
+   bool isRegisterOnly() const { return m_registerOnly; }
 public slots:
     // 重写 accept()：按语言分发不同的项目生成器
     void accept() override;
@@ -245,7 +256,8 @@ private:
 
     // Python
     QCheckBox* m_pythonVenvCheckBox    = nullptr;  ///< 是否创建 .venv
-    QLineEdit* m_pythonInterpreterEdit = nullptr;  ///< 自定义解释器路径
+    // QLineEdit* m_pythonInterpreterEdit = nullptr;  ///< 自定义解释器路径
+    QLineEdit* m_pythonVenvNameEdit    = nullptr;  ///< 虚拟环境目录名（替换原解释器路径）
     QLabel* m_pythonEntryLabel = nullptr;          ///入口文件名标签（复用）
 
     // Go
@@ -263,6 +275,8 @@ private:
     QLineEdit* m_genericBuildEdit = nullptr;       ///< build 命令
     QLineEdit* m_genericRunEdit   = nullptr;       ///< run 命令
     QLineEdit* m_genericCleanEdit = nullptr;       ///< clean 命令
+
+    bool m_registerOnly = false;   ///< 仅注册项目（不创建文件）
 };
 
 } // namespace SprintIDE

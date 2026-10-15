@@ -1,6 +1,8 @@
 #include "ai/executor/project_executor.h"
 #include "ai/protocol/protocol_types.h"
 #include "project_manager.h"
+#include "mainwindow.h"
+#include "core/project_scaffolder.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -10,13 +12,20 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QTimer>
+#include <QDebug>
 
 namespace SprintIDE {
 namespace Protocol {
 
 ProjectExecutor::ProjectExecutor(QObject* parent)
     : QObject(parent)
+    , m_mainWindow(qobject_cast<MainWindow*>(parent))
 {
+    if (!m_mainWindow) {
+        qWarning() << "[ProjectExecutor] MainWindow not provided; "
+                      "project.open / project.register will fail";
+    }
 }
 
 ExecutionResult ProjectExecutor::execute(const QJsonObject& item)
@@ -25,6 +34,9 @@ ExecutionResult ProjectExecutor::execute(const QJsonObject& item)
 
     if (type == QStringLiteral("project.info"))    return handleInfo(item);
     if (type == QStringLiteral("project.targets")) return handleTargets(item);
+    if (type == QStringLiteral("project.open"))     return handleOpen(item);
+    if (type == QStringLiteral("project.register")) return handleRegister(item);
+    if (type == QStringLiteral("project.create"))   return handleCreate(item);
 
     return ExecutionResult::fail(
         item.value("id").toString(), type,
@@ -188,6 +200,216 @@ ExecutionResult ProjectExecutor::handleTargets(const QJsonObject& item)
     result["targets"] = collectTargets();
 
     return ExecutionResult::ok(itemId, QStringLiteral("project.targets"), result);
+}
+
+// ------------------------------------------------------------
+// project.open —— 打开文件夹作为项目（异步）
+//
+// 语义：
+//   - 传入文件夹路径
+//   - 若文件夹内没有 .lightcpproj，自动生成一个默认配置
+//   - 打开项目、加载文件树、启动 LSP
+//
+// 为什么异步：
+//   MainWindow::openProject() 内部会 loadAllProjectFiles() 遍历整棵
+//   项目树，大项目可能几秒。若同步执行会阻塞 UI 线程，Agent 也会
+//   因为拿不到回执而超时。所以这里先返回 Pending，等打开完成后
+//   再通过 deferredResultReady 回执。
+// ------------------------------------------------------------
+ExecutionResult ProjectExecutor::handleOpen(const QJsonObject& item)
+{
+    const QString itemId = item.value("id").toString();
+    const QString path   = item.value("path").toString();
+
+    if (path.isEmpty()) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.open"),
+            ErrorCode::InvalidFields,
+            QStringLiteral("Missing 'path' field"));
+    }
+
+    QFileInfo info(path);
+    if (!info.exists() || !info.isDir()) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.open"),
+            ErrorCode::PathNotFound,
+            QStringLiteral("Folder does not exist: %1").arg(path));
+    }
+
+    if (!m_mainWindow) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.open"),
+            ErrorCode::InternalError,
+            QStringLiteral("MainWindow unavailable"));
+    }
+
+    const QString absPath = info.absoluteFilePath();
+
+    // ---- 异步：延迟一拍，让 OperationBus 先看到 Pending ----
+    QTimer::singleShot(0, m_mainWindow,
+        [this, itemId, absPath]() {
+
+            // 打开项目
+            m_mainWindow->openProject(absPath);
+
+            // 收集项目信息（此时 ProjectManager 已更新）
+            QJsonObject data = collectBasicInfo();
+            data["targets"] = collectTargets();
+
+            ExecutionResult r = ExecutionResult::ok(
+                itemId, QStringLiteral("project.open"), data);
+            emit deferredResultReady(itemId, r);
+        });
+
+    // 返回 Pending（OperationBus 会保存 PendingState 并挂起）
+    ExecutionResult pending;
+    pending.itemId   = itemId;
+    pending.itemType = QStringLiteral("project.open");
+    pending.status   = ExecutionResult::Status::Pending;
+    return pending;
+}
+
+// ------------------------------------------------------------
+// project.register —— 只注册项目，不创建任何文件（同步）
+//
+// 与 project.open 的区别：
+//   - project.open 会调用 MainWindow::openProject()，可能生成 .lightcpproj
+//   - project.register 只把路径交给 MainWindow 走一次"轻量打开"流程，
+//     但不会写入任何新文件，也不遍历目录树
+//
+// 本方法也复用 MainWindow::openProject()：
+//   因为它本身不会在项目根创建文件夹/文件（.lightcpproj 是通过
+//   ProjectConfig::saveToFile 生成的，属于项目元数据，不是用户代码）。
+// ------------------------------------------------------------
+ExecutionResult ProjectExecutor::handleRegister(const QJsonObject& item)
+{
+    const QString itemId = item.value("id").toString();
+    const QString path   = item.value("path").toString();
+
+    if (path.isEmpty()) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.register"),
+            ErrorCode::InvalidFields,
+            QStringLiteral("Missing 'path' field"));
+    }
+
+    QFileInfo info(path);
+    if (!info.exists() || !info.isDir()) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.register"),
+            ErrorCode::PathNotFound,
+            QStringLiteral("Folder does not exist: %1").arg(path));
+    }
+
+    if (!m_mainWindow) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.register"),
+            ErrorCode::InternalError,
+            QStringLiteral("MainWindow unavailable"));
+    }
+
+    // 同步打开
+    m_mainWindow->openProject(info.absoluteFilePath());
+
+    QJsonObject data = collectBasicInfo();
+    data["targets"] = collectTargets();
+
+    return ExecutionResult::ok(
+        itemId, QStringLiteral("project.register"), data);
+}
+
+// ------------------------------------------------------------
+// project.create —— 让 IDE 在磁盘上创建一个新项目
+//
+// 参数（两种形态二选一）：
+//   ① 完整路径
+//     { "path": "/Users/xxx/Documents/test_agent" }
+//   ② 父目录 + 项目名
+//     { "parentDir": "/Users/xxx/Documents", "name": "test_agent" }
+//
+// 其他字段：
+//   language            必填（python / cpp / go / rust / node / generic_ai）
+//   createVenv          可选，Python 专属
+//   overwriteIfExists   可选，默认 false
+//
+// 语义：
+//   - 目录不存在   → 创建
+//   - 目录存在且空 → 直接用
+//   - 目录存在非空 → 拒绝（除非 overwriteIfExists=true）
+//   - 生成骨架 + .lightcpproj
+//   - 打开项目
+// ------------------------------------------------------------
+ExecutionResult ProjectExecutor::handleCreate(const QJsonObject& item)
+{
+    const QString itemId = item.value("id").toString();
+
+    // ---- 1. 解析路径 ----
+    QString projectPath = item.value("path").toString();
+    const QString parentDir = item.value("parentDir").toString();
+    const QString name      = item.value("name").toString();
+
+    if (projectPath.isEmpty()) {
+        if (parentDir.isEmpty() || name.isEmpty()) {
+            return ExecutionResult::fail(
+                itemId, QStringLiteral("project.create"),
+                ErrorCode::InvalidFields,
+                QStringLiteral("Must provide either 'path', or both "
+                               "'parentDir' and 'name'"));
+        }
+        projectPath = QDir(parentDir).absoluteFilePath(name);
+    }
+
+    // ---- 2. 校验 language ----
+    const QString language = item.value("language").toString().toLower();
+    if (language.isEmpty()) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.create"),
+            ErrorCode::InvalidFields,
+            QStringLiteral("Missing 'language' field"));
+    }
+
+    // ---- 3. 调 scaffolder ----
+    ProjectScaffolder::CreateOptions opts;
+    opts.projectPath        = projectPath;
+    opts.projectName        = name.isEmpty()
+                                  ? QFileInfo(projectPath).fileName()
+                                  : name;
+    opts.displayName        = opts.projectName;
+    opts.language           = language;
+    opts.createVenv         = item.value("createVenv").toBool(false);
+    opts.interpreterPath    = item.value("interpreterPath").toString();
+    opts.overwriteIfExists  = item.value("overwriteIfExists").toBool(false);
+
+    const auto scRes = ProjectScaffolder::create(opts);
+    if (!scRes.success) {
+        return ExecutionResult::fail(
+            itemId, QStringLiteral("project.create"),
+            scRes.errorCode.isEmpty() ? ErrorCode::InternalError : scRes.errorCode,
+            scRes.errorMessage);
+    }
+
+    // ---- 4. 打开项目 ----
+    if (m_mainWindow) {
+        m_mainWindow->openProject(projectPath);
+    } else {
+        qWarning() << "[ProjectExecutor] MainWindow unavailable; "
+                      "project created on disk but not opened";
+    }
+
+    // ---- 5. 收集信息 + 创建列表 ----
+    QJsonObject data = collectBasicInfo();
+    data["targets"] = collectTargets();
+
+    QJsonArray createdFiles;
+    for (const QString& f : scRes.createdFiles) createdFiles.append(f);
+    data["createdFiles"] = createdFiles;
+
+    QJsonArray createdDirs;
+    for (const QString& d : scRes.createdDirs) createdDirs.append(d);
+    data["createdDirs"] = createdDirs;
+
+    return ExecutionResult::ok(
+        itemId, QStringLiteral("project.create"), data);
 }
 
 } // namespace Protocol

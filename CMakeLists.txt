@@ -270,6 +270,7 @@ set(AI_SOURCES
     ai/executor/ide_executor.cpp
     ai/executor/project_executor.cpp
     ai/executor/env_executor.cpp
+    ai/executor/system_executor.cpp
     ai/policy/policy_engine.cpp
 )
 
@@ -287,11 +288,13 @@ set(AI_HEADERS
     ai/executor/i_executor.h
     ai/operation_bus.h
     ai/executor/chat_executor.h
-    ai/executor/meta_executor.h    ai/executor/file_executor.h
+    ai/executor/meta_executor.h
+    ai/executor/file_executor.h
     ai/executor/command_executor.h
     ai/executor/ide_executor.h
     ai/executor/project_executor.h
     ai/executor/env_executor.h
+    ai/executor/system_executor.h
     ai/policy/policy_engine.h
 )
 
@@ -453,10 +456,12 @@ set(GIT_HEADERS
 
 set(CORE_SOURCES
     core/log_buffer.cpp
+    core/project_scaffolder.cpp
 )
 
 set(CORE_HEADERS
     core/log_buffer.h
+    core/project_scaffolder.h
 )
 
 set(COMPLETION_SOURCES
@@ -610,6 +615,8 @@ add_executable(${PROJECT_NAME}
     git/git_file_history_dialog.cpp
     core/log_buffer.h
     core/log_buffer.cpp
+    core/project_scaffolder.h
+    core/project_scaffolder.cpp
     language/editor_rules.h
     language/editor_rules.cpp
     editor/completion_model.h
@@ -651,11 +658,13 @@ add_executable(${PROJECT_NAME}
     ai/executor/ide_executor.h
     ai/executor/project_executor.h
     ai/executor/env_executor.h
+    ai/executor/system_executor.h
     ai/executor/file_executor.cpp
     ai/executor/command_executor.cpp
     ai/executor/ide_executor.cpp
     ai/executor/project_executor.cpp
     ai/executor/env_executor.cpp
+    ai/executor/system_executor.cpp
     ai/policy/policy_engine.h
     ai/policy/policy_engine.cpp
 )

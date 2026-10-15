@@ -34,13 +34,13 @@ QString HistoryVersion::displaySize() const
 
 QString HistoryVersion::displaySource() const
 {
-    if (source == "user")         return "手动保存";
-    if (source == "auto")         return "自动保存";
-    if (source == "edit")         return "编辑";
-    if (source == "before-build") return "编译前";
-    if (source == "before-run")   return "运行前";
-    if (source == "ai")           return "来自 AI";
-    return "未知来源";
+    if (source == "user")         return tr("手动保存");
+    if (source == "auto")         return tr("自动保存");
+    if (source == "edit")         return tr("编辑");
+    if (source == "before-build") return tr("编译前");
+    if (source == "before-run")   return tr("运行前");
+    if (source == "ai")           return tr("来自 AI");
+    return tr("未知来源");
 }
 
 // ============================================================
@@ -140,7 +140,7 @@ int LocalHistory::saveVersion(const QString &filePath, const QString &content,
     version.timestamp = QDateTime::currentDateTime();
     version.fileSize = content.toUtf8().size();
     version.contentHash = hash;
-    version.comment = comment.isEmpty() ? "自动保存" : comment;
+    version.comment = comment.isEmpty() ? tr("自动保存") : comment;
     version.source = source.isEmpty() ? "user" : source;   // 默认为 user
 
     // 保存版本文件
@@ -438,7 +438,7 @@ void LocalHistory::loadMetadata()
             v.timestamp = QDateTime::fromString(obj["timestamp"].toString(), Qt::ISODate);
             v.fileSize = obj["fileSize"].toInt();
             v.contentHash = obj["contentHash"].toString();
-            v.comment = obj["comment"].toString("自动保存");
+            v.comment = obj["comment"].toString(tr("自动保存"));
             v.source = obj["source"].toString("user");  // 兼容旧数据，默认为 user
             versions.append(v);
         }
