@@ -3,6 +3,7 @@
 #include "project_manager.h"
 #include "project_selection_dialog.h"
 #include "deps/toolchain_manager.h"
+#include "core/project_scaffolder.h"
 
 // 需要显式清理的静态单例
 #include "debug_manager.h"
@@ -193,46 +194,86 @@ int main(int argc, char *argv[])
 
         ProjectManager* projectManager = ProjectManager::instance();
 
+                // ============================================================
+        // ★ 解析命令行参数
+        //   支持的形式：
+        //     <path>                           → 打开/创建空项目
+        //     <path> --create <language>       → 创建项目骨架并打开
+        //     --agent-mode                     → 跳过对话框，进空主窗口
+        //     --create <language> <path>       → 等价于 <path> --create <language>
+        // ============================================================
         QString projectPath;
+        QString createLanguage;      // 非空 = 需要生成骨架
+        bool    createVenv = false;
+        bool    agentMode  = false;
+        QSet<int> consumedIndices;
+
         if (argc > 1) {
-            projectPath = QString::fromLocal8Bit(argv[1]);
+            for (int i = 1; i < argc; ++i) {
+                const QString arg = QString::fromLocal8Bit(argv[i]);
+
+                if (arg == QStringLiteral("--agent-mode")) {
+                    agentMode = true;
+                    consumedIndices.insert(i);
+                }
+                else if (arg == QStringLiteral("--create")) {
+                    consumedIndices.insert(i);
+                    if (i + 1 < argc) {
+                        createLanguage = QString::fromLocal8Bit(argv[++i]).toLower();
+                        consumedIndices.insert(i);   // ← 消费 lang 参数
+                    }
+                }
+                else if (arg == QStringLiteral("--venv")) {
+                    createVenv = true;
+                    consumedIndices.insert(i);
+                }
+                else if (!arg.startsWith(QLatin1Char('-'))) {
+                    if (projectPath.isEmpty()) {
+                        projectPath = arg;
+                        consumedIndices.insert(i);   // ← 消费路径参数
+                    }
+                }
+            }
         }
 
-        if (projectPath.isEmpty()) {
+        // ---- 组合：如果给了 --create 但没给路径，报错 ----
+        if (!createLanguage.isEmpty() && projectPath.isEmpty()) {
+            qWarning() << "[main] --create 需要同时指定项目路径";
+            createLanguage.clear();
+        }
+
+        // ============================================================
+        // 处理
+        // ============================================================
+        if (agentMode) {
+            qDebug() << "[main] --agent-mode：跳过项目选择对话框";
+        }
+        else if (projectPath.isEmpty()) {
+            // ---- 无参数：原有交互式选择对话框 ----
             while (true) {
-                // ---------- 弹"选择项目"对话框 ----------
                 ProjectSelectionDialog selDlg(projectManager->recentProjects());
 
                 if (selDlg.exec() != QDialog::Accepted) {
-                    // 用户取消选择 → 结束 SprintIDE
-                    // 注意：此时 MainWindow 尚未创建，DebugManager / GitManager
-                    //      也未被 initialize 过，只需做 Application 层的清理即可。
-                    qDebug() << "[main] 用户在项目选择对话框取消，退出程序";
-
+                    qDebug() << "[main] 用户取消，退出";
                     sprintApp.shutdown();
-
-                    std::fprintf(stderr, "[main] 取消选择，正常退出\n");
-                    std::fflush(stderr);
                     return 0;
                 }
 
                 if (!selDlg.isCreateNewProject()) {
-                    // 用户选了已有项目
                     projectPath = selDlg.selectedProjectPath();
                     if (!projectPath.isEmpty()) {
                         projectManager->openProject(projectPath);
-                        break;   // 选定 → 离开循环
+                        break;
                     }
-                    continue;    // 空路径 → 回到选择对话框
+                    continue;
                 }
 
-                // ---------- 用户选了"创建新项目" → 弹"创建项目"对话框 ----------
                 ProjectCreationDialog createDlg;
                 createDlg.setDefaultProjectPath(
-                    QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+                    QStandardPaths::writableLocation(
+                        QStandardPaths::DocumentsLocation));
 
                 if (createDlg.exec() != QDialog::Accepted) {
-                    // 用户取消创建 → continue 回到"选择项目"对话框
                     continue;
                 }
 
@@ -240,15 +281,78 @@ int main(int argc, char *argv[])
                 if (result.success && !result.projectPath.isEmpty()) {
                     projectPath = result.projectPath;
                     projectManager->openProject(projectPath);
-                    break;   // 创建成功 → 离开循环
+                    break;
                 }
-                // 创建失败 → 回到"选择项目"对话框
             }
-        } else {
-            projectManager->openProject(projectPath);
+        }
+        else {
+            // ---- 有路径参数：自动创建/打开 ----
+            const QDir projDir(projectPath);
+
+            // 1. 路径不存在 → 创建目录
+            if (!projDir.exists()) {
+                if (!QDir().mkpath(projectPath)) {
+                    QMessageBox::critical(
+                        nullptr, QObject::tr("启动失败"),
+                        QObject::tr("无法创建目录：%1").arg(projectPath));
+                    return -1;
+                }
+            }
+
+            // 2. 有 --create <lang> → 生成骨架
+            if (!createLanguage.isEmpty()) {
+                ProjectScaffolder::CreateOptions opts;
+                opts.projectPath        = QFileInfo(projectPath).absoluteFilePath();
+                opts.projectName        = QFileInfo(projectPath).fileName();
+                opts.displayName        = opts.projectName;
+                opts.language           = createLanguage;
+                opts.createVenv         = createVenv;
+                opts.overwriteIfExists  = true;   // 用户显式指定路径时，覆盖也没关系
+
+                const auto scRes = ProjectScaffolder::create(opts);
+                if (!scRes.success) {
+                    qWarning() << "[main] 项目创建失败:"
+                               << scRes.errorCode
+                               << scRes.errorMessage;
+                    QMessageBox::warning(
+                        nullptr, QObject::tr("创建失败"),
+                        QObject::tr("无法创建项目：\n%1").arg(scRes.errorMessage));
+                    // 不退出，继续打开目录
+                } else {
+                    qDebug() << "[main] 项目已创建:"
+                             << projectPath
+                             << "文件数:" << scRes.createdFiles.size();
+                }
+            }
+            // 3. 没有 --create 且没有 .lightcpproj → 生成一个默认配置
+            else {
+                const QFileInfoList configs = projDir.entryInfoList(
+                    {QStringLiteral("*.lightcpproj")}, QDir::Files);
+                if (configs.isEmpty()) {
+                    QString name = QFileInfo(projectPath).fileName();
+                    if (name.isEmpty()) name = QStringLiteral("Untitled");
+
+                    ProjectConfig config;
+                    config.setProjectName(name);
+                    config.setDisplayName(name);
+                    config.setProjectPath(QFileInfo(projectPath).absoluteFilePath());
+                    config.applySimpleCompileMode();
+
+                    const QString configPath =
+                        QDir(projectPath).absoluteFilePath(
+                            name + QStringLiteral(".lightcpproj"));
+                    QStringList errors;
+                    config.saveToFile(configPath, errors);
+                }
+            }
+
+            // 4. 打开项目
+            projectManager->openProject(QFileInfo(projectPath).absoluteFilePath());
         }
 
-        // 用 unique_ptr 接管 MainWindow 的生命周期
+        // ============================================================
+        // 创建主窗口
+        // ============================================================
         auto mainWindow = std::make_unique<SprintIDE::MainWindow>();
 
         if (projectManager->hasOpenProject()) {
@@ -262,7 +366,7 @@ int main(int argc, char *argv[])
             auto res = ToolchainManager::instance().resolve(ToolchainId::LldbDap);
             if (res.found) {
                 qDebug() << "[main] ✓ DAP adapter 已就绪:";
-                qDebug() << "   path:   " << res.executablePath;
+                qDebug() << "   path:   " << res.executablePath; 
                 qDebug() << "   version:" << res.version;
                 qDebug() << "   source: " << res.source;
             } else {
@@ -277,24 +381,40 @@ int main(int argc, char *argv[])
 
         if (argc > 1) {
             for (int i = 1; i < argc; ++i) {
-                QString arg = QString::fromLocal8Bit(argv[i]);
-
-                if (arg.startsWith("-")) {
+                // 跳过已被消费的参数
+                if (consumedIndices.contains(i)) {
                     continue;
                 }
 
-                if (QFile::exists(arg)) {
-                    if (arg.endsWith(".lightcppproj")) {
-                        qDebug() << "打开项目文件：" << arg;
-                        mainWindow->openProject(arg);
-                    } else {
-                        qDebug() << "打开代码文件：" << arg;
-                        mainWindow->openFile(arg);
-                    }
+                const QString arg = QString::fromLocal8Bit(argv[i]);
+
+                // 跳过任何以 - 开头的选项
+                if (arg.startsWith(QLatin1Char('-'))) {
+                    continue;
+                }
+
+                const QFileInfo fi(arg);
+
+                // 跳过（已在上面处理过）
+                if (fi.isDir()) {
+                    qDebug() << "[main] 跳过目录参数:" << arg;
+                    continue;
+                }
+
+                // 文件不存在：只打日志，不弹窗
+                //（避免因参数解析残留导致误报）
+                if (!fi.exists() || !fi.isFile()) {
+                    qDebug() << "[main] 跳过不存在的路径:" << arg;
+                    continue;
+                }
+
+                // 是文件：正常打开
+                if (arg.endsWith(QStringLiteral(".lightcpproj"))) {
+                    qDebug() << "[main] 打开项目文件:" << arg;
+                    mainWindow->openProject(arg);
                 } else {
-                    qWarning() << "文件不存在：" << arg;
-                    QMessageBox::warning(nullptr, "文件不存在",
-                                         QString("无法打开文件：%1\n文件不存在。").arg(arg));
+                    qDebug() << "[main] 打开代码文件:" << arg;
+                    mainWindow->openFile(arg);
                 }
             }
         }
