@@ -177,109 +177,154 @@ static QString findProjectRoot(const QString& startPath)
 }
 
 // 查找 LSP 服务器可执行文件
+// ============================================================================
+//  查找 LSP 服务器可执行文件
+// ----------------------------------------------------------------------------
+//  查找顺序（自上而下，命中即返回）：
+//    1. 绝对路径（用户显式传入）
+//    2. QStandardPaths —— 使用当前进程 PATH（已在 main.cpp 被采纳为登录 shell 的 PATH）
+//    3. 语言版本管理器目录（nvm / fnm / volta / asdf / pyenv / cargo / gopath）
+//    4. 系统常见路径（Homebrew / /usr/local / /usr/bin …）
+//    5. 未找到 → 缓存空结果 + 输出可诊断日志
+//
+//  关键设计：
+//    • 结果无条件缓存（包括"未找到"），避免重复扫描文件系统
+//    • nvm / fnm / asdf 的版本目录按名字倒序，优先使用最新版本
+//    • 全部走 QFileInfo::isFile() + isExecutable()，避免把目录误判为可执行文件
+//    • 未命中时打印 PATH，方便诊断"环境没采纳"类问题
+// ============================================================================
 QString LSPManager::findServerExecutable(const QString &command) const
 {
-    // 如果已经缓存，直接返回
+    // ---------- 缓存 ----------
     if (m_serverCache.contains(command)) {
         return m_serverCache[command];
     }
 
-    QString fullPath;
+    auto cacheAndReturn = [this, &command](const QString& path) -> QString {
+        m_serverCache[command] = path;
+        return path;
+    };
 
-    // 1. 检查是否为绝对路径
-    if (QFileInfo(command).isAbsolute() && QFile::exists(command)) {
-        fullPath = command;
-        m_serverCache[command] = fullPath;
-        return fullPath;
+    // ---------- 1. 绝对路径 ----------
+    if (QFileInfo(command).isAbsolute()) {
+        QFileInfo fi(command);
+        if (fi.isFile() && fi.isExecutable()) {
+            qDebug() << "[LSP Manager] 使用绝对路径:" << command;
+            return cacheAndReturn(command);
+        }
+        qWarning() << "[LSP Manager] 绝对路径不可执行:" << command;
+        return cacheAndReturn(QString());
     }
 
-    // 2. 检查系统 PATH
-    QStringList envPaths = QProcessEnvironment::systemEnvironment()
-                               .value("PATH")
-                               .split(QDir::listSeparator());
+    // ---------- 2. PATH（含已被采纳的登录 shell PATH） ----------
+    {
+        const QString fromPath = QStandardPaths::findExecutable(command);
+        if (!fromPath.isEmpty()) {
+            qDebug() << "[LSP Manager] 从 PATH 找到:" << command << "->" << fromPath;
+            return cacheAndReturn(fromPath);
+        }
+    }
+
+    // ---------- 3. 语言包管理器目录 ----------
+    //  说明：nvm / fnm / asdf 都是"多版本并存"的目录结构，
+    //        用 entryList 拿到全部版本后倒序遍历，优先取最新版本。
+    const QString home = QDir::homePath();
+    QStringList pmDirs;
+
+    auto collectVersionedDirs = [&pmDirs](const QString& root, const QString& suffix) {
+        QDir d(root);
+        if (!d.exists()) return;
+        const QStringList versions =
+            d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        // 倒序：v22.15.1 排在 v20.x 前面
+        for (auto it = versions.crbegin(); it != versions.crend(); ++it) {
+            pmDirs << d.absoluteFilePath(*it + suffix);
+        }
+    };
+
+#if defined(Q_OS_MAC)
+    collectVersionedDirs(home + "/.nvm/versions/node",                        "/bin");
+    collectVersionedDirs(home + "/Library/Application Support/fnm/node-versions",
+                          "/installation/bin");
+    collectVersionedDirs(home + "/.asdf/installs/nodejs",                     "/bin");
+    pmDirs << home + "/.volta/bin";
+    pmDirs << home + "/.cargo/bin";             // rust-analyzer
+    pmDirs << home + "/go/bin";                 // gopls（默认 GOPATH/bin）
+    pmDirs << home + "/.local/bin";             // 通用用户本地
+#elif defined(Q_OS_LINUX)
+    collectVersionedDirs(home + "/.nvm/versions/node",                        "/bin");
+    collectVersionedDirs(home + "/.fnm/node-versions",                        "/installation/bin");
+    collectVersionedDirs(home + "/.asdf/installs/nodejs",                     "/bin");
+    pmDirs << home + "/.volta/bin";
+    pmDirs << home + "/.cargo/bin";
+    pmDirs << home + "/go/bin";
+    pmDirs << home + "/.local/bin";
+    pmDirs << home + "/.npm-global/bin";
+#elif defined(Q_OS_WIN)
+    const QString appData = qEnvironmentVariable("APPDATA");
+    if (!appData.isEmpty()) pmDirs << appData + "/npm";
+    pmDirs << home + "/.cargo/bin";
+    pmDirs << home + "/go/bin";
+    pmDirs << home + "/.volta/bin";
+#endif
 
 #ifdef Q_OS_WIN
-    QStringList exeSuffixes = {".exe", ".bat", ".cmd"};
+    const QStringList exeSuffixes = {".exe", ".cmd", ".bat", ""};
 #else
-    QStringList exeSuffixes = {""};
+    const QStringList exeSuffixes = {""};
 #endif
 
-    for (const QString &path : envPaths) {
-        QDir dir(path);
-        if (!dir.exists()) {
-            continue;
-        }
-
-        for (const QString &suffix : exeSuffixes) {
-            QString candidate = dir.absoluteFilePath(command + suffix);
-            if (QFile::exists(candidate)) {
-                fullPath = candidate;
-                m_serverCache[command] = fullPath;
-                qDebug() << "[LSP Manager] 找到服务器:" << command << "->" << fullPath;
-                return fullPath;
+    for (const QString& dir : pmDirs) {
+        for (const QString& suf : exeSuffixes) {
+            const QString candidate = QDir(dir).absoluteFilePath(command + suf);
+            QFileInfo fi(candidate);
+            if (fi.isFile() && fi.isExecutable()) {
+                qDebug() << "[LSP Manager] 从包管理器目录找到:"
+                         << command << "->" << candidate;
+                return cacheAndReturn(candidate);
             }
         }
     }
 
-#ifdef Q_OS_UNIX
-    // 检查 ~/.local/bin
-    QString home = QDir::homePath();
-    QString localBin = home + "/.local/bin";
-    QDir dir(localBin);
-    if (dir.exists()) {
-        for (const QString &suffix : exeSuffixes) {
-            QString candidate = dir.absoluteFilePath(command + suffix);
-            if (QFile::exists(candidate)) {
-                fullPath = candidate;
-                m_serverCache[command] = fullPath;
-                qDebug() << "[LSP Manager] 在 ~/.local/bin 找到服务器:" << command << "->" << fullPath;
-                return fullPath;
-            }
-        }
-    }
-#endif
-
-    // 3. 检查常见安装路径
-    QStringList commonPaths;
-#ifdef Q_OS_WIN
-    commonPaths << "C:/Program Files/LLVM/bin"
-                << "C:/Program Files (x86)/LLVM/bin"
-                << "C:/mingw64/bin"
-                << "C:/mingw/bin";
+    // ---------- 4. 系统常见路径 ----------
+    QStringList sysPaths;
+#if defined(Q_OS_WIN)
+    sysPaths << "C:/Program Files/LLVM/bin"
+             << "C:/Program Files (x86)/LLVM/bin"
+             << "C:/mingw64/bin"
+             << "C:/mingw/bin";
 #elif defined(Q_OS_MAC)
-    commonPaths << "/usr/local/bin"
-                << "/opt/homebrew/bin"
-                << "/usr/bin"
-                << "/opt/local/bin"
-                << "/Library/Developer/CommandLineTools/usr/bin";
+    sysPaths << "/opt/homebrew/bin"                           // Apple Silicon
+             << "/usr/local/bin"                              // Intel
+             << "/opt/homebrew/opt/llvm/bin"                  // clangd（brew llvm）
+             << "/usr/local/opt/llvm/bin"
+             << "/usr/bin"
+             << "/opt/local/bin"                              // MacPorts
+             << "/Library/Developer/CommandLineTools/usr/bin";
 #else
-    commonPaths << "/usr/bin"
-                << "/usr/local/bin"
-                << "/opt/bin"
-                << "/snap/bin";
+    sysPaths << "/usr/bin"
+             << "/usr/local/bin"
+             << "/usr/local/go/bin"
+             << "/opt/bin"
+             << "/snap/bin";
 #endif
 
-    for (const QString &path : commonPaths) {
-        QDir dir(path);
-        if (!dir.exists()) {
-            continue;
-        }
-
-        for (const QString &suffix : exeSuffixes) {
-            QString candidate = dir.absoluteFilePath(command + suffix);
-            if (QFile::exists(candidate)) {
-                fullPath = candidate;
-                m_serverCache[command] = fullPath;
-                qDebug() << "[LSP Manager] 在常见路径找到服务器:" << command << "->" << fullPath;
-                return fullPath;
+    for (const QString& dir : sysPaths) {
+        for (const QString& suf : exeSuffixes) {
+            const QString candidate = QDir(dir).absoluteFilePath(command + suf);
+            QFileInfo fi(candidate);
+            if (fi.isFile() && fi.isExecutable()) {
+                qDebug() << "[LSP Manager] 从系统路径找到:"
+                         << command << "->" << candidate;
+                return cacheAndReturn(candidate);
             }
         }
     }
 
-    // 未找到
-    qDebug() << "[LSP Manager] 未找到 LSP 服务器:" << command;
-    m_serverCache[command] = QString();
-    return QString();
+    // ---------- 5. 未找到 ----------
+    qWarning() << "[LSP Manager] ✗ 未找到 LSP 服务器:" << command;
+    qWarning() << "  PATH =" << qgetenv("PATH");
+    return cacheAndReturn(QString());
 }
 
 // 生成客户端的唯一键

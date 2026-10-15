@@ -11,7 +11,7 @@
         <file>icons/text.svg</file>
         <file>icons/file.svg</file>
         <file>icons/project_file.svg</file>
-        
+
         <!-- 文件操作 -->
         <file>icons/new_file.svg</file>
         <file>icons/new_folder.svg</file>
@@ -25,7 +25,7 @@
         <file>icons/reload_from_disk.svg</file>
         <file>icons/project_structure.svg</file>
         <file>icons/project_view.svg</file>
-        
+
         <!-- 编辑操作 -->
         <file>icons/undo.svg</file>
         <file>icons/redo.svg</file>
@@ -36,7 +36,7 @@
         <file>icons/comment_code.svg</file>
         <file>icons/uncomment_code.svg</file>
         <file>icons/auto_indent.svg</file>
-        
+
         <!-- 导航与搜索 -->
         <file>icons/search.svg</file>
         <file>icons/find_in_path.svg</file>
@@ -46,7 +46,7 @@
         <file>icons/navigate_forward.svg</file>
         <file>icons/recent_files.svg</file>
         <file>icons/bookmarks.svg</file>
-        
+
         <!-- 运行与调试 -->
         <file>icons/clear.svg</file>
         <file>icons/run.svg</file>
@@ -66,7 +66,7 @@
         <file>icons/debug_arrow.svg</file>
         <file>icons/editor_error.svg</file>
         <file>icons/editor_warning.svg</file>
-        
+
         <!-- 版本控制 -->
         <file>icons/vcs_update.svg</file>
         <file>icons/vcs_commit.svg</file>
@@ -76,14 +76,14 @@
         <file>icons/branches.svg</file>
         <file>icons/merge.svg</file>
         <file>icons/git_view.svg</file>
-        
+
         <!-- 工具窗口与视图 -->
         <file>icons/terminal.svg</file>
         <file>icons/run_view.svg</file>
         <file>icons/services.svg</file>
         <file>icons/setting.svg</file>
         <file>icons/structure.svg</file>
-        
+
         <!-- 编辑器辅助 -->
         <file>icons/split_horizontal.svg</file>
         <file>icons/split_vertical.svg</file>
@@ -128,5 +128,8 @@
         <!-- 日志级别 -->
         <file>icons/locate.svg</file>
         <file>icons/refresh.svg</file>
+    </qresource>
+    <qresource prefix="/i18n">
+        <file alias="SprintIDE_en_US.qm">../translations/SprintIDE_en_US.qm</file>
     </qresource>
 </RCC>

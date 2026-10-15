@@ -2047,6 +2047,11 @@ Time: %4</translation>
         <translation>New Window</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="828"/>
+        <source>新窗口(&amp;W)</source>
+        <translation>New Window(&amp;W)</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="830"/>
         <source>新建(&amp;N)</source>
         <translation>New(&amp;N)</translation>

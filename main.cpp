@@ -23,34 +23,120 @@
 // 使用命名空间SprintIDE
 using namespace SprintIDE;
 
+// ============================================================================
+//  采纳用户登录 + 交互 shell 的环境变量
+// ----------------------------------------------------------------------------
+//  为什么必须用 -lic 而不是 -lc：
+//    • 登录模式（-l）：读 /etc/zprofile → ~/.zprofile → ~/.zlogin
+//                      → Homebrew 注入路径在这里（Apple Silicon 的 /opt/homebrew/bin）
+//    • 交互模式（-i）：读 /etc/zshrc → ~/.zshrc
+//                      → nvm / fnm / volta / pyenv / asdf 的加载代码都在这里
+//    • 只用 -l 会漏 .zshrc；只用 -i 会漏 .zprofile。必须同时用。
+//  另外：
+//    • 超时 5 秒（用户的 .zshrc 里可能有 conda / rvm 等重量级初始化）
+//    • 只采纳白名单变量，避免污染 IDE 自身环境
+//    • 逐行解析 KEY=VALUE，对非环境变量噪音（启动脚本 echo 出来的欢迎语）自动过滤
+// ============================================================================
 static void adoptLoginShellEnvironment()
 {
-#ifdef Q_OS_MAC
-    // ---- 1. 确定用户的登录 shell ----
     QString shell = qEnvironmentVariable("SHELL");
-    if (shell.isEmpty()) shell = "/bin/zsh";
+    if (shell.isEmpty()) {
+#ifdef Q_OS_WIN
+        return;   // Windows 没这个需求
+#elif defined(Q_OS_MAC)
+        shell = "/bin/zsh";
+#else
+        shell = "/bin/bash";
+#endif
+    }
 
-    // ---- 2. 启动登录 shell，让 env 输出环境变量 ----
+    // 只对 zsh / bash 使用 -lic；其它 shell（fish 等）走 -c
+    const QString shellBase = QFileInfo(shell).fileName();
+    QStringList args;
+    if (shellBase == "zsh" || shellBase == "bash") {
+        args << "-lic" << "env";
+    } else {
+        args << "-c" << "env";
+    }
+
     QProcess proc;
-    proc.start(shell, {"-l", "-c", "env"});
-    if (!proc.waitForFinished(3000)) {
-        qWarning() << "[main] 获取登录 shell 环境超时，跳过";
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+    proc.start(shell, args);
+
+    if (!proc.waitForStarted(2000)) {
+        qWarning() << "[main] 无法启动登录 shell:" << shell;
+        return;
+    }
+    if (!proc.waitForFinished(5000)) {
+        qWarning() << "[main] 登录 shell 超时（.zshrc 里有慢初始化？），跳过环境采纳";
+        proc.kill();
+        proc.waitForFinished(500);
         return;
     }
 
-    // ---- 3. 只采纳 PATH，其他变量不动 ----
     const QByteArray raw = proc.readAllStandardOutput();
-    for (const QByteArray& line : raw.split('\n')) {
-        if (!line.startsWith("PATH=")) continue;
-
-        const QString newPath = QString::fromUtf8(line.mid(5));
-        if (!newPath.isEmpty()) {
-            qputenv("PATH", newPath.toUtf8());
-            qDebug() << "[main] PATH 已采纳登录 shell 环境";
-        }
-        break;
+    if (raw.isEmpty()) {
+        qWarning() << "[main] 登录 shell 未返回环境变量";
+        return;
     }
-#endif
+
+    // 只采纳这些变量；其余一律不动，防止污染 IDE 自身
+    static const char* kAdoptKeys[] = {
+        // 通用
+        "PATH",
+        // Node 版本管理器
+        "NVM_DIR", "NVM_BIN", "NODE_PATH",
+        "FNM_DIR", "FNM_NODE_DIST_MIRROR",
+        "VOLTA_HOME",
+        // Python 版本管理器
+        "PYENV_ROOT",
+        // Go
+        "GOPATH", "GOROOT",
+        // Rust
+        "CARGO_HOME", "RUSTUP_HOME",
+        // Java
+        "JAVA_HOME",
+        nullptr
+    };
+
+    int adopted = 0;
+    for (const QByteArray& line : raw.split('\n')) {
+        if (line.isEmpty()) continue;
+
+        const int eq = line.indexOf('=');
+        if (eq <= 0 || eq > 64) continue;   // KEY 太长，不是环境变量
+
+        QByteArray key = line.left(eq);
+        if (key.endsWith('\r')) key.chop(1);   // CRLF 处理
+
+        // 严格校验 KEY 格式：仅 A-Z / 0-9 / _
+        bool validKey = true;
+        for (char c : key) {
+            if (!((c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') ||
+                  c == '_')) {
+                validKey = false;
+                break;
+            }
+        }
+        if (!validKey) continue;
+
+        // 白名单匹配
+        bool wanted = false;
+        for (const char** k = kAdoptKeys; *k; ++k) {
+            if (key == *k) { wanted = true; break; }
+        }
+        if (!wanted) continue;
+
+        QByteArray val = line.mid(eq + 1);
+        if (val.endsWith('\r')) val.chop(1);
+
+        qputenv(key.constData(), val);
+        ++adopted;
+    }
+
+    qDebug() << "[main] 已采纳登录 shell 环境，变量数:" << adopted;
+    qDebug() << "[main] PATH =" << qgetenv("PATH");
 }
 
 /**
