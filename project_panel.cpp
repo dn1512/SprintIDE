@@ -893,6 +893,23 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
             this, &ProjectPanel::locateCurrentFileRequested);
     tl->addWidget(m_locateButton);
 
+    //  键盘快捷键
+    //    - Ctrl+Shift+L → 定位到当前编辑的文件
+    //    - Ctrl+Shift+R → 刷新项目面板
+    {
+        auto* locateSc = new QShortcut(QKeySequence("Ctrl+Shift+L"), this);
+        locateSc->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(locateSc, &QShortcut::activated, this, [this]() {
+            emit locateCurrentFileRequested();
+        });
+
+        auto* refreshSc = new QShortcut(QKeySequence("Ctrl+Shift+R"), this);
+        refreshSc->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(refreshSc, &QShortcut::activated, this, [this]() {
+            onRefreshRequested();
+        });
+    }
+
     // ============================================================
     //  刷新按钮
     // ============================================================

@@ -3289,6 +3289,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
     if (handleSmartHomeSelection(event)) return;
     if (handleSmartHome(event)) return;
     if (handleSmartEnd(event))  return;
+    if (handleVerticalMoveToWhitespaceEnd(event)) return;
 
     // ========== 6. Backspace 删除空配对 ==========
     if (event->key() == Qt::Key_Backspace
@@ -5130,6 +5131,56 @@ bool TextEditor::handleSmartEnd(QKeyEvent* event)
 
     cursor.movePosition(QTextCursor::StartOfBlock);
     cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, targetCol);
+    setTextCursor(cursor);
+    return true;
+}
+
+// ============================================================================
+//  上下方向键遇"纯缩进空行"时，光标直接落到行尾
+//
+//  背景：
+//    QPlainTextEdit 的默认上下移动是"按列对齐"——
+//    从长行移到空行时，光标停在列 N，但 N 可能是缩进之后的位置。
+//    用户期望：进入"只有缩进、没有内容"的行时，光标直接到行尾。
+//
+//  判定"纯缩进空行"：
+//    - lineText 非空（长度 > 0）
+//    - lineText.trimmed() 为空
+//  即：整行只有空格和/或 tab。
+//
+//  触发范围：
+//    - 只处理无 Shift / 无 Ctrl / 无 Alt 的 Up / Down
+//    - Shift+Up/Down（选区扩展）不处理——避免破坏用户的选区意图
+//    - Ctrl+Up/Down（某些 Qt 版本的段落跳转）不处理
+// ============================================================================
+bool TextEditor::handleVerticalMoveToWhitespaceEnd(QKeyEvent* event)
+{
+    if (event->key() != Qt::Key_Up && event->key() != Qt::Key_Down) {
+        return false;
+    }
+
+    const Qt::KeyboardModifiers mods = event->modifiers();
+
+    // 只处理"无修饰符"（KeypadModifier 除外，不影响语义）
+    //   排除 Shift / Ctrl / Alt / Meta
+    const Qt::KeyboardModifiers effectiveMods =
+        mods & ~Qt::KeypadModifier;
+    if (effectiveMods != Qt::NoModifier) return false;
+
+    // 让基类执行标准的上下移动（会保持列位置）
+    QPlainTextEdit::keyPressEvent(event);
+
+    // 移动后检查落点行是否"纯缩进空行"
+    QTextCursor cursor = textCursor();
+    const QTextBlock block = cursor.block();
+    if (!block.isValid()) return true;
+
+    const QString lineText = block.text();
+    if (lineText.isEmpty()) return true;                // 完全空行，不用处理
+    if (!lineText.trimmed().isEmpty()) return true;     // 有代码，保留默认行为
+
+    // 是"纯缩进空行" → 光标移到行尾
+    cursor.movePosition(QTextCursor::EndOfBlock);
     setTextCursor(cursor);
     return true;
 }

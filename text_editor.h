@@ -491,8 +491,7 @@ private:
     /// 按 offset 平移一行缩进
     QString shiftIndent(const QString& line, int offset) const;
 
-    /// ✅ v8.5：只替换"搜索匹配"高亮，保留其他 ExtraSelection
-    ///   （当前行高亮、括号匹配、定义链接等）
+    /// 只替换"搜索匹配"高亮，保留其他 ExtraSelection
     void applySearchHighlights(const QList<QTextEdit::ExtraSelection>& searchSels);
 
     // 跳转定义的视觉反馈
@@ -586,6 +585,9 @@ private:
     // 智能 Home：第一次跳到首个非空白列，再按跳到列 0
     bool  handleSmartHome(QKeyEvent* event);
     bool  handleSmartEnd(QKeyEvent* event);
+
+    ///  上下方向键遇"纯缩进空行"时，光标直接落到行尾 只处理无修饰符的 Up / Down（Shift+上下 = 选择，不处理）
+    bool  handleVerticalMoveToWhitespaceEnd(QKeyEvent* event);
 
     ///   智能"选到行首"——不含前导缩进
     ///   macOS：Cmd+Shift+Left

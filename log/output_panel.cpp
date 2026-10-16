@@ -14,6 +14,9 @@
 #include <QRegularExpression>
 #include <QApplication>
 #include <QKeyEvent>
+#include <QtGui/qshortcut.h>
+#include <QShortcut>
+#include <functional>
 
 namespace SprintIDE {
 
@@ -398,35 +401,54 @@ void OutputPanel::applyAutoScrollIfNeeded()
 void OutputPanel::focusPanel()
 {
     // ============================================================
-    //  首次被键盘唤出时：
-    //   1. 放开按钮的焦点策略（原设计 NoFocus 是给鼠标用的）
-    //   2. 在 qApp 上装一次事件过滤器，接管 Tab 键
+    //  首次被键盘唤出时，安装面板内快捷键
     //
-    //  为什么用 qApp 级过滤器：
-    //    - m_view 的内部子控件（viewport、scrollbar）无法逐个 installEventFilter
-    //    - qApp 级只需一次安装，覆盖面最广
-    //    - 过滤器内部会先判断"焦点是否在 OutputPanel 内"，外部组件不受影响
-    //
-    //  为什么不改构造函数：
-    //    只在"用户主动键盘唤出"时激活；鼠标用户永远不触发，视觉行为不变。
+    //  为什么不用 Tab：
+    //    - Qt 里 Tab 是焦点导航保留键，QShortcut 不响应
+    //    - macOS 上 IME 层会在 Qt 之前拦截 Tab，连事件过滤器都收不到
+    //  为什么用独立快捷键：
+    //    - 跨平台一致，不被系统抢
+    //    - 一个键直达，比 Tab 遍历更快
+    //  作用域：WidgetWithChildrenShortcut —— 只在焦点位于本面板时生效
     // ============================================================
-    static bool tabSetupDone = false;
-    if (!tabSetupDone) {
-        tabSetupDone = true;
+    static bool keyboardSetupDone = false;
+    if (!keyboardSetupDone) {
+        keyboardSetupDone = true;
 
-        // 放开焦点策略
-        if (m_search)        m_search->setFocusPolicy(Qt::StrongFocus);
-        if (m_chkErr)        m_chkErr->setFocusPolicy(Qt::StrongFocus);
-        if (m_chkWarn)       m_chkWarn->setFocusPolicy(Qt::StrongFocus);
-        if (m_chkInfo)       m_chkInfo->setFocusPolicy(Qt::StrongFocus);
-        if (m_btnAutoScroll) m_btnAutoScroll->setFocusPolicy(Qt::StrongFocus);
-        if (m_btnClear)      m_btnClear->setFocusPolicy(Qt::StrongFocus);
-        if (m_view)          m_view->setFocusPolicy(Qt::StrongFocus);
+        auto add = [this](const QString& seq, std::function<void()> handler) {
+            auto* sc = new QShortcut(QKeySequence(seq), this);
+            sc->setContext(Qt::WidgetWithChildrenShortcut);
+            connect(sc, &QShortcut::activated, this, std::move(handler));
+        };
 
-        // 在 qApp 上装一次 Tab 拦截器
-        if (qApp) {
-            qApp->installEventFilter(this);
-        }
+        // 三个过滤按钮：切换"选中/未选中"状态
+        //   复用现有 toggled → onFilterChanged 链路，不改任何过滤逻辑
+        add("Ctrl+Alt+R", [this]() {
+            if (m_chkErr) m_chkErr->setChecked(!m_chkErr->isChecked());
+        });
+        add("Ctrl+Alt+W", [this]() {
+            if (m_chkWarn) m_chkWarn->setChecked(!m_chkWarn->isChecked());
+        });
+        add("Ctrl+Alt+I", [this]() {
+            if (m_chkInfo) m_chkInfo->setChecked(!m_chkInfo->isChecked());
+        });
+
+        // 跟随最新输出
+        add("Ctrl+Alt+F", [this]() {
+            if (m_btnAutoScroll) {
+                m_btnAutoScroll->setChecked(!m_btnAutoScroll->isChecked());
+            }
+        });
+
+        // 清空输出（复用现有 clear()）
+        add("Ctrl+Alt+K", [this]() {
+            clear();
+        });
+
+        // 焦点跳到日志列表（之后可用 ↑↓ 浏览、Enter 跳转）
+        add("Ctrl+Alt+N", [this]() {
+            if (m_view) m_view->setFocus();
+        });
     }
 
     // 焦点落到搜索框
@@ -440,6 +462,14 @@ void OutputPanel::focusPanel()
 
 bool OutputPanel::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::KeyPress) {
+        auto* ke = static_cast<QKeyEvent*>(event);
+        if (ke->key() == Qt::Key_Tab || ke->key() == Qt::Key_Backtab) {
+            qDebug() << "[OutputPanel] Tab event, focus ="
+                     << QApplication::focusWidget();
+        }
+    }
+
     // 只处理键盘按下
     if (event->type() != QEvent::KeyPress) {
         return QWidget::eventFilter(watched, event);
