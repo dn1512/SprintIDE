@@ -12,6 +12,8 @@
 #include <QLabel>
 #include <QScrollBar>
 #include <QRegularExpression>
+#include <QApplication>
+#include <QKeyEvent>
 
 namespace SprintIDE {
 
@@ -391,6 +393,107 @@ void OutputPanel::applyAutoScrollIfNeeded()
     if (!m_autoScroll) return;
     if (!m_stickToBottom) return;
     m_view->scrollToBottom();
+}
+
+void OutputPanel::focusPanel()
+{
+    // ============================================================
+    //  首次被键盘唤出时：
+    //   1. 放开按钮的焦点策略（原设计 NoFocus 是给鼠标用的）
+    //   2. 在 qApp 上装一次事件过滤器，接管 Tab 键
+    //
+    //  为什么用 qApp 级过滤器：
+    //    - m_view 的内部子控件（viewport、scrollbar）无法逐个 installEventFilter
+    //    - qApp 级只需一次安装，覆盖面最广
+    //    - 过滤器内部会先判断"焦点是否在 OutputPanel 内"，外部组件不受影响
+    //
+    //  为什么不改构造函数：
+    //    只在"用户主动键盘唤出"时激活；鼠标用户永远不触发，视觉行为不变。
+    // ============================================================
+    static bool tabSetupDone = false;
+    if (!tabSetupDone) {
+        tabSetupDone = true;
+
+        // 放开焦点策略
+        if (m_search)        m_search->setFocusPolicy(Qt::StrongFocus);
+        if (m_chkErr)        m_chkErr->setFocusPolicy(Qt::StrongFocus);
+        if (m_chkWarn)       m_chkWarn->setFocusPolicy(Qt::StrongFocus);
+        if (m_chkInfo)       m_chkInfo->setFocusPolicy(Qt::StrongFocus);
+        if (m_btnAutoScroll) m_btnAutoScroll->setFocusPolicy(Qt::StrongFocus);
+        if (m_btnClear)      m_btnClear->setFocusPolicy(Qt::StrongFocus);
+        if (m_view)          m_view->setFocusPolicy(Qt::StrongFocus);
+
+        // 在 qApp 上装一次 Tab 拦截器
+        if (qApp) {
+            qApp->installEventFilter(this);
+        }
+    }
+
+    // 焦点落到搜索框
+    if (m_search) {
+        m_search->setFocus();
+        m_search->selectAll();
+    } else if (m_view) {
+        m_view->setFocus();
+    }
+}
+
+bool OutputPanel::eventFilter(QObject* watched, QEvent* event)
+{
+    // 只处理键盘按下
+    if (event->type() != QEvent::KeyPress) {
+        return QWidget::eventFilter(watched, event);
+    }
+
+    auto* ke = static_cast<QKeyEvent*>(event);
+    const int key = ke->key();
+    if (key != Qt::Key_Tab && key != Qt::Key_Backtab) {
+        return QWidget::eventFilter(watched, event);
+    }
+
+    // 焦点必须在本面板内部，否则不接管（不干扰其它面板的 Tab）
+    QWidget* focus = QApplication::focusWidget();
+    if (!focus || !isAncestorOf(focus)) {
+        return QWidget::eventFilter(watched, event);
+    }
+
+    // 固定顺序：搜索框 → 错误 → 警告 → 信息 → 跟随 → 清空 → 日志列表
+    QWidget* order[] = {
+        m_search,
+        m_chkErr,
+        m_chkWarn,
+        m_chkInfo,
+        m_btnAutoScroll,
+        m_btnClear,
+        m_view
+    };
+    constexpr int N = sizeof(order) / sizeof(order[0]);
+
+    // 找当前焦点在链上的位置（支持"焦点在某个控件的子控件上"的情况）
+    int idx = -1;
+    for (int i = 0; i < N; ++i) {
+        if (!order[i]) continue;
+        if (order[i] == focus || order[i]->isAncestorOf(focus)) {
+            idx = i;
+            break;
+        }
+    }
+
+    // Shift+Tab 或 Backtab → 反向
+    const bool backward = (key == Qt::Key_Backtab)
+                          || (ke->modifiers() & Qt::ShiftModifier);
+
+    if (idx < 0) {
+        // 焦点不在链上 → 落到第一个
+        if (order[0]) order[0]->setFocus();
+        return true;
+    }
+
+    const int next = (idx + (backward ? -1 : 1) + N) % N;
+    if (order[next]) {
+        order[next]->setFocus();
+    }
+    return true;
 }
 
 } // namespace SprintIDE

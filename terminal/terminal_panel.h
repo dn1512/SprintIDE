@@ -29,6 +29,7 @@ public:
 
     void clearOutput();
     void stopCurrentCommand();
+    void focusPanel();
 
 signals:
     void commandStarted(const QString& command);

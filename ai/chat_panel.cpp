@@ -496,6 +496,13 @@ void ChatPanel::setAutoSendContext(bool enabled)
     m_autoSendContext = enabled;
 }
 
+void ChatPanel::focusPanel()
+{
+    if (m_inputEdit) {
+        m_inputEdit->setFocus();
+    }
+}
+
 void ChatPanel::setConnectionManager(AiConnectionManager* mgr) {
     m_connMgr = mgr;
     qDebug() << "[ChatPanel] setConnectionManager called, mgr =" << mgr;

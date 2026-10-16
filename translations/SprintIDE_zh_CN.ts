@@ -1417,7 +1417,7 @@ line too long
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1215"/>
-        <source>显示 / 隐藏项目面板 (Ctrl+Shift+E)</source>
+        <source>显示 / 隐藏项目面板 (Ctrl+Alt+E)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

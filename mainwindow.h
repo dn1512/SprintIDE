@@ -55,6 +55,7 @@ class PythonDebugger;
 class BreakpointListPanel;
 class SearchInFilesDialog;
 class OutputPanel;
+class PanelFocusManager;
 
 // Git 模块前向声明
 namespace Git { class GitPanel; }
@@ -562,6 +563,8 @@ private:
     QTimer* m_projectPanelRefreshDebounce = nullptr;
     // 按文件缓存最近一次 LSP 诊断的完整信息（保留 source / code）供 onQuickFixRequested 组装 codeAction 的 context.diagnostics 使用
     QHash<QString, QList<LSPDiagnostic>> m_lastDiagnosticsByFile;
+
+    PanelFocusManager* m_panelFocusManager = nullptr;
 };
 
 } // namespace SprintIDE

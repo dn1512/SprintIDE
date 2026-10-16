@@ -2612,8 +2612,8 @@ Time: %4</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1255"/>
-        <source>显示 / 隐藏项目面板 (Ctrl+Shift+E)</source>
-        <translation>Show / hide the project panel (Ctrl+Shift+E)</translation>
+        <source>显示 / 隐藏项目面板 (Ctrl+Alt+E)</source>
+        <translation>Show / hide the project panel (Ctrl+Alt+E)</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="1266"/>

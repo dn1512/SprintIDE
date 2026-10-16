@@ -786,4 +786,15 @@ void TerminalPanel::recolorAllOutput()
     cursor.endEditBlock();
 }
 
+void TerminalPanel::focusPanel()
+{
+    if (m_outputWidget) {
+        m_outputWidget->setFocus();
+        // 把光标移到末尾（输入位置）
+        QTextCursor c = m_outputWidget->textCursor();
+        c.movePosition(QTextCursor::End);
+        m_outputWidget->setTextCursor(c);
+    }
+}
+
 } // namespace SprintIDE

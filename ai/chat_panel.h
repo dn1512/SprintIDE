@@ -135,6 +135,8 @@ public:
      */
     void setAutoSendContext(bool enabled);
 
+    void focusPanel();
+
 signals:
     /**
      * @brief 用户发送消息信号（由 ChatPanel 发出，外部监听并转发给 AI）
@@ -179,7 +181,7 @@ public slots:
                        const QString& question,
                        const QJsonArray& choices,
                        const QString& defaultAnswer);
-    
+
     /**
      * @brief 处理动作执行器产生的输出（显示操作日志）
      */

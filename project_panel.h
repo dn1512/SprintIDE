@@ -108,6 +108,8 @@ public:
     QAbstractItemModel* model() const { return m_fileTreeView->model(); }
     bool isExpanded(const QModelIndex& index) const { return m_fileTreeView->isExpanded(index); }
     void expand(const QModelIndex& index) { m_fileTreeView->expand(index); }
+    /// 让项目面板获得键盘焦点（内部自动处理"无选中项"的情况）
+    void focusPanel();
 
 public slots:
     void newFile();
@@ -248,7 +250,7 @@ private:
     QAction* m_gitStashChangesAct  = nullptr;
     QAction* m_gitUnstashAct       = nullptr;
     QAction* m_gitManageRemotesAct = nullptr;
-    
+
     // 记录最近一次右键选中的文件路径（供菜单项回调使用）
     QStringList m_lastSelectedPaths;
 };

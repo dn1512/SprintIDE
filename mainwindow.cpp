@@ -120,6 +120,7 @@
 #include "log/output_panel.h"
 #include "log/log_list_model.h"     // 只需要 LogKind / LogLevel 常量时
 #include "breakpoint_list_panel.h"
+#include "panel_focus_manager.h"
 
 
 using namespace SprintIDE;
@@ -492,6 +493,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupDebugPanel();
     setupTerminalPanel();
     setupGitPanel();
+
+    m_panelFocusManager = new PanelFocusManager(this);
+    m_panelFocusManager->installShortcuts();
 
     connect(&tm, &ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
@@ -1323,10 +1327,10 @@ void MainWindow::setupMenuBar()
 
     // 项目面板 toggle（顺手做）
     QAction* toggleProjectPanelAction = viewMenu->addAction(tr("项目面板(&P)"));
-    toggleProjectPanelAction->setShortcut(QKeySequence("Ctrl+Shift+E"));
+    toggleProjectPanelAction->setShortcut(QKeySequence("Ctrl+Alt+E"));
     toggleProjectPanelAction->setCheckable(true);
     toggleProjectPanelAction->setChecked(true);
-    toggleProjectPanelAction->setStatusTip(tr("显示 / 隐藏项目面板 (Ctrl+Shift+E)"));
+    toggleProjectPanelAction->setStatusTip(tr("显示 / 隐藏项目面板 (Ctrl+Alt+E)"));
 
     connect(toggleProjectPanelAction, &QAction::toggled, this, [this](bool checked) {
         if (d->projectDock) {

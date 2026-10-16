@@ -48,7 +48,7 @@ static const QStringList DEFAULT_EXCLUDE_DIRS = {
 
 static const QStringList SUPPORTED_EXTENSIONS = {
     "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx",
-    "h", "hpp", "hh", "hxx", "h++", "doc", "docx",
+    "h", "hpp", "hh", "hxx", "h++", "doc", "docx","ui",
     "txt", "md", "json", "xml", "html", "css", "js", "ttf",
     "ini", "cfg", "conf", "pro", "pri", "yml", "ts", "icns",
     "lightcppproj", "cmake", "makefile", "qm", "qrc", "svg", "png",
@@ -986,6 +986,38 @@ void ProjectPanel::createFileTree()
     connect(m_fileTreeView, &QTreeView::doubleClicked,
             this, &ProjectPanel::onFileTreeDoubleClicked);
 
+    // ============================================================
+    //  Enter / Return 打开文件
+    //
+    //  为什么不能只靠 QTreeView::activated：
+    //    - macOS 上 activated 默认只响应双击，Enter 需要显式拦截
+    //    - 而且这里 editTriggers 含 EditKeyPressed，Enter 在某些平台
+    //      会被解释成"进入编辑模式"
+    //    - 用 QShortcut 明确捕获最稳
+    // ============================================================
+    {
+        auto* openShortcut = new QShortcut(QKeySequence(Qt::Key_Return),
+                                           m_fileTreeView);
+        openShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(openShortcut, &QShortcut::activated, this, [this]() {
+            const QModelIndex idx = m_fileTreeView->currentIndex();
+            if (idx.isValid() && isFile(idx)) {
+                emit fileOpenRequested(getFilePath(idx));
+            }
+        });
+
+        // 小键盘上的 Enter 也一起接管
+        auto* openShortcut2 = new QShortcut(QKeySequence(Qt::Key_Enter),
+                                            m_fileTreeView);
+        openShortcut2->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(openShortcut2, &QShortcut::activated, this, [this]() {
+            const QModelIndex idx = m_fileTreeView->currentIndex();
+            if (idx.isValid() && isFile(idx)) {
+                emit fileOpenRequested(getFilePath(idx));
+            }
+        });
+    }
+
     m_splitter->addWidget(m_fileTreeView);
 }
 
@@ -1416,6 +1448,22 @@ void ProjectPanel::onGitStatusUpdated(const QList<Git::GitFileStatus>& status)
     if (m_fileTreeView) {
         m_fileTreeView->viewport()->update();
     }
+}
+
+void ProjectPanel::focusPanel()
+{
+    QTreeView* tree = getFileTreeView();
+    if (!tree) return;
+
+    // 若当前无选中项 → 自动选第一行，用户直接能用上下键浏览
+    if (!tree->currentIndex().isValid()) {
+        QAbstractItemModel* model = tree->model();
+        if (model && model->rowCount() > 0) {
+            tree->setCurrentIndex(model->index(0, 0));
+        }
+    }
+
+    tree->setFocus();
 }
 
 } // namespace SprintIDE

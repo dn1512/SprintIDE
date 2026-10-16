@@ -40,6 +40,13 @@ public:
     /// 设置 AI 是否可用（转发给内部 LogListView）
     void setAIAvailable(bool available);
 
+    /// 让输出面板获得键盘焦点（默认给搜索框，用户 Tab 可到列表）
+    void focusPanel();
+
+protected:
+    /// 拦截 Tab / Shift+Tab，在面板内按固定顺序切换焦点
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 signals:
     void jumpRequested(const QString& file, int line, int column);
     void cleared();

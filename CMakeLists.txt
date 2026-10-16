@@ -76,6 +76,7 @@ set(UI_SOURCES
     editor_widget.cpp
     tab_widget.cpp
     editor_settings_page.cpp
+    panel_focus_manager.cpp
 )
 
 set(UI_HEADERS
@@ -84,6 +85,7 @@ set(UI_HEADERS
     editor_widget.h
     tab_widget.h
     editor_settings_page.h
+    panel_focus_manager.h
 )
 
 set(UI_FORMS
@@ -585,7 +587,8 @@ add_executable(${PROJECT_NAME}
     deps/toolchain_manager.h
     deps/toolchain_manager.cpp
     deps/toolchain_provider.h
-    deps/lldb_dap_provider.h deps/lldb_dap_provider.cpp
+    deps/lldb_dap_provider.h
+    deps/lldb_dap_provider.cpp
     deps/toolchain_types.h
     deps/toolchain_dialog.h
     deps/toolchain_dialog.cpp
@@ -609,8 +612,10 @@ add_executable(${PROJECT_NAME}
     git/git_panel.cpp
     git/git_overlay_proxy_model.h
     git/git_overlay_proxy_model.cpp
-    git/git_settings_page.h git/git_settings_page.cpp
-    git/git_diff_dialog.h git/git_diff_dialog.cpp
+    git/git_settings_page.h
+    git/git_settings_page.cpp
+    git/git_diff_dialog.h
+    git/git_diff_dialog.cpp
     git/git_file_history_dialog.h
     git/git_file_history_dialog.cpp
     core/log_buffer.h
@@ -633,13 +638,20 @@ add_executable(${PROJECT_NAME}
     performance/performance_monitor.cpp
     breakpoint_list_panel.h
     breakpoint_list_panel.cpp
-    search_in_files_dialog.h search_in_files_dialog.cpp
-
-    log/log_list_model.h log/log_list_model.cpp
-    log/log_list_view.h log/log_list_view.cpp
-    log/log_item_delegate.h log/log_item_delegate.cpp
-    log/output_panel.h log/output_panel.cpp
-    translation/language_manager.h translation/language_manager.cpp
+    search_in_files_dialog.h
+    search_in_files_dialog.cpp
+    panel_focus_manager.h
+    panel_focus_manager.cpp
+    log/log_list_model.h
+    log/log_list_model.cpp
+    log/log_list_view.h
+    log/log_list_view.cpp
+    log/log_item_delegate.h
+    log/log_item_delegate.cpp
+    log/output_panel.h
+    log/output_panel.cpp
+    translation/language_manager.h
+    translation/language_manager.cpp
     ai/protocol/protocol_types.h
     ai/protocol/validator.h
     ai/protocol/validator.cpp
