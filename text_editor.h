@@ -586,9 +586,6 @@ private:
     bool  handleSmartHome(QKeyEvent* event);
     bool  handleSmartEnd(QKeyEvent* event);
 
-    ///  上下方向键遇"纯缩进空行"时，光标直接落到行尾 只处理无修饰符的 Up / Down（Shift+上下 = 选择，不处理）
-    bool  handleVerticalMoveToWhitespaceEnd(QKeyEvent* event);
-
     ///   智能"选到行首"——不含前导缩进
     ///   macOS：Cmd+Shift+Left
     ///   Windows/Linux：Shift+Home
