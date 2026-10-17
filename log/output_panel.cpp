@@ -46,6 +46,7 @@ void OutputPanel::buildUi()
     // ---------- 工具条 ----------
     auto* toolbar = new QWidget(this);
     toolbar->setObjectName("OutputToolbar");
+    
     auto* h = new QHBoxLayout(toolbar);
     h->setContentsMargins(6, 4, 6, 4);
     h->setSpacing(6);

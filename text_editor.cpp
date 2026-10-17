@@ -43,6 +43,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QFileInfo>
+#include <QtCore/qelapsedtimer.h>
 
 
 namespace SprintIDE {
@@ -445,7 +446,7 @@ void TextEditor::initEditor()
             this, &TextEditor::updateLineNumberAreaWidth);
     connect(this, &TextEditor::updateRequest,
             this, &TextEditor::updateLineNumberArea);
-    connect(this, &TextEditor::cursorPositionChanged,
+    connect(this, &QPlainTextEdit::cursorPositionChanged,
             this, &TextEditor::onCursorPositionChanged);
     connect(this, &TextEditor::textChanged,
             this, &TextEditor::onTextChanged);
@@ -457,13 +458,17 @@ void TextEditor::initEditor()
     // ---- LSP didChange 防抖：停止输入 180ms 后才发 ----
     m_lspChangeTimer = new QTimer(this);
     m_lspChangeTimer->setSingleShot(true);
-    m_lspChangeTimer->setInterval(180);
+    m_lspChangeTimer->setInterval(500);
     connect(m_lspChangeTimer, &QTimer::timeout, this, [this]() {
         if (!m_pendingLspChange) return;
         m_pendingLspChange = false;
-        if (!m_filePath.isEmpty()) {
-            emit documentChangedForLsp(m_filePath, toPlainText());
-        }
+        if (m_filePath.isEmpty()) return;
+
+        const QString path = m_filePath;
+        QTimer::singleShot(0, this, [this, path]() {
+            if (!isVisible()) return;
+            emit documentChangedForLsp(path, toPlainText());
+        });
     });
 
     // 滚动条错误标记
@@ -5682,6 +5687,7 @@ bool TextEditor::runExternalFormatter(QString* errorOut)
 // ============================================================================
 void TextEditor::paintScrollBarMarkers()
 {
+    QElapsedTimer _pt; _pt.start();
     QScrollBar* sb = verticalScrollBar();
     if (!sb) return;
 
@@ -5727,6 +5733,7 @@ void TextEditor::paintScrollBarMarkers()
     for (int line : m_breakpoints) {
         drawMarker(line, QColor(70, 140, 220));
     }
+    if (_pt.elapsed() > 5) qDebug() << "[SLOW] paintScrollBarMarkers:" << _pt.elapsed() << "ms";
 }
 
 // ============================================================================

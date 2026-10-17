@@ -496,20 +496,20 @@ QIcon GitPanel::statusIcon(Git::FileStatus s)
 {
     switch (s) {
     case FileStatus::Added:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_added.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_added.svg"));
     case FileStatus::Modified:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_modified.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_modified.svg"));
     case FileStatus::Deleted:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_deleted.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_deleted.svg"));
     case FileStatus::Conflicted:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_conflict.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_conflict.svg"));
     case FileStatus::Untracked:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_untracked.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_untracked.svg"));
     case FileStatus::Renamed:
     case FileStatus::TypeChanged:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_modified.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_modified.svg"));
     case FileStatus::Copied:
-        return QIcon(QStringLiteral(":/icons/icons/git_status_added.svg"));
+        return QIcon(QStringLiteral(":/icons/icons/status_added.svg"));
     default:
         return QIcon();
     }
