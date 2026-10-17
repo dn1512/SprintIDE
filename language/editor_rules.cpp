@@ -43,6 +43,7 @@ static EditorRules makePython()
         {'"', '"'}, {'\'', '\''}
     };
     r.autoBraceOnNewline = false;        // ←←← 关键：禁止大括号换行
+    r.blockStyle = EditorRules::BlockStyle::Indent;
     return r;
 }
 
@@ -117,6 +118,7 @@ static EditorRules makeRuby()
         {'"', '"'}, {'\'', '\''}
     };
     r.autoBraceOnNewline = false;
+    r.blockStyle = EditorRules::BlockStyle::Keyword;
     return r;
 }
 
@@ -238,6 +240,7 @@ static EditorRules makeYaml()
         {'"', '"'}, {'\'', '\''}
     };
     r.autoBraceOnNewline = false;
+    r.blockStyle = EditorRules::BlockStyle::Indent;
     return r;
 }
 

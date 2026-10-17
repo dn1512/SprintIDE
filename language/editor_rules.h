@@ -22,6 +22,19 @@ namespace SprintIDE {
 struct EditorRules
 {
     // ============================================================
+    // 0. 块结构风格
+    //   用途：findLogicalLineIndent 的"闭合行特判"只对 Brace 语言生效
+    //   - Python / YAML：靠缩进，不用括号判定锚点
+    //   - Ruby / Shell：靠 end / do / then / fi 等关键字
+    //   - 其余：默认 Brace
+    // ============================================================
+    enum class BlockStyle {
+        Brace,      // { } 标记块：C/C++/Java/JS/TS/Go/Rust/CSS/JSON/Shell
+        Indent,     // 缩进层级：Python / YAML
+        Keyword,    // 关键字闭合：Ruby
+    };
+    BlockStyle blockStyle = BlockStyle::Brace;
+    // ============================================================
     // 1. 注释
     // ============================================================
     QString lineComment;            // "//" "#" "--" ";" 空字符串 = 不支持

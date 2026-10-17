@@ -669,6 +669,13 @@ private:
     ///   - 向上找缩进更浅的"锚点行"（bracketDelta > 0）→ 返回锚点行缩进
     ///   - 都没找到 → 返回自身缩进
     QString findLogicalLineIndent(const QTextBlock& block) const;
+    
+    /// findLogicalLineIndent 的结果缓存
+    /// key = blockNumber，value = 该 block 对应的逻辑行缩进
+    /// 失效时机：onTextChanged（任何文档变化）
+    /// 说明：blockNumber 在插入/删除后会漂移，但因为在 onTextChanged
+    ///       里全清，不会读到过期条目
+    mutable QHash<int, QString> m_logicalIndentCache;
 
     bool m_formatOnSave = false;
 

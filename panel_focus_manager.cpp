@@ -125,6 +125,31 @@ void PanelFocusManager::installShortcuts()
     install(QKeySequence("Ctrl+Alt+3"),
             [switchBottomTabByType]() { switchBottomTabByType("debug"); });
 
+    // ============================================================
+    //  编辑器标签左右切换
+    //
+    //  作用域：WindowShortcut —— 焦点在主窗口内任意位置都响应
+    //  触发条件：当前焦点在编辑器（由 currentFocusedPanel 判定）
+    //            否则直接忽略，避免在项目面板按 → 结果标签变了
+    // ============================================================
+    auto switchEditorTab = [this](int direction) {
+        // 只在焦点位于编辑器时才处理
+        if (currentFocusedPanel() != Panel::Editor) {
+            return;
+        }
+        if (direction > 0) {
+            m_window->activateNextEditorTab();
+        } else {
+            m_window->activatePreviousEditorTab();
+        }
+    };
+
+    install(QKeySequence("Ctrl+Alt+Right"),
+        [switchEditorTab]() { switchEditorTab(+1); });
+
+    install(QKeySequence("Ctrl+Alt+Left"),
+        [switchEditorTab]() { switchEditorTab(-1); });
+
     qDebug() << "[PanelFocusManager] 快捷键已安装";
 }
 

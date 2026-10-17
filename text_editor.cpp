@@ -3565,40 +3565,77 @@ void TextEditor::rebuildCompletionList()
 
     // ---------- 1. 本地符号（优先级最高） ----------
     {
-        const QString text = toPlainText();
-        const QStringList lines = text.split('\n');
+        // 快路径：把正则拆成"先看关键字 + 再看符号"，避免对每一行都跑正则
+        static const QStringList kDefKeywords = {
+            QStringLiteral("def "),      QStringLiteral("class "),
+            QStringLiteral("function "), QStringLiteral("struct "),
+            QStringLiteral("enum "),     QStringLiteral("interface "),
+        };
 
         static const QRegularExpression reDef(
             R"((?:^|\s)(?:def|class|function|struct|enum|interface)\s+([A-Za-z_][A-Za-z0-9_]*))"
             R"(|(?:^|\s)([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|\(|:))"
             );
 
-        for (const QString& raw : lines) {
-            const QString line = raw.trimmed();
-            if (line.isEmpty() || line.startsWith("//") || line.startsWith("#")) {
-                continue;
+        // 用 block 遍历替代 toPlainText().split('\n')：
+        //   - 避免一次全文档拷贝
+        //   - 避免一次全文档 split
+        // 只扫到光标附近，剩下的靠 LSP 兜底
+        //   —— 本地符号本来就是"当前作用域附近最有用"
+        const int curLine = currentLine();
+        constexpr int kScanBefore = 1000;   // 光标前最多 1000 行
+        constexpr int kScanAfter  = 200;    // 光标后最多 200 行
+        const int startLine = qMax(0, curLine - kScanBefore);
+        const int endLine   = qMin(document()->blockCount() - 1,
+                                   curLine + kScanAfter);
+
+        QTextBlock block = document()->findBlockByNumber(startLine);
+        int lineNo = startLine;
+        while (block.isValid() && lineNo <= endLine) {
+            const QString line = block.text().trimmed();
+
+            if (!line.isEmpty()
+                && !line.startsWith("//")
+                && !line.startsWith('#')) {
+
+                // 快路径：无关键字、且无 = ( : 的行直接跳过
+                bool maybeDef = false;
+                for (const QString& kw : kDefKeywords) {
+                    if (line.contains(kw)) { maybeDef = true; break; }
+                }
+                if (!maybeDef
+                    && !line.contains('=')
+                    && !line.contains('(')
+                    && !line.contains(':')) {
+                    block = block.next();
+                    ++lineNo;
+                    continue;
+                }
+
+                QRegularExpressionMatchIterator it = reDef.globalMatch(line);
+                while (it.hasNext()) {
+                    const auto m = it.next();
+                    QString name = m.captured(1);
+                    if (name.isEmpty()) name = m.captured(2);
+                    if (name.isEmpty()) continue;
+                    if (name.length() < 2) continue;
+
+                    CompletionEntry e;
+                    e.label = name;
+                    e.insertText = name;
+                    e.detail = QStringLiteral("local");
+                    e.kind = "var";
+                    e.sortPriority = 10;
+
+                    const QString key = makeKey(e);
+                    if (seen.contains(key)) continue;
+                    seen.insert(key);
+                    all.append(e);
+                }
             }
 
-            QRegularExpressionMatchIterator it = reDef.globalMatch(line);
-            while (it.hasNext()) {
-                const auto m = it.next();
-                QString name = m.captured(1);
-                if (name.isEmpty()) name = m.captured(2);
-                if (name.isEmpty()) continue;
-                if (name.length() < 2) continue;
-
-                CompletionEntry e;
-                e.label = name;
-                e.insertText = name;
-                e.detail = QStringLiteral("local");
-                e.kind = "var";
-                e.sortPriority = 10;
-
-                const QString key = makeKey(e);
-                if (seen.contains(key)) continue;
-                seen.insert(key);
-                all.append(e);
-            }
+            block = block.next();
+            ++lineNo;
         }
     }
 
@@ -4826,6 +4863,67 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         }
     }
 
+    {
+        int depth = 0;
+        int maxDepth = 0;
+        for (int i = firstIdx; i < lines.size(); ++i) {
+            if (lines[i].trimmed().isEmpty()) continue;
+            depth += bracketDelta(lines[i]);
+            if (depth > maxDepth) maxDepth = depth;
+        }
+
+        if (maxDepth >= 1) {
+            // baseIndent = 首行拼接后实际落入的缩进列（就是 x）
+            const int baseIndent = x;
+
+            QStringList out;
+            out.reserve(lines.size());
+
+            int level = 0;
+            for (int i = 0; i < lines.size(); ++i) {
+                const QString& l = lines[i];
+
+                if (l.trimmed().isEmpty()) {
+                    out.append(QString());
+                    continue;
+                }
+
+                if (i == 0) {
+                    // 首行：去掉前导缩进直接拼在光标后
+                    out.append(l.mid(leadingWhitespace(l).length()));
+                    level += bracketDelta(l);
+                    if (level < 0) level = 0;
+                    continue;
+                }
+
+                const QString tl = l.trimmed();
+                const bool startsWithCloser =
+                    !tl.isEmpty()
+                    && (tl.at(0) == '}' || tl.at(0) == ')' || tl.at(0) == ']');
+
+                const int effLevel = startsWithCloser
+                                         ? qMax(0, level - 1)
+                                         : level;
+
+                const QString indent(baseIndent + effLevel * tabWidth, ' ');
+                out.append(indent + tl);
+
+                level += bracketDelta(l);
+                if (level < 0) level = 0;
+            }
+
+            const QString joined = out.join('\n');
+
+            QTextCursor cursor = textCursor();
+            cursor.beginEditBlock();
+            cursor.insertText(joined);
+            cursor.endEditBlock();
+            setTextCursor(cursor);
+
+            return;   // 走完层级重建路径，跳过原来的 delta 组装
+        }
+    }
+
     // ---- 8. 逐行组装 ----
     QStringList out;
     out.reserve(lines.size());
@@ -5906,113 +6004,82 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
 {
     if (!block.isValid()) return QString();
 
-    const QString text = block.text();
-    const QString selfIndent = leadingWhitespace(text);
-    const int selfIndentWidth = leadingIndentWidth(text);
+    const int bn = block.blockNumber();
+    auto it = m_logicalIndentCache.constFind(bn);
+    if (it != m_logicalIndentCache.constEnd()) {
+        return it.value();
+    }
 
-    // ============================================================
-    //  ✅ v8.5：闭合行特殊处理（**必须放在最前面**）
-    //
-    //  "闭合行" = trimmed 去掉 `}` / `)` / `]` / `;` / `,` / 空白后为空
-    //   例：`}`、`});`、`);`、`]`
-    //
-    //  处理：取本行**最后一个**闭合字符，向前扫描找配对的**开括号**，
-    //       返回开括号所在行的缩进。
-    //
-    //  ⚠️ 为什么必须放最前：
-    //    后面的"上一行缩进相同 → 同级续行"启发式会误判闭合行：
-    //      connect(a, &B::sig,
-    //              this, &B::slot);    ← 上一行缩进也是 12
-    //    会提前返回 selfIndent(12)，而不是配对的 connect 行的 4。
-    //    闭合行有明确的配对目标，优先级高于启发式。
-    // ============================================================
-    if (!text.trimmed().isEmpty()) {
-        QString onlyClosers = text.trimmed();
-        onlyClosers.remove(QRegularExpression(R"([\}\]\);,\s])"));
+    const QString result = [&]() -> QString {
+        const QString text = block.text();
+        const QString selfIndent = leadingWhitespace(text);
+        const int selfIndentWidth = leadingIndentWidth(text);
 
-        if (onlyClosers.isEmpty()) {
+        // ========== 优化 1 之后的闭合行特判 ==========
+        if (m_editorRules.blockStyle == EditorRules::BlockStyle::Brace
+            && !text.trimmed().isEmpty()) {
             const QString t = text.trimmed();
-            QChar lastCloser = QChar::Null;
-            for (int i = t.length() - 1; i >= 0; --i) {
-                const QChar c = t[i];
-                if (c == '}' || c == ')' || c == ']') {
-                    lastCloser = c;
-                    break;
-                }
-            }
+            const bool endsWithComma = t.endsWith(',');
+            const bool hasNetClose = (bracketDelta(t) < 0);
 
-            QChar matchOpen;
-            if      (lastCloser == '}') matchOpen = '{';
-            else if (lastCloser == ')') matchOpen = '(';
-            else if (lastCloser == ']') matchOpen = '[';
-
-            if (!matchOpen.isNull()) {
-                int depth = 1;
-                int pos = block.position() - 1;
-                while (pos >= 0 && depth > 0) {
-                    const QChar c = document()->characterAt(pos);
-                    if      (c == lastCloser) ++depth;
-                    else if (c == matchOpen) {
-                        --depth;
-                        if (depth == 0) {
-                            QTextBlock openBlock = document()->findBlock(pos);
-                            if (openBlock.isValid()) {
-                                return leadingWhitespace(openBlock.text());
-                            }
-                        }
+            if (!endsWithComma && hasNetClose) {
+                constexpr int kMaxScanUp = 200;
+                int scanned = 0;
+                QTextBlock b = block.previous();
+                while (b.isValid() && scanned < kMaxScanUp) {
+                    if (bracketDelta(b.text()) > 0) {
+                        return leadingWhitespace(b.text());
                     }
-                    --pos;
+                    b = b.previous();
+                    ++scanned;
                 }
-            }
-            return selfIndent;
-        }
-    }
-
-    // 空行 / 零缩进 → 自身
-    if (text.trimmed().isEmpty() || selfIndentWidth == 0) {
-        return selfIndent;
-    }
-
-    // ---- 1. 上一行缩进相同 → 同级续行 ----
-    const QTextBlock prevBlock = block.previous();
-    if (prevBlock.isValid()) {
-        const QString pt = prevBlock.text();
-        if (!pt.trimmed().isEmpty()) {
-            const int pWidth = leadingIndentWidth(pt);
-            if (pWidth == selfIndentWidth) {
                 return selfIndent;
             }
         }
-    }
 
-    // ---- 2. 向上找"缩进更浅 + 含未闭合开括号"的锚点行 ----
-    constexpr int kMaxScanUp = 200;
-    int scanned = 0;
-    QTextBlock b = block.previous();
-    while (b.isValid() && scanned < kMaxScanUp) {
-        const QString bt = b.text();
+        // 空行 / 零缩进 → 自身
+        if (text.trimmed().isEmpty() || selfIndentWidth == 0) {
+            return selfIndent;
+        }
 
-        if (bt.trimmed().isEmpty()) {
+        // ---- 同级续行 ----
+        const QTextBlock prevBlock = block.previous();
+        if (prevBlock.isValid()) {
+            const QString pt = prevBlock.text();
+            if (!pt.trimmed().isEmpty()) {
+                const int pWidth = leadingIndentWidth(pt);
+                if (pWidth == selfIndentWidth) {
+                    return selfIndent;
+                }
+            }
+        }
+
+        // ---- 向上找锚点 ----
+        constexpr int kMaxScanUp = 200;
+        int scanned = 0;
+        QTextBlock b = block.previous();
+        while (b.isValid() && scanned < kMaxScanUp) {
+            const QString bt = b.text();
+            if (bt.trimmed().isEmpty()) {
+                b = b.previous();
+                ++scanned;
+                continue;
+            }
+            const int bWidth = leadingIndentWidth(bt);
+            if (bWidth < selfIndentWidth) {
+                if (bracketDelta(bt) > 0) {
+                    return leadingWhitespace(bt);
+                }
+                break;
+            }
             b = b.previous();
             ++scanned;
-            continue;
         }
+        return selfIndent;
+    }();
 
-        const int bWidth = leadingIndentWidth(bt);
-
-        if (bWidth < selfIndentWidth) {
-            if (bracketDelta(bt) > 0) {
-                return leadingWhitespace(bt);
-            }
-            break;
-        }
-
-        b = b.previous();
-        ++scanned;
-    }
-
-    // ---- 3. 找不到锚点 → 用自身缩进 ----
-    return selfIndent;
+    m_logicalIndentCache.insert(bn, result);
+    return result;
 }
 
 // ============================================================================
@@ -6238,6 +6305,9 @@ void TextEditor::onTextChanged()
     if (m_suppressModificationFlag) {
         return;
     }
+
+    // 文档变化 → 逻辑行缩进缓存全部失效
+    m_logicalIndentCache.clear();
 
     if (!document()->isModified()) {
         if (!m_isModified) {

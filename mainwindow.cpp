@@ -2729,6 +2729,37 @@ TextEditor* MainWindow::currentEditor() const
     return qobject_cast<TextEditor*>(d->editorTabs->currentWidget());
 }
 
+void MainWindow::activateNextEditorTab()
+{
+    if (!d || !d->editorTabs) return;
+    const int count = d->editorTabs->count();
+    if (count <= 1) return;
+
+    const int cur = d->editorTabs->currentIndex();
+    const int next = (cur + 1) % count;
+    d->editorTabs->setCurrentIndex(next);
+
+    // 焦点留给编辑器
+    if (auto* ed = currentEditor()) {
+        ed->setFocus();
+    }
+}
+
+void MainWindow::activatePreviousEditorTab()
+{
+    if (!d || !d->editorTabs) return;
+    const int count = d->editorTabs->count();
+    if (count <= 1) return;
+
+    const int cur = d->editorTabs->currentIndex();
+    const int prev = (cur - 1 + count) % count;
+    d->editorTabs->setCurrentIndex(prev);
+
+    if (auto* ed = currentEditor()) {
+        ed->setFocus();
+    }
+}
+
 // ==================== 标签页管理 ====================
 
 void MainWindow::createNewEditorTab(const QString& title)

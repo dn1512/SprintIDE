@@ -84,6 +84,12 @@ public:
 
     TextEditor* currentEditor() const;
 
+    /// 切换到右侧编辑器标签（循环）
+    void activateNextEditorTab();
+
+    /// 切换到左侧编辑器标签（循环）
+    void activatePreviousEditorTab();
+
     bool hasUnsavedChanges() const;
     QString currentFilePath() const;
     QString projectPath() const;
