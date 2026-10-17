@@ -20,6 +20,9 @@
 
 #include "project_config.h"
 #include "git/git_overlay_proxy_model.h"
+#include "external_libs/external_library_types.h"
+#include "project_tree_proxy_model.h"
+#include <QtCore/qfuturewatcher.h>
 
 namespace SprintIDE {
 
@@ -253,6 +256,15 @@ private:
 
     // 记录最近一次右键选中的文件路径（供菜单项回调使用）
     QStringList m_lastSelectedPaths;
+
+    // ========== 外部库 ==========
+    ProjectTreeProxyModel* m_treeProxy = nullptr;
+    QFutureWatcher<QList<ExternalLibraryNode>>* m_extLibWatcher = nullptr;
+
+    // 刷新外部库（异步）
+    void refreshExternalLibraries();
+    // 判断 index 是否是外部库虚拟节点
+    bool isExternalNode(const QModelIndex& index) const;
 };
 
 } // namespace SprintIDE

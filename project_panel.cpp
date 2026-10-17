@@ -27,6 +27,9 @@
 #include <QEvent>
 #include <QDropEvent>
 #include <QShortcut>
+#include <QtConcurrent>
+#include <QApplication>
+#include <QDesktopServices>
 
 #include "python/python_test_runner.h"
 #include "project_manager.h"
@@ -35,6 +38,7 @@
 #include "git/git_diff_dialog.h"
 #include "git/git_file_history_dialog.h"
 #include "theme_manager.h"
+#include "external_libs/external_library_provider_factory.h"
 
 namespace SprintIDE {
 
@@ -180,16 +184,33 @@ bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* 
         m_projectConfig = new ProjectConfig(*config);
     }
 
-    QModelIndex rootIndex = m_fileModel->setRootPath(m_projectPath);
+        QModelIndex rootIndex = m_fileModel->setRootPath(m_projectPath);
     if (!rootIndex.isValid()) {
         qWarning() << "Invalid root index for:" << m_projectPath;
         return false;
     }
 
+    // 通知 treeProxy：哪个 index 是项目根
+    if (m_treeProxy) {
+        QModelIndex midProxy = m_proxyModel->mapFromSource(rootIndex);
+        QModelIndex gitIdx = midProxy.isValid()
+                                 ? m_gitOverlay->mapFromSource(midProxy)
+                                 : QModelIndex();
+        m_treeProxy->setProjectRootSource(gitIdx);
+
+        // 立即设置视图根（不等 directoryLoaded）
+        QModelIndex proxyRoot = m_treeProxy->projectRootIndex();
+        if (proxyRoot.isValid()) {
+            m_fileTreeView->setRootIndex(proxyRoot);
+        }
+    }
+
     connect(m_fileModel, &QFileSystemModel::directoryLoaded,
             this, [this, rootIndex](const QString& loadedPath) {
                 if (loadedPath == m_projectPath) {
-                    QModelIndex proxyRoot = toProxy(rootIndex);
+                    QModelIndex proxyRoot = m_treeProxy
+                                                ? m_treeProxy->projectRootIndex()
+                                                : toProxy(rootIndex);
                     if (proxyRoot.isValid()) {
                         m_fileTreeView->setRootIndex(proxyRoot);
                         m_fileTreeView->expand(proxyRoot);
@@ -199,6 +220,7 @@ bool ProjectPanel::openProject(const QString& projectPath, const ProjectConfig* 
             });
 
     refreshTestTree();
+    refreshExternalLibraries();      // ← 启动外部库扫描（异步）
     m_fileWatcher->addPath(m_projectPath);
     return true;
 }
@@ -207,6 +229,11 @@ void ProjectPanel::closeProject()
 {
     m_fileModel->setRootPath("");
     m_fileTreeView->setRootIndex(QModelIndex());
+
+    if (m_treeProxy) {
+        m_treeProxy->applyExternalLibraries({}, false);
+        m_treeProxy->clearProjectRoot();
+    }
 
     if (m_projectConfig) {
         delete m_projectConfig;
@@ -265,22 +292,64 @@ void ProjectPanel::refresh()
 {
     if (m_projectPath.isEmpty()) return;
 
-    // 记录根路径；清空再设回是让 QFileSystemModel 丢弃内部缓存、
-    // 真正重新扫描文件系统的可靠做法。
     const QString rootPath = m_projectPath;
 
-    m_fileModel->setRootPath(QString());                  // 清空
-    QModelIndex sourceRoot = m_fileModel->setRootPath(rootPath);  // 重新扫描
+    m_fileModel->setRootPath(QString());
+    QModelIndex sourceRoot = m_fileModel->setRootPath(rootPath);
 
-    if (sourceRoot.isValid()) {
-        QModelIndex proxyRoot = toProxy(sourceRoot);
-        if (proxyRoot.isValid()) {
-            m_fileTreeView->setRootIndex(proxyRoot);
-            m_fileTreeView->expand(proxyRoot);            // 展开根
+    if (!sourceRoot.isValid()) return;
+
+    // ---- 异步加载完成后重新建立根 ----
+    //   v8.5 修复：原实现直接 setRootIndex，此时目录内容还没加载完，
+    //   QSortFilterProxyModel 的映射未就绪，setRootIndex 会拿到无效 index，
+    //   导致视图回退到默认根 "/"。
+    //   改为等 directoryLoaded 再 setRootIndex（与 openProject 一致）
+    const QString projectPathAtStart = m_projectPath;
+    QMetaObject::Connection* conn = new QMetaObject::Connection;
+    *conn = connect(m_fileModel, &QFileSystemModel::directoryLoaded,
+                    this, [this, rootPath, projectPathAtStart, conn]
+                    (const QString& loadedPath) {
+                        if (loadedPath != rootPath) return;
+                        // 用户已经切换到别的项目 → 丢弃
+                        if (m_projectPath != projectPathAtStart) {
+                            disconnect(*conn);
+                            delete conn;
+                            return;
+                        }
+
+                        // 重新设置项目根（此时内部映射已就绪）
+                        QModelIndex srcRoot = m_fileModel->index(rootPath);
+                        if (srcRoot.isValid() && m_treeProxy) {
+                            QModelIndex midProxy = m_proxyModel->mapFromSource(srcRoot);
+                            QModelIndex gitIdx = midProxy.isValid()
+                                                     ? m_gitOverlay->mapFromSource(midProxy)
+                                                     : QModelIndex();
+                            m_treeProxy->setProjectRootSource(gitIdx);
+
+                            QModelIndex proxyRoot = m_treeProxy->projectRootIndex();
+                            if (proxyRoot.isValid()) {
+                                m_fileTreeView->setRootIndex(proxyRoot);
+                                m_fileTreeView->expand(proxyRoot);
+                            }
+                        }
+
+                        disconnect(*conn);
+                        delete conn;
+                    });
+
+    // 立即先尝试一次（避免缓存的场景下没有 directoryLoaded 信号）
+    {
+        QModelIndex midProxy = m_proxyModel->mapFromSource(sourceRoot);
+        QModelIndex gitIdx = midProxy.isValid()
+                                 ? m_gitOverlay->mapFromSource(midProxy)
+                                 : QModelIndex();
+        if (m_treeProxy) {
+            m_treeProxy->setProjectRootSource(gitIdx);
         }
     }
 
     refreshTestTree();
+    refreshExternalLibraries();
     qDebug() << "[ProjectPanel] refresh 完成:" << rootPath;
 }
 
@@ -323,7 +392,13 @@ bool ProjectPanel::addNewFile(const QString& parentDir, const QString& fileName,
     }
 
     m_fileModel->setRootPath(parentDir);
-    emit fileCreated(fullPath);
+
+    // v8.5 修复：创建目录时不 emit fileCreated
+    //   MainWindow 收到 fileCreated 会 openFile，目录会触发 "文件打开失败"
+    //   信号语义是"文件创建了"，目录不应触发
+    if (!isDirectory) {
+        emit fileCreated(fullPath);
+    }
 
     QTimer::singleShot(200, [this, fullPath]() {
         QModelIndex idx = m_fileModel->index(fullPath);
@@ -427,7 +502,9 @@ QModelIndex ProjectPanel::toProxy(const QModelIndex& sourceIndex) const
         return QModelIndex();
     }
     QModelIndex mid = m_proxyModel->mapFromSource(sourceIndex);
-    return mid.isValid() ? m_gitOverlay->mapFromSource(mid) : QModelIndex();
+    QModelIndex gitIdx = mid.isValid() ? m_gitOverlay->mapFromSource(mid) : QModelIndex();
+    if (!gitIdx.isValid() || !m_treeProxy) return gitIdx;
+    return m_treeProxy->mapFromSource(gitIdx);
 }
 
 QModelIndex ProjectPanel::toSource(const QModelIndex& proxyIndex) const
@@ -435,7 +512,11 @@ QModelIndex ProjectPanel::toSource(const QModelIndex& proxyIndex) const
     if (!proxyIndex.isValid() || !m_proxyModel || !m_gitOverlay) {
         return QModelIndex();
     }
-    QModelIndex mid = m_gitOverlay->mapToSource(proxyIndex);
+    QModelIndex treeSource = m_treeProxy
+                                 ? m_treeProxy->mapToSource(proxyIndex)
+                                 : proxyIndex;
+    if (!treeSource.isValid()) return QModelIndex();    // 虚拟节点
+    QModelIndex mid = m_gitOverlay->mapToSource(treeSource);
     return mid.isValid() ? m_proxyModel->mapToSource(mid) : QModelIndex();
 }
 
@@ -604,13 +685,17 @@ bool ProjectPanel::handleDrop(QDropEvent* event)
 
     const QModelIndex idx = m_fileTreeView->indexAt(dropPos);
 
+    // 拒绝拖放到外部库虚拟节点
+    if (idx.isValid() && m_treeProxy && m_treeProxy->isExternalIndex(idx)) {
+        return false;
+    }
+
     QString dstDir;
     if (idx.isValid()) {
         const QString path = getFilePath(idx);
         QFileInfo info(path);
         dstDir = info.isDir() ? path : info.absolutePath();
     } else {
-        // 拖到空白区域 → 项目根目录
         dstDir = m_projectPath;
     }
 
@@ -732,6 +817,26 @@ void ProjectPanel::contextMenuEvent(QContextMenuEvent *event)
 {
     QPoint pos = m_fileTreeView->mapFromGlobal(event->globalPos());
     QModelIndex index = m_fileTreeView->indexAt(pos);
+
+    // 外部库节点：简化菜单
+    if (index.isValid() && m_treeProxy && m_treeProxy->isExternalIndex(index)) {
+        const QString path = index.data(Qt::UserRole + 2).toString();
+        QMenu menu(this);
+        if (!path.isEmpty()) {
+            menu.addAction(tr("在文件管理器中显示"), this, [path]() {
+                QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+            });
+            menu.addAction(tr("复制路径"), this, [path]() {
+                QApplication::clipboard()->setText(path);
+            });
+        } else {
+            QAction* info = menu.addAction(tr("外部库"));
+            info->setEnabled(false);
+        }
+        menu.exec(event->globalPos());
+        return;
+    }
+
     if (index.isValid()) {
         m_fileTreeView->setCurrentIndex(index);
         updateContextMenu();
@@ -762,7 +867,26 @@ void ProjectPanel::onFileTreeSelectionChanged(const QItemSelection &selected, co
 
 void ProjectPanel::onFileTreeDoubleClicked(const QModelIndex &index)
 {
-    if (index.isValid() && isFile(index))
+    if (!index.isValid()) return;
+
+    // 外部库节点
+    if (m_treeProxy && m_treeProxy->isExternalIndex(index)) {
+        if (m_treeProxy->isExternalRoot(index)) {
+            m_fileTreeView->setExpanded(index, !m_fileTreeView->isExpanded(index));
+            return;
+        }
+        const int kind = index.data(Qt::UserRole + 1).toInt();
+        const QString path = index.data(Qt::UserRole + 2).toString();
+        if (kind == static_cast<int>(ExternalLibraryNode::Kind::File)
+            && !path.isEmpty()) {
+            emit fileOpenRequested(path);
+        } else {
+            m_fileTreeView->setExpanded(index, !m_fileTreeView->isExpanded(index));
+        }
+        return;
+    }
+
+    if (isFile(index))
         emit fileOpenRequested(getFilePath(index));
 }
 
@@ -969,7 +1093,12 @@ void ProjectPanel::createFileTree()
     m_gitOverlay->setFileSystemModel(m_fileModel);
     m_gitOverlay->setIntermediateProxy(m_proxyModel);
 
-    m_fileTreeView->setModel(m_gitOverlay);
+    // ============================================================
+    //  再包一层：在项目根子行末尾追加"外部库"虚拟节点
+    // ============================================================
+    m_treeProxy = new ProjectTreeProxyModel(this);
+    m_treeProxy->setSourceModel(m_gitOverlay);
+    m_fileTreeView->setModel(m_treeProxy);
 
     // 显式触发一次按第 0 列升序排序
     //   - 表头隐藏时 QTreeView 不会自动排序，必须手动调用
@@ -1305,6 +1434,18 @@ void ProjectPanel::updateGitSubMenuState()
 bool ProjectPanel::isDirectory(const QModelIndex &index) const
 {
     if (!index.isValid()) return false;
+
+    // 外部库虚拟节点：Root / Group / Package 视作可展开的"目录"
+    if (m_treeProxy && m_treeProxy->isExternalIndex(index)) {
+        if (m_treeProxy->isExternalRoot(index)) return true;
+        const int kind = index.data(Qt::UserRole + 1).toInt();
+        if (kind == static_cast<int>(ExternalLibraryNode::Kind::File)
+            || kind == static_cast<int>(ExternalLibraryNode::Kind::Opaque)) {
+            return false;
+        }
+        return true;
+    }
+
     QModelIndex src = toSource(index);
     return m_fileModel->isDir(src);
 }
@@ -1472,7 +1613,6 @@ void ProjectPanel::focusPanel()
     QTreeView* tree = getFileTreeView();
     if (!tree) return;
 
-    // 若当前无选中项 → 自动选第一行，用户直接能用上下键浏览
     if (!tree->currentIndex().isValid()) {
         QAbstractItemModel* model = tree->model();
         if (model && model->rowCount() > 0) {
@@ -1481,6 +1621,63 @@ void ProjectPanel::focusPanel()
     }
 
     tree->setFocus();
+}
+
+// ============================================================
+//  外部库
+// ============================================================
+
+bool ProjectPanel::isExternalNode(const QModelIndex& index) const
+{
+    return m_treeProxy && m_treeProxy->isExternalIndex(index);
+}
+
+void ProjectPanel::refreshExternalLibraries()
+{
+    if (!m_treeProxy) return;
+
+    // 空项目或未识别语言 → 隐藏外部库节点
+    if (m_projectPath.isEmpty()) {
+        m_treeProxy->applyExternalLibraries({}, false);
+        return;
+    }
+
+    auto provider = ExternalLibraryProviderFactory::forProject(m_projectPath);
+    if (!provider) {
+        m_treeProxy->applyExternalLibraries({}, false);
+        return;
+    }
+
+    if (!m_extLibWatcher) {
+        m_extLibWatcher = new QFutureWatcher<QList<ExternalLibraryNode>>(this);
+    }
+
+    // 每次调用重新连接（防止前一次的 lambda 残留）
+    disconnect(m_extLibWatcher, nullptr, this, nullptr);
+
+    const QString projectPathAtStart = m_projectPath;
+
+    connect(m_extLibWatcher,
+            &QFutureWatcher<QList<ExternalLibraryNode>>::finished,
+            this, [this, projectPathAtStart]() {
+        if (!m_treeProxy || !m_extLibWatcher) return;
+        // 项目切换后结果过期 → 丢弃
+        if (m_projectPath != projectPathAtStart) return;
+
+        const auto roots = m_extLibWatcher->result();
+        m_treeProxy->applyExternalLibraries(roots, !roots.isEmpty());
+
+        qDebug() << "[ProjectPanel] 外部库刷新完成，根节点数:" << roots.size();
+    });
+
+    // 异步执行（Provider 可能跑 cargo/go 子进程，不能阻塞 UI）
+    IExternalLibraryProvider* raw = provider.release();
+    m_extLibWatcher->setFuture(QtConcurrent::run(
+        [raw, projectPathAtStart]() -> QList<ExternalLibraryNode> {
+            QList<ExternalLibraryNode> result = raw->collect(projectPathAtStart);
+            delete raw;
+            return result;
+        }));
 }
 
 } // namespace SprintIDE

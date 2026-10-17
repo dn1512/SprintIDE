@@ -4722,8 +4722,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         return;
     }
 
-    // ---- 1. 走基类处理"非纯文本"与"有选区"两种场景 ----
-    if (!source->hasText() || textCursor().hasSelection()) {
+    if (!source->hasText()) {
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
@@ -4732,6 +4731,32 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     if (raw.isEmpty()) {
         QPlainTextEdit::insertFromMimeData(source);
         return;
+    }
+
+    int savedBaseIndent = -1;    // -1 = 无选区 / 走基类
+    int savedStartCol   = 0;
+    {
+        QTextCursor selCur = textCursor();
+        if (selCur.hasSelection()) {
+            const int selStart = selCur.selectionStart();
+            QTextBlock selBlock = document()->findBlock(selStart);
+            if (!selBlock.isValid()) {
+                QPlainTextEdit::insertFromMimeData(source);
+                return;
+            }
+            const int startCol    = selStart - selBlock.position();
+            const int startIndent = leadingIndentWidth(selBlock.text());
+            if (startCol > startIndent) {
+                // 局部替换 → 基类原样替换
+                QPlainTextEdit::insertFromMimeData(source);
+                return;
+            }
+            savedBaseIndent = startIndent;
+            savedStartCol   = startCol;
+            // 删除选区，光标落 selStart（选区起点）
+            selCur.removeSelectedText();
+            setTextCursor(selCur);
+        }
     }
 
     // ---- 2. 切行 ----
@@ -4809,10 +4834,18 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     const QTextBlock curBlock = cur.block();
     const int cursorCol = cur.positionInBlock();
     const int indentCol = leadingIndentWidth(curBlock.text());
-    const int x = qMin(cursorCol, indentCol);
+
+    // v8.5：有选区时用"原选区首行缩进"作为基准；
+    //       无选区时保持原逻辑 min(cursorCol, indentCol)
+    int x;
+    if (savedBaseIndent >= 0) {
+        x = savedBaseIndent;
+    } else {
+        x = qMin(cursorCol, indentCol);
+    }
 
     // ---- 5. 拼接后的完整第一行（用于判断"是否开启块"） ----
-    //  ⚠️ 用 lines[0]（剪贴板真正的第一行），不是 lines[firstIdx]：
+    //   用 lines[0]（剪贴板真正的第一行），保持原始语义
     const QString beforeCursor = curBlock.text().left(cursorCol);
     const QString firstClipLine = lines.isEmpty() ? QString() : lines[0];
     const QString combinedLine = beforeCursor.trimmed() + firstClipLine.trimmed();
@@ -4894,8 +4927,13 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
                 }
 
                 if (i == 0) {
-                    // 首行：去掉前导缩进直接拼在光标后
-                    out.append(l.mid(leadingWhitespace(l).length()));
+                    if (savedBaseIndent >= 0) {
+                        const int extra = qMax(0, savedBaseIndent - savedStartCol);
+                        out.append(QString(extra, ' ')
+                            + l.mid(leadingWhitespace(l).length()));
+                    } else {
+                        out.append(l.mid(leadingWhitespace(l).length()));
+                    }
                     level += bracketDelta(l);
                     if (level < 0) level = 0;
                     continue;
@@ -4940,11 +4978,19 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             continue;
         }
 
-        if (i == 0) {
-            // 剪贴板第一行（非空）：去掉前导缩进，接在光标后
-            out.append(l.mid(leadingWhitespace(l).length()));
+        if (i == firstIdx) {
+            // 剪贴板第 0 行（非空，空行已在上面 continue 掉了）
+            if (savedBaseIndent >= 0) {
+                // 有选区：补足缩进到原选区首行缩进
+                const int extra = qMax(0, savedBaseIndent - savedStartCol);
+                out.append(QString(extra, ' ')
+                    + l.mid(leadingWhitespace(l).length()));
+            } else {
+                // 无选区（原始行为）：去缩进拼到光标后
+                out.append(l.mid(leadingWhitespace(l).length()));
+            }
         } else {
-            // 第二行到最后：按 delta 平移
+            // 后续行：按 delta 平移（保持原逻辑）
             if (delta >= 0) {
                 out.append(stripIndentByWidth(l, delta));
             } else {

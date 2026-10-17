@@ -679,6 +679,22 @@ add_executable(${PROJECT_NAME}
     ai/executor/system_executor.cpp
     ai/policy/policy_engine.h
     ai/policy/policy_engine.cpp
+    external_libs/external_library_types.h
+    external_libs/external_library_provider.h
+    external_libs/external_library_provider_factory.h
+    external_libs/external_library_provider_factory.cpp
+    external_libs/providers/python_external_library_provider.h
+    external_libs/providers/python_external_library_provider.cpp
+    external_libs/providers/rust_external_library_provider.h
+    external_libs/providers/rust_external_library_provider.cpp
+    external_libs/providers/go_external_library_provider.h
+    external_libs/providers/go_external_library_provider.cpp
+    external_libs/providers/node_external_library_provider.h
+    external_libs/providers/node_external_library_provider.cpp
+    external_libs/providers/cpp_external_library_provider.h
+    external_libs/providers/cpp_external_library_provider.cpp
+    project_tree_proxy_model.h
+    project_tree_proxy_model.cpp
 )
 
 # ============================================================
