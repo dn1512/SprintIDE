@@ -299,54 +299,52 @@ void ProjectPanel::refresh()
 
     if (!sourceRoot.isValid()) return;
 
-    // ---- 异步加载完成后重新建立根 ----
-    //   v8.5 修复：原实现直接 setRootIndex，此时目录内容还没加载完，
-    //   QSortFilterProxyModel 的映射未就绪，setRootIndex 会拿到无效 index，
-    //   导致视图回退到默认根 "/"。
-    //   改为等 directoryLoaded 再 setRootIndex（与 openProject 一致）
+    // ============================================================
+    //  v8.5 修复：
+    //    1. 提取公共 lambda，保证"立即尝试"和"directoryLoaded 后"都完整
+    //       setProjectRootSource + setRootIndex，不再只设一半
+    //    2. refreshExternalLibraries 完成后再调一次，因为它的
+    //       applyExternalLibraries 可能触发 beginResetModel 让 rootIndex 失效
+    // ============================================================
+    auto rebindAndSetRoot = [this, rootPath]() -> bool {
+        if (!m_treeProxy) return false;
+
+        QModelIndex srcRoot = m_fileModel->index(rootPath);
+        if (!srcRoot.isValid()) return false;
+
+        QModelIndex midProxy = m_proxyModel->mapFromSource(srcRoot);
+        QModelIndex gitIdx = midProxy.isValid()
+        ? m_gitOverlay->mapFromSource(midProxy)
+        : QModelIndex();
+        m_treeProxy->setProjectRootSource(gitIdx);
+
+        QModelIndex proxyRoot = m_treeProxy->projectRootIndex();
+        if (!proxyRoot.isValid()) return false;
+
+        m_fileTreeView->setRootIndex(proxyRoot);
+        m_fileTreeView->expand(proxyRoot);
+        return true;
+    };
+
+    // 1) 立即尝试一次（覆盖"目录已缓存，directoryLoaded 不再触发"的情况）
+    rebindAndSetRoot();
+
+    // 2) directoryLoaded 后重试一次（覆盖"目录首次加载"的情况）
     const QString projectPathAtStart = m_projectPath;
     QMetaObject::Connection* conn = new QMetaObject::Connection;
     *conn = connect(m_fileModel, &QFileSystemModel::directoryLoaded,
-                    this, [this, rootPath, projectPathAtStart, conn]
-                    (const QString& loadedPath) {
-                        if (loadedPath != rootPath) return;
-                        // 用户已经切换到别的项目 → 丢弃
-                        if (m_projectPath != projectPathAtStart) {
-                            disconnect(*conn);
-                            delete conn;
-                            return;
-                        }
-
-                        // 重新设置项目根（此时内部映射已就绪）
-                        QModelIndex srcRoot = m_fileModel->index(rootPath);
-                        if (srcRoot.isValid() && m_treeProxy) {
-                            QModelIndex midProxy = m_proxyModel->mapFromSource(srcRoot);
-                            QModelIndex gitIdx = midProxy.isValid()
-                                                     ? m_gitOverlay->mapFromSource(midProxy)
-                                                     : QModelIndex();
-                            m_treeProxy->setProjectRootSource(gitIdx);
-
-                            QModelIndex proxyRoot = m_treeProxy->projectRootIndex();
-                            if (proxyRoot.isValid()) {
-                                m_fileTreeView->setRootIndex(proxyRoot);
-                                m_fileTreeView->expand(proxyRoot);
-                            }
-                        }
-
-                        disconnect(*conn);
-                        delete conn;
-                    });
-
-    // 立即先尝试一次（避免缓存的场景下没有 directoryLoaded 信号）
-    {
-        QModelIndex midProxy = m_proxyModel->mapFromSource(sourceRoot);
-        QModelIndex gitIdx = midProxy.isValid()
-                                 ? m_gitOverlay->mapFromSource(midProxy)
-                                 : QModelIndex();
-        if (m_treeProxy) {
-            m_treeProxy->setProjectRootSource(gitIdx);
-        }
-    }
+        this, [this, rootPath, projectPathAtStart, conn, rebindAndSetRoot]
+        (const QString& loadedPath) {
+            if (loadedPath != rootPath) return;
+            if (m_projectPath != projectPathAtStart) {
+                disconnect(*conn);
+                delete conn;
+                return;
+            }
+            rebindAndSetRoot();
+            disconnect(*conn);
+            delete conn;
+        });
 
     refreshTestTree();
     refreshExternalLibraries();
@@ -1658,17 +1656,25 @@ void ProjectPanel::refreshExternalLibraries()
     const QString projectPathAtStart = m_projectPath;
 
     connect(m_extLibWatcher,
-            &QFutureWatcher<QList<ExternalLibraryNode>>::finished,
-            this, [this, projectPathAtStart]() {
-        if (!m_treeProxy || !m_extLibWatcher) return;
-        // 项目切换后结果过期 → 丢弃
-        if (m_projectPath != projectPathAtStart) return;
+        &QFutureWatcher<QList<ExternalLibraryNode>>::finished,
+        this, [this, projectPathAtStart]() {
+            if (!m_treeProxy || !m_extLibWatcher) return;
+            // 项目切换后结果过期 → 丢弃
+            if (m_projectPath != projectPathAtStart) return;
 
-        const auto roots = m_extLibWatcher->result();
-        m_treeProxy->applyExternalLibraries(roots, !roots.isEmpty());
+            const auto roots = m_extLibWatcher->result();
+            m_treeProxy->applyExternalLibraries(roots, !roots.isEmpty());
 
-        qDebug() << "[ProjectPanel] 外部库刷新完成，根节点数:" << roots.size();
-    });
+            // v8.5：applyExternalLibraries 可能触发 beginResetModel，
+            //       让 view 持有的 rootIndex 失效，退回到默认根 /。
+            //       这里重新 setRootIndex 强制恢复。
+            QModelIndex proxyRoot = m_treeProxy->projectRootIndex();
+            if (proxyRoot.isValid()) {
+                m_fileTreeView->setRootIndex(proxyRoot);
+            }
+
+            qDebug() << "[ProjectPanel] 外部库刷新完成，根节点数:" << roots.size();
+        });
 
     // 异步执行（Provider 可能跑 cargo/go 子进程，不能阻塞 UI）
     IExternalLibraryProvider* raw = provider.release();

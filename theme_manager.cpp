@@ -106,6 +106,13 @@ static const ElementNameEntry kElementNames[] = {
     { UIElement::GitOperationBannerText,       "GitOperationBannerText"       },
     { UIElement::SearchMatchBackground,        "SearchMatchBackground"        },
     { UIElement::SearchCurrentMatchBackground, "SearchCurrentMatchBackground" },
+
+    // ---- 面包屑 / 大纲 ----
+    { UIElement::BreadcrumbBarBackground,      "BreadcrumbBarBackground"      },
+    { UIElement::OutlineOverlayBackground,     "OutlineOverlayBackground"     },
+    { UIElement::OutlineOverlayBorder,         "OutlineOverlayBorder"         },
+    { UIElement::OutlineOverlayDivider,        "OutlineOverlayDivider"        },
+    { UIElement::OutlineOverlaySectionTitle, "OutlineOverlaySectionTitle" },
     };
 
 static QString elementToKey(UIElement e)
@@ -217,6 +224,12 @@ public:
         colors[UIElement::SearchMatchBackground]        = QColor(235, 182, 91, 100);   // WarningColor @ 40%
         // 当前匹配：琥珀 60% alpha + 稍亮，一眼看出"当前在哪"
         colors[UIElement::SearchCurrentMatchBackground] = QColor(235, 182, 91, 180);   // WarningColor @ 70%
+
+        colors[UIElement::BreadcrumbBarBackground]  = QColor("#1E242C");   // 比编辑器浅一档
+        colors[UIElement::OutlineOverlayBackground] = QColor("#212730");   // 与工具窗同色
+        colors[UIElement::OutlineOverlayBorder]     = QColor("#3A4556");   // 略比边框亮，浮层更清晰
+        colors[UIElement::OutlineOverlayDivider]    = QColor("#2F3848");
+        colors[UIElement::OutlineOverlaySectionTitle] = QColor("#9AA7BB");
     }
 
     // ------------------------------------------------------------
@@ -354,6 +367,12 @@ public:
         colors[UIElement::SearchMatchBackground]        = QColor(255, 235, 120, 140);
         // 当前匹配：深一点的黄，白底上清晰
         colors[UIElement::SearchCurrentMatchBackground] = QColor(255, 200, 50, 200);
+
+        colors[UIElement::BreadcrumbBarBackground]  = QColor("#E5EFEE");   // 编辑器 + 行号同色
+        colors[UIElement::OutlineOverlayBackground] = QColor("#F1F7F6");   // 与编辑器同色
+        colors[UIElement::OutlineOverlayBorder]     = QColor("#8FA09D");   // 比普通边框深，浮层更清晰
+        colors[UIElement::OutlineOverlayDivider]    = QColor("#AEC0BE");
+        colors[UIElement::OutlineOverlaySectionTitle] = QColor("#3F504C");
     }
 };
 

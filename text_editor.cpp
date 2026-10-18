@@ -438,6 +438,45 @@ void TextEditor::initEditor()
     m_highlighter = new LanguageHighlighter(document());
     m_highlighter->setTheme(ThemeManager::instance().isDarkTheme());
 
+    // ============================================================
+    //  面包屑 + 大纲控制器
+    // ============================================================
+    m_breadcrumbBar = new BreadcrumbBar(this);
+    m_breadcrumbBar->setVisible(m_showBreadcrumb);
+
+    m_outlineController = new OutlineController(this, this);
+    connect(m_outlineController, &OutlineController::symbolsChanged,
+        this, [this]() {
+            if (m_breadcrumbBar) {
+                m_breadcrumbBar->setSymbols(m_outlineController->symbols());
+            }
+        });
+
+    // 光标移动 → 更新面包屑
+    connect(this, &TextEditor::cursorPositionChanged, this,
+        [this](int line, int /*column*/) {
+            if (m_breadcrumbBar && m_showBreadcrumb) {
+                m_breadcrumbBar->updateCurrentLine(line);
+            }
+        });
+
+    // 面包屑点击 → 跳转
+    connect(m_breadcrumbBar, &BreadcrumbBar::symbolJumpRequested,
+        this, [this](int line) {
+            gotoLine(line);
+            setFocus();
+        });
+
+    // ============================================================
+    //  大纲浮层：Ctrl/Cmd + ` 呼出
+    // ============================================================
+    m_outlineOverlay = new OutlineOverlay(this);
+    connect(m_outlineOverlay, &OutlineOverlay::symbolActivated,
+        this, [this](int line) {
+            gotoLine(line);
+            setFocus();
+        });
+
     // 上下文菜单
     createContextMenu();
 
@@ -854,6 +893,14 @@ bool TextEditor::loadFile(const QString &filePath)
     // 加载文本
     setPlainText(content);
     m_filePath = filePath;
+
+    // 面包屑：更新文件名 + 立即扫一次大纲
+    if (m_breadcrumbBar) {
+        m_breadcrumbBar->setFileDisplayName(QFileInfo(filePath).fileName());
+    }
+    if (m_outlineController) {
+        m_outlineController->refreshNow();
+    }
 
     // 应用行距
     applyLineHeight();
@@ -2434,6 +2481,10 @@ void TextEditor::onToggleWholeWord(bool checked)
 
 void TextEditor::mousePressEvent(QMouseEvent* event)
 {
+    // 点击编辑器 → 关闭大纲浮层
+    if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
+        m_outlineOverlay->hideOverlay();
+    }
     // 处理 Ctrl+左键（macOS 上为 Cmd+左键）
     if (event->button() == Qt::LeftButton &&
         (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) {
@@ -2662,9 +2713,13 @@ bool TextEditor::viewportEvent(QEvent *event)
 void TextEditor::focusOutEvent(QFocusEvent* event)
 {
     closeCompletion();
-    // 调用基类处理
+    // v8.5：大纲浮层的关闭统一由 OutlineOverlay::focusChanged 和
+    //       TextEditor::mousePressEvent 处理，这里不再关闭。
+    //       原因：用户点击浮层 item 时 TextEditor 会先失焦，
+    //             若这里直接 hide，浮层在 itemClicked 触发前就关了。
     QPlainTextEdit::focusOutEvent(event);
 }
+
 
 // ============================================================================
 //  在滚动条上叠加错误/警告/断点标记
@@ -3187,6 +3242,58 @@ int TextEditor::lineCount() const
 
 void TextEditor::keyPressEvent(QKeyEvent *event)
 {
+    const bool hasModifier =
+    (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier));
+
+    if (event->key() == Qt::Key_QuoteLeft
+        && hasModifier
+        && !event->isAutoRepeat()) {
+
+        if (m_completionActive) closeCompletion();
+
+        if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
+            // 已显示 → 关闭
+            m_outlineOverlay->hideOverlay();
+        } else if (m_outlineOverlay && m_outlineController
+            && document()->characterCount() <= 500000) {
+            // 未显示 → 打开
+            m_outlineOverlay->setSymbols(m_outlineController->symbols());
+            const QRect cr = cursorRect();
+            const QPoint globalPos = viewport()->mapToGlobal(cr.bottomLeft());
+            m_outlineOverlay->showAt(globalPos);
+        }
+        return;
+    }
+
+    // 浮层显示中：键盘导航转发
+    if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
+        switch (event->key()) {
+            case Qt::Key_Up:
+            m_outlineOverlay->selectPrev();
+            return;
+            case Qt::Key_Down:
+            m_outlineOverlay->selectNext();
+            return;
+            case Qt::Key_Left:
+            m_outlineOverlay->focusLeft();
+            return;
+            case Qt::Key_Right:
+            m_outlineOverlay->focusRight();
+            return;
+            case Qt::Key_Return:
+            case Qt::Key_Enter:
+            m_outlineOverlay->activateCurrent();
+            return;
+            case Qt::Key_Escape:
+            m_outlineOverlay->hideOverlay();
+            return;
+            default:
+            // 其他字符键：关浮层，正常输入
+            m_outlineOverlay->hideOverlay();
+            break;
+        }
+    }
+
     // ---- 0. Cmd/Ctrl 高亮（原样保留） ----
     if ((event->key() == Qt::Key_Meta || event->key() == Qt::Key_Control)
         && !m_ctrlHeldForDefinition) {
@@ -6253,11 +6360,21 @@ void TextEditor::resizeEvent(QResizeEvent *event)
 {
     QPlainTextEdit::resizeEvent(event);
 
+    const int barHeight = (m_showBreadcrumb && m_breadcrumbBar)
+    ? m_breadcrumbBar->height() : 0;
+
+    // 面包屑：横跨整个编辑器顶部
+    if (m_breadcrumbBar && m_showBreadcrumb) {
+        m_breadcrumbBar->setGeometry(QRect(0, 0, width(), barHeight));
+    }
+
+    // 行号区：下移 barHeight
     if (m_showLineNumbers) {
         QRect cr = contentsRect();
-        m_lineNumberArea->setGeometry(QRect(cr.left(), cr.top(),
-                                            lineNumberAreaWidth(), cr.height()));
-        // qDebug() << "LineNumberArea geometry:" << m_lineNumberArea->geometry();
+        m_lineNumberArea->setGeometry(QRect(cr.left(),
+                cr.top() + barHeight,
+                lineNumberAreaWidth(),
+                cr.height() - barHeight));
     }
 
     if (m_findBar && m_findBarVisible) {
@@ -6290,11 +6407,10 @@ void TextEditor::updateLineNumberAreaWidth()
     // 析构期间可能被回调，加防御
     if (!m_lineNumberArea) return;
 
-    if (m_showLineNumbers) {
-        setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
-    } else {
-        setViewportMargins(0, 0, 0, 0);
-    }
+    const int left  = m_showLineNumbers ? lineNumberAreaWidth() : 0;
+    const int top   = (m_showBreadcrumb && m_breadcrumbBar && m_breadcrumbBar->isVisible())
+                          ? m_breadcrumbBar->height() : 0;
+    setViewportMargins(left, top, 0, 0);
 }
 
 void TextEditor::highlightCurrentLine()
@@ -6604,6 +6720,35 @@ void TextEditor::indentSelection(bool increase)
     }
 
     cursor.endEditBlock();
+}
+
+void TextEditor::setShowBreadcrumb(bool show)
+{
+    if (m_showBreadcrumb == show) return;
+    m_showBreadcrumb = show;
+
+    if (m_breadcrumbBar) {
+        m_breadcrumbBar->setVisible(show);
+    }
+    updateLineNumberAreaWidth();
+    resizeEvent(nullptr);   // 触发几何重算
+}
+
+void TextEditor::toggleOutlineOverlay()
+{
+    if (!m_outlineOverlay || !m_outlineController) return;
+
+    if (m_outlineOverlay->isVisible()) {
+        m_outlineOverlay->hideOverlay();
+        return;
+    }
+
+    if (document()->characterCount() > 500000) return;
+
+    m_outlineOverlay->setSymbols(m_outlineController->symbols());
+    const QRect cr = cursorRect();
+    const QPoint globalPos = viewport()->mapToGlobal(cr.bottomLeft());
+    m_outlineOverlay->showAt(globalPos);
 }
 
 }

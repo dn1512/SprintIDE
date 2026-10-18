@@ -91,6 +91,13 @@ public:
         // 查找高亮（普通匹配 / 当前匹配）
         SearchMatchBackground,
         SearchCurrentMatchBackground,
+
+        // ---- 面包屑 / 大纲 ----
+        BreadcrumbBarBackground,    // 面包屑栏背景（比编辑器深一档，区分感）
+        OutlineOverlayBackground,   // 大纲浮层背景（半透明遮罩下的实际底色）
+        OutlineOverlayBorder,       // 浮层边框
+        OutlineOverlayDivider,      // 左右分栏分割线
+        OutlineOverlaySectionTitle,   // 分栏标题文字（比 SecondaryTextColor 稍亮）
     };
 
     static ThemeManager& instance();

@@ -1340,6 +1340,16 @@ void MainWindow::setupMenuBar()
     registerShortcut(QStringLiteral("view.projectPanel"), tr("项目面板"), toggleProjectPanelAction);
     m_toggleProjectPanelAction = toggleProjectPanelAction;
 
+    // ---------- 代码大纲 ----------
+    QAction* outlineAction = viewMenu->addAction(tr("代码大纲(&O)..."));
+    outlineAction->setStatusTip(
+        tr("显示当前文件的属性和方法（按住 Ctrl+` 显示，松开关闭）"));
+    connect(outlineAction, &QAction::triggered, this, [this]() {
+            TextEditor* editor = currentEditor();
+            if (!editor) return;
+            editor->toggleOutlineOverlay();
+        });
+
     QAction* resetLayoutAction = viewMenu->addAction(tr("重置窗口布局"));
     resetLayoutAction->setStatusTip(tr("恢复窗口到默认大小、位置和面板布局"));
     connect(resetLayoutAction, &QAction::triggered, this, [this]() {

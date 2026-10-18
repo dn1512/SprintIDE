@@ -478,6 +478,28 @@ set(COMPLETION_HEADERS
     editor/completion_delegate.h
 )
 
+set(OUTLINE_SOURCES
+    outline/breadcrumb_bar.cpp
+    outline/cpp_outline_provider.cpp
+    outline/outline_controller.cpp
+    outline/outline_provider_factory.cpp
+    outline/python_outline_provider.cpp
+    outline/outline_item_delegate.cpp
+    outline/outline_overlay.cpp
+)
+
+set(OUTLINE_HEADERS
+    outline/breadcrumb_bar.h
+    outline/cpp_outline_provider.h
+    outline/outline_controller.h
+    outline/outline_provider.h
+    outline/outline_provider_factory.h
+    outline/outline_types.h
+    outline/python_outline_provider.h
+    outline/outline_item_delegate.h
+    outline/outline_overlay.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME}
     ${ALL_SOURCES}
@@ -695,6 +717,22 @@ add_executable(${PROJECT_NAME}
     external_libs/providers/cpp_external_library_provider.cpp
     project_tree_proxy_model.h
     project_tree_proxy_model.cpp
+    outline/breadcrumb_bar.h
+    outline/breadcrumb_bar.cpp
+    outline/cpp_outline_provider.h
+    outline/cpp_outline_provider.cpp
+    outline/outline_controller.h
+    outline/outline_controller.cpp
+    outline/outline_provider.h
+    outline/outline_provider_factory.h
+    outline/outline_provider_factory.cpp
+    outline/outline_types.h
+    outline/python_outline_provider.h
+    outline/python_outline_provider.cpp
+    outline/outline_item_delegate.h
+    outline/outline_item_delegate.cpp
+    outline/outline_overlay.h
+    outline/outline_overlay.cpp
 )
 
 # ============================================================

@@ -45,10 +45,9 @@ void CompletionModel::setEntries(const QList<CompletionEntry>& entries)
 
     // 如果有前缀，做一次过滤
     if (!m_prefix.isEmpty()) {
-        QString lowerPrefix = m_prefix.toLower();
         m_filteredRows.clear();
         for (int i = 0; i < m_allEntries.size(); ++i) {
-            if (m_allEntries[i].label.toLower().startsWith(lowerPrefix)) {
+            if (m_allEntries[i].label.startsWith(m_prefix)) {
                 m_filteredRows.append(i);
             }
         }
@@ -77,15 +76,13 @@ void CompletionModel::setFilterPrefix(const QString& prefix)
             m_filteredRows.append(i);
         }
     } else {
-        const QString lowerPrefix = prefix.toLower();
         for (int i = 0; i < m_allEntries.size(); ++i) {
             const QString& label = m_allEntries[i].label;
 
-            // 1) 大小写不敏感前缀匹配
-            if (!label.toLower().startsWith(lowerPrefix)) continue;
+            // 1) 大小写敏感前缀匹配（v8.5 改：输入 "foo" 不再匹配 "Foo"）
+            if (!label.startsWith(prefix)) continue;
 
-            // 2) 完全等于输入内容时排除（大小写敏感）
-            //    避免"输入完 print 后列表还显示 print"
+            // 2) 完全等于输入内容时排除
             if (label == prefix) continue;
 
             m_filteredRows.append(i);

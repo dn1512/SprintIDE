@@ -32,6 +32,10 @@
 #include "language/editor_rules.h"
 #include "editor/completion_model.h"
 #include "editor/completion_popup.h"
+#include "outline/outline_types.h"
+#include "outline/breadcrumb_bar.h"
+#include "outline/outline_controller.h"
+#include "outline/outline_overlay.h"
 
 
 namespace SprintIDE {
@@ -325,6 +329,14 @@ public:
     QDateTime lastSaveTime() const { return m_lastSaveTime; }
     void setLastSaveTime(const QDateTime& t) { m_lastSaveTime = t; }
 
+    // ========== 面包屑 / 大纲 ==========
+    void setShowBreadcrumb(bool show);
+    bool isBreadcrumbVisible() const { return m_showBreadcrumb; }
+    OutlineController* outlineController() const { return m_outlineController; }
+
+    /// 菜单项触发的"切换显示"（因为菜单没有 press/release，用 toggle 语义）
+    void toggleOutlineOverlay();
+
 signals:
     void modificationChanged(bool modified);
     void cursorPositionChanged(int line, int column);
@@ -518,6 +530,15 @@ private:
     int m_tabWidth;
 
     LineNumberArea *m_lineNumberArea;
+
+    // ========== 面包屑 / 大纲 ==========
+    BreadcrumbBar*       m_breadcrumbBar       = nullptr;
+    OutlineController*   m_outlineController   = nullptr;
+    bool                 m_showBreadcrumb      = true;
+
+    // ========== 大纲浮层（Ctrl/Cmd + ` 按住呼出）==========
+    OutlineOverlay* m_outlineOverlay     = nullptr;
+
     // SyntaxHighlighter *m_highlighter;
     LanguageHighlighter *m_highlighter = nullptr;
     QMenu *m_contextMenu;
@@ -669,7 +690,7 @@ private:
     ///   - 向上找缩进更浅的"锚点行"（bracketDelta > 0）→ 返回锚点行缩进
     ///   - 都没找到 → 返回自身缩进
     QString findLogicalLineIndent(const QTextBlock& block) const;
-    
+
     /// findLogicalLineIndent 的结果缓存
     /// key = blockNumber，value = 该 block 对应的逻辑行缩进
     /// 失效时机：onTextChanged（任何文档变化）
