@@ -415,6 +415,7 @@ protected:
 
 private slots:
     void updateLineNumberAreaWidth();
+    void relayout();
     void highlightCurrentLine();
     void updateLineNumberArea(const QRect &rect, int dy);
     void onCursorPositionChanged();

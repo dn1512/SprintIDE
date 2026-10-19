@@ -8,8 +8,8 @@
 #include <QPlainTextEdit>
 #include "settings_dialog.h"   // SettingsPage 基类
 
+class QScrollArea;
 namespace SprintIDE {
-
 /**
  * @brief 编辑器设置页面
  *
@@ -42,6 +42,10 @@ private:
     void buildFontFamilyCombo();
     void applyPreviewStyle();        // 预览区字体 + 行距
     void applyLineHeightToPreview(); // 与编辑器一致的行高设置
+    void applyScrollAreaTheme(QScrollArea* scrollArea);   // v8.5
+
+    // v8.5：滚动容器（供主题切换时刷新样式）
+    QScrollArea*    m_scrollArea = nullptr;
 
     // 字体
     QComboBox*      m_fontFamilyCombo = nullptr;

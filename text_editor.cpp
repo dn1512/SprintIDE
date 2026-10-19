@@ -1575,19 +1575,71 @@ void TextEditor::duplicateLine()
     const int col = cursor.positionInBlock();
 
     cursor.beginEditBlock();
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-    const QString lineText = cursor.selectedText();
-    cursor.setPosition(cursor.selectionEnd());
-    cursor.insertText("\n" + lineText);
-    cursor.endEditBlock();
 
-    // 光标落到新行，保持列
-    QTextCursor nc(document());
-    nc.setPosition(cursor.position() - lineText.length());
-    nc.movePosition(QTextCursor::StartOfBlock);
-    nc.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, col);
-    setTextCursor(nc);
+    if (cursor.hasSelection()) {
+        // ============================================================
+        //  v8.5：有选区时复制选区覆盖的所有完整行，插到选区下方
+        //
+        //  边界规则（与 deleteLine 一致）：
+        //    - 起点行：从行首开始复制（即使选区从行中间开始）
+        //    - 终点行：如果选区终点正好在行首，不算这一行；否则复制到行尾
+        //    - 复制块插到终点行行尾之后（跳过行尾换行）
+        //
+        //  光标/选区：复制完成后选中新块，方便用户连续 Ctrl+D 继续复制
+        // ============================================================
+        const int selStart = cursor.selectionStart();
+        const int selEnd   = cursor.selectionEnd();
+
+        QTextCursor tmp(document());
+
+        // 起点行的行首
+        tmp.setPosition(selStart);
+        tmp.movePosition(QTextCursor::StartOfBlock);
+        const int blockStart = tmp.position();
+
+        // 终点行的行尾
+        tmp.setPosition(selEnd);
+        if (tmp.positionInBlock() == 0 && selEnd > blockStart) {
+            tmp.movePosition(QTextCursor::Left);
+        }
+        tmp.movePosition(QTextCursor::EndOfBlock);
+        const int blockEnd = tmp.position();
+
+        // 取出要复制的文本（多行；行间分隔符为 ParagraphSeparator，insertText 会识别）
+        QTextCursor copyCursor(document());
+        copyCursor.setPosition(blockStart);
+        copyCursor.setPosition(blockEnd, QTextCursor::KeepAnchor);
+        const QString blockText = copyCursor.selectedText();
+
+        // 在 blockEnd 之后插入 \n + blockText
+        QTextCursor insertCursor(document());
+        insertCursor.setPosition(blockEnd);
+        insertCursor.insertText(QStringLiteral("\n") + blockText);
+
+        cursor.endEditBlock();
+
+        // 选中新块（blockEnd + 1 是跳过 \n 后的首字符）
+        QTextCursor nc(document());
+        nc.setPosition(blockEnd + 1);
+        nc.setPosition(blockEnd + 1 + blockText.length(),
+            QTextCursor::KeepAnchor);
+        setTextCursor(nc);
+    } else {
+        // 无选区：保持原逻辑（复制当前行，插到下一行，光标保持列）
+        cursor.movePosition(QTextCursor::StartOfBlock);
+        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+        const QString lineText = cursor.selectedText();
+        cursor.setPosition(cursor.selectionEnd());
+        cursor.insertText(QStringLiteral("\n") + lineText);
+
+        cursor.endEditBlock();
+
+        QTextCursor nc(document());
+        nc.setPosition(cursor.position() - lineText.length());
+        nc.movePosition(QTextCursor::StartOfBlock);
+        nc.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, col);
+        setTextCursor(nc);
+    }
 }
 
 void TextEditor::deleteLine()
@@ -1595,18 +1647,57 @@ void TextEditor::deleteLine()
     QTextCursor cursor = textCursor();
     cursor.beginEditBlock();
 
-    cursor.select(QTextCursor::LineUnderCursor);
+    if (cursor.hasSelection()) {
+        // ============================================================
+        //  v8.5：有选区时删除选区覆盖的所有完整行
+        //
+        //  边界规则（与 JetBrains 一致）：
+        //    - 起点行：从行首开始删（即使选区从行中间开始）
+        //    - 终点行：如果选区终点正好在行首，不算这一行；否则从行首删到行尾
+        //    - 删完后连带行尾换行符一起删，避免残留空行
+        // ============================================================
+        const int selStart = cursor.selectionStart();
+        const int selEnd   = cursor.selectionEnd();
 
-    // 若后面还有内容，把后一个换行也删掉；否则删前一个换行
-    if (!cursor.atEnd()) {
-        cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
-    } else if (cursor.selectionStart() > 0) {
-        QTextCursor tmp = cursor;
-        tmp.setPosition(cursor.selectionStart());
-        tmp.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
-        tmp.removeSelectedText();
+        QTextCursor tmp(document());
+
+        // 起点行的行首
+        tmp.setPosition(selStart);
+        tmp.movePosition(QTextCursor::StartOfBlock);
+        const int blockStart = tmp.position();
+
+        // 终点行的行尾
+        tmp.setPosition(selEnd);
+        // 若选区终点恰好落在行首（跨行选择时常见），不把这一行算进去
+        if (tmp.positionInBlock() == 0 && selEnd > blockStart) {
+            tmp.movePosition(QTextCursor::Left);   // 退到上一行行尾
+        }
+        tmp.movePosition(QTextCursor::EndOfBlock);
+        int blockEnd = tmp.position();
+
+        // 吃掉尾部换行（除非已经到文档末尾）
+        if (blockEnd < document()->characterCount() - 1) {
+            ++blockEnd;
+        }
+
+        cursor.setPosition(blockStart);
+        cursor.setPosition(blockEnd, QTextCursor::KeepAnchor);
+        cursor.removeSelectedText();
+    } else {
+        // 无选区：删除光标所在的单行
+        cursor.select(QTextCursor::LineUnderCursor);
+
+        // 若后面还有内容，把后一个换行也删掉；否则删前一个换行
+        if (!cursor.atEnd()) {
+            cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
+        } else if (cursor.selectionStart() > 0) {
+            QTextCursor tmp = cursor;
+            tmp.setPosition(cursor.selectionStart());
+            tmp.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
+            tmp.removeSelectedText();
+        }
+        cursor.removeSelectedText();
     }
-    cursor.removeSelectedText();
 
     cursor.endEditBlock();
 }
@@ -1837,17 +1928,12 @@ void TextEditor::showFindBar()
     m_findBarVisible = true;
     m_findBar->setVisible(true);
 
-    //   用 viewport 的宽度，而不是整个控件的宽度
-    //   viewport() 不含左侧行号区，也不含右侧滚动条
-    //   但行号区在左侧——查找栏要覆盖整个宽度，所以加上 lineNumberAreaWidth()
-    const int lbWidth = m_showLineNumbers ? lineNumberAreaWidth() : 0;
-    Q_UNUSED(lbWidth);   // 原代码未使用，加宏避免警告
-
-    // 定位：横跨整行，但右侧要避开滚动条
-    const int sbWidth = verticalScrollBar() ? verticalScrollBar()->width() : 0;
-    const int barWidth = width() - sbWidth;
-
-    m_findBar->setGeometry(0, height() - 40, barWidth, 40);
+    // v8.5：交给 relayout() 统一处理：
+    //   - 搜索栏几何
+    //   - viewport bottom margin（让内容不被遮挡）
+    //   - 行号区高度同步调整
+    updateLineNumberAreaWidth();
+    relayout();
 
     m_findLineEdit->setFocus();
     m_findLineEdit->selectAll();
@@ -1895,6 +1981,10 @@ void TextEditor::hideFindBar()
     m_findBarVisible = false;
     m_findBar->setVisible(false);
     clearHighlights();
+
+    // v8.5：去掉 viewport bottom margin，恢复内容区域
+    updateLineNumberAreaWidth();
+    relayout();
 
     // ========== 重置替换模式 ==========
     if (m_replaceMode) {
@@ -5085,15 +5175,25 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             continue;
         }
 
-        if (i == firstIdx) {
-            // 剪贴板第 0 行（非空，空行已在上面 continue 掉了）
+        if (i == 0) {
             if (savedBaseIndent >= 0) {
                 // 有选区：补足缩进到原选区首行缩进
                 const int extra = qMax(0, savedBaseIndent - savedStartCol);
                 out.append(QString(extra, ' ')
                     + l.mid(leadingWhitespace(l).length()));
+            } else if (cursorCol >= curBlock.text().length()
+                && !leadingWhitespace(l).isEmpty()) {
+                // v8.5 修复：区分"另起一行"和"续写"
+                //   - 光标在行尾（cursorCol >= 行长度）
+                //   - 且剪贴板首行有前导缩进
+                //   → 视为"另起一行粘贴"，首行用当前行的缩进
+                //   场景：光标在 "id=1",| 后，粘贴含缩进的代码 → 新行对齐到当前缩进
+                out.append(QString(indentCol, ' ')
+                    + l.mid(leadingWhitespace(l).length()));
             } else {
-                // 无选区（原始行为）：去缩进拼到光标后
+                // 续写场景：
+                //   例 1：光标在 foo(|) 中，粘贴 bar() → foo(bar()（光标在行中间）
+                //   例 2：光标在 if | 后（行尾），粘贴 (x > 0) { → if (x > 0) {（剪贴板首行无缩进）
                 out.append(l.mid(leadingWhitespace(l).length()));
             }
         } else {
@@ -6360,28 +6460,10 @@ void TextEditor::resizeEvent(QResizeEvent *event)
 {
     QPlainTextEdit::resizeEvent(event);
 
-    const int barHeight = (m_showBreadcrumb && m_breadcrumbBar)
-    ? m_breadcrumbBar->height() : 0;
-
-    // 面包屑：横跨整个编辑器顶部
-    if (m_breadcrumbBar && m_showBreadcrumb) {
-        m_breadcrumbBar->setGeometry(QRect(0, 0, width(), barHeight));
-    }
-
-    // 行号区：下移 barHeight
-    if (m_showLineNumbers) {
-        QRect cr = contentsRect();
-        m_lineNumberArea->setGeometry(QRect(cr.left(),
-                cr.top() + barHeight,
-                lineNumberAreaWidth(),
-                cr.height() - barHeight));
-    }
-
-    if (m_findBar && m_findBarVisible) {
-        const int sbWidth = verticalScrollBar() ? verticalScrollBar()->width() : 0;
-        const int barWidth = width() - sbWidth;
-        m_findBar->setGeometry(0, height() - 40, barWidth, 40);
-    }
+    // v8.5：统一由 relayout() 处理
+    //   - 面包屑、行号区、搜索栏的几何都在这个函数里算
+    //   - resizeEvent 只负责触发，不参与具体计算
+    relayout();
 }
 
 void TextEditor::contextMenuEvent(QContextMenuEvent *event)
@@ -6407,10 +6489,57 @@ void TextEditor::updateLineNumberAreaWidth()
     // 析构期间可能被回调，加防御
     if (!m_lineNumberArea) return;
 
-    const int left  = m_showLineNumbers ? lineNumberAreaWidth() : 0;
-    const int top   = (m_showBreadcrumb && m_breadcrumbBar && m_breadcrumbBar->isVisible())
-                          ? m_breadcrumbBar->height() : 0;
-    setViewportMargins(left, top, 0, 0);
+    const int left   = m_showLineNumbers ? lineNumberAreaWidth() : 0;
+    const int top    = (m_showBreadcrumb && m_breadcrumbBar && m_breadcrumbBar->isVisible())
+    ? m_breadcrumbBar->height() : 0;
+    const int bottom = (m_findBarVisible && m_findBar)
+    ? m_findBar->height() : 0;
+
+    // v8.5：参数顺序是 (left, top, right, bottom)
+    //   - top    : 面包屑高度（内容下移）
+    //   - bottom : 搜索栏高度（内容不被遮挡）
+    setViewportMargins(left, top, 0, bottom);
+}
+
+void TextEditor::relayout()
+{
+    if (!m_lineNumberArea) return;
+
+    // 高度常量与 setGeometry 保持一致
+    constexpr int kFindBarHeight = 40;
+
+    // 三个区域的高度基准
+    const int topMargin    = (m_showBreadcrumb && m_breadcrumbBar
+        && m_breadcrumbBar->isVisible())
+    ? m_breadcrumbBar->height() : 0;
+    const int bottomMargin = (m_findBarVisible && m_findBar)
+    ? kFindBarHeight : 0;
+
+    const QRect cr = contentsRect();
+
+    // ---------- 面包屑 ----------
+    if (m_breadcrumbBar && m_showBreadcrumb) {
+        m_breadcrumbBar->setGeometry(QRect(cr.left(), cr.top(),
+                cr.width(), topMargin));
+    }
+
+    // ---------- 行号区 ----------
+    if (m_showLineNumbers) {
+        m_lineNumberArea->setGeometry(
+            QRect(cr.left(),
+                cr.top() + topMargin,
+                lineNumberAreaWidth(),
+                cr.height() - topMargin - bottomMargin));
+    }
+
+    // ---------- 搜索栏 ----------
+    if (m_findBar && m_findBarVisible) {
+        // 滚动条几何可能还没算好，直接查它的 current width 而不是靠 rect
+        const int sbWidth = verticalScrollBar() ? verticalScrollBar()->width() : 0;
+        const int barWidth = width() - sbWidth;
+        m_findBar->setGeometry(0, height() - kFindBarHeight,
+            barWidth, kFindBarHeight);
+    }
 }
 
 void TextEditor::highlightCurrentLine()
@@ -6731,7 +6860,7 @@ void TextEditor::setShowBreadcrumb(bool show)
         m_breadcrumbBar->setVisible(show);
     }
     updateLineNumberAreaWidth();
-    resizeEvent(nullptr);   // 触发几何重算
+    relayout();   // v8.5：直接调 relayout，不再依赖 resizeEvent(nullptr)
 }
 
 void TextEditor::toggleOutlineOverlay()

@@ -35,6 +35,8 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QApplication>
+#include <QScreen>
+#include <QGuiApplication>
 
 #include "python/python_settings_page.h"
 #include "editor_settings_page.h"
@@ -1243,18 +1245,53 @@ int ShortcutSettingsPage::findRowById(const QString& id) const
 // ====================================================================
 
 SettingsDialog::SettingsDialog(MainWindow* mainWindow, QWidget *parent)
-    : QDialog(parent)
-    , m_mainWindow(mainWindow)
+: QDialog(parent)
+, m_mainWindow(mainWindow)
 {
     setWindowTitle(tr("设置"));
-    resize(900, 600);
+
+    // ============================================================
+    //  v8.5：动态尺寸 + 居中 + 屏幕边界约束
+    //    - 初始尺寸 = 所在屏幕可用区域的 60% × 70%
+    //    - 夹在 [720, 1000] × [500, 720]，且不超过屏幕 - 边距
+    //    - 居中于父窗口；父窗口位置异常时退回屏幕居中
+    //    - setMinimumSize 让用户仍可缩到更小
+    // ============================================================
+    QScreen* screen = parent ? parent->screen()
+    : QGuiApplication::primaryScreen();
+    const QRect available = screen ? screen->availableGeometry()
+    : QRect(0, 0, 1024, 768);
+
+    int w = qBound(720, int(available.width()  * 0.60), 1000);
+    int h = qBound(500, int(available.height() * 0.70), 720);
+    // 兜底：不超过屏幕 - 边距（部分 MacBook 可用高度 < 700）
+    w = qMin(w, available.width()  - 40);
+    h = qMin(h, available.height() - 60);
+
+    resize(w, h);
+    setMinimumSize(640, 460);   // 用户仍可拖得更小，但保证按钮框可见
+
+    if (parent) {
+        const QRect pw = parent->window()->frameGeometry();
+        int px = pw.center().x() - w / 2;
+        int py = pw.center().y() - h / 2;
+        // 完全落在可用区域内
+        px = qBound(available.left()  + 10, px,
+            available.right() - w - 10);
+        py = qBound(available.top()   + 10, py,
+            available.bottom() - h - 10);
+        move(px, py);
+    } else {
+        move(available.center() - QPoint(w / 2, h / 2));
+    }
+
     createUI();
     loadAllSettings();
 
     connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(m_buttonBox->button(QDialogButtonBox::Apply), &QPushButton::clicked,
-            this, &SettingsDialog::onApply);
+        this, &SettingsDialog::onApply);
 }
 
 void SettingsDialog::createUI()
@@ -1263,7 +1300,7 @@ void SettingsDialog::createUI()
 
     // 左侧分类列表
     m_categoryList = new QListWidget(this);
-    m_categoryList->setFixedWidth(180);
+    m_categoryList->setFixedWidth(160);
     m_categoryList->addItem(tr("编辑器"));
     m_categoryList->addItem(tr("编译配置"));
     m_categoryList->addItem(tr("环境变量"));

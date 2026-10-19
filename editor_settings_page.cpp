@@ -11,6 +11,8 @@
 #include <QFontDatabase>
 #include <QTextBlockFormat>
 #include <QTextCursor>
+#include <QtWidgets/QScrollArea>
+#include <QtWidgets/QFrame>
 
 namespace SprintIDE {
 
@@ -22,32 +24,61 @@ EditorSettingsPage::EditorSettingsPage(QWidget *parent)
 
 void EditorSettingsPage::setupUI()
 {
-    QVBoxLayout* root = new QVBoxLayout(this);
+    // ============================================================
+    //  v8.5：整个页面加纵向滚动条
+    //    - 各组高度宽度固定，窄窗口下不压缩
+    //    - 显示不全时纵向滚动查看
+    //    - 横向永不出现滚动条（宽度跟随可用空间）
+    // ============================================================
+    QVBoxLayout* outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+
+    m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setObjectName("EditorSettingsScroll");
+    m_scrollArea->setWidgetResizable(true);              // 内部宽度跟随
+    m_scrollArea->setFrameShape(QFrame::NoFrame);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    outer->addWidget(m_scrollArea);
+
+    // 内容容器（所有分组挂这里）
+    QWidget* content = new QWidget();
+    content->setObjectName("EditorSettingsContent");
+    QVBoxLayout* root = new QVBoxLayout(content);
+    root->setContentsMargins(12, 12, 12, 12);
     root->setSpacing(12);
 
     // ========================================================================
     // 1. 字体分组
     // ========================================================================
-    QGroupBox* fontGroup = new QGroupBox(tr("字体"), this);
+    QGroupBox* fontGroup = new QGroupBox(tr("字体"), content);
     QFormLayout* fontForm = new QFormLayout(fontGroup);
 
-    m_fontFamilyCombo = new QComboBox(this);
-    m_fontFamilyCombo->setMinimumWidth(220);
-    buildFontFamilyCombo();     // 只列等宽字体
+    m_fontFamilyCombo = new QComboBox(content);
+    m_fontFamilyCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    buildFontFamilyCombo();
     fontForm->addRow(tr("字体族:"), m_fontFamilyCombo);
 
-    m_fontSizeSpin = new QSpinBox(this);
+    m_fontSizeSpin = new QSpinBox(content);
     m_fontSizeSpin->setRange(8, 24);
     m_fontSizeSpin->setSuffix(tr(" pt"));
     m_fontSizeSpin->setValue(12);
+    m_fontSizeSpin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     fontForm->addRow(tr("字号:"), m_fontSizeSpin);
 
     // 说明：行距是固定的，不暴露给用户
     QLabel* hint = new QLabel(
         tr("行距由 SprintIDE 自动按字号计算（1.5 倍字号），无需手动设置。"),
-        this);
+        content);
     hint->setWordWrap(true);
-    hint->setStyleSheet("color: #7A8599; font-size: 11px;");
+    {
+        // v8.5：颜色走 ThemeManager，遵循"禁止硬编码颜色"约束
+        ThemeManager& tm = ThemeManager::instance();
+        hint->setStyleSheet(QString("color: %1; font-size: 11px;")
+            .arg(tm.colorString(
+                    ThemeManager::UIElement::SecondaryTextColor)));
+    }
     fontForm->addRow(QString(), hint);
 
     root->addWidget(fontGroup);
@@ -55,16 +86,17 @@ void EditorSettingsPage::setupUI()
     // ========================================================================
     // 2. 缩进分组
     // ========================================================================
-    QGroupBox* indentGroup = new QGroupBox(tr("缩进"), this);
+    QGroupBox* indentGroup = new QGroupBox(tr("缩进"), content);
     QFormLayout* indentForm = new QFormLayout(indentGroup);
 
-    m_tabWidthSpin = new QSpinBox(this);
+    m_tabWidthSpin = new QSpinBox(content);
     m_tabWidthSpin->setRange(1, 12);
     m_tabWidthSpin->setSuffix(tr(" 字符"));
     m_tabWidthSpin->setValue(4);
+    m_tabWidthSpin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     indentForm->addRow(tr("Tab 宽度:"), m_tabWidthSpin);
 
-    m_useSpacesCheck = new QCheckBox(tr("使用空格代替 Tab"), this);
+    m_useSpacesCheck = new QCheckBox(tr("使用空格代替 Tab"), content);
     m_useSpacesCheck->setChecked(true);
     indentForm->addRow(QString(), m_useSpacesCheck);
 
@@ -73,14 +105,14 @@ void EditorSettingsPage::setupUI()
     // ========================================================================
     // 3. 显示分组
     // ========================================================================
-    QGroupBox* displayGroup = new QGroupBox(tr("显示"), this);
+    QGroupBox* displayGroup = new QGroupBox(tr("显示"), content);
     QVBoxLayout* displayLayout = new QVBoxLayout(displayGroup);
 
-    m_showLineNumbersCheck = new QCheckBox(tr("显示行号"), this);
+    m_showLineNumbersCheck = new QCheckBox(tr("显示行号"), content);
     m_showLineNumbersCheck->setChecked(true);
     displayLayout->addWidget(m_showLineNumbersCheck);
 
-    m_highlightCurrentLineCheck = new QCheckBox(tr("高亮当前行"), this);
+    m_highlightCurrentLineCheck = new QCheckBox(tr("高亮当前行"), content);
     m_highlightCurrentLineCheck->setChecked(true);
     displayLayout->addWidget(m_highlightCurrentLineCheck);
 
@@ -89,47 +121,61 @@ void EditorSettingsPage::setupUI()
     // ========================================================================
     // 4. 实时预览
     // ========================================================================
-    QGroupBox* previewGroup = new QGroupBox(tr("预览"), this);
+    QGroupBox* previewGroup = new QGroupBox(tr("预览"), content);
     QVBoxLayout* previewLayout = new QVBoxLayout(previewGroup);
 
-    m_preview = new QPlainTextEdit(this);
+    m_preview = new QPlainTextEdit(content);
     m_preview->setReadOnly(true);
     m_preview->setMinimumHeight(160);
     m_preview->setPlainText(
         tr("// 这段代码会实时反映字体与缩进设置\n"
-        "#include <iostream>\n"
-        "\n"
-        "int main() {\n"
-        "    std::cout << \"Hello, SprintIDE!\" << std::endl;\n"
-        "    return 0;\n"
-        "}\n"));
+            "#include <iostream>\n"
+            "\n"
+            "int main() {\n"
+            "    std::cout << \"Hello, SprintIDE!\" << std::endl;\n"
+            "    return 0;\n"
+            "}\n"));
     previewLayout->addWidget(m_preview);
 
-    root->addWidget(previewGroup, 1);
+    // 不再给 stretch factor——scrollArea 里内容自然堆积，不拉伸
+    root->addWidget(previewGroup);
+
+    // 底部留一点空白，避免预览组贴边
+    root->addStretch(1);
+
+    // 把内容装入 scrollArea
+    m_scrollArea->setWidget(content);
 
     // ========================================================================
     // 5. 信号连接
     // ========================================================================
     connect(m_fontFamilyCombo,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &EditorSettingsPage::onFontFamilyChanged);
+        QOverload<int>::of(&QComboBox::currentIndexChanged),
+        this, &EditorSettingsPage::onFontFamilyChanged);
 
     connect(m_fontSizeSpin,
-            QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &EditorSettingsPage::onFontSizeChanged);
+        QOverload<int>::of(&QSpinBox::valueChanged),
+        this, &EditorSettingsPage::onFontSizeChanged);
 
     connect(m_tabWidthSpin,
-            QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &EditorSettingsPage::onTabWidthChanged);
+        QOverload<int>::of(&QSpinBox::valueChanged),
+        this, &EditorSettingsPage::onTabWidthChanged);
 
     connect(m_useSpacesCheck, &QCheckBox::toggled,
-            this, &EditorSettingsPage::onUseSpacesToggled);
+        this, &EditorSettingsPage::onUseSpacesToggled);
 
     connect(m_showLineNumbersCheck, &QCheckBox::toggled,
-            this, &EditorSettingsPage::onShowLineNumbersToggled);
+        this, &EditorSettingsPage::onShowLineNumbersToggled);
 
     connect(m_highlightCurrentLineCheck, &QCheckBox::toggled,
-            this, &EditorSettingsPage::onHighlightCurrentLineToggled);
+        this, &EditorSettingsPage::onHighlightCurrentLineToggled);
+
+    // ========================================================================
+    // 6. 滚动条主题
+    // ========================================================================
+    applyScrollAreaTheme(m_scrollArea);
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged,
+        this, [this]() { applyScrollAreaTheme(m_scrollArea); });
 
     // 初始预览
     applyPreviewStyle();
@@ -204,6 +250,38 @@ void EditorSettingsPage::applyLineHeightToPreview()
     cursor.select(QTextCursor::Document);
     cursor.mergeBlockFormat(fmt);
     cursor.endEditBlock();
+}
+
+void EditorSettingsPage::applyScrollAreaTheme(QScrollArea* scrollArea)
+{
+    if (!scrollArea) return;
+
+    ThemeManager& tm = ThemeManager::instance();
+    const QString contentBg = tm.colorString(ThemeManager::UIElement::MainWindowBackground);
+    const QString scroll    = tm.rgba(ThemeManager::UIElement::ScrollHandleColor, 90);
+    const QString scrollHv  = tm.rgba(ThemeManager::UIElement::ScrollHandleHoverColor, 180);
+
+    scrollArea->setStyleSheet(QString(
+            // 滚动视口本身透明（让内容 widget 的背景透出来）
+            "QScrollArea#EditorSettingsScroll {"
+            "  background-color: transparent;"
+            "  border: none;"
+            "}"
+            // 内容容器：跟随主窗口背景
+            "QWidget#EditorSettingsContent {"
+            "  background-color: %1;"
+            "}"
+            // 滚动条：与项目其他位置（大纲浮层、底部面板）风格一致
+            "QScrollBar:vertical {"
+            "  background: transparent; width: 6px; margin: 0;"
+            "}"
+            "QScrollBar::handle:vertical {"
+            "  background: %2; min-height: 30px; border-radius: 3px;"
+            "}"
+            "QScrollBar::handle:vertical:hover { background: %3; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+            "QScrollBar:horizontal { height: 0; }"
+        ).arg(contentBg, scroll, scrollHv));
 }
 
 //  各 slot
