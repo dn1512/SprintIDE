@@ -38,7 +38,7 @@ static QString normalizeDapSourcePath(const QString& rawPath,
         if (QFileInfo::exists(cand)) return cand;
     }
 
-    // 4. 都不行，返回原值（可能为空）
+    // 4. 都不行，返回原值
     return rawPath;
 }
 

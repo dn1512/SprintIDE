@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <QLineEdit>
 #include <QtWidgets/qscrollbar.h>
+#include "theme_manager.h"
 
 namespace SprintIDE {
 
@@ -232,12 +233,19 @@ void DebugPanel::updateVariables(const QList<DebugVariable>& variables)
 
 void DebugPanel::appendConsoleOutput(const QString& output, bool isError)
 {
-    QString color = isError ? "#FF6B6B" : "#CCCCCC";
+    // v8.5：颜色从 ThemeManager 取，跟随主题切换
+    //   - 错误 → ErrorColor
+    //   - 普通 → TextColor
+    ThemeManager& tm = ThemeManager::instance();
+    const QString color = tm.colorString(
+        isError ? ThemeManager::UIElement::ErrorColor
+        : ThemeManager::UIElement::TextColor);
+
     m_consoleWidget->append(
         QString("<span style='color:%1;'>%2</span>")
-            .arg(color)
-            .arg(output.toHtmlEscaped())
-        );
+        .arg(color)
+        .arg(output.toHtmlEscaped())
+    );
     // 自动滚动到底部
     QScrollBar* scrollBar = m_consoleWidget->verticalScrollBar();
     if (scrollBar) {
@@ -357,16 +365,28 @@ void DebugPanel::onEvaluateInputEntered()
 }
 
 void DebugPanel::onEvaluateResult(const QString& expression,
-                                  const QString& result,
-                                  const QString& type)
+    const QString& result,
+    const QString& type)
 {
     if (!m_evalOutput) return;
-    QString line = QString("<b>%1</b> = <span style='color:#88DDFF;'>%2</span>")
-                       .arg(expression.toHtmlEscaped(),
-                            result.toHtmlEscaped());
+
+    // v8.5：颜色从 ThemeManager 取
+    //   - 结果值 → PrimaryColor（强调，一眼看到结果）
+    //   - 类型   → SecondaryTextColor（弱化）
+    ThemeManager& tm = ThemeManager::instance();
+    const QString valueColor = tm.colorString(
+        ThemeManager::UIElement::PrimaryColor);
+    const QString typeColor = tm.colorString(
+        ThemeManager::UIElement::SecondaryTextColor);
+
+    QString line = QString("<b>%1</b> = <span style='color:%2;'>%3</span>")
+    .arg(expression.toHtmlEscaped(),
+        valueColor,
+        result.toHtmlEscaped());
     if (!type.isEmpty()) {
-        line += QString(" <i style='color:#888;'>(%1)</i>")
-        .arg(type.toHtmlEscaped());
+        line += QString(" <i style='color:%1;'>(%2)</i>")
+        .arg(typeColor,
+            type.toHtmlEscaped());
     }
     m_evalOutput->append(line);
 }

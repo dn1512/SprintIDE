@@ -56,7 +56,7 @@ enum class GitContextAction {
     ManageRemotes,         // 管理远程（占位）
 };
 
-// 代理模型（原样保留）
+// 代理模型
 class ExcludeDirProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
@@ -84,7 +84,6 @@ public:
     explicit ProjectPanel(QWidget *parent = nullptr);
     ~ProjectPanel();
 
-    // ==================== 原有公共方法（完全兼容） ====================
     bool openProject(const QString& projectPath, const ProjectConfig* config = nullptr);
     void closeProject();
     QString currentProjectPath() const;
@@ -104,7 +103,6 @@ public:
     QString getFilePath(const QModelIndex &index) const;
     QModelIndex findIndexByPath(const QString &path) const;
 
-    // ==================== 新增转发方法（适配 MainWindow 原有调用） ====================
     QTreeView* getFileTreeView() const { return m_fileTreeView; }
     void setAlternatingRowColors(bool enable) { m_fileTreeView->setAlternatingRowColors(enable); }
     QModelIndex rootIndex() const { return m_fileTreeView->rootIndex(); }

@@ -5,6 +5,10 @@
 #include "theme_manager.h"
 #include "language/editor_rules.h"
 #include "editor/completion_delegate.h"
+#include "project_manager.h"        // 读 venvPath()
+#include "application.h"            // 读 Sdk/Environment
+#include "config_manager.h"
+#include "python/python_project_model.h"  // v8.5
 
 #include <QPainter>
 #include <QTextBlock>
@@ -181,7 +185,7 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
                 painter.drawPixmap(dotX, dotY, pm);
             }
 
-            // ========== 3. 行号（保留原逻辑） ==========
+            // ========== 3. 行号 ==========
             if (lineNumber == currentLine) {
                 painter.setPen(ThemeManager::instance().color(
                     ThemeManager::UIElement::CurrentLineNumberColor));
@@ -844,6 +848,21 @@ void TextEditor::createContextMenu()
 
     // 修复：连接到一个实际的槽函数，而不是不存在的信号
     m_gotoLineAction = m_contextMenu->addAction(tr("跳转到行 (Ctrl+G)..."), this, &TextEditor::onGotoLineAction);
+
+    // ========== Quick Fix ==========
+    //   语义：光标所在行有 LSP 诊断（错误/警告）时可用，
+    //         点击弹出 codeAction 列表（与 Alt+Enter / 点击红点等价）。
+    //   动态刷新 enabled 在 contextMenuEvent() 里做。
+    m_quickFixAction = m_contextMenu->addAction(
+        tr("显示修复 (Alt+Enter)"),
+        this, [this]() {
+            const int line = currentLine();
+            if (line < 1) return;
+            const QPoint globalPos = viewport()->mapToGlobal(
+                cursorRect().bottomLeft());
+            showQuickFixMenuForLine(line, globalPos);
+        });
+    m_quickFixAction->setEnabled(false);   // 初始禁用，弹出前刷新
     // ========== AI 辅助子菜单 ==========
     m_contextMenu->addSeparator();
 
@@ -951,10 +970,10 @@ bool TextEditor::saveFile(const QString &source)
 
         const auto reply = QMessageBox::warning(this,
             tr("文件冲突"),
-            tr("文件 %1 已被外部修改。\n\n"
-               "「覆盖」= 用编辑器内容覆盖磁盘\n"
-               "「重新加载」= 丢弃编辑器的修改，从磁盘读取")
-                .arg(QFileInfo(m_filePath).fileName()),
+            tr("文件") + QFileInfo(m_filePath).fileName() + tr("已被外部修改。")
+            + "\n\n"
+            + tr("「覆盖」= 用编辑器内容覆盖磁盘\n") + "\n\n"
+            + tr("「重新加载」= 丢弃编辑器的修改，从磁盘读取"),
             QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
         // Save = 覆盖，Discard = 重新加载，Cancel = 放弃
 
@@ -990,11 +1009,10 @@ bool TextEditor::saveFile(const QString &source)
 
                 const auto reply = QMessageBox::warning(this,
                     tr("文件冲突"),
-                    tr("文件 %1 已被外部修改。\n\n"
-                       "「保存」= 用编辑器内容覆盖磁盘\n"
-                       "「放弃」= 丢弃编辑器内容，从磁盘重新加载\n"
-                       "「取消」= 中止本次保存")
-                        .arg(QFileInfo(m_filePath).fileName()),
+                    tr("文件") + QFileInfo(m_filePath).fileName() + tr("已被外部修改。") + "\n\n"
+                    + tr("「保存」= 用编辑器内容覆盖磁盘") + "\n"
+                    + tr("「放弃」= 丢弃编辑器内容，从磁盘重新加载") + "\n"
+                    + tr("「取消」= 中止本次保存"),
                     QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
 
                 if (reply == QMessageBox::Cancel) {
@@ -1445,11 +1463,6 @@ void TextEditor::applyLightTheme()
 
     // ============================================================
     // 4. 关键修复：不要在这里清空 ExtraSelection
-    //    原来代码：
-    //        QList<QTextEdit::ExtraSelection> extraSelections;
-    //        setExtraSelections(extraSelections);
-    //    这样会把【查找高亮】【括号匹配】【当前调试行】全部清掉，
-    //    所以这次改为只调用 highlightCurrentLine()（内部自己处理）
     // ============================================================
     if (m_highlightCurrentLine) {
         highlightCurrentLine();
@@ -1503,7 +1516,6 @@ void TextEditor::commentSelection()
         return;
     }
 
-    // ---- 逐行加注释（保留原有缩进）----
     cursor.beginEditBlock();
     const QString cmtPrefix = cmt + ' ';
     for (QTextBlock b = startBlock;
@@ -1625,7 +1637,7 @@ void TextEditor::duplicateLine()
             QTextCursor::KeepAnchor);
         setTextCursor(nc);
     } else {
-        // 无选区：保持原逻辑（复制当前行，插到下一行，光标保持列）
+        // 无选区：
         cursor.movePosition(QTextCursor::StartOfBlock);
         cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
         const QString lineText = cursor.selectedText();
@@ -2132,8 +2144,8 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
         //   让 clangd 认为"内容真的变了"
         //   clangd 对"内容相同"的 didChange 会跳过分析 → 诊断不更新 → 还是空
         //   所以发两次 didChange：
-        //     第一次：末尾加一个空格（内容真的变了）
-        //     第二次：250ms 后恢复原样（此时第一次已发出去）
+        //     第一次：末尾加一个空格
+        //     第二次：250ms 后恢复原样
         //   两次间隔必须 > LSPClient::changeDocument 的 200ms 防抖窗口，
         //   否则第二次的 pendingContent 会覆盖第一次，只发一次
         if (!m_filePath.isEmpty()) {
@@ -2141,7 +2153,6 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
                                        toPlainText() + QStringLiteral(" "));
         }
 
-        // 250ms 后发第二次 didChange（恢复原样）
         QTimer::singleShot(250, this, [this, savedLine, savedPos]() {
             if (!isVisible() || currentLine() != savedLine) {
                 m_codeActionRetryCount = 0;
@@ -2803,10 +2814,8 @@ bool TextEditor::viewportEvent(QEvent *event)
 void TextEditor::focusOutEvent(QFocusEvent* event)
 {
     closeCompletion();
-    // v8.5：大纲浮层的关闭统一由 OutlineOverlay::focusChanged 和
+    // 大纲浮层的关闭统一由 OutlineOverlay::focusChanged 和
     //       TextEditor::mousePressEvent 处理，这里不再关闭。
-    //       原因：用户点击浮层 item 时 TextEditor 会先失焦，
-    //             若这里直接 hide，浮层在 itemClicked 触发前就关了。
     QPlainTextEdit::focusOutEvent(event);
 }
 
@@ -3061,12 +3070,6 @@ bool TextEditor::tryExpandPairOnReturn()
     const QString baseIndent  = leadingWhitespace(block.text());
     const QString innerIndent = baseIndent + indentUnit();
 
-    // 布局：
-    //   pos-1: prev   （不动）
-    //   pos  : '\n'
-    //   pos+1..pos+innerLen : innerIndent
-    //   pos+innerLen+1      : '\n'
-    //   pos+innerLen+2...   : baseIndent（接原 next）
     cursor.beginEditBlock();
     cursor.insertText("\n" + innerIndent);
     cursor.insertText("\n" + baseIndent);
@@ -3384,7 +3387,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         }
     }
 
-    // ---- 0. Cmd/Ctrl 高亮（原样保留） ----
+    // ---- 0. Cmd/Ctrl 高亮 ----
     if ((event->key() == Qt::Key_Meta || event->key() == Qt::Key_Control)
         && !m_ctrlHeldForDefinition) {
         m_ctrlHeldForDefinition = true;
@@ -3410,7 +3413,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         }
     }
 
-    // ---- 1. 补全弹窗导航（原样保留） ----
+    // ---- 1. 补全弹窗导航 ----
     if (m_completionActive) {
         switch (event->key()) {
         case Qt::Key_Escape:    closeCompletion(); return;
@@ -3461,7 +3464,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         }
     }
 
-    // ========== 2. Esc / F3 / Ctrl+F（原样保留） ==========
+    // ========== 2. Esc / F3 / Ctrl+F ==========
     if (event->key() == Qt::Key_Escape && m_findBarVisible) {
         hideFindBar();
         return;
@@ -3640,27 +3643,31 @@ void TextEditor::triggerCompletion()
         return;
     }
 
-    // 记录 anchor
-    m_completionAnchor = pos - prefix.length();
+    // v8.5：前缀起点位置
+    const int newAnchor = pos - prefix.length();
+
+    // ---- 判断"上下文是否变化" ----
+    //   - 之前没有活跃补全 → 变化
+    //   - anchor 变了 → 变化（用户切到了新的 . / -> / :: 后）
+    //   - m_pendingLspItems 为空 → 变化（首次触发或上次 LSP 返回为空）
+    //   只要不是"同一上下文内前缀变长/变短"，就重新请求 LSP；
+    //   否则保留旧结果，本地过滤即可——避免"输入一个字符弹窗闪空 200ms"
+    const bool anchorChanged =
+    !m_completionActive || (newAnchor != m_completionAnchor);
+    const bool needLspRequest =
+    anchorChanged || m_pendingLspItems.isEmpty();
+
+    m_completionAnchor = newAnchor;
     m_completionPrefix = prefix;
     m_completionActive = true;
 
-    // 立即刷新本地补全（不做防抖，本地很快）
-    // rebuildCompletionList();
-
-    // LSP 请求走防抖
-    m_pendingLspItems.clear();
-    m_lspResponseWaiting = true;
-    m_lspDebounceTimer->start();
-
-    // 显示弹窗
-    // if (m_completionModel->rowCount() > 0) {
-    //     QRect rect = cursorRect();
-    //     QPoint globalPos = viewport()->mapToGlobal(rect.bottomLeft());
-    //     m_completionPopup->showWithModel(m_completionModel, globalPos, 320);
-    // } else {
-    //     m_completionPopup->hideIfVisible();
-    // }
+    if (needLspRequest) {
+        m_pendingLspItems.clear();
+        m_lspResponseWaiting = true;
+        m_lspDebounceTimer->start();
+    }
+    // else：同一上下文内继续输入字符 → 保留 m_pendingLspItems，
+    //       rebuildCompletionList 会用新的 m_completionPrefix 重新过滤
 
     rebuildCompletionList();
 }
@@ -3764,6 +3771,18 @@ void TextEditor::rebuildCompletionList()
     auto makeKey = [](const CompletionEntry& e) {
         return e.label + QChar(0x1F) + e.kind;
     };
+
+    if (currentLanguageId() == "python") {
+        QList<CompletionEntry> importEntries;
+        if (tryImportCompletion(&importEntries)) {
+            for (const auto& e : importEntries) {
+                const QString key = makeKey(e);
+                if (seen.contains(key)) continue;
+                seen.insert(key);
+                all.append(e);
+            }
+        }
+    }
 
     // ---------- 1. 本地符号（优先级最高） ----------
     {
@@ -4741,7 +4760,7 @@ void TextEditor::jumpToMismatchedBracket()
     if (!stack.isEmpty()) {
         cursor.setPosition(stack.last().second);
     } else {
-        cursor.setPosition(startPos);   // 没有不匹配 → 保持原位
+        cursor.setPosition(startPos);   // 没有不匹配
     }
     setTextCursor(cursor);
     centerCursor();
@@ -4762,7 +4781,7 @@ bool TextEditor::handleCommentShortcut(QKeyEvent* event)
 }
 
 // ============================================================================
-//  Ctrl+Enter：在当前行下方插入空行（保留当前行缩进），光标落到新行
+//  Ctrl+Enter：在当前行下方插入空行，光标落到新行
 // ============================================================================
 void TextEditor::insertLineBelow()
 {
@@ -4789,7 +4808,7 @@ void TextEditor::insertLineAbove()
     cursor.beginEditBlock();
     cursor.movePosition(QTextCursor::StartOfBlock);
     cursor.insertText(indent + "\n");
-    // 光标放到刚插入的行（现在光标在原行行首）
+    // 光标放到刚插入的行
     cursor.movePosition(QTextCursor::Up);
     cursor.movePosition(QTextCursor::StartOfBlock);
     cursor.movePosition(QTextCursor::EndOfBlock);
@@ -4896,21 +4915,6 @@ void TextEditor::matchParentheses()
 
 // ============================================================================
 //  粘贴多行文本时的自动缩进对齐
-//
-//  行为（对齐 JetBrains / VSCode）：
-//    - 有选区 → 走基类默认替换逻辑（用户是"覆盖"意图，不对齐）
-//    - 无选区 → 对纯文本做处理：
-//        1. 切分粘贴文本为行
-//        2. 计算"非空行的最小前导空白"（含 tab/空格，按 tab 宽度算）
-//        3. 每行去掉这段公共缩进（块内相对缩进保留）
-//        4. 每非空行前加"光标所在行的缩进"
-//        5. 组装并插入；首行的缩进由 Qt 自动继承光标行的空白，所以首行不加
-//    - 若非纯文本（有 HTML 等）→ 走基类默认（保留富文本粘贴能力）
-//
-//  注意：
-//    - 不处理"全空剪贴板"，直接交给基类
-//    - 不用 m_useSpacesForTab 转换空格↔Tab，否则用户从其他项目粘贴会串味
-//      —— 保留原有空白字符，只做数量上的对齐
 // ============================================================================
 void TextEditor::insertFromMimeData(const QMimeData* source)
 {
@@ -4944,7 +4948,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             const int startCol    = selStart - selBlock.position();
             const int startIndent = leadingIndentWidth(selBlock.text());
             if (startCol > startIndent) {
-                // 局部替换 → 基类原样替换
+                // 局部替换
                 QPlainTextEdit::insertFromMimeData(source);
                 return;
             }
@@ -5032,8 +5036,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     const int cursorCol = cur.positionInBlock();
     const int indentCol = leadingIndentWidth(curBlock.text());
 
-    // v8.5：有选区时用"原选区首行缩进"作为基准；
-    //       无选区时保持原逻辑 min(cursorCol, indentCol)
+    //  有选区时用"原选区首行缩进"作为基准；
     int x;
     if (savedBaseIndent >= 0) {
         x = savedBaseIndent;
@@ -5041,8 +5044,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         x = qMin(cursorCol, indentCol);
     }
 
-    // ---- 5. 拼接后的完整第一行（用于判断"是否开启块"） ----
-    //   用 lines[0]（剪贴板真正的第一行），保持原始语义
+    // ---- 5. 拼接后的完整第一行 ----
     const QString beforeCursor = curBlock.text().left(cursorCol);
     const QString firstClipLine = lines.isEmpty() ? QString() : lines[0];
     const QString combinedLine = beforeCursor.trimmed() + firstClipLine.trimmed();
@@ -5066,24 +5068,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     }
 
     // ---- 7.5 修正 delta：保证最小缩进非负 ----
-    // ============================================================
-    //  问题：
     //    上面用"第一行 + 第二行"推 delta，是近似值。
-    //    第一行缩进可能被用户手动去掉，判断"是否开启块"也可能误判，
-    //    delta 偏大时，应用到"缩进较浅的行"就会算出负数——
-    //    比如某行原缩进 0，delta = -8 → 结果 -8，不可表达。
-    //
-    //  修正策略：
-    //    扫描第二行到最后一行的原始缩进，找最小值 minOrig。
-    //    如果 minOrig + delta < 0，说明所有行里最浅的那一行会被
-    //    扣成负数——把 delta 调整到让那一行恰好缩进 0。
-    //      新 delta = -minOrig
-    //
-    //  效果：
-    //    - 保证每一行的最终缩进 ≥ 0；
-    //    - 相对结构尽量保留（只是不再"越界"扣）；
-    //    - 用户描述的场景"某行算成 -8" → 自动校正为 0。
-    // ============================================================
     if (secondIdx >= 0 && delta > 0) {
         int minOrigIndent = std::numeric_limits<int>::max();
         for (int i = secondIdx; i < lines.size(); ++i) {
@@ -5094,7 +5079,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
 
         if (minOrigIndent != std::numeric_limits<int>::max()
             && minOrigIndent < delta) {
-            delta = 0;   // 有行会被扣成"负缩进" → 放弃调整，整块原样
+            delta = 0;   // 如果行会被扣成"负缩进" 放弃调整，整块原样粘贴。
         }
     }
 
@@ -5108,7 +5093,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         }
 
         if (maxDepth >= 1) {
-            // baseIndent = 首行拼接后实际落入的缩进列（就是 x）
+            // baseIndent = 首行拼接后实际落入的缩进列
             const int baseIndent = x;
 
             QStringList out;
@@ -5129,6 +5114,8 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
                         out.append(QString(extra, ' ')
                             + l.mid(leadingWhitespace(l).length()));
                     } else {
+                        // 首行无条件去掉缩进
+                        // （lines[0] == "" 时走空行分支，后续行自然另起）
                         out.append(l.mid(leadingWhitespace(l).length()));
                     }
                     level += bracketDelta(l);
@@ -5176,24 +5163,13 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         }
 
         if (i == 0) {
+            QString deindented;
             if (savedBaseIndent >= 0) {
                 // 有选区：补足缩进到原选区首行缩进
                 const int extra = qMax(0, savedBaseIndent - savedStartCol);
                 out.append(QString(extra, ' ')
                     + l.mid(leadingWhitespace(l).length()));
-            } else if (cursorCol >= curBlock.text().length()
-                && !leadingWhitespace(l).isEmpty()) {
-                // v8.5 修复：区分"另起一行"和"续写"
-                //   - 光标在行尾（cursorCol >= 行长度）
-                //   - 且剪贴板首行有前导缩进
-                //   → 视为"另起一行粘贴"，首行用当前行的缩进
-                //   场景：光标在 "id=1",| 后，粘贴含缩进的代码 → 新行对齐到当前缩进
-                out.append(QString(indentCol, ' ')
-                    + l.mid(leadingWhitespace(l).length()));
             } else {
-                // 续写场景：
-                //   例 1：光标在 foo(|) 中，粘贴 bar() → foo(bar()（光标在行中间）
-                //   例 2：光标在 if | 后（行尾），粘贴 (x > 0) { → if (x > 0) {（剪贴板首行无缩进）
                 out.append(l.mid(leadingWhitespace(l).length()));
             }
         } else {
@@ -5766,6 +5742,140 @@ bool TextEditor::tryExpandSnippet()
 
     applySnippet(table.value(prefix), indent);
     return true;
+}
+
+// ============================================================
+//  v8.5：Python import 上下文补全
+// ============================================================
+
+// 标准库路径：起一次 python 子进程拿，之后缓存
+static QString cachedStandardLibraryPath()
+{
+    static QString cached;
+    static bool tried = false;
+    if (tried) return cached;
+    tried = true;
+
+    // 优先用项目配置的 PYTHON_HOME，否则退到 python3
+    QString pyExe = QStringLiteral("python3");
+    if (auto* cfg = Application::instance().configManager()) {
+        const QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+        const QString pyHome = sdkEnv.value("PYTHON_HOME").toString();
+        if (!pyHome.isEmpty() && QFile::exists(pyHome)) pyExe = pyHome;
+    }
+
+    QProcess proc;
+    proc.start(pyExe, {"-c",
+            "import sysconfig; print(sysconfig.get_paths()['stdlib'])"});
+    if (proc.waitForFinished(3000) && proc.exitCode() == 0) {
+        const QString out = QString::fromLocal8Bit(
+            proc.readAllStandardOutput()).trimmed();
+        if (!out.isEmpty() && QDir(out).exists()) {
+            cached = out;
+        }
+    }
+    return cached;
+}
+
+QString TextEditor::resolvePythonModuleDirectory(const QString& modulePath)
+{
+    // modulePath = "urllib" 或 "urllib.parse" 或 "numpy.linalg"
+    QString rel = modulePath;
+    rel.replace('.', '/');
+
+    QStringList searchPaths;
+
+    // 1. venv 的 site-packages
+    if (auto model = ProjectManager::instance()->pythonProjectModel()) {
+        if (!model->venvPath().isEmpty()) {
+            QDir libDir(model->venvPath() + "/lib");
+            const auto subs = libDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const auto& sub : subs) {
+                if (sub.startsWith("python")) {
+                    searchPaths << libDir.absoluteFilePath(sub + "/site-packages");
+                }
+            }
+            #ifdef Q_OS_WIN
+            searchPaths << model->venvPath() + "/Lib/site-packages";
+            #endif
+        }
+    }
+
+    // 2. 标准库
+    const QString stdlib = cachedStandardLibraryPath();
+    if (!stdlib.isEmpty()) searchPaths << stdlib;
+
+    // 3. 逐个路径找
+    for (const QString& base : searchPaths) {
+        QDir baseDir(base);
+        if (!baseDir.exists()) continue;
+        const QString target = baseDir.absoluteFilePath(rel);
+        if (QDir(target).exists()) return target;
+    }
+    return QString();
+}
+
+bool TextEditor::tryImportCompletion(QList<CompletionEntry>* out)
+{
+    if (!out) return false;
+    if (currentLanguageId() != "python") return false;
+
+    QTextCursor cursor = textCursor();
+    const QString line = cursor.block().text();
+    const int col = cursor.positionInBlock();
+    const QString left = line.left(col);
+
+    // from X.  /  import X.
+    static QRegularExpression reFrom(R"(^\s*from\s+([\w.]+)\.\s*$)");
+    static QRegularExpression reImport(R"(^\s*import\s+([\w.]+)\.\s*$)");
+
+    QString modulePath;
+    QRegularExpressionMatch m = reFrom.match(left);
+    if (m.hasMatch()) {
+        modulePath = m.captured(1);
+    } else {
+        m = reImport.match(left);
+        if (m.hasMatch()) modulePath = m.captured(1);
+        else return false;
+    }
+
+    if (modulePath.isEmpty()) return false;
+
+    const QString dirPath = resolvePythonModuleDirectory(modulePath);
+    if (dirPath.isEmpty()) return false;
+
+    QDir dir(dirPath);
+    const auto entries = dir.entryInfoList(
+        QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
+
+    for (const QFileInfo& fi : entries) {
+        if (fi.isDir()) {
+            // 子包：必须有 __init__.py（否则不算 Python 包）
+            if (!QFile::exists(fi.absoluteFilePath() + "/__init__.py"))
+            continue;
+
+            CompletionEntry e;
+            e.label       = fi.fileName();
+            e.insertText  = fi.fileName();
+            e.detail      = QStringLiteral("package");
+            e.kind        = QStringLiteral("module");
+            e.sortPriority = 5;
+            out->append(e);
+        } else if (fi.suffix() == QLatin1String("py")) {
+            const QString base = fi.completeBaseName();
+            if (base == QLatin1String("__init__")) continue;
+
+            CompletionEntry e;
+            e.label       = base;
+            e.insertText  = base;
+            e.detail      = QStringLiteral("module");
+            e.kind        = QStringLiteral("module");
+            e.sortPriority = 5;
+            out->append(e);
+        }
+    }
+
+    return !out->isEmpty();
 }
 
 // ============================================================================
@@ -6373,7 +6483,7 @@ void TextEditor::triggerAIAssist(AIAssistKind kind)
     code.replace(QChar::ParagraphSeparator, '\n');
 
     if (code.trimmed().isEmpty()) {
-        QMessageBox::information(this, tr("AI 助手"),
+        QMessageBox::information(this, tr("AI Agent"),
                                  tr("请先选中代码，或把光标放到有代码的行上。"));
         return;
     }
@@ -6382,19 +6492,19 @@ void TextEditor::triggerAIAssist(AIAssistKind kind)
     QString prompt;
     switch (kind) {
     case AIAssistKind::ExplainCode:
-        prompt = tr("请解释这段代码：\n```\n%1\n```").arg(code);
+        prompt = tr("请解释这段代码：") + QString("\n```\n%1\n```").arg(code);
         break;
 
     case AIAssistKind::FixCode:
-        prompt = tr("请修复这段代码里的问题，说明修改理由：\n```\n%1\n```").arg(code);
+        prompt = tr("请修复这段代码里的问题，说明修改理由：") + QString("\n```\n%1\n```").arg(code);
         break;
 
     case AIAssistKind::GenerateComment:
-        prompt = tr("请为这段代码生成简洁的中文注释：\n```\n%1\n```").arg(code);
+        prompt = tr("请为这段代码生成简洁的中文注释：")+ QString("\n```\n%1\n```").arg(code);
         break;
 
     case AIAssistKind::RenameSuggest:
-        prompt = tr("请给这段代码里的变量、函数起更好的名字，并说明理由：\n```\n%1\n```").arg(code);
+        prompt = tr("请给这段代码里的变量、函数起更好的名字，并说明理由：")+ QString("\n```\n%1\n```").arg(code);
         break;
 
     case AIAssistKind::CustomAsk: {
@@ -6474,6 +6584,15 @@ void TextEditor::contextMenuEvent(QContextMenuEvent *event)
         m_cutAction->setEnabled(textCursor().hasSelection());
         m_copyAction->setEnabled(textCursor().hasSelection());
         m_pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
+
+        // v8.5：Quick Fix 入口
+        //   - 光标所在行有 error/warning 标记时才启用
+        //   - 触发时调 showQuickFixMenuForLine，与 Alt+Enter 完全一致
+        if (m_quickFixAction) {
+            const int line = currentLine();
+            const bool hasMarker = hasErrorMarker(line) || hasWarningMarker(line);
+            m_quickFixAction->setEnabled(hasMarker);
+        }
 
         // AI 子菜单：每次弹出时再同步一次可用状态（防止状态过期）
         if (m_aiMenu) {

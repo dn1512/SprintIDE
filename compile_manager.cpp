@@ -1307,7 +1307,7 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     // 连接 builder 的实时输出信号
     // ============================================================
     m_currentTaskId = task.taskId;
-    
+
     connect(builder, &IBuilder::outputReady,
             this, &CompileManager::onBuilderOutput,
             Qt::ConnectionType(Qt::QueuedConnection | Qt::UniqueConnection));
@@ -1343,10 +1343,6 @@ QString CompileManager::executeBuildTask(const BuildTask& task) {
     return task.taskId;
 }
 
-// ============================================================
-// 处理异步构建完成：原 executeBuildTask 中"同步执行完 builder->build()
-// 之后"的所有信号发射逻辑都搬到这里，在 UI 线程执行
-// ============================================================
 void CompileManager::handleBuildFinished(const BuildTask& task,
                                          bool started,
                                          const BuildResult& result)
@@ -1367,26 +1363,7 @@ void CompileManager::handleBuildFinished(const BuildTask& task,
         return;
     }
 
-    // ---- 4.2 把完整输出逐行发给 UI（保留原有分批逻辑）----
-    // if (!result.fullOutput.isEmpty()) {
-        // const QStringList lines = result.fullOutput.split('\n');
-        // QString chunk;
-        // int batchCounter = 0;
-        // for (const QString& line : lines) {
-            // chunk += line;
-            // chunk += '\n';
-            // if (++batchCounter >= 20) {
-                // emit compileOutput(task.taskId, chunk, !result.success);
-                // chunk.clear();
-                // batchCounter = 0;
-            // }
-        // }
-        // if (!chunk.isEmpty()) {
-            // emit compileOutput(task.taskId, chunk, !result.success);
-        // }
-    // }
-
-    // ---- 4.3 转换为 CompileResult ----
+    // ---- 4.2 转换为 CompileResult ----
     CompileResult oldResult;
     oldResult.success        = result.success;
     oldResult.exitCode       = result.exitCode;
@@ -1397,7 +1374,7 @@ void CompileManager::handleBuildFinished(const BuildTask& task,
     oldResult.compileTime    = result.elapsedMs;
     oldResult.errorMessage   = result.errorMessage;
 
-    // ---- 4.4 发送完成信号 ----
+    // ---- 4.3 发送完成信号 ----
     emit compileFinished(task.taskId, oldResult);
 
     if (!result.success) {

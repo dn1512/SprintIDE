@@ -361,7 +361,7 @@ bool ChatPanel::appendStreamChunk(const QString &streamId, const QString &chunk)
     QTextCursor cursor = m_streamCursors[streamId];
     m_streamContents[streamId] += chunk;
 
-    // 从 ThemeManager 取色（原来是硬编码 #E0E0E0）
+    // 从 ThemeManager 取色
     ThemeManager& tm = ThemeManager::instance();
     QColor textColor = tm.color(ThemeManager::UIElement::TextColor);
 
@@ -549,7 +549,7 @@ void ChatPanel::onSendClicked()
         return;
     }
 
-    // ===== 普通模式：原逻辑 =====
+    // ===== 普通模式 =====
     emit userMessageSent(text, m_autoSendContext);
     addUserMessage(text);
 }

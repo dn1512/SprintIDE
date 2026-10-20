@@ -215,9 +215,18 @@ private:
     QString detectShebang(const QString& firstLine) const;
 
     /**
-     * @brief 规范化扩展名（统一为小写，确保带点号）
-     */
-    QString normalizeExtension(const QString& extension) const;
+    * @brief 规范化扩展名（统一为小写，确保带点号）
+    */
+   QString normalizeExtension(const QString& extension) const;
+
+   /**
+    * @brief 判断 .ts 文件是否为 Qt Linguist 翻译源文件
+    *
+    * Qt 翻译文件用 .ts 扩展名（XML 格式），与 TypeScript 冲突。
+    * 通过读文件头判断：以 <?xml 开头 → Qt 翻译文件。
+    * 仅在扩展名为 .ts 时调用，避免其他文件的 IO 开销。
+    */
+   bool isQtTranslationFile(const QString& filePath) const;
 
     // 成员变量
     QMap<QString, LanguageInfo> m_languages;        ///< 语言 ID → 语言信息

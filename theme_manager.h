@@ -125,7 +125,6 @@ public:
     // 生成完整 QSS（替代散落各处的 setStyleSheet）
     QString buildStyleSheet() const;
 
-    // 保留原有接口（内部改为读新令牌）
     void applyThemeToWidget(QWidget* widget);
     void applyThemeToTextEdit(QTextEdit* textEdit);
     void applyThemeToPlainTextEdit(QPlainTextEdit* plainTextEdit);

@@ -207,7 +207,7 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
         auto onOutput = [this](const QString& chunk, bool isError) {
             emit outputReady(chunk, isError);
         };
-    
+
         ProcessManager::ProcessResult pr =
             pm.executeSync(cmake, configArgs, workDir, 120000, "UTF-8", onOutput);
 
@@ -260,11 +260,11 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
 
     ProcessManager pm;
     pm.setEnvironment(env);
-    
+
     auto onOutput = [this](const QString& chunk, bool isError) {
         emit outputReady(chunk, isError);
     };
-    
+
     ProcessManager::ProcessResult pr =
         pm.executeSync(cmake, buildArgs, workDir, 600000, "UTF-8", onOutput);
 
@@ -294,9 +294,6 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
     return true;
 }
 
-// ====================================================================
-// buildSingleFile —— 原逻辑保留
-// ====================================================================
 bool CppBuilder::buildSingleFile(const BuildTask& task, BuildResult& result)
 {
     // 1. 确定编译器
@@ -323,7 +320,7 @@ bool CppBuilder::buildSingleFile(const BuildTask& task, BuildResult& result)
     auto onOutput = [this](const QString& chunk, bool isError) {
         emit outputReady(chunk, isError);
     };
-    
+
     ProcessManager::ProcessResult pr =
         m_processManager.executeSync(compiler, args, workDir, 60000, "UTF-8", onOutput);
 
@@ -360,7 +357,6 @@ bool CppBuilder::clean(const BuildTask& task, BuildResult& result)
         return cleanWithCMake(task, result);
     }
 
-    // ---- 非 CMake：沿用原有删除产物逻辑 ----
     QString outDir = PathUtils::absolutePath(task.outputDir, task.projectPath);
     QDir dir(outDir);
     if (!dir.exists()) {
@@ -412,9 +408,6 @@ bool CppBuilder::cleanWithCMake(const BuildTask& task, BuildResult& result)
     return result.success;
 }
 
-// ====================================================================
-// run —— 保留原逻辑（同步执行；UI 端的异步由 MainWindow 负责）
-// ====================================================================
 bool CppBuilder::run(const BuildTask& task, const BuildResult& buildResult, QString& output)
 {
     if (buildResult.executablePath.isEmpty() || !QFile::exists(buildResult.executablePath)) {
@@ -457,7 +450,7 @@ QString CppBuilder::getExecutablePath(const BuildTask& task)
         return model.guessExecutablePath(target);
     }
 
-    // ---- 非 CMake：沿用原逻辑 ----
+    // ---- 非 CMake ----
     QString outDir = PathUtils::absolutePath(task.outputDir, task.projectPath);
     QString outName = task.outputName;
 

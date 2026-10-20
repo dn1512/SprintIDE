@@ -495,7 +495,7 @@ void TerminalPanel::setWorkingDirectory(const QString& dir)
     m_commandHistory.clear();
     m_historyIndex = 0;
 
-    appendSystemLine(tr("工作目录: %1").arg(dir), false);
+    appendSystemLine(tr("工作目录: ") + dir, false);
     printPrompt();
 
     emit workingDirectoryChanged(dir);

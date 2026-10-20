@@ -41,6 +41,8 @@
 #include "cpp/cpp_debugger.h"
 #include "core/log_buffer.h"
 #include "performance/performance_monitor.h"
+#include "problems/diagnostics_store.h"
+#include "problems/problems_panel.h"
 
 class TextEditor;
 
@@ -286,6 +288,9 @@ public slots:
     /// 断点变更后刷新列表面板
     void refreshBreakpointListPanel();
 
+    /// 诊断变化时刷新状态栏计数
+    void onDiagnosticsChanged();
+
     /// 窄条按钮：查看断点（toggle 断点页签）
     void onToggleBreakpointTab();
 
@@ -348,6 +353,9 @@ private:
     void setupBreakpointListPanel();
     void loadAllProjectFiles(const QString& projectPath);
     void reloadLspFilterSettings();
+
+    //   返回 true 表示"新生成且 clangd 已启动，需要提示用户重启"
+    bool ensureQtClangdConfig(const QString& projectPath);
 
     void applyTheme();
 
@@ -421,6 +429,7 @@ private:
     QLabel* m_languageLabel = nullptr;        // 语言 (C++)
     QLabel* m_indentLabel = nullptr;          // 缩进 (空格:4)
     QProgressBar* m_buildProgressBar = nullptr; // 编译进度条
+    QLabel* m_problemsIndicatorLabel = nullptr; // Problems 计数 + 点击跳转
 
     // ========== 性能监控 ==========
     QLabel*             m_performanceLabel   = nullptr;
@@ -491,6 +500,7 @@ private:
     QDockWidget* m_bottomDockWidget = nullptr;
     QTabWidget* m_bottomTabWidget = nullptr;
     OutputPanel* m_outputPanel = nullptr;   // 结构化输出面板
+    ProblemsPanel* m_problemsPanel = nullptr;   // Problems 面板
 
     FindDialog* m_findDialog = nullptr;
     ReplaceDialog* m_replaceDialog = nullptr;
@@ -554,6 +564,7 @@ private:
 
     QAction* m_toggleBottomPanelAction = nullptr;
     QAction* m_toggleProjectPanelAction = nullptr;
+    QAction* m_clearDiagnosticsAction  = nullptr;
 
     // ========== 断点窄条 + 列表页签 ==========
     BreakpointListPanel* m_breakpointListPanel     = nullptr;
@@ -569,6 +580,12 @@ private:
     QTimer* m_projectPanelRefreshDebounce = nullptr;
     // 按文件缓存最近一次 LSP 诊断的完整信息（保留 source / code）供 onQuickFixRequested 组装 codeAction 的 context.diagnostics 使用
     QHash<QString, QList<LSPDiagnostic>> m_lastDiagnosticsByFile;
+
+    // ========== Problems ==========
+    DiagnosticsStore* m_diagnosticsStore = nullptr;
+
+    /// 把 DiagnosticsStore 里某文件的诊断同步到编辑器的波浪线
+    void syncDiagnosticsToEditor(const QString& filePath);
 
     PanelFocusManager* m_panelFocusManager = nullptr;
 };

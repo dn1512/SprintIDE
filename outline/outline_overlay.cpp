@@ -308,8 +308,8 @@ namespace SprintIDE {
             appendSymbol(m_methodList, m.first, m.second);
         }
 
-        m_propTitle->setText(tr("属性 (%1)").arg(m_propList->count()));
-        m_methodTitle->setText(tr("方法 (%1)").arg(m_methodList->count()));
+        m_propTitle->setText(tr("属性") + QString("(%1)").arg(m_propList->count()));
+        m_methodTitle->setText(tr("方法") + QString("(%1)").arg(m_methodList->count()));
     }
 
     void OutlineOverlay::appendSymbol(QListWidget* list,

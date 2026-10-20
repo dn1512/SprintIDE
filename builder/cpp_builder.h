@@ -15,7 +15,7 @@ class CppProjectModel;
  *
  * 支持两类模式：
  *  1. CMake 项目：调用 cmake -S . -B build 配置，再 cmake --build build
- *  2. 单文件/无构建系统项目：直接调用 g++ / clang++ 编译（保留原有行为）
+ *  2. 单文件/无构建系统项目：直接调用 g++ / clang++ 编译
  *
  * 分支判断依据：项目根目录是否存在 CMakeLists.txt。
  */

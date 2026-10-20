@@ -71,11 +71,43 @@ bool LSPClient::startServer(const QString& serverPath)
     }
 
     // ----- 2. 构建启动参数 -----
+    //   v8.5：优先级从高到低
+    //     1. m_customArguments  —— Python 等完全自定义（如 "<python> -m pylsp"）
+    //     2. m_arguments        —— LSPManager 里 LSPConfig.arguments 透传（含 clangd 的
+    //                              --header-insertion=iwyu 等关键参数）
+    //     3. 兜底：clangd / jdtls 的内建参数（只在 LSPManager 没传时使用）
     QStringList args;
     if (!m_customArguments.isEmpty()) {
         args = m_customArguments;
+    } else if (!m_arguments.isEmpty()) {
+        // LSPManager 显式指定了参数 → 追加 clangd 需要的动态参数（compile-commands-dir）
+        //   m_arguments 来自 LSPConfig.arguments，内容如：
+        //     ["--background-index", "--clang-tidy",
+        //      "--completion-style=detailed", "--header-insertion=iwyu"]
+        //   我们只在末尾追加 --compile-commands-dir，不覆盖其它参数。
+        args = m_arguments;
+        if (isJdtls) {
+            // JDTLS 有自己必需的参数（configuration / data），不能只追加
+            QDir projectDir(m_projectRoot);
+            QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
+            QString configDir = jdtlsBase + "/config";
+            if (!JavaUtils::createMinimalConfig(configDir)) {
+                emit serverError("无法创建 config.ini");
+                return false;
+            }
+            QString workspaceRoot = QDir::homePath() + "/.SprintIDE/workspaces";
+            QDir().mkpath(workspaceRoot);
+            QString workspaceDir = workspaceRoot + "/" + QString::number(qHash(m_projectRoot));
+            QDir().mkpath(workspaceDir);
+            args << "-configuration" << configDir;
+            args << "-data" << workspaceDir;
+            args << "-consoleLog";
+        } else if (!m_projectRoot.isEmpty()) {
+            // clangd：追加 compile-commands-dir
+            args << "--compile-commands-dir=" + m_projectRoot;
+        }
     } else if (isJdtls) {
-        // JDTLS 参数
+        // 兜底：LSPManager 没传参数时，JDTLS 用内建参数
         QDir projectDir(m_projectRoot);
         QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
         QString configDir = jdtlsBase + "/config";
@@ -91,7 +123,10 @@ bool LSPClient::startServer(const QString& serverPath)
         args << "-data" << workspaceDir;
         args << "-consoleLog";
     } else {
-        // clangd 参数
+        // 兜底：LSPManager 没传参数时，clangd 用内建参数（和老行为一致）
+        //   注意：这里的兜底参数里没有 --header-insertion=iwyu，
+        //   所以 Quick Fix 不会给"Insert #include"建议。
+        //   正常路径下 LSPManager 会通过 setArguments() 传入完整参数。
         args << "--background-index";
         if (m_enableClangTidy) args << "--clang-tidy";
         if (!m_projectRoot.isEmpty()) args << "--compile-commands-dir=" + m_projectRoot;
@@ -102,6 +137,10 @@ bool LSPClient::startServer(const QString& serverPath)
     m_process->setProgram(executable);
     m_process->setArguments(args);
     m_process->setProcessChannelMode(QProcess::SeparateChannels);
+
+    //   同时给 stderr 一个限流标志，避免 clangd 一次性刷出大量日志
+    m_process->setReadChannel(QProcess::StandardOutput);
+    m_buffer.clear();
 
     connect(m_process, &QProcess::readyReadStandardOutput,
             this, &LSPClient::onServerReadyRead);
@@ -706,73 +745,85 @@ void LSPClient::onServerErrorRead()
 {
     QByteArray data = m_process->readAllStandardError();
     QString error = QString::fromUtf8(data);
-    if (!error.isEmpty()) {
-        qDebug() << "LSP stderr:" << error;  // 完整输出（调试用）
+    if (error.isEmpty()) return;
 
-        QStringList lines = error.split('\n');
-        for (const QString& line : lines) {
-            QString trimmed = line.trimmed();
-            if (trimmed.isEmpty()) continue;
+    qDebug() << "LSP stderr:" << error;
 
-            // ========== 过滤 clangd 的正常 INFO 日志 ==========
-            if (trimmed.startsWith("I[")) {
-                continue;
-            }
+    const bool isClangd = m_serverPath.contains("clangd", Qt::CaseInsensitive);
+    if (isClangd) {
+        qDebug() << "LSP stderr (clangd):" << error;
+        return;
+    }
 
-            // 过滤 clangd 常见的正常输出
-            if (trimmed.contains("Loaded compilation database") ||
-                trimmed.contains("ASTWorker building file") ||
-                trimmed.contains("Indexing c++17 standard library") ||
-                trimmed.contains("Built preamble") ||
-                trimmed.contains("Indexed c++17 standard library") ||
-                trimmed.contains("Enqueueing") ||
-                trimmed.contains("File version went from") ||
-                (trimmed.contains("-->") && trimmed.contains("textDocument"))) {
-                continue;
-            }
+    qDebug() << "LSP stderr:" << error;
 
-            // 过滤 publishDiagnostics（正常诊断）
-            if (trimmed.contains("publishDiagnostics")) {
-                continue;
-            }
+    QStringList lines = error.split('\n');
+    for (const QString& line : lines) {
+        QString trimmed = line.trimmed();
+        if (trimmed.isEmpty()) continue;
 
-            // ========== 过滤 JDTLS 的正常启动信息 ==========
-            if (trimmed.contains("org.apache.aries.spifly.BaseActivator") ||
-                trimmed.contains("Registered provider") ||
-                trimmed.contains("logback.classic") ||
-                trimmed.contains("SLF4JServiceProvider") ||
-                trimmed.contains("!SESSION") ||
-                trimmed.contains("!ENTRY") ||
-                trimmed.contains("!MESSAGE") ||
-                trimmed.contains("!SUBENTRY") ||
-                trimmed.contains("!STACK") ||
-                trimmed.contains("java.version") ||
-                trimmed.contains("java.vendor") ||
-                trimmed.contains("BootLoader constants") ||
-                trimmed.contains("Command-line arguments")) {
-                continue;
-            }
+        // ========== 过滤 clangd 的正常 INFO 日志 ==========
+        if (trimmed.startsWith("I[")) continue;
 
-            // 过滤 JDTLS 恢复/状态信息
-            if (trimmed.contains("Workspace restored") ||
-                trimmed.contains("exited with unsaved changes") ||
-                trimmed.contains("refreshing workspace") ||
-                trimmed.contains("ProjectStatus") ||
-                trimmed.contains("ServiceReady") ||
-                trimmed.contains("Starting Java Language Server") ||
-                trimmed.contains("class org.eclipse.jdt.ls.core.internal.JavaLanguageServerPlugin is started")) {
-                continue;
-            }
+        // 过滤 clangd 常见的正常输出
+        if (trimmed.contains("Loaded compilation database") ||
+            trimmed.contains("ASTWorker building file") ||
+            trimmed.contains("Indexing c++17 standard library") ||
+            trimmed.contains("Built preamble") ||
+            trimmed.contains("Indexed c++17 standard library") ||
+            trimmed.contains("Enqueueing") ||
+            trimmed.contains("File version went from") ||
+            (trimmed.contains("-->") && trimmed.contains("textDocument"))) {
+            continue;
+        }
 
-            // 只有真正的错误才发送给用户
-            if (trimmed.startsWith("E[") ||
-                trimmed.contains("error:") ||
-                trimmed.contains("fatal error:") ||
-                trimmed.contains("failed") ||
-                trimmed.contains("Exception") ||
-                trimmed.contains("Error")) {
-                emit serverError("JDTLS: " + trimmed);
-            }
+        // 过滤 publishDiagnostics（正常诊断）
+        if (trimmed.contains("publishDiagnostics")) {
+            continue;
+        }
+
+        // ========== 过滤 JDTLS 的正常启动信息 ==========
+        if (trimmed.contains("org.apache.aries.spifly.BaseActivator") ||
+            trimmed.contains("Registered provider") ||
+            trimmed.contains("logback.classic") ||
+            trimmed.contains("SLF4JServiceProvider") ||
+            trimmed.contains("!SESSION") ||
+            trimmed.contains("!ENTRY") ||
+            trimmed.contains("!MESSAGE") ||
+            trimmed.contains("!SUBENTRY") ||
+            trimmed.contains("!STACK") ||
+            trimmed.contains("java.version") ||
+            trimmed.contains("java.vendor") ||
+            trimmed.contains("BootLoader constants") ||
+            trimmed.contains("Command-line arguments")) {
+            continue;
+        }
+
+        // 过滤 JDTLS 恢复/状态信息
+        if (trimmed.contains("Workspace restored") ||
+            trimmed.contains("exited with unsaved changes") ||
+            trimmed.contains("refreshing workspace") ||
+            trimmed.contains("ProjectStatus") ||
+            trimmed.contains("ServiceReady") ||
+            trimmed.contains("Starting Java Language Server") ||
+            trimmed.contains("class org.eclipse.jdt.ls.core.internal.JavaLanguageServerPlugin is started")) {
+            continue;
+        }
+
+        // v8.5：错误前缀用实际的 server 名，不再硬编码 "JDTLS:"
+        //   - m_serverPath 是启动时用的可执行路径，可能含 clangd / jdtls / typescript-language-server 等
+        //   - 从路径提取 server 名：取最后一节，去掉扩展名
+        const QString serverName = QFileInfo(m_serverPath).completeBaseName();
+        const QString tag = serverName.isEmpty()
+        ? QStringLiteral("LSP")
+        : serverName;
+
+        if (trimmed.startsWith("E[") ||
+            trimmed.contains("error:") ||
+            trimmed.contains("fatal error:") ||
+            trimmed.contains("Exception") ||
+            trimmed.contains("Error:")) {   // ← "Error" → "Error:"，避免误杀 "ErrorCode" 等
+            emit serverError(tag + ": " + trimmed);
         }
     }
 }

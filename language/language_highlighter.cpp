@@ -135,18 +135,18 @@ void LanguageHighlighter::initDefaultColors(bool isDark)
     if (isDark) {
         // Polaris Dark Nexus —— 去紫
         m_keywordColor        = QColor("#4AB0E6");  // 存储/类型
-        m_controlFlowColor    = QColor("#EF7B7B");  // 控制流（原 #C586C0 紫）
+        m_controlFlowColor    = QColor("#EF7B7B");  // 控制流
         m_storageTypeColor    = QColor("#4AB0E6");
-        m_dataTypeColor       = QColor("#4AB0E6");  // 原 #4EC9B0
-        m_builtinFuncColor    = QColor("#F0C57A");  // 原 #DCDCAA
-        m_commentColor        = QColor("#5E6D82");  // 原 #6A9955
-        m_stringColor         = QColor("#86C28C");  // 原 #CE9178
+        m_dataTypeColor       = QColor("#4AB0E6");
+        m_builtinFuncColor    = QColor("#F0C57A");
+        m_commentColor        = QColor("#5E6D82");
+        m_stringColor         = QColor("#86C28C");
         m_charColor           = QColor("#86C28C");
-        m_numberColor         = QColor("#D4A06A");  // 原 #B5CEA8
-        m_preprocessorColor   = QColor("#9BB5D4");  // 原 #C586C0 紫
-        m_constantColor       = QColor("#66D4E0");  // 原 #9CDCFE
-        m_functionColor       = QColor("#F0C57A");  // 原 #DCDCAA
-        m_classColor          = QColor("#4AB0E6");  // 原 #4EC9B0
+        m_numberColor         = QColor("#D4A06A");
+        m_preprocessorColor   = QColor("#9BB5D4");
+        m_constantColor       = QColor("#66D4E0");
+        m_functionColor       = QColor("#F0C57A");
+        m_classColor          = QColor("#4AB0E6");
     } else {
         // Polaris Solar Flare
         m_keywordColor        = QColor("#0D6EFD");

@@ -203,7 +203,7 @@ void PythonDebugger::Private::processMessage(const QByteArray &data) {
             applyBreakpoints();
 
             // 3. 立即发送 configurationDone
-            // 注意：原代码中 applyBreakpoints 不再自动发送 configurationDone，我们需要在这里显式发送
+            // applyBreakpoints 不再自动发送 configurationDone，我们需要在这里显式发送
             QJsonObject configDoneRequest;
             configDoneRequest["seq"] = ++seq;
             configDoneRequest["type"] = "request";

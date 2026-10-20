@@ -4,57 +4,57 @@
 <context>
     <name>CompilerSettingsPage</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="55"/>
+        <location filename="../settings_dialog.cpp" line="57"/>
         <source>编译器设置</source>
         <translation>Compiler Settings</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="59"/>
+        <location filename="../settings_dialog.cpp" line="61"/>
         <source>自动检测</source>
         <translation>Auto Detect</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="66"/>
+        <location filename="../settings_dialog.cpp" line="68"/>
         <source>浏览...</source>
         <translation>Browse...</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="73"/>
+        <location filename="../settings_dialog.cpp" line="75"/>
         <source>编译器类型:</source>
         <translation>Compiler Type:</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="74"/>
+        <location filename="../settings_dialog.cpp" line="76"/>
         <source>编译器路径:</source>
         <translation>Compiler Path:</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="77"/>
+        <location filename="../settings_dialog.cpp" line="79"/>
         <source>C++ 标准</source>
         <translation>C++ Standard</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="84"/>
+        <location filename="../settings_dialog.cpp" line="86"/>
         <source>优化选项</source>
         <translation>Optimization</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="86"/>
+        <location filename="../settings_dialog.cpp" line="88"/>
         <source>包含调试信息 (-g)</source>
         <translation>Include debug info (-g)</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="87"/>
+        <location filename="../settings_dialog.cpp" line="89"/>
         <source>启用所有警告 (-Wall -Wextra)</source>
         <translation>Enable all warnings (-Wall -Wextra)</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="88"/>
+        <location filename="../settings_dialog.cpp" line="90"/>
         <source>将警告视为错误 (-Werror)</source>
         <translation>Treat warnings as errors (-Werror)</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="137"/>
+        <location filename="../settings_dialog.cpp" line="139"/>
         <source>选择编译器</source>
         <translation>Select Compiler</translation>
     </message>
@@ -62,87 +62,87 @@
 <context>
     <name>EnvironmentSettingsPage</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="154"/>
+        <location filename="../settings_dialog.cpp" line="156"/>
         <source>这些环境变量将全局生效，用于配置各语言的 SDK 路径。它们与具体项目无关，代表 SprintIDE 当前具备开发哪些语言的能力。</source>
         <translation>These environment variables are applied globally to configure SDK paths for each language. They are independent of any specific project and represent which languages SprintIDE can currently develop.</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="163"/>
+        <location filename="../settings_dialog.cpp" line="165"/>
         <source>快速填充 SDK:</source>
         <translation>Quick fill SDK:</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="165"/>
+        <location filename="../settings_dialog.cpp" line="167"/>
         <source>选择已检测的 SDK...</source>
         <translation>Select a detected SDK...</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="178"/>
+        <location filename="../settings_dialog.cpp" line="180"/>
         <source>自动检测已安装 SDK</source>
         <translation>Auto-detect installed SDKs</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="190"/>
+        <location filename="../settings_dialog.cpp" line="192"/>
         <source>变量名</source>
         <translation>Variable</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="190"/>
+        <location filename="../settings_dialog.cpp" line="192"/>
         <source>值</source>
         <translation>Value</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="201"/>
+        <location filename="../settings_dialog.cpp" line="203"/>
         <source>添加</source>
         <translation>Add</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="202"/>
+        <location filename="../settings_dialog.cpp" line="204"/>
         <source>删除选中</source>
         <translation>Remove Selected</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="204"/>
+        <location filename="../settings_dialog.cpp" line="206"/>
         <source>清空全部</source>
         <translation>Clear All</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="218"/>
+        <location filename="../settings_dialog.cpp" line="220"/>
         <source>确认清空</source>
         <translation>Confirm Clear</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="219"/>
+        <location filename="../settings_dialog.cpp" line="221"/>
         <source>确定要删除所有环境变量吗？</source>
         <translation>Delete all environment variables?</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="884"/>
+        <location filename="../settings_dialog.cpp" line="886"/>
         <source>确认删除</source>
         <translation>Confirm Delete</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="885"/>
+        <location filename="../settings_dialog.cpp" line="887"/>
         <source>确定要删除环境变量 &apos;%1&apos; 吗？</source>
         <translation>Delete environment variable &apos;%1&apos;?</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="912"/>
+        <location filename="../settings_dialog.cpp" line="914"/>
         <source>提示</source>
         <translation>Notice</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="913"/>
+        <location filename="../settings_dialog.cpp" line="915"/>
         <source>未检测到 %1 的安装路径，请手动输入。</source>
         <translation>Could not detect the install path for %1. Please enter it manually.</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="942"/>
+        <location filename="../settings_dialog.cpp" line="944"/>
         <source>检测完成</source>
         <translation>Detection Complete</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="943"/>
+        <location filename="../settings_dialog.cpp" line="945"/>
         <source>共检测到 %1 个 SDK 环境变量。</source>
         <translation>Detected %1 SDK environment variables.</translation>
     </message>
@@ -150,22 +150,22 @@
 <context>
     <name>LanguageSettingsPage</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="358"/>
+        <location filename="../settings_dialog.cpp" line="360"/>
         <source>选择 SprintIDE 的界面语言。切换后需要重启应用才能生效。</source>
         <translation>Choose the UI language for SprintIDE. A restart is required for the change to take effect.</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="365"/>
+        <location filename="../settings_dialog.cpp" line="367"/>
         <source>界面语言</source>
         <translation>UI Language</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="372"/>
+        <location filename="../settings_dialog.cpp" line="374"/>
         <source>语言:</source>
         <translation>Language:</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="393"/>
+        <location filename="../settings_dialog.cpp" line="395"/>
         <source>⚠ 语言已更改，重启 SprintIDE 后生效。</source>
         <translation>⚠ Language changed. Restart SprintIDE to apply.</translation>
     </message>
@@ -173,39 +173,39 @@
 <context>
     <name>LspSettingsPage</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="251"/>
+        <location filename="../settings_dialog.cpp" line="253"/>
         <source>控制 LSP 服务器返回的诊断信息如何显示。
 </source>
         <translation>Controls how diagnostics returned by the LSP server are displayed.
 </translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="252"/>
+        <location filename="../settings_dialog.cpp" line="254"/>
         <source>错误（error）始终显示，不受此设置影响。</source>
         <translation>Errors are always shown and are not affected by this setting.</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="259"/>
+        <location filename="../settings_dialog.cpp" line="261"/>
         <source>警告显示模式</source>
         <translation>Warning Display Mode</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="263"/>
+        <location filename="../settings_dialog.cpp" line="265"/>
         <source>只显示错误（推荐）</source>
         <translation>Show errors only (recommended)</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="264"/>
+        <location filename="../settings_dialog.cpp" line="266"/>
         <source>显示所有警告和错误</source>
         <translation>Show all warnings and errors</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="265"/>
+        <location filename="../settings_dialog.cpp" line="267"/>
         <source>自定义忽略规则</source>
         <translation>Custom ignore rules</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="269"/>
+        <location filename="../settings_dialog.cpp" line="271"/>
         <source>• 只显示错误：隐藏所有 warning，编辑器最干净
 • 显示所有警告和错误：使用 LSP 服务器的全部诊断
 • 自定义忽略规则：按下方黑名单过滤 warning</source>
@@ -214,12 +214,12 @@
 • Custom ignore rules: filter warnings by the blacklist below</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="280"/>
+        <location filename="../settings_dialog.cpp" line="282"/>
         <source>忽略规则（每行一条，支持正则）:</source>
         <translation>Ignore rules (one per line, regex supported):</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="285"/>
+        <location filename="../settings_dialog.cpp" line="287"/>
         <source>imported but unused
 line too long
 ^missing-.*docstring</source>
@@ -228,7 +228,7 @@ line too long
 ^missing-.*docstring</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="291"/>
+        <location filename="../settings_dialog.cpp" line="293"/>
         <source>匹配 warning 消息中的子串，不区分大小写。支持 QRegularExpression 语法。</source>
         <translation>Matches a substring of the warning message, case-insensitive. QRegularExpression syntax is supported.</translation>
     </message>
@@ -431,64 +431,89 @@ line too long
     </message>
 </context>
 <context>
+    <name>QObject</name>
+    <message>
+        <location filename="../main.cpp" line="296"/>
+        <source>启动失败</source>
+        <translation>Failed to start</translation>
+    </message>
+    <message>
+        <location filename="../main.cpp" line="297"/>
+        <source>无法创建目录：</source>
+        <translation>Cannot create directory: </translation>
+    </message>
+    <message>
+        <location filename="../main.cpp" line="318"/>
+        <source>创建失败</source>
+        <translation>Create Failed</translation>
+    </message>
+    <message>
+        <location filename="../main.cpp" line="319"/>
+        <source>无法创建项目：
+%1</source>
+        <translation>Cannot create project:
+%1</translation>
+    </message>
+</context>
+<context>
     <name>SettingsDialog</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="1249"/>
+        <location filename="../settings_dialog.cpp" line="1251"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1267"/>
+        <location filename="../settings_dialog.cpp" line="1304"/>
         <source>编辑器</source>
         <translation>Editor</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1268"/>
+        <location filename="../settings_dialog.cpp" line="1305"/>
         <source>编译配置</source>
         <translation>Compiler</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1269"/>
+        <location filename="../settings_dialog.cpp" line="1306"/>
         <source>环境变量</source>
         <translation>Environment</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1272"/>
+        <location filename="../settings_dialog.cpp" line="1309"/>
         <source>Python</source>
         <translation>Python</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1275"/>
+        <location filename="../settings_dialog.cpp" line="1312"/>
         <source>AI</source>
         <translation>AI</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1278"/>
+        <location filename="../settings_dialog.cpp" line="1315"/>
         <source>Git</source>
         <translation>Git</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1280"/>
+        <location filename="../settings_dialog.cpp" line="1317"/>
         <source>LSP 诊断</source>
         <translation>LSP Diagnostics</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1282"/>
+        <location filename="../settings_dialog.cpp" line="1319"/>
         <source>快捷键</source>
         <translation>Shortcuts</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1284"/>
+        <location filename="../settings_dialog.cpp" line="1321"/>
         <source>语言 / Language</source>
         <translation>Language / 语言</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1393"/>
+        <location filename="../settings_dialog.cpp" line="1430"/>
         <source>语言已更改</source>
         <translation>Language Changed</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1394"/>
+        <location filename="../settings_dialog.cpp" line="1431"/>
         <source>界面语言已更改，需要重启 SprintIDE 才能生效。
 
 是否立即重启？</source>
@@ -500,54 +525,54 @@ Restart now?</translation>
 <context>
     <name>ShortcutSettingsPage</name>
     <message>
-        <location filename="../settings_dialog.cpp" line="956"/>
+        <location filename="../settings_dialog.cpp" line="958"/>
         <source>双击「快捷键」列可修改。同一快捷键被多个操作占用时会标红。
 修改后需点击「应用」或「确定」保存。</source>
         <translation>Double-click the &quot;Shortcut&quot; column to edit. Shortcuts used by more than one action are highlighted in red.
 Click &quot;Apply&quot; or &quot;OK&quot; to save your changes.</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="967"/>
+        <location filename="../settings_dialog.cpp" line="969"/>
         <source>操作</source>
         <translation>Action</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="967"/>
+        <location filename="../settings_dialog.cpp" line="969"/>
         <source>快捷键</source>
         <translation>Shortcut</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="967"/>
+        <location filename="../settings_dialog.cpp" line="969"/>
         <source>默认值</source>
         <translation>Default</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="981"/>
+        <location filename="../settings_dialog.cpp" line="983"/>
         <source>重置选中项</source>
         <translation>Reset Selected</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="982"/>
+        <location filename="../settings_dialog.cpp" line="984"/>
         <source>重置全部</source>
         <translation>Reset All</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1049"/>
+        <location filename="../settings_dialog.cpp" line="1051"/>
         <source>无法获取快捷键配置（未关联主窗口）</source>
         <translation>Cannot load shortcut configuration (main window is not associated).</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1108"/>
+        <location filename="../settings_dialog.cpp" line="1110"/>
         <source>共 %1 项可配置</source>
         <translation>%1 configurable actions</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1172"/>
+        <location filename="../settings_dialog.cpp" line="1174"/>
         <source>重置全部快捷键</source>
         <translation>Reset All Shortcuts</translation>
     </message>
     <message>
-        <location filename="../settings_dialog.cpp" line="1173"/>
+        <location filename="../settings_dialog.cpp" line="1175"/>
         <source>确定要把所有快捷键恢复为默认值吗？</source>
         <translation>Reset all shortcuts to their default values?</translation>
     </message>
@@ -776,8 +801,8 @@ Line: %2%3</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="95"/>
-        <location filename="../ai/chat_panel.cpp" line="593"/>
-        <location filename="../ai/chat_panel.cpp" line="598"/>
+        <location filename="../ai/chat_panel.cpp" line="600"/>
+        <location filename="../ai/chat_panel.cpp" line="605"/>
         <source>连接</source>
         <translation>Connect</translation>
     </message>
@@ -813,19 +838,19 @@ Line: %2%3</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="164"/>
-        <location filename="../ai/chat_panel.cpp" line="535"/>
+        <location filename="../ai/chat_panel.cpp" line="542"/>
         <source>输入消息，按 Enter 发送，Ctrl+Enter 换行...</source>
         <translation>Type a message, press Enter to send, Ctrl+Enter for newline...</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="176"/>
-        <location filename="../ai/chat_panel.cpp" line="530"/>
+        <location filename="../ai/chat_panel.cpp" line="537"/>
         <source>发送</source>
         <translation>Send</translation>
     </message>
     <message>
         <location filename="../ai/chat_panel.cpp" line="179"/>
-        <location filename="../ai/chat_panel.cpp" line="531"/>
+        <location filename="../ai/chat_panel.cpp" line="538"/>
         <source>发送消息 (Enter)</source>
         <translation>Send message (Enter)</translation>
     </message>
@@ -856,68 +881,68 @@ Line: %2%3</translation>
         <translation>AI Agent (Disconnected)</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="568"/>
+        <location filename="../ai/chat_panel.cpp" line="575"/>
         <source>AI agent已连接</source>
         <translation>AI Agent connected</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="573"/>
+        <location filename="../ai/chat_panel.cpp" line="580"/>
         <source>AI agent已断开连接</source>
         <translation>AI Agent disconnected</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="577"/>
+        <location filename="../ai/chat_panel.cpp" line="584"/>
         <source>正在重连...</source>
         <translation>Reconnecting...</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="594"/>
+        <location filename="../ai/chat_panel.cpp" line="601"/>
         <source>重试</source>
         <translation>Retry</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="595"/>
+        <location filename="../ai/chat_panel.cpp" line="602"/>
         <source>重连中</source>
         <translation>Reconnecting</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="596"/>
+        <location filename="../ai/chat_panel.cpp" line="603"/>
         <source>连接中</source>
         <translation>Connecting</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="656"/>
-        <location filename="../ai/chat_panel.cpp" line="679"/>
+        <location filename="../ai/chat_panel.cpp" line="663"/>
+        <location filename="../ai/chat_panel.cpp" line="686"/>
         <source>AI 提问：%1</source>
         <translation>AI Question: %1</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="666"/>
+        <location filename="../ai/chat_panel.cpp" line="673"/>
         <source>输入你的回答，按 Enter 提交...</source>
         <translation>Type your answer and press Enter to submit...</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="667"/>
+        <location filename="../ai/chat_panel.cpp" line="674"/>
         <source>输入答案，或从上面的选项中选择...</source>
         <translation>Type an answer, or choose from the options above...</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="674"/>
+        <location filename="../ai/chat_panel.cpp" line="681"/>
         <source>回答</source>
         <translation>Answer</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="675"/>
+        <location filename="../ai/chat_panel.cpp" line="682"/>
         <source>提交回答 (Enter)</source>
         <translation>Submit answer (Enter)</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="735"/>
+        <location filename="../ai/chat_panel.cpp" line="742"/>
         <source>AI 请求确认</source>
         <translation>AI Confirmation Required</translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="736"/>
+        <location filename="../ai/chat_panel.cpp" line="743"/>
         <source>AI 请求执行一个操作，是否继续？</source>
         <translation>The AI is requesting to perform an action. Continue?</translation>
     </message>
@@ -933,7 +958,7 @@ Line: %2%3</translation>
         <translation>User: </translation>
     </message>
     <message>
-        <location filename="../ai/chat_panel.cpp" line="907"/>
+        <location filename="../ai/chat_panel.cpp" line="914"/>
         <source>系统</source>
         <translation>System</translation>
     </message>
@@ -941,92 +966,92 @@ Line: %2%3</translation>
 <context>
     <name>SprintIDE::DebugPanel</name>
     <message>
-        <location filename="../debug_panel.cpp" line="32"/>
+        <location filename="../debug_panel.cpp" line="33"/>
         <source>调试控制</source>
         <translation>Debug Control</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="38"/>
+        <location filename="../debug_panel.cpp" line="39"/>
         <source>继续</source>
         <translation>Continue</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="45"/>
+        <location filename="../debug_panel.cpp" line="46"/>
         <source>步过</source>
         <translation>Step Over</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="52"/>
+        <location filename="../debug_panel.cpp" line="53"/>
         <source>步入</source>
         <translation>Step Into</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="59"/>
+        <location filename="../debug_panel.cpp" line="60"/>
         <source>步出</source>
         <translation>Step Out</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="68"/>
+        <location filename="../debug_panel.cpp" line="69"/>
         <source>停止</source>
         <translation>Stop</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="77"/>
+        <location filename="../debug_panel.cpp" line="78"/>
         <source>清空</source>
         <translation>Clear</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="95"/>
+        <location filename="../debug_panel.cpp" line="96"/>
         <source>调用栈</source>
         <translation>Call Stack</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="101"/>
+        <location filename="../debug_panel.cpp" line="102"/>
         <source>函数</source>
         <translation>Function</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="101"/>
+        <location filename="../debug_panel.cpp" line="102"/>
         <source>文件</source>
         <translation>File</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="101"/>
+        <location filename="../debug_panel.cpp" line="102"/>
         <source>行号</source>
         <translation>Line</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="114"/>
+        <location filename="../debug_panel.cpp" line="115"/>
         <source>局部变量</source>
         <translation>Local Variables</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="120"/>
+        <location filename="../debug_panel.cpp" line="121"/>
         <source>名称</source>
         <translation>Name</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="120"/>
+        <location filename="../debug_panel.cpp" line="121"/>
         <source>值</source>
         <translation>Value</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="120"/>
+        <location filename="../debug_panel.cpp" line="121"/>
         <source>类型</source>
         <translation>Type</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="127"/>
+        <location filename="../debug_panel.cpp" line="128"/>
         <source>表达式求值</source>
         <translation>Evaluate Expression</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="140"/>
+        <location filename="../debug_panel.cpp" line="141"/>
         <source>输入表达式，回车求值…</source>
         <translation>Enter expression, press Enter to evaluate...</translation>
     </message>
     <message>
-        <location filename="../debug_panel.cpp" line="166"/>
+        <location filename="../debug_panel.cpp" line="167"/>
         <source>调试控制台</source>
         <translation>Debug Console</translation>
     </message>
@@ -1034,72 +1059,72 @@ Line: %2%3</translation>
 <context>
     <name>SprintIDE::EditorSettingsPage</name>
     <message>
-        <location filename="../editor_settings_page.cpp" line="31"/>
+        <location filename="../editor_settings_page.cpp" line="55"/>
         <source>字体</source>
         <translation>Font</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="37"/>
+        <location filename="../editor_settings_page.cpp" line="61"/>
         <source>字体族:</source>
         <translation>Font Family:</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="41"/>
+        <location filename="../editor_settings_page.cpp" line="65"/>
         <source> pt</source>
         <translation> pt</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="43"/>
+        <location filename="../editor_settings_page.cpp" line="68"/>
         <source>字号:</source>
         <translation>Font Size:</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="47"/>
+        <location filename="../editor_settings_page.cpp" line="72"/>
         <source>行距由 SprintIDE 自动按字号计算（1.5 倍字号），无需手动设置。</source>
         <translation>Line spacing is automatically calculated by SprintIDE (1.5× font size); no manual setting needed.</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="58"/>
+        <location filename="../editor_settings_page.cpp" line="89"/>
         <source>缩进</source>
         <translation>Indentation</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="63"/>
+        <location filename="../editor_settings_page.cpp" line="94"/>
         <source> 字符</source>
         <translation> characters</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="65"/>
+        <location filename="../editor_settings_page.cpp" line="97"/>
         <source>Tab 宽度:</source>
         <translation>Tab Width:</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="67"/>
+        <location filename="../editor_settings_page.cpp" line="99"/>
         <source>使用空格代替 Tab</source>
         <translation>Use spaces instead of tabs</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="76"/>
+        <location filename="../editor_settings_page.cpp" line="108"/>
         <source>显示</source>
         <translation>Display</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="79"/>
+        <location filename="../editor_settings_page.cpp" line="111"/>
         <source>显示行号</source>
         <translation>Show line numbers</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="83"/>
+        <location filename="../editor_settings_page.cpp" line="115"/>
         <source>高亮当前行</source>
         <translation>Highlight current line</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="92"/>
+        <location filename="../editor_settings_page.cpp" line="124"/>
         <source>预览</source>
         <translation>Preview</translation>
     </message>
     <message>
-        <location filename="../editor_settings_page.cpp" line="99"/>
+        <location filename="../editor_settings_page.cpp" line="131"/>
         <source>// 这段代码会实时反映字体与缩进设置
 #include &lt;iostream&gt;
 
@@ -1927,57 +1952,73 @@ Time: %4</translation>
     </message>
 </context>
 <context>
+    <name>SprintIDE::HistoryVersion</name>
+    <message>
+        <location filename="../history/local_history.cpp" line="37"/>
+        <source>手动保存</source>
+        <translation>Manual Save</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="38"/>
+        <source>自动保存</source>
+        <translation>Auto Save</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="39"/>
+        <source>编辑</source>
+        <translation>Edit</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="40"/>
+        <source>编译前</source>
+        <translation>Before Build</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="41"/>
+        <source>运行前</source>
+        <translation>Before Run</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="42"/>
+        <source>来自 AI</source>
+        <translation>From AI</translation>
+    </message>
+    <message>
+        <location filename="../history/local_history.cpp" line="43"/>
+        <source>未知来源</source>
+        <translation>Unknown Source</translation>
+    </message>
+</context>
+<context>
     <name>SprintIDE::LineNumberArea</name>
     <message>
-        <location filename="../text_editor.cpp" line="90"/>
+        <location filename="../text_editor.cpp" line="96"/>
         <source>编辑断点条件...</source>
         <translation>Edit Breakpoint Condition...</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="91"/>
+        <location filename="../text_editor.cpp" line="97"/>
         <source>移除断点</source>
         <translation>Remove Breakpoint</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="99"/>
+        <location filename="../text_editor.cpp" line="105"/>
         <source>断点条件</source>
         <translation>Breakpoint Condition</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="100"/>
+        <location filename="../text_editor.cpp" line="106"/>
         <source>第 %1 行的断点条件（空 = 无条件）:</source>
         <translation>Breakpoint condition at line %1 (empty = none):</translation>
     </message>
 </context>
 <context>
-    <name>SprintIDE::HistoryVersion</name>
+    <name>SprintIDE::LocalHistory</name>
     <message>
-        <source>手动保存</source>
-        <translation>Manual Save</translation>
-    </message>
-    <message>
+        <location filename="../history/local_history.cpp" line="143"/>
+        <location filename="../history/local_history.cpp" line="441"/>
         <source>自动保存</source>
         <translation>Auto Save</translation>
-    </message>
-    <message>
-        <source>编辑</source>
-        <translation>Edit</translation>
-    </message>
-    <message>
-        <source>编译前</source>
-        <translation>Before Build</translation>
-    </message>
-    <message>
-        <source>运行前</source>
-        <translation>Before Run</translation>
-    </message>
-    <message>
-        <source>来自 AI</source>
-        <translation>From AI</translation>
-    </message>
-    <message>
-        <source>未知来源</source>
-        <translation>Unknown Source</translation>
     </message>
 </context>
 <context>
@@ -1997,1117 +2038,1279 @@ Time: %4</translation>
         <source>全选(&amp;S)</source>
         <translation>Select All (&amp;S)</translation>
     </message>
+    <message>
+        <location filename="../log/log_list_view.cpp" line="122"/>
+        <source>AI 解释此错误</source>
+        <translation>Ask AI to explain this error</translation>
+    </message>
+    <message>
+        <location filename="../log/log_list_view.cpp" line="125"/>
+        <source>AI Agent 未连接</source>
+        <translation>AI Agent not connected</translation>
+    </message>
 </context>
 <context>
     <name>SprintIDE::MainWindow</name>
     <message>
-        <location filename="../mainwindow.cpp" line="1354"/>
+        <location filename="../mainwindow.cpp" line="1523"/>
         <source>性能监控</source>
         <translation>Performance Monitor</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1488"/>
+        <location filename="../mainwindow.cpp" line="1709"/>
         <source>查看断点</source>
         <translation>Show Breakpoints</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1498"/>
-        <location filename="../mainwindow.cpp" line="2001"/>
+        <location filename="../mainwindow.cpp" line="1719"/>
+        <location filename="../mainwindow.cpp" line="2222"/>
         <source>禁用所有断点</source>
         <translation>Disable All Breakpoints</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2001"/>
+        <location filename="../mainwindow.cpp" line="2222"/>
         <source>恢复所有断点</source>
         <translation>Enable All Breakpoints</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1802"/>
+        <location filename="../mainwindow.cpp" line="2023"/>
         <source>断点</source>
         <translation>Breakpoint</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1876"/>
+        <location filename="../mainwindow.cpp" line="2097"/>
         <source>编辑断点条件</source>
         <translation>Edit Breakpoint Condition</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1877"/>
+        <location filename="../mainwindow.cpp" line="2098"/>
         <source>第 %1 行的断点条件（留空 = 无条件）：</source>
         <translation>Breakpoint condition at line %1 (empty = none):</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="828"/>
+        <location filename="../mainwindow.cpp" line="916"/>
         <source>文件(&amp;F)</source>
         <translation>File(&amp;F)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="828"/>
+        <location filename="../mainwindow.cpp" line="974"/>
         <source>新窗口</source>
         <translation>New Window</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="828"/>
+        <location filename="../mainwindow.cpp" line="970"/>
         <source>新窗口(&amp;W)</source>
         <translation>New Window(&amp;W)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="830"/>
+        <location filename="../mainwindow.cpp" line="918"/>
         <source>新建(&amp;N)</source>
         <translation>New(&amp;N)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="833"/>
+        <location filename="../mainwindow.cpp" line="921"/>
         <source>文件...</source>
         <translation>File...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="836"/>
+        <location filename="../mainwindow.cpp" line="924"/>
         <source>新建文件</source>
         <translation>New File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="841"/>
+        <location filename="../mainwindow.cpp" line="929"/>
         <source>C++ 源文件</source>
         <translation>C++ Source File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="843"/>
+        <location filename="../mainwindow.cpp" line="931"/>
         <source>新建 C++ 文件</source>
         <translation>New C++ File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="847"/>
+        <location filename="../mainwindow.cpp" line="935"/>
         <source>C++ 头文件</source>
         <translation>C++ Header File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="849"/>
+        <location filename="../mainwindow.cpp" line="937"/>
         <source>新建 C++ 头文件</source>
         <translation>New C++ Header</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="855"/>
+        <location filename="../mainwindow.cpp" line="943"/>
         <source>Python 文件</source>
         <translation>Python File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="857"/>
+        <location filename="../mainwindow.cpp" line="945"/>
         <source>新建 Python 文件</source>
         <translation>New Python File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="861"/>
+        <location filename="../mainwindow.cpp" line="949"/>
         <source>JavaScript 文件</source>
         <translation>JavaScript File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="863"/>
+        <location filename="../mainwindow.cpp" line="951"/>
         <source>新建 JavaScript 文件</source>
         <translation>New JavaScript File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="867"/>
+        <location filename="../mainwindow.cpp" line="955"/>
         <source>HTML 文件</source>
         <translation>HTML File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="869"/>
+        <location filename="../mainwindow.cpp" line="957"/>
         <source>新建 HTML 文件</source>
         <translation>New HTML File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="873"/>
+        <location filename="../mainwindow.cpp" line="961"/>
         <source>纯文本文件</source>
         <translation>Plain Text File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="875"/>
+        <location filename="../mainwindow.cpp" line="963"/>
         <source>新建文本文件</source>
         <translation>New Text File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="878"/>
-        <location filename="../mainwindow.cpp" line="898"/>
+        <location filename="../mainwindow.cpp" line="966"/>
         <source>项目</source>
         <translation>Project</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="881"/>
+        <location filename="../mainwindow.cpp" line="976"/>
         <source>打开(&amp;O)</source>
         <translation>Open(&amp;O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="884"/>
+        <location filename="../mainwindow.cpp" line="979"/>
         <source>快速打开文件...</source>
         <translation>Quick Open File...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="886"/>
+        <location filename="../mainwindow.cpp" line="981"/>
         <source>输入文件名快速打开 (Ctrl+O)</source>
         <translation>Type a file name to open quickly (Ctrl+O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="892"/>
         <source>打开文件...</source>
-        <translation>Open File...</translation>
+        <translation type="vanished">Open File...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="895"/>
         <source>打开文件</source>
-        <translation>Open File</translation>
+        <translation type="vanished">Open File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="901"/>
         <source>打开项目</source>
-        <translation>Open Project</translation>
+        <translation type="vanished">Open Project</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="905"/>
-        <location filename="../mainwindow.cpp" line="2597"/>
+        <location filename="../mainwindow.cpp" line="1000"/>
+        <location filename="../mainwindow.cpp" line="2985"/>
         <source>保存(&amp;S)</source>
         <translation>Save(&amp;S)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="910"/>
+        <location filename="../mainwindow.cpp" line="1005"/>
         <source>保存全部(&amp;A)</source>
         <translation>Save All(&amp;A)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="921"/>
+        <location filename="../mainwindow.cpp" line="1016"/>
         <source>保存全部</source>
         <translation>Save All</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="923"/>
+        <location filename="../mainwindow.cpp" line="1018"/>
         <source>另存为(&amp;A)</source>
         <translation>Save As(&amp;A)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="928"/>
+        <location filename="../mainwindow.cpp" line="1023"/>
         <source>关闭(&amp;C)</source>
         <translation>Close(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="931"/>
+        <location filename="../mainwindow.cpp" line="1026"/>
         <source>关闭文件</source>
         <translation>Close File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="933"/>
+        <location filename="../mainwindow.cpp" line="1028"/>
         <source>退出(&amp;X)</source>
         <translation>Exit(&amp;X)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="936"/>
+        <location filename="../mainwindow.cpp" line="1031"/>
         <source>退出</source>
         <translation>Exit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="939"/>
+        <location filename="../mainwindow.cpp" line="1034"/>
         <source>编辑(&amp;E)</source>
         <translation>Edit(&amp;E)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="941"/>
+        <location filename="../mainwindow.cpp" line="1036"/>
         <source>撤销(&amp;U)</source>
         <translation>Undo(&amp;U)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="944"/>
+        <location filename="../mainwindow.cpp" line="1039"/>
         <source>撤销</source>
         <translation>Undo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="946"/>
+        <location filename="../mainwindow.cpp" line="1041"/>
         <source>重做(&amp;R)</source>
         <translation>Redo(&amp;R)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="949"/>
+        <location filename="../mainwindow.cpp" line="1044"/>
         <source>重做</source>
         <translation>Redo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="953"/>
+        <location filename="../mainwindow.cpp" line="1048"/>
         <source>剪切(&amp;T)</source>
         <translation>Cut(&amp;T)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="956"/>
+        <location filename="../mainwindow.cpp" line="1051"/>
         <source>剪切</source>
         <translation>Cut</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="958"/>
+        <location filename="../mainwindow.cpp" line="1053"/>
         <source>复制(&amp;C)</source>
         <translation>Copy(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="961"/>
+        <location filename="../mainwindow.cpp" line="1056"/>
         <source>复制</source>
         <translation>Copy</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="963"/>
+        <location filename="../mainwindow.cpp" line="1058"/>
         <source>粘贴(&amp;P)</source>
         <translation>Paste(&amp;P)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="966"/>
+        <location filename="../mainwindow.cpp" line="1061"/>
         <source>粘贴</source>
         <translation>Paste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="970"/>
+        <location filename="../mainwindow.cpp" line="1065"/>
         <source>复制行(&amp;D)</source>
         <translation>Duplicate Line(&amp;D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="978"/>
+        <location filename="../mainwindow.cpp" line="1073"/>
         <source>复制行</source>
         <translation>Duplicate Line</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="980"/>
+        <location filename="../mainwindow.cpp" line="1075"/>
         <source>删除行(&amp;Y)</source>
         <translation>Delete Line(&amp;Y)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="988"/>
+        <location filename="../mainwindow.cpp" line="1083"/>
         <source>删除行</source>
         <translation>Delete Line</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="993"/>
+        <location filename="../mainwindow.cpp" line="1088"/>
         <source>安装依赖</source>
         <translation>Install Dependencies</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="997"/>
-        <location filename="../mainwindow.cpp" line="1014"/>
-        <location filename="../mainwindow.cpp" line="1031"/>
-        <location filename="../mainwindow.cpp" line="3554"/>
-        <location filename="../mainwindow.cpp" line="3570"/>
-        <location filename="../mainwindow.cpp" line="3575"/>
+        <location filename="../mainwindow.cpp" line="1092"/>
+        <location filename="../mainwindow.cpp" line="1109"/>
+        <location filename="../mainwindow.cpp" line="1126"/>
+        <location filename="../mainwindow.cpp" line="4176"/>
+        <location filename="../mainwindow.cpp" line="4192"/>
+        <location filename="../mainwindow.cpp" line="4197"/>
         <source>提示</source>
         <translation>Notice</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="997"/>
-        <location filename="../mainwindow.cpp" line="1014"/>
+        <location filename="../mainwindow.cpp" line="1092"/>
+        <location filename="../mainwindow.cpp" line="1109"/>
         <source>未打开 Python 项目</source>
         <translation>No Python project is open</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1010"/>
+        <location filename="../mainwindow.cpp" line="1105"/>
         <source>创建虚拟环境</source>
         <translation>Create Virtual Environment</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1025"/>
-        <location filename="../mainwindow.cpp" line="1080"/>
+        <location filename="../mainwindow.cpp" line="1120"/>
+        <location filename="../mainwindow.cpp" line="1175"/>
         <source>格式化代码</source>
         <translation>Format Code</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1031"/>
+        <location filename="../mainwindow.cpp" line="1126"/>
         <source>当前文件不是 Python 文件</source>
         <translation>The current file is not a Python file</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1046"/>
+        <location filename="../mainwindow.cpp" line="1141"/>
         <source>设置...</source>
         <translation>Settings...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1050"/>
+        <location filename="../mainwindow.cpp" line="1145"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1053"/>
+        <location filename="../mainwindow.cpp" line="1148"/>
         <source>跳转到行(&amp;L)...</source>
         <translation>Go to Line(&amp;L)...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1056"/>
+        <location filename="../mainwindow.cpp" line="1151"/>
         <source>跳转到行</source>
         <translation>Go to Line</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1060"/>
+        <location filename="../mainwindow.cpp" line="1155"/>
         <source>查找(&amp;F)</source>
         <translation>Find(&amp;F)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1063"/>
+        <location filename="../mainwindow.cpp" line="1158"/>
         <source>查找</source>
         <translation>Find</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1065"/>
+        <location filename="../mainwindow.cpp" line="1160"/>
         <source>替换(&amp;R)</source>
         <translation>Replace(&amp;R)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1068"/>
+        <location filename="../mainwindow.cpp" line="1163"/>
         <source>替换</source>
         <translation>Replace</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1070"/>
+        <location filename="../mainwindow.cpp" line="1165"/>
         <source>在文件中查找(&amp;F)...</source>
         <translation>Find in Files(&amp;F)...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1072"/>
+        <location filename="../mainwindow.cpp" line="1167"/>
         <source>在整个项目中搜索文本 (Ctrl+Shift+F)</source>
         <translation>Search text in the whole project (Ctrl+Shift+F)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1077"/>
+        <location filename="../mainwindow.cpp" line="1172"/>
         <source>格式化代码(&amp;O)</source>
         <translation>Format Code(&amp;O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1082"/>
+        <location filename="../mainwindow.cpp" line="1177"/>
         <source>注释(&amp;C)</source>
         <translation>Comment(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1085"/>
+        <location filename="../mainwindow.cpp" line="1180"/>
         <source>注释</source>
         <translation>Comment</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1088"/>
+        <location filename="../mainwindow.cpp" line="1183"/>
         <source>构建(&amp;B)</source>
         <translation>Build(&amp;B)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1090"/>
+        <location filename="../mainwindow.cpp" line="1185"/>
         <source>编译当前文件(&amp;C)</source>
         <translation>Compile Current File(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1093"/>
+        <location filename="../mainwindow.cpp" line="1188"/>
         <source>编译当前文件</source>
         <translation>Compile Current File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1095"/>
+        <location filename="../mainwindow.cpp" line="1190"/>
         <source>编译项目(&amp;P)</source>
         <translation>Build Project(&amp;P)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1098"/>
+        <location filename="../mainwindow.cpp" line="1193"/>
         <source>编译项目</source>
         <translation>Build Project</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1100"/>
+        <location filename="../mainwindow.cpp" line="1195"/>
         <source>清理构建(&amp;O)</source>
         <translation>Clean Build(&amp;O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1107"/>
+        <location filename="../mainwindow.cpp" line="1202"/>
         <source>调试(&amp;D)</source>
         <translation>Debug(&amp;D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1109"/>
+        <location filename="../mainwindow.cpp" line="1204"/>
         <source>启动调试(&amp;S)</source>
         <translation>Start Debugging(&amp;S)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1112"/>
+        <location filename="../mainwindow.cpp" line="1207"/>
         <source>启动调试</source>
         <translation>Start Debugging</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1114"/>
+        <location filename="../mainwindow.cpp" line="1209"/>
         <source>停止调试(&amp;T)</source>
         <translation>Stop Debugging(&amp;T)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1118"/>
+        <location filename="../mainwindow.cpp" line="1213"/>
         <source>停止调试</source>
         <translation>Stop Debugging</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1122"/>
+        <location filename="../mainwindow.cpp" line="1217"/>
         <source>步过(&amp;N)</source>
         <translation>Step Over(&amp;N)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1126"/>
+        <location filename="../mainwindow.cpp" line="1221"/>
         <source>步过</source>
         <translation>Step Over</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1128"/>
+        <location filename="../mainwindow.cpp" line="1223"/>
         <source>步入(&amp;S)</source>
         <translation>Step Into(&amp;S)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1132"/>
+        <location filename="../mainwindow.cpp" line="1227"/>
         <source>步入</source>
         <translation>Step Into</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1134"/>
+        <location filename="../mainwindow.cpp" line="1229"/>
         <source>步出(&amp;O)</source>
         <translation>Step Out(&amp;O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1138"/>
+        <location filename="../mainwindow.cpp" line="1233"/>
         <source>步出</source>
         <translation>Step Out</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1142"/>
+        <location filename="../mainwindow.cpp" line="1237"/>
         <source>继续(&amp;C)</source>
         <translation>Continue(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1146"/>
+        <location filename="../mainwindow.cpp" line="1241"/>
         <source>继续</source>
         <translation>Continue</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1150"/>
+        <location filename="../mainwindow.cpp" line="1245"/>
         <source>添加断点(&amp;B)</source>
         <translation>Add Breakpoint(&amp;B)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1153"/>
+        <location filename="../mainwindow.cpp" line="1248"/>
         <source>添加断点</source>
         <translation>Add Breakpoint</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1158"/>
+        <location filename="../mainwindow.cpp" line="1253"/>
         <source>打开 Git 窗口(&amp;O)</source>
         <translation>Open Git Window(&amp;O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1160"/>
+        <location filename="../mainwindow.cpp" line="1255"/>
         <source>显示 / 隐藏 Git 窗口 (Ctrl+Shift+G)</source>
         <translation>Show / hide the Git window (Ctrl+Shift+G)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1162"/>
+        <location filename="../mainwindow.cpp" line="1257"/>
         <source>打开 Git 窗口</source>
         <translation>Show Git window</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1166"/>
+        <location filename="../mainwindow.cpp" line="1261"/>
         <source>初始化仓库(&amp;I)</source>
         <translation>Initialize Repository(&amp;I)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1169"/>
+        <location filename="../mainwindow.cpp" line="1264"/>
         <source>提交(&amp;C)...</source>
         <translation>Commit(&amp;C)...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1172"/>
+        <location filename="../mainwindow.cpp" line="1267"/>
         <source>Git 提交</source>
         <translation>Commit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1176"/>
+        <location filename="../mainwindow.cpp" line="1271"/>
         <source>获取(&amp;F)</source>
         <translation>Fetch(&amp;F)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1179"/>
+        <location filename="../mainwindow.cpp" line="1274"/>
         <source>拉取(&amp;P)</source>
         <translation>Pull(&amp;P)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1182"/>
+        <location filename="../mainwindow.cpp" line="1277"/>
         <source>推送(&amp;U)</source>
         <translation>Push(&amp;U)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1187"/>
+        <location filename="../mainwindow.cpp" line="1282"/>
         <source>刷新状态(&amp;R)</source>
         <translation>Refresh Status(&amp;R)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1190"/>
+        <location filename="../mainwindow.cpp" line="1285"/>
         <source>Git 刷新状态</source>
         <translation>Refresh Status</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1192"/>
+        <location filename="../mainwindow.cpp" line="1287"/>
         <source>查看历史(&amp;H)</source>
         <translation>View History(&amp;H)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1196"/>
+        <location filename="../mainwindow.cpp" line="1291"/>
         <source>工具(&amp;T)</source>
         <translation>Tools(&amp;T)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1198"/>
+        <location filename="../mainwindow.cpp" line="1293"/>
         <source>主题设置(&amp;H)</source>
         <translation>Theme(&amp;H)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1200"/>
+        <location filename="../mainwindow.cpp" line="1295"/>
         <source>浅色主题(&amp;L)</source>
         <translation>Light Theme(&amp;L)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1203"/>
+        <location filename="../mainwindow.cpp" line="1298"/>
         <source>深色主题(&amp;D)</source>
         <translation>Dark Theme(&amp;D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1206"/>
+        <location filename="../mainwindow.cpp" line="1301"/>
         <source>插件管理(&amp;P)</source>
         <translation>Plugin Manager(&amp;P)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1211"/>
+        <location filename="../mainwindow.cpp" line="1306"/>
         <source>性能监控(&amp;M)</source>
         <translation>Performance Monitor(&amp;M)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1214"/>
+        <location filename="../mainwindow.cpp" line="1309"/>
         <source>显示 / 隐藏状态栏性能监控指示器</source>
         <translation>Show / hide the performance monitor in the status bar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1221"/>
+        <location filename="../mainwindow.cpp" line="1316"/>
         <source>终端(&amp;T)</source>
         <translation>Terminal(&amp;T)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1231"/>
+        <location filename="../mainwindow.cpp" line="1326"/>
         <source>视图(&amp;V)</source>
         <translation>View(&amp;V)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1234"/>
+        <location filename="../mainwindow.cpp" line="1329"/>
         <source>底部面板(&amp;B)</source>
         <translation>Bottom Panel(&amp;B)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1238"/>
+        <location filename="../mainwindow.cpp" line="1333"/>
         <source>显示 / 隐藏底部面板 (Ctrl+J)</source>
         <translation>Show / hide the bottom panel (Ctrl+J)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1245"/>
+        <location filename="../mainwindow.cpp" line="1340"/>
         <source>底部面板</source>
         <translation>Bottom Panel</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1251"/>
+        <location filename="../mainwindow.cpp" line="1346"/>
         <source>项目面板(&amp;P)</source>
         <translation>Project Panel(&amp;P)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1255"/>
+        <location filename="../mainwindow.cpp" line="1350"/>
         <source>显示 / 隐藏项目面板 (Ctrl+Alt+E)</source>
         <translation>Show / hide the project panel (Ctrl+Alt+E)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1266"/>
+        <location filename="../mainwindow.cpp" line="1361"/>
+        <source>代码大纲(&amp;O)...</source>
+        <translation>Code Outline(&amp;O)...</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1363"/>
+        <source>显示当前文件的属性和方法（按住 Ctrl+` 显示，松开关闭）</source>
+        <translation>Show the current file&apos;s properties and methods (hold Ctrl+` to show, release to close)`</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1370"/>
+        <location filename="../mainwindow.cpp" line="1374"/>
+        <source>重置窗口布局</source>
+        <translation>Reset Window Layout</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1371"/>
+        <source>恢复窗口到默认大小、位置和面板布局</source>
+        <translation>Restore the window to its default size, position and panel layout</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1375"/>
+        <source>将窗口大小、位置和面板布局恢复为默认值。
+
+继续？</source>
+        <translation>Reset the window size, position and panel layout to their default values.\n\nContinue?</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1394"/>
+        <source>诊断(&amp;N)</source>
+        <translation>Diagnostics(&amp;N)</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1396"/>
+        <location filename="../mainwindow.cpp" line="1408"/>
+        <source>显示 Problems 面板</source>
+        <translation>Show the Problems panel</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1412"/>
+        <source>清除所有诊断</source>
+        <translation>Clear All Diagnostics</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1417"/>
+        <source>已清除所有诊断</source>
+        <translation>All diagnostics cleared</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1421"/>
         <source>帮助(&amp;H)</source>
         <translation>Help(&amp;H)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1268"/>
+        <location filename="../mainwindow.cpp" line="1423"/>
         <source>快速指南(&amp;G)</source>
         <translation>Quick Start(&amp;G)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1271"/>
+        <location filename="../mainwindow.cpp" line="1426"/>
         <source>文档中心(&amp;D)</source>
         <translation>Documentation(&amp;D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1274"/>
+        <location filename="../mainwindow.cpp" line="1429"/>
         <source>关于(&amp;A)</source>
         <translation>About(&amp;A)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1280"/>
+        <location filename="../mainwindow.cpp" line="1435"/>
         <source>主工具栏</source>
         <translation>Main Toolbar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1284"/>
+        <location filename="../mainwindow.cpp" line="1439"/>
         <source>新建</source>
         <translation>New</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1287"/>
+        <location filename="../mainwindow.cpp" line="1442"/>
         <source>打开</source>
         <translation>Open</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="5279"/>
+        <location filename="../mainwindow.cpp" line="1503"/>
+        <source>点击查看 Problems 面板</source>
+        <translation>Click to view the Problems panel</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="2712"/>
+        <location filename="../mainwindow.cpp" line="2947"/>
+        <source>已自动保存: </source>
+        <translation>Auto-saved: </translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="2722"/>
+        <location filename="../mainwindow.cpp" line="2958"/>
+        <source>⚠ 文件已被外部修改，自动保存已跳过: </source>
+        <translation>File was modified externally; auto-save skipped:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="5901"/>
         <source>停止</source>
         <translation>Stop</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="5280"/>
+        <location filename="../mainwindow.cpp" line="5902"/>
         <source>停止运行 (Ctrl+R)</source>
         <translation>Stop Running (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="5304"/>
+        <location filename="../mainwindow.cpp" line="5926"/>
         <source>运行完成</source>
         <translation>Run completed</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="908"/>
-        <location filename="../mainwindow.cpp" line="1290"/>
+        <location filename="../mainwindow.cpp" line="8637"/>
+        <source>AI Agent 未连接，请先启动 Agent。</source>
+        <translation>AI Agent is not connected. Start the Agent first.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="8676"/>
+        <source>请解释下面这条编译/运行错误，说明原因和修复方法：</source>
+        <translation>Please explain the following build/run error, including the cause and how to fix it:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="8690"/>
+        <source>无法启动新窗口：</source>
+        <translation>Cannot launch a new window:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1003"/>
+        <location filename="../mainwindow.cpp" line="1445"/>
         <source>保存</source>
         <translation>Save</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1295"/>
+        <location filename="../mainwindow.cpp" line="1450"/>
         <source>编译</source>
         <translation>Compile</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1298"/>
-        <location filename="../mainwindow.cpp" line="1302"/>
-        <location filename="../mainwindow.cpp" line="5298"/>
+        <location filename="../mainwindow.cpp" line="1453"/>
+        <location filename="../mainwindow.cpp" line="1457"/>
+        <location filename="../mainwindow.cpp" line="5920"/>
         <source>运行</source>
         <translation>Run</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1304"/>
-        <location filename="../mainwindow.cpp" line="1673"/>
+        <location filename="../mainwindow.cpp" line="1459"/>
+        <location filename="../mainwindow.cpp" line="1894"/>
         <source>调试</source>
         <translation>Debug</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1313"/>
-        <location filename="../mainwindow.cpp" line="2666"/>
+        <location filename="../mainwindow.cpp" line="1468"/>
+        <location filename="../mainwindow.cpp" line="2716"/>
+        <location filename="../mainwindow.cpp" line="2951"/>
+        <location filename="../mainwindow.cpp" line="3055"/>
         <source>就绪</source>
         <translation>Ready</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1320"/>
+        <location filename="../mainwindow.cpp" line="1475"/>
         <source>行: 1  列: 1</source>
         <translation>Ln 1, Col 1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1338"/>
+        <location filename="../mainwindow.cpp" line="1493"/>
         <source>空格: 4</source>
         <translation>Spaces: 4</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1262"/>
-        <location filename="../mainwindow.cpp" line="1375"/>
+        <location filename="../mainwindow.cpp" line="1357"/>
+        <location filename="../mainwindow.cpp" line="1544"/>
         <source>项目面板</source>
         <translation>Project Panel</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1398"/>
+        <location filename="../mainwindow.cpp" line="1567"/>
         <source>面板</source>
         <translation>Panel</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1449"/>
+        <location filename="../mainwindow.cpp" line="1620"/>
         <source>输出</source>
         <translation>Output</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1228"/>
-        <location filename="../mainwindow.cpp" line="1695"/>
+        <location filename="../mainwindow.cpp" line="1628"/>
+        <source>问题</source>
+        <translation>Problems</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1323"/>
+        <location filename="../mainwindow.cpp" line="1916"/>
         <source>终端</source>
         <translation>Terminal</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1300"/>
-        <location filename="../mainwindow.cpp" line="5299"/>
+        <location filename="../mainwindow.cpp" line="972"/>
+        <source>打开一个新的 SprintIDE 窗口（多实例）</source>
+        <translation>Open a new SprintIDE window (multiple instances)</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="1455"/>
+        <location filename="../mainwindow.cpp" line="5921"/>
         <source>运行 (Ctrl+R)</source>
         <translation>Run (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1955"/>
+        <location filename="../mainwindow.cpp" line="2176"/>
         <source>没有断点可禁用</source>
         <translation>No breakpoints to disable</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2005"/>
+        <location filename="../mainwindow.cpp" line="2226"/>
         <source>已禁用所有断点</source>
         <translation>All breakpoints disabled</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2005"/>
+        <location filename="../mainwindow.cpp" line="2226"/>
         <source>已恢复所有断点</source>
         <translation>All breakpoints enabled</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2044"/>
+        <location filename="../mainwindow.cpp" line="2262"/>
         <source>正在编译</source>
         <translation>Compiling</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2045"/>
+        <location filename="../mainwindow.cpp" line="2263"/>
         <source>当前正在编译，是否停止编译并退出？</source>
         <translation>Compiling. Stop and exit?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2117"/>
-        <location filename="../mainwindow.cpp" line="2593"/>
+        <location filename="../mainwindow.cpp" line="2361"/>
+        <location filename="../mainwindow.cpp" line="2981"/>
         <source>未保存的更改</source>
         <translation>Unsaved Changes</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2118"/>
+        <location filename="../mainwindow.cpp" line="2362"/>
         <source>有未保存的更改，是否保存？</source>
         <translation>There are unsaved changes. Save them?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2145"/>
-        <location filename="../mainwindow.cpp" line="2773"/>
+        <location filename="../mainwindow.cpp" line="2389"/>
+        <location filename="../mainwindow.cpp" line="3162"/>
         <source>行: %1  列: %2</source>
         <translation>Ln %1, Col %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2195"/>
+        <location filename="../mainwindow.cpp" line="2495"/>
         <source>打开项目失败</source>
         <translation>Failed to Open Project</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2195"/>
+        <location filename="../mainwindow.cpp" line="2495"/>
         <source>无法打开项目：</source>
         <translation>Cannot open project: </translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2374"/>
+        <location filename="../mainwindow.cpp" line="2680"/>
         <source>打开错误</source>
         <translation>Open Error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2375"/>
+        <location filename="../mainwindow.cpp" line="2681"/>
         <source>无法打开文件:
 %1</source>
         <translation>Cannot open file:
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2594"/>
+        <location filename="../mainwindow.cpp" line="2982"/>
         <source>文件 &apos;%1&apos; 有未保存的更改。
 是否保存更改？</source>
         <translation>File &apos;%1&apos; has unsaved changes.
 Save changes?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2598"/>
+        <location filename="../mainwindow.cpp" line="2986"/>
         <source>不保存(&amp;D)</source>
         <translation>Don&apos;t Save(&amp;D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2599"/>
+        <location filename="../mainwindow.cpp" line="2987"/>
         <source>取消(&amp;C)</source>
         <translation>Cancel(&amp;C)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2661"/>
+        <location filename="../mainwindow.cpp" line="3050"/>
         <source>正在编辑: %1</source>
         <translation>Editing: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2665"/>
+        <location filename="../mainwindow.cpp" line="3054"/>
         <source>行: -  列: -</source>
         <translation>Ln -, Col -</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2695"/>
+        <location filename="../mainwindow.cpp" line="3084"/>
         <source>关闭左侧文件</source>
         <translation>Close the files on the left</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2696"/>
+        <location filename="../mainwindow.cpp" line="3085"/>
         <source>关闭右侧文件</source>
         <translation>Close the files on the right</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2697"/>
+        <location filename="../mainwindow.cpp" line="3086"/>
         <source>关闭其他文件</source>
         <translation>Close other files</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2780"/>
+        <location filename="../mainwindow.cpp" line="3169"/>
         <source>已加载: %1</source>
         <translation>Loaded: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2807"/>
+        <location filename="../mainwindow.cpp" line="3201"/>
         <source>文件已保存</source>
         <translation>File saved</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2908"/>
+        <location filename="../mainwindow.cpp" line="3334"/>
         <source>已重命名: %1 → %2</source>
         <translation>Renamed: %1 → %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2984"/>
+        <location filename="../mainwindow.cpp" line="3411"/>
         <source>调试已结束</source>
         <translation>Debugging finished</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2995"/>
+        <location filename="../mainwindow.cpp" line="3422"/>
         <source>=== 调试会话结束 ===</source>
         <translation>=== Debug session ended ===</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3047"/>
+        <location filename="../mainwindow.cpp" line="3474"/>
         <source>正在编译 %1...</source>
         <translation>Compiling %1...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3070"/>
+        <location filename="../mainwindow.cpp" line="3498"/>
         <source>正在编译... %1% - %2</source>
         <translation>Compiling... %1% - %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3072"/>
+        <location filename="../mainwindow.cpp" line="3500"/>
         <source>正在编译... %1%</source>
         <translation>Compiling... %1%</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3078"/>
+        <location filename="../mainwindow.cpp" line="3506"/>
         <source>[%1] 编译进度: %2%</source>
         <translation>[%1] Build progress: %2%</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3148"/>
+        <location filename="../mainwindow.cpp" line="3656"/>
         <source> 错误: %1, 警告: %2</source>
         <translation> Errors: %1, Warnings: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3153"/>
+        <location filename="../mainwindow.cpp" line="3661"/>
         <source>编译成功</source>
         <translation>Build succeeded</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3202"/>
+        <location filename="../mainwindow.cpp" line="3732"/>
         <source>[%1] 编译失败! 耗时: %2ms</source>
         <translation>[%1] Build failed! Time: %2 ms</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3206"/>
+        <location filename="../mainwindow.cpp" line="3736"/>
         <source>编译失败</source>
         <translation>Build failed</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3212"/>
+        <location filename="../mainwindow.cpp" line="3742"/>
         <source>错误: %1, 警告: %2</source>
         <translation>Errors: %1, Warnings: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3345"/>
+        <location filename="../mainwindow.cpp" line="3835"/>
         <source>编译错误</source>
         <translation>Build error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3381"/>
-        <location filename="../mainwindow.cpp" line="3449"/>
+        <location filename="../mainwindow.cpp" line="3871"/>
+        <location filename="../mainwindow.cpp" line="3939"/>
         <source>运行错误</source>
         <translation>Run Error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3382"/>
+        <location filename="../mainwindow.cpp" line="3872"/>
         <source>可执行文件不存在:
 %1</source>
         <translation>Executable does not exist:
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3401"/>
+        <location filename="../mainwindow.cpp" line="3891"/>
         <source>; echo &apos;程序执行完毕，按任意键退出...&apos;; read -n1</source>
         <translation>; echo &apos;Program finished. Press any key to exit...&apos;; read -n1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3433"/>
+        <location filename="../mainwindow.cpp" line="3923"/>
         <source>[%1] 程序执行完毕，退出码: %2</source>
         <translation>[%1] Program finished, exit code: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3437"/>
+        <location filename="../mainwindow.cpp" line="3927"/>
         <source>[%1] 程序异常退出</source>
         <translation>[%1] Program exited abnormally</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3441"/>
-        <location filename="../mainwindow.cpp" line="4291"/>
+        <location filename="../mainwindow.cpp" line="3931"/>
+        <location filename="../mainwindow.cpp" line="4913"/>
         <source>程序执行完成</source>
         <translation>Program finished</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3449"/>
+        <location filename="../mainwindow.cpp" line="3939"/>
         <source>无法启动程序</source>
         <translation>Failed to start the program</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3452"/>
-        <location filename="../mainwindow.cpp" line="5286"/>
+        <location filename="../mainwindow.cpp" line="3942"/>
+        <location filename="../mainwindow.cpp" line="5908"/>
         <source>程序运行中...</source>
         <translation>Running...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3554"/>
+        <location filename="../mainwindow.cpp" line="4176"/>
         <source>请先打开一个文件再开始调试。</source>
         <translation>Open a file before starting debugging.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3560"/>
+        <location filename="../mainwindow.cpp" line="4182"/>
         <source>错误</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3560"/>
+        <location filename="../mainwindow.cpp" line="4182"/>
         <source>请先保存文件。</source>
         <translation>Save the file first.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3565"/>
+        <location filename="../mainwindow.cpp" line="4187"/>
         <source>保存错误</source>
         <translation>Save Error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3565"/>
+        <location filename="../mainwindow.cpp" line="4187"/>
         <source>无法保存文件，调试中止。</source>
         <translation>Failed to save the file; debugging aborted.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3570"/>
+        <location filename="../mainwindow.cpp" line="4192"/>
         <source>当前正在编译，请等待编译完成后再调试。</source>
         <translation>Compiling, please wait before debugging.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3575"/>
+        <location filename="../mainwindow.cpp" line="4197"/>
         <source>当前正在调试中，请先停止调试。</source>
         <translation>Already debugging. Stop the current session first.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3726"/>
+        <location filename="../mainwindow.cpp" line="4348"/>
         <source>=== 调试会话开始: %1 ===</source>
         <translation>=== Debug session started: %1 ===</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3796"/>
-        <location filename="../mainwindow.cpp" line="4086"/>
+        <location filename="../mainwindow.cpp" line="4418"/>
+        <location filename="../mainwindow.cpp" line="4708"/>
         <source>编译并调试</source>
         <translation>Compile and Debug</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="3797"/>
-        <location filename="../mainwindow.cpp" line="4086"/>
+        <location filename="../mainwindow.cpp" line="4419"/>
+        <location filename="../mainwindow.cpp" line="4708"/>
         <source>文件尚未编译或已过期，是否现在编译并调试?</source>
         <translation>The file has not been compiled or is out of date. Compile and debug now?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4019"/>
+        <location filename="../mainwindow.cpp" line="4641"/>
         <source>=== C++ 调试会话开始: %1 ===</source>
         <translation>=== C++ debug session started: %1 ===</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4245"/>
+        <location filename="../mainwindow.cpp" line="4867"/>
         <source>调试已停止</source>
         <translation>Debugging stopped</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4259"/>
+        <location filename="../mainwindow.cpp" line="4881"/>
         <source>正在启动调试...</source>
         <translation>Starting debugger...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4273"/>
+        <location filename="../mainwindow.cpp" line="4895"/>
         <source>调试运行中</source>
         <translation>Debugger running</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4279"/>
+        <location filename="../mainwindow.cpp" line="4901"/>
         <source>调试暂停（断点命中）</source>
         <translation>Paused (breakpoint hit)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4285"/>
+        <location filename="../mainwindow.cpp" line="4907"/>
         <source>单步执行中...</source>
         <translation>Stepping...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="4302"/>
+        <location filename="../mainwindow.cpp" line="4924"/>
         <source>调试错误</source>
         <translation>Debug error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1075"/>
+        <location filename="../mainwindow.cpp" line="1170"/>
         <source>在文件中查找</source>
         <translation>Find in Files</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="888"/>
+        <location filename="../mainwindow.cpp" line="983"/>
         <source>快速打开</source>
         <translation>Quick Open</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="2694"/>
+        <location filename="../mainwindow.cpp" line="3083"/>
         <source>关闭</source>
         <translation>Close</translation>
     </message>
 </context>
 <context>
+    <name>SprintIDE::OutlineOverlay</name>
+    <message>
+        <location filename="../outline/outline_overlay.cpp" line="62"/>
+        <location filename="../outline/outline_overlay.cpp" line="311"/>
+        <source>属性</source>
+        <translation>Properties</translation>
+    </message>
+    <message>
+        <location filename="../outline/outline_overlay.cpp" line="66"/>
+        <location filename="../outline/outline_overlay.cpp" line="312"/>
+        <source>方法</source>
+        <translation>Methods</translation>
+    </message>
+</context>
+<context>
     <name>SprintIDE::OutputPanel</name>
     <message>
-        <location filename="../log/output_panel.cpp" line="49"/>
+        <location filename="../log/output_panel.cpp" line="57"/>
         <source>在输出中过滤...</source>
         <translation>Filter output...</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="367"/>
+        <location filename="../log/output_panel.cpp" line="380"/>
         <source>错误 %1 · 警告 %2 · 信息 %3</source>
         <translation>Errors %1 · Warnings %2 · Info %3</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="369"/>
+        <location filename="../log/output_panel.cpp" line="382"/>
         <source>  ·  过滤后 %1 条</source>
         <translation>  ·  %1 after filtering</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="371"/>
+        <location filename="../log/output_panel.cpp" line="384"/>
         <source>  ·  共 %1 条</source>
         <translation>  ·  %1 total</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="78"/>
+        <location filename="../log/output_panel.cpp" line="86"/>
         <source>显示 / 隐藏错误</source>
         <translation>Show / hide errors</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="80"/>
+        <location filename="../log/output_panel.cpp" line="88"/>
         <source>显示 / 隐藏警告</source>
         <translation>Show / hide warnings</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="82"/>
+        <location filename="../log/output_panel.cpp" line="90"/>
         <source>显示 / 隐藏信息</source>
         <translation>Show / hide info</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="101"/>
+        <location filename="../log/output_panel.cpp" line="109"/>
         <source>跟随最新输出（自动滚动到底部）</source>
         <translation>Follow latest output (auto-scroll to bottom)</translation>
     </message>
     <message>
-        <location filename="../log/output_panel.cpp" line="113"/>
+        <location filename="../log/output_panel.cpp" line="121"/>
         <source>清空输出</source>
         <translation>Clear output</translation>
+    </message>
+</context>
+<context>
+    <name>SprintIDE::ProblemsPanel</name>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="60"/>
+        <source>过滤消息…</source>
+        <translation>Filter messages...</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="78"/>
+        <source>显示错误</source>
+        <translation>Show errors</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="79"/>
+        <source>显示警告</source>
+        <translation>Show warnings</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="80"/>
+        <source>显示信息</source>
+        <translation>Show info</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="275"/>
+        <source>无诊断</source>
+        <translation>No diagnostics</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="281"/>
+        <source>错误</source>
+        <translation>Errors</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="281"/>
+        <source>警告</source>
+        <translation>Warnings</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="333"/>
+        <source>跳转</source>
+        <translation>Jump</translation>
+    </message>
+    <message>
+        <location filename="../problems/problems_panel.cpp" line="336"/>
+        <source>显示修复...</source>
+        <translation>Show fixes...</translation>
     </message>
 </context>
 <context>
@@ -3118,7 +3321,7 @@ Save changes?</translation>
         <translation>Create New Project - SprintIDE</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="410"/>
+        <location filename="../project_creation_dialog.cpp" line="435"/>
         <source># 编译输出
 bin/
 build/
@@ -3171,124 +3374,121 @@ Thumbs.db
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1086"/>
+        <location filename="../project_creation_dialog.cpp" line="1112"/>
         <source>检查 .ui 文件是否包含该控件，或 uic 输出是否过期。</source>
         <translation>Check whether the .ui file contains this widget, or whether the uic output is out of date.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1094"/>
-        <location filename="../project_creation_dialog.cpp" line="1101"/>
+        <location filename="../project_creation_dialog.cpp" line="1120"/>
+        <location filename="../project_creation_dialog.cpp" line="1127"/>
         <source>无法自动插入语言选择器。</source>
         <translation>Cannot automatically insert the language selector.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1110"/>
-        <location filename="../project_creation_dialog.cpp" line="1123"/>
+        <location filename="../project_creation_dialog.cpp" line="1136"/>
+        <location filename="../project_creation_dialog.cpp" line="1149"/>
         <source>编程语言:</source>
         <translation>Programming Language:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1134"/>
+        <location filename="../project_creation_dialog.cpp" line="1160"/>
         <source>[ProjectCreationDialog] templateComboBox 位于 QGridLayout 中，无法自动插入语言选择器。
 请在 Qt Designer 中把 templateComboBox 所在的父布局改为 QFormLayout 或 QVBoxLayout。</source>
         <translation>[ProjectCreationDialog] templateComboBox is inside a QGridLayout, so the language selector cannot be inserted automatically.
 Please change the parent layout of templateComboBox to QFormLayout or QVBoxLayout in Qt Designer.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1152"/>
+        <location filename="../project_creation_dialog.cpp" line="1178"/>
         <source>语言选项</source>
         <translation>Language Options</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1160"/>
         <source>创建虚拟环境 (.venv)</source>
-        <translation>Create virtual environment (.venv)</translation>
+        <translation type="vanished">Create virtual environment (.venv)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1163"/>
         <source>留空则自动探测 python3 / py</source>
-        <translation>Leave blank to auto-detect python3 / py</translation>
+        <translation type="vanished">Leave blank to auto-detect python3 / py</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1168"/>
+        <location filename="../project_creation_dialog.cpp" line="1201"/>
         <source>例如 example.com/myapp</source>
         <translation>e.g. example.com/myapp</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1172"/>
+        <location filename="../project_creation_dialog.cpp" line="1205"/>
         <source>可执行程序 (bin)</source>
         <translation>Binary (bin)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1173"/>
+        <location filename="../project_creation_dialog.cpp" line="1206"/>
         <source>库 (lib)</source>
         <translation>Library (lib)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1237"/>
+        <location filename="../project_creation_dialog.cpp" line="1287"/>
         <source>templateComboBox 不可用</source>
         <translation>templateComboBox is not available</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1242"/>
+        <location filename="../project_creation_dialog.cpp" line="1292"/>
         <source>languageComboBox 尚未创建</source>
         <translation>languageComboBox has not been created yet</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1332"/>
-        <location filename="../project_creation_dialog.cpp" line="1359"/>
+        <location filename="../project_creation_dialog.cpp" line="1394"/>
+        <location filename="../project_creation_dialog.cpp" line="1422"/>
         <source>入口文件:</source>
         <translation>Entry file:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1338"/>
         <source>解释器路径:</source>
-        <translation>Interpreter path:</translation>
+        <translation type="vanished">Interpreter path:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1343"/>
+        <location filename="../project_creation_dialog.cpp" line="1406"/>
         <source>Module 路径:</source>
         <translation>Module path:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1348"/>
+        <location filename="../project_creation_dialog.cpp" line="1411"/>
         <source>目标类型:</source>
         <translation>Target type:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1353"/>
+        <location filename="../project_creation_dialog.cpp" line="1416"/>
         <source>语言变体:</source>
         <translation>Language variant:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1356"/>
+        <location filename="../project_creation_dialog.cpp" line="1419"/>
         <source>包管理器:</source>
         <translation>Package manager:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1364"/>
+        <location filename="../project_creation_dialog.cpp" line="1427"/>
         <source>Build 命令:</source>
         <translation>Build command:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1367"/>
+        <location filename="../project_creation_dialog.cpp" line="1430"/>
         <source>Run 命令:</source>
         <translation>Run command:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1370"/>
+        <location filename="../project_creation_dialog.cpp" line="1433"/>
         <source>Clean 命令:</source>
         <translation>Clean command:</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1913"/>
+        <location filename="../project_creation_dialog.cpp" line="1999"/>
         <source>将创建以下文件:
 </source>
         <translation>The following files will be created:
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1918"/>
+        <location filename="../project_creation_dialog.cpp" line="2006"/>
         <source>
 目录结构:
 </source>
@@ -3297,47 +3497,47 @@ Directory structure:
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1193"/>
+        <location filename="../project_creation_dialog.cpp" line="1226"/>
         <source>例如 make -j4</source>
         <translation>e.g. make -j4</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1195"/>
+        <location filename="../project_creation_dialog.cpp" line="1228"/>
         <source>例如 ./my_app</source>
         <translation>e.g. ./my_app</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1197"/>
+        <location filename="../project_creation_dialog.cpp" line="1230"/>
         <source>例如 rm -rf build/</source>
         <translation>e.g. rm -rf build/</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="657"/>
+        <location filename="../project_creation_dialog.cpp" line="682"/>
         <source>例如: MyFirstGame</source>
         <translation>e.g. MyFirstGame</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="658"/>
+        <location filename="../project_creation_dialog.cpp" line="683"/>
         <source>例如: 我的第一个游戏</source>
         <translation>e.g. My First Game</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="659"/>
+        <location filename="../project_creation_dialog.cpp" line="684"/>
         <source>选择项目保存的位置</source>
         <translation>Choose where to save the project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="666"/>
+        <location filename="../project_creation_dialog.cpp" line="691"/>
         <source>自动检测</source>
         <translation>Auto Detect</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="698"/>
+        <location filename="../project_creation_dialog.cpp" line="723"/>
         <source>创建</source>
         <translation>Create</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="699"/>
+        <location filename="../project_creation_dialog.cpp" line="724"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
@@ -3356,163 +3556,163 @@ Directory structure:
         <translation>Input Error</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="349"/>
+        <location filename="../project_creation_dialog.cpp" line="374"/>
         <source>无法创建项目目录结构</source>
         <translation>Cannot create project directory structure</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="350"/>
-        <location filename="../project_creation_dialog.cpp" line="382"/>
+        <location filename="../project_creation_dialog.cpp" line="375"/>
+        <location filename="../project_creation_dialog.cpp" line="407"/>
         <source>创建失败</source>
         <translation>Create Failed</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="380"/>
+        <location filename="../project_creation_dialog.cpp" line="405"/>
         <source>无法生成项目文件</source>
         <translation>Cannot generate project files</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="456"/>
+        <location filename="../project_creation_dialog.cpp" line="481"/>
         <source>选择项目位置</source>
         <translation>Choose Project Location</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1416"/>
+        <location filename="../project_creation_dialog.cpp" line="1479"/>
         <source>项目名称不能为空</source>
         <translation>Project name cannot be empty</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1421"/>
+        <location filename="../project_creation_dialog.cpp" line="1484"/>
         <source>项目名称只能包含字母、数字和下划线，且不能以数字开头</source>
         <translation>Project name may contain only letters, digits and underscores, and cannot start with a digit</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1431"/>
+        <location filename="../project_creation_dialog.cpp" line="1494"/>
         <source>项目名称是系统保留名称，请选择其他名称</source>
         <translation>Project name is a reserved system name. Please choose another.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1393"/>
+        <location filename="../project_creation_dialog.cpp" line="1456"/>
         <source>显示名称不能为空</source>
         <translation>Display name cannot be empty</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1442"/>
+        <location filename="../project_creation_dialog.cpp" line="1505"/>
         <source>项目路径不能为空</source>
         <translation>Project path cannot be empty</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1448"/>
+        <location filename="../project_creation_dialog.cpp" line="1511"/>
         <source>项目路径必须是绝对路径</source>
         <translation>Project path must be an absolute path</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1455"/>
+        <location filename="../project_creation_dialog.cpp" line="1518"/>
         <source>路径包含非法字符</source>
         <translation>Path contains invalid characters</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1462"/>
+        <location filename="../project_creation_dialog.cpp" line="1525"/>
         <source>无法创建目录，请检查权限</source>
         <translation>Cannot create directory. Check permissions.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1468"/>
+        <location filename="../project_creation_dialog.cpp" line="1531"/>
         <source>目录不可写，请检查权限</source>
         <translation>Directory is not writable. Check permissions.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1405"/>
+        <location filename="../project_creation_dialog.cpp" line="1468"/>
         <source>项目目录已存在且不为空</source>
         <translation>Project directory already exists and is not empty</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1388"/>
+        <location filename="../project_creation_dialog.cpp" line="1451"/>
         <source>项目名称: </source>
         <translation>Project name: </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1399"/>
+        <location filename="../project_creation_dialog.cpp" line="1462"/>
         <source>项目路径: </source>
         <translation>Project path: </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1489"/>
+        <location filename="../project_creation_dialog.cpp" line="1552"/>
         <source>无法创建项目目录: </source>
         <translation>Cannot create project directory: </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1501"/>
-        <location filename="../project_creation_dialog.cpp" line="1587"/>
+        <location filename="../project_creation_dialog.cpp" line="1564"/>
+        <location filename="../project_creation_dialog.cpp" line="1650"/>
         <source>无法创建目录: </source>
         <translation>Cannot create directory: </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1619"/>
+        <location filename="../project_creation_dialog.cpp" line="1682"/>
         <source>无法创建 main.py</source>
         <translation>Cannot create main.py</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1674"/>
+        <location filename="../project_creation_dialog.cpp" line="1760"/>
         <source>无法创建 main.go</source>
         <translation>Cannot create main.go</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1683"/>
+        <location filename="../project_creation_dialog.cpp" line="1769"/>
         <source>无法创建 go.mod</source>
         <translation>Cannot create go.mod</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1728"/>
+        <location filename="../project_creation_dialog.cpp" line="1814"/>
         <source>无法创建 Cargo.toml</source>
         <translation>Cannot create Cargo.toml</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1735"/>
+        <location filename="../project_creation_dialog.cpp" line="1821"/>
         <source>无法创建 src 目录</source>
         <translation>Cannot create src directory</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1742"/>
+        <location filename="../project_creation_dialog.cpp" line="1828"/>
         <source>无法创建 </source>
         <translation>Cannot create </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1796"/>
+        <location filename="../project_creation_dialog.cpp" line="1882"/>
         <source>无法创建 package.json</source>
         <translation>Cannot create package.json</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1805"/>
+        <location filename="../project_creation_dialog.cpp" line="1891"/>
         <source>无法创建源码目录</source>
         <translation>Cannot create source directory</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1810"/>
+        <location filename="../project_creation_dialog.cpp" line="1896"/>
         <source>无法创建入口文件</source>
         <translation>Cannot create entry file</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1830"/>
+        <location filename="../project_creation_dialog.cpp" line="1916"/>
         <source>无法创建 tsconfig.json</source>
         <translation>Cannot create tsconfig.json</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1639"/>
-        <location filename="../project_creation_dialog.cpp" line="1698"/>
-        <location filename="../project_creation_dialog.cpp" line="1757"/>
-        <location filename="../project_creation_dialog.cpp" line="1846"/>
-        <location filename="../project_creation_dialog.cpp" line="2097"/>
+        <location filename="../project_creation_dialog.cpp" line="1702"/>
+        <location filename="../project_creation_dialog.cpp" line="1784"/>
+        <location filename="../project_creation_dialog.cpp" line="1843"/>
+        <location filename="../project_creation_dialog.cpp" line="1932"/>
+        <location filename="../project_creation_dialog.cpp" line="2186"/>
         <source>无法写入配置文件: </source>
         <translation>Cannot write config file: </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="554"/>
+        <location filename="../project_creation_dialog.cpp" line="579"/>
         <source>高级配置</source>
         <translation>Advanced Configuration</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="555"/>
+        <location filename="../project_creation_dialog.cpp" line="580"/>
         <source>高级编译配置功能正在开发中...
 未来版本将允许您设置：
 - 自定义包含路径
@@ -3527,157 +3727,157 @@ Future versions will let you set:
 - Custom compiler flags</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="581"/>
+        <location filename="../project_creation_dialog.cpp" line="606"/>
         <source>示例代码预览 - </source>
         <translation>Example Code Preview - </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="577"/>
+        <location filename="../project_creation_dialog.cpp" line="602"/>
         <source>（暂无示例代码）</source>
         <translation>(No example code yet)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1569"/>
+        <location filename="../project_creation_dialog.cpp" line="1632"/>
         <source>无法生成配置文件:
 </source>
         <translation>Cannot generate config file:
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1871"/>
+        <location filename="../project_creation_dialog.cpp" line="1957"/>
         <source>请填写项目名称和路径</source>
         <translation>Please fill in the project name and path</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1884"/>
+        <location filename="../project_creation_dialog.cpp" line="1970"/>
         <source>(目录已存在，为空)</source>
         <translation>(Directory exists and is empty)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1887"/>
+        <location filename="../project_creation_dialog.cpp" line="1973"/>
         <source>(目录已存在，不为空)</source>
         <translation>(Directory exists and is not empty)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1891"/>
+        <location filename="../project_creation_dialog.cpp" line="1977"/>
         <source>(将创建新目录)</source>
         <translation>(New directory will be created)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="786"/>
+        <location filename="../project_creation_dialog.cpp" line="811"/>
         <source>控制台应用程序</source>
         <translation>Console Application</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="787"/>
+        <location filename="../project_creation_dialog.cpp" line="812"/>
         <source>创建一个简单的命令行程序，适合学习基础 C++ 语法。
 包含基本的 main 函数结构和标准库使用示例。</source>
         <translation>Create a simple command-line program, great for learning basic C++ syntax.
 Includes a basic main function structure and standard library examples.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="807"/>
+        <location filename="../project_creation_dialog.cpp" line="832"/>
         <source>简单游戏</source>
         <translation>Simple Game</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="808"/>
+        <location filename="../project_creation_dialog.cpp" line="833"/>
         <source>创建一个有趣的小游戏项目，如猜数字、井字棋等。
 增加编程的趣味性，适合有一定基础的学习者。</source>
         <translation>Create a fun mini-game project, such as number guessing or tic-tac-toe.
 Adds fun to programming; suitable for learners with some basics.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="828"/>
+        <location filename="../project_creation_dialog.cpp" line="853"/>
         <source>图形界面程序</source>
         <translation>GUI Application</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="829"/>
+        <location filename="../project_creation_dialog.cpp" line="854"/>
         <source>创建一个带窗口界面的应用程序，使用 Qt 框架。
 学习图形界面编程，创建更直观的用户界面。</source>
         <translation>Create a windowed GUI application using the Qt framework.
 Learn GUI programming and build more intuitive user interfaces.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="849"/>
+        <location filename="../project_creation_dialog.cpp" line="874"/>
         <source>空白项目</source>
         <translation>Empty Project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="850"/>
+        <location filename="../project_creation_dialog.cpp" line="875"/>
         <source>创建一个完全自定义的项目结构，没有预置代码。
 适合有经验的学习者，或需要特殊结构的项目。</source>
         <translation>Create a fully custom project structure with no preset code.
 Suitable for experienced learners or projects with special structure requirements.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="874"/>
+        <location filename="../project_creation_dialog.cpp" line="899"/>
         <source>Python 空白项目</source>
         <translation>Python Blank Project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="875"/>
+        <location filename="../project_creation_dialog.cpp" line="900"/>
         <source>创建一个空白 Python 项目。
 包含 main.py、requirements.txt 和可选的虚拟环境 (.venv)。</source>
         <translation>Create a blank Python project.
 Includes main.py, requirements.txt and an optional virtual environment (.venv).</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="899"/>
+        <location filename="../project_creation_dialog.cpp" line="924"/>
         <source>Go 空白项目</source>
         <translation>Go Blank Project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="900"/>
+        <location filename="../project_creation_dialog.cpp" line="925"/>
         <source>创建一个 Go 模块项目。
 包含 main.go 和 go.mod，可直接用 go build 构建。</source>
         <translation>Create a Go module project.
 Includes main.go and go.mod; buildable with go build directly.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="924"/>
+        <location filename="../project_creation_dialog.cpp" line="950"/>
         <source>Rust 项目</source>
         <translation>Rust Project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="925"/>
+        <location filename="../project_creation_dialog.cpp" line="951"/>
         <source>创建一个 Rust 项目（可执行或库）。
 包含 Cargo.toml 与 src/ 目录，可直接用 cargo build 构建。</source>
         <translation>Create a Rust project (binary or library).
 Includes Cargo.toml and src/; buildable with cargo build directly.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="949"/>
+        <location filename="../project_creation_dialog.cpp" line="975"/>
         <source>Node.js 项目 (JavaScript)</source>
         <translation>Node.js Project (JavaScript)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="950"/>
+        <location filename="../project_creation_dialog.cpp" line="976"/>
         <source>创建一个 Node.js 项目，使用 JavaScript。
 包含 package.json 与 index.js。</source>
         <translation>Create a Node.js project using JavaScript.
 Includes package.json and index.js.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="974"/>
+        <location filename="../project_creation_dialog.cpp" line="1000"/>
         <source>Node.js 项目 (TypeScript)</source>
         <translation>Node.js Project (TypeScript)</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="975"/>
+        <location filename="../project_creation_dialog.cpp" line="1001"/>
         <source>创建一个 Node.js 项目，使用 TypeScript。
 包含 package.json、tsconfig.json 与 src/index.ts。</source>
         <translation>Create a Node.js project using TypeScript.
 Includes package.json, tsconfig.json and src/index.ts.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="999"/>
+        <location filename="../project_creation_dialog.cpp" line="1025"/>
         <source>AI 通用适配器项目</source>
         <translation>AI Generic Adapter Project</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1000"/>
+        <location filename="../project_creation_dialog.cpp" line="1026"/>
         <source>适用于任意语言 / 工具链的空项目。
 可在下方指定 build / run / clean 命令，或让 AI 自动补全。
 命令会被写入 .lightcppproj 文件。</source>
@@ -3686,7 +3886,7 @@ You can specify build / run / clean commands below, or let AI complete them.
 Commands are written to the .lightcppproj file.</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1012"/>
+        <location filename="../project_creation_dialog.cpp" line="1038"/>
         <source>由 SprintIDE 的 AI 通用适配器创建。
 
 请在 `.lightcppproj` 的 `generic_build` 字段中配置命令。
@@ -3697,19 +3897,34 @@ Please configure commands in the `generic_build` field of `.lightcppproj`.
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1026"/>
+        <location filename="../project_creation_dialog.cpp" line="1052"/>
         <source>检测到以下编译器:
 </source>
         <translation>Detected the following compilers:
 </translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1060"/>
+        <location filename="../project_creation_dialog.cpp" line="1086"/>
         <source>AI 通用适配器</source>
         <translation>AI Generic Adapter</translation>
     </message>
     <message>
-        <location filename="../project_creation_dialog.cpp" line="1600"/>
+        <location filename="../project_creation_dialog.cpp" line="1186"/>
+        <source>创建虚拟环境</source>
+        <translation>Create Virtual Environment</translation>
+    </message>
+    <message>
+        <location filename="../project_creation_dialog.cpp" line="1189"/>
+        <source>例如 .venv 或 venv</source>
+        <translation>e.g. .venv or venv</translation>
+    </message>
+    <message>
+        <location filename="../project_creation_dialog.cpp" line="1400"/>
+        <source>环境名称:</source>
+        <translation>Environment name:</translation>
+    </message>
+    <message>
+        <location filename="../project_creation_dialog.cpp" line="1663"/>
         <source>无法写入文件: </source>
         <translation>Cannot write file: </translation>
     </message>
@@ -3717,148 +3932,155 @@ Please configure commands in the `generic_build` field of `.lightcppproj`.
 <context>
     <name>SprintIDE::ProjectPanel</name>
     <message>
-        <location filename="../project_panel.cpp" line="498"/>
-        <location filename="../project_panel.cpp" line="1020"/>
+        <location filename="../project_panel.cpp" line="577"/>
+        <location filename="../project_panel.cpp" line="1196"/>
         <source>重命名</source>
         <translation>Rename</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="499"/>
+        <location filename="../project_panel.cpp" line="578"/>
         <source>新名称:</source>
         <translation>New name:</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="463"/>
-        <location filename="../project_panel.cpp" line="741"/>
-        <location filename="../project_panel.cpp" line="1016"/>
+        <location filename="../project_panel.cpp" line="542"/>
+        <location filename="../project_panel.cpp" line="844"/>
+        <location filename="../project_panel.cpp" line="1192"/>
         <source>新建文件</source>
         <translation>New File</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="463"/>
+        <location filename="../project_panel.cpp" line="542"/>
         <source>文件名:</source>
         <translation>File name:</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="473"/>
-        <location filename="../project_panel.cpp" line="742"/>
-        <location filename="../project_panel.cpp" line="1017"/>
+        <location filename="../project_panel.cpp" line="552"/>
+        <location filename="../project_panel.cpp" line="845"/>
+        <location filename="../project_panel.cpp" line="1193"/>
         <source>新建目录</source>
         <translation>New Folder</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="473"/>
+        <location filename="../project_panel.cpp" line="552"/>
         <source>目录名:</source>
         <translation>Folder name:</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="312"/>
-        <location filename="../project_panel.cpp" line="318"/>
+        <location filename="../project_panel.cpp" line="379"/>
+        <location filename="../project_panel.cpp" line="385"/>
         <source>创建失败</source>
         <translation>Create Failed</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="312"/>
+        <location filename="../project_panel.cpp" line="379"/>
         <source>无法创建目录: </source>
         <translation>Cannot create folder: </translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="319"/>
+        <location filename="../project_panel.cpp" line="386"/>
         <source>无法创建文件: </source>
         <translation>Cannot create file: </translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="319"/>
+        <location filename="../project_panel.cpp" line="386"/>
         <source>
 错误: </source>
         <translation>
 Error: </translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="345"/>
-        <location filename="../project_panel.cpp" line="350"/>
+        <location filename="../project_panel.cpp" line="418"/>
+        <location filename="../project_panel.cpp" line="423"/>
         <source>重命名失败</source>
         <translation>Rename Failed</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="345"/>
+        <location filename="../project_panel.cpp" line="418"/>
         <source>目标文件已存在: </source>
         <translation>Target already exists: </translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="350"/>
+        <location filename="../project_panel.cpp" line="423"/>
         <source>无法重命名文件</source>
         <translation>Cannot rename file</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="366"/>
+        <location filename="../project_panel.cpp" line="439"/>
         <source>确认删除</source>
         <translation>Confirm Delete</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="367"/>
+        <location filename="../project_panel.cpp" line="440"/>
         <source>确定要删除 &quot;%1&quot; 吗？</source>
         <translation>Delete &quot;%1&quot;?</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="377"/>
+        <location filename="../project_panel.cpp" line="450"/>
         <source>删除失败</source>
         <translation>Delete Failed</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="377"/>
+        <location filename="../project_panel.cpp" line="450"/>
         <source>无法删除: </source>
         <translation>Cannot delete: </translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="878"/>
+        <location filename="../project_panel.cpp" line="831"/>
+        <source>外部库</source>
+        <translation>External Libraries</translation>
+    </message>
+    <message>
+        <location filename="../project_panel.cpp" line="1000"/>
         <source>定位到当前正在编辑的文件</source>
         <translation>Locate the file currently being edited</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="902"/>
+        <location filename="../project_panel.cpp" line="1041"/>
         <source>刷新项目面板（重新加载根目录下的所有内容）</source>
         <translation>Refresh the project panel (reload everything under the root)</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1019"/>
+        <location filename="../project_panel.cpp" line="1195"/>
         <source>打开</source>
         <translation>Open</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1021"/>
+        <location filename="../project_panel.cpp" line="1197"/>
         <source>删除</source>
         <translation>Delete</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1023"/>
+        <location filename="../project_panel.cpp" line="827"/>
+        <location filename="../project_panel.cpp" line="1199"/>
         <source>复制路径</source>
         <translation>Copy Path</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1024"/>
+        <location filename="../project_panel.cpp" line="824"/>
+        <location filename="../project_panel.cpp" line="1200"/>
         <source>在文件管理器中显示</source>
         <translation>Show in File Manager</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1026"/>
+        <location filename="../project_panel.cpp" line="1202"/>
         <source>查看本地历史</source>
         <translation>Local History</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="744"/>
-        <location filename="../project_panel.cpp" line="1032"/>
+        <location filename="../project_panel.cpp" line="847"/>
+        <location filename="../project_panel.cpp" line="1208"/>
         <source>刷新</source>
         <translation>Refresh</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1033"/>
+        <location filename="../project_panel.cpp" line="1209"/>
         <source>展开</source>
         <translation>Expand</translation>
     </message>
     <message>
-        <location filename="../project_panel.cpp" line="1373"/>
-        <location filename="../project_panel.cpp" line="1377"/>
+        <location filename="../project_panel.cpp" line="1561"/>
+        <location filename="../project_panel.cpp" line="1565"/>
         <source>测试 (pytest)</source>
         <translation>Tests (pytest)</translation>
     </message>
@@ -4206,103 +4428,108 @@ Right-click to remove from history</translation>
 <context>
     <name>SprintIDE::TerminalPanel</name>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="76"/>
         <source>输入命令...</source>
-        <translation>Type a command...</translation>
+        <translation type="vanished">Type a command...</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="86"/>
         <source>停止当前命令</source>
-        <translation>Stop the current command</translation>
+        <translation type="vanished">Stop the current command</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="92"/>
         <source>清空</source>
-        <translation>Clear</translation>
+        <translation type="vanished">Clear</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="95"/>
         <source>清空输出</source>
-        <translation>Clear output</translation>
+        <translation type="vanished">Clear output</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="102"/>
+        <location filename="../terminal/terminal_panel.cpp" line="48"/>
         <source>终端已准备就绪。输入命令并按 Enter 执行。</source>
         <translation>Terminal is ready. Type a command and press Enter to execute.</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="151"/>
         <source>工作目录已切换至: </source>
-        <translation>Working directory changed to: </translation>
+        <translation type="vanished">Working directory changed to: </translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="170"/>
+        <location filename="../terminal/terminal_panel.cpp" line="592"/>
         <source>命令已在运行中，请先停止</source>
         <translation>A command is already running; stop it first</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="212"/>
         <source>已自动激活虚拟环境: </source>
-        <translation>Virtual environment automatically activated: </translation>
+        <translation type="vanished">Virtual environment automatically activated: </translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="237"/>
-        <location filename="../terminal/terminal_panel.cpp" line="416"/>
         <source>[运行中] </source>
-        <translation>[Running] </translation>
+        <translation type="vanished">[Running] </translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="242"/>
+        <location filename="../terminal/terminal_panel.cpp" line="644"/>
         <source>启动命令失败: </source>
         <translation>Failed to launch command: </translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="262"/>
+        <location filename="../terminal/terminal_panel.cpp" line="668"/>
         <source>正在停止命令...</source>
         <translation>Stopping command...</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="312"/>
         <source>进程结束，退出码: </source>
-        <translation>Process finished, exit code: </translation>
+        <translation type="vanished">Process finished, exit code: </translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="315"/>
         <source>进程异常结束</source>
-        <translation>Process terminated abnormally</translation>
+        <translation type="vanished">Process terminated abnormally</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="328"/>
+        <location filename="../terminal/terminal_panel.cpp" line="91"/>
+        <source>停止当前命令 (Ctrl+C)</source>
+        <translation>Stop the current command (Ctrl+C)</translation>
+    </message>
+    <message>
+        <location filename="../terminal/terminal_panel.cpp" line="498"/>
+        <source>工作目录: </source>
+        <translation>Working directory:</translation>
+    </message>
+    <message>
+        <location filename="../terminal/terminal_panel.cpp" line="712"/>
+        <source>[进程异常结束]</source>
+        <translation>[Process terminated abnormally]</translation>
+    </message>
+    <message>
+        <location filename="../terminal/terminal_panel.cpp" line="732"/>
         <source>启动失败</source>
         <translation>Failed to start</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="329"/>
+        <location filename="../terminal/terminal_panel.cpp" line="733"/>
         <source>进程崩溃</source>
         <translation>Process crashed</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="330"/>
+        <location filename="../terminal/terminal_panel.cpp" line="734"/>
         <source>超时</source>
         <translation>Timed out</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="331"/>
+        <location filename="../terminal/terminal_panel.cpp" line="735"/>
         <source>写入错误</source>
         <translation>Write error</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="332"/>
+        <location filename="../terminal/terminal_panel.cpp" line="736"/>
         <source>读取错误</source>
         <translation>Read error</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="333"/>
+        <location filename="../terminal/terminal_panel.cpp" line="737"/>
         <source>未知错误</source>
         <translation>Unknown error</translation>
     </message>
     <message>
-        <location filename="../terminal/terminal_panel.cpp" line="335"/>
+        <location filename="../terminal/terminal_panel.cpp" line="739"/>
         <source>进程错误: </source>
         <translation>Process error: </translation>
     </message>
@@ -4310,161 +4537,301 @@ Right-click to remove from history</translation>
 <context>
     <name>SprintIDE::TextEditor</name>
     <message>
-        <location filename="../text_editor.cpp" line="412"/>
+        <location filename="../text_editor.cpp" line="557"/>
         <source>查找:</source>
         <translation>Find:</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="417"/>
+        <location filename="../text_editor.cpp" line="562"/>
         <source>输入查找内容...</source>
         <translation>Enter search text...</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="424"/>
+        <location filename="../text_editor.cpp" line="569"/>
         <source>大小写敏感</source>
         <translation>Case sensitive</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="430"/>
+        <location filename="../text_editor.cpp" line="575"/>
         <source>全字匹配</source>
         <translation>Whole word</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="436"/>
+        <location filename="../text_editor.cpp" line="581"/>
         <source>上一个 (Shift+F3)</source>
         <translation>Previous (Shift+F3)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="442"/>
+        <location filename="../text_editor.cpp" line="587"/>
         <source>下一个 (F3)</source>
         <translation>Next (F3)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="453"/>
+        <location filename="../text_editor.cpp" line="598"/>
         <source>显示替换</source>
         <translation>Show Replace</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="459"/>
+        <location filename="../text_editor.cpp" line="604"/>
         <source>替换为...</source>
         <translation>Replace with...</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="466"/>
+        <location filename="../text_editor.cpp" line="611"/>
         <source>替换</source>
         <translation>Replace</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="472"/>
+        <location filename="../text_editor.cpp" line="617"/>
         <source>全部替换</source>
         <translation>Replace All</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="481"/>
+        <location filename="../text_editor.cpp" line="626"/>
         <source>关闭 (Esc)</source>
         <translation>Close (Esc)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="891"/>
+        <location filename="../text_editor.cpp" line="973"/>
+        <location filename="../text_editor.cpp" line="1012"/>
+        <source>文件</source>
+        <translation>File</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="973"/>
+        <location filename="../text_editor.cpp" line="1012"/>
+        <source>已被外部修改。</source>
+        <translation>was modified externally.</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="1013"/>
+        <source>「保存」= 用编辑器内容覆盖磁盘</source>
+        <translation>"Save" = overwrite the file on disk with the editor content</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="1014"/>
+        <source>「放弃」= 丢弃编辑器内容，从磁盘重新加载</source>
+        <translation>"Discard" = discard editor content and reload from disk</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="1015"/>
+        <source>「取消」= 中止本次保存</source>
+        <translation>"Cancel" = abort this save</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="1164"/>
         <source>未命名</source>
         <translation>Untitled</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="712"/>
+        <location filename="../text_editor.cpp" line="897"/>
         <source>文件打开失败</source>
         <translation>Open Failed</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="713"/>
+        <location filename="../text_editor.cpp" line="898"/>
         <source>无法打开文件：%1
 错误：%2</source>
         <translation>Cannot open file: %1
 Error: %2</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="774"/>
+        <location filename="../text_editor.cpp" line="996"/>
         <source>保存文件</source>
         <translation>Save File</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="774"/>
+        <location filename="../text_editor.cpp" line="996"/>
         <source>C++文件 (*.cpp *.h *.hpp);;所有文件 (*.*)</source>
         <translation>C++ Files (*.cpp *.h *.hpp);;All Files (*.*)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="786"/>
+        <location filename="../text_editor.cpp" line="1035"/>
         <source>文件保存失败</source>
         <translation>Save Failed</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="787"/>
+        <location filename="../text_editor.cpp" line="1036"/>
         <source>无法保存文件：%1
 错误：%2</source>
         <translation>Cannot save file: %1
 Error: %2</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="684"/>
+        <location filename="../text_editor.cpp" line="829"/>
         <source>撤销 (Ctrl+Z)</source>
         <translation>Undo (Ctrl+Z)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="685"/>
+        <location filename="../text_editor.cpp" line="830"/>
         <source>重做 (Ctrl+Y)</source>
         <translation>Redo (Ctrl+Y)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="688"/>
+        <location filename="../text_editor.cpp" line="833"/>
         <source>剪切 (Ctrl+X)</source>
         <translation>Cut (Ctrl+X)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="689"/>
+        <location filename="../text_editor.cpp" line="834"/>
         <source>复制 (Ctrl+C)</source>
         <translation>Copy (Ctrl+C)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="690"/>
+        <location filename="../text_editor.cpp" line="835"/>
         <source>粘贴 (Ctrl+V)</source>
         <translation>Paste (Ctrl+V)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="693"/>
+        <location filename="../text_editor.cpp" line="838"/>
         <source>全选 (Ctrl+A)</source>
         <translation>Select All (Ctrl+A)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="696"/>
+        <location filename="../text_editor.cpp" line="841"/>
         <source>注释选中行 (Ctrl+/)</source>
         <translation>Comment Selection (Ctrl+/)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="697"/>
+        <location filename="../text_editor.cpp" line="842"/>
         <source>取消注释 (Ctrl+/)</source>
         <translation>Uncomment (Ctrl+/)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="700"/>
+        <location filename="../text_editor.cpp" line="845"/>
         <source>复制当前行 (Ctrl+D)</source>
         <translation>Duplicate Line (Ctrl+D)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="701"/>
+        <location filename="../text_editor.cpp" line="846"/>
         <source>删除当前行 (Ctrl+Y)</source>
         <translation>Delete Line (Ctrl+Y)</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="705"/>
+        <location filename="../text_editor.cpp" line="850"/>
         <source>跳转到行 (Ctrl+G)...</source>
         <translation>Go to Line (Ctrl+G)...</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="5005"/>
+        <location filename="../text_editor.cpp" line="857"/>
+        <source>显示修复 (Alt+Enter)</source>
+        <translation>Show Fixes (Alt+Enter)</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="869"/>
+        <source>AI agent</source>
+        <translation>AI Agent</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="870"/>
+        <source>解释选中代码</source>
+        <translation>Explain Selected Code</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="871"/>
+        <source>修复选中代码</source>
+        <translation>Fix Selected Code</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="872"/>
+        <source>生成注释</source>
+        <translation>Generate Comments</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="873"/>
+        <source>重命名建议</source>
+        <translation>Rename Suggestions</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="875"/>
+        <source>自定义提问...</source>
+        <translation>Custom Question...</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="890"/>
+        <location filename="../text_editor.cpp" line="6513"/>
+        <source>AI Agent 未连接</source>
+        <translation>AI Agent not connected</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="972"/>
+        <location filename="../text_editor.cpp" line="1011"/>
+        <source>文件冲突</source>
+        <translation>File Conflict</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="975"/>
+        <source>「覆盖」= 用编辑器内容覆盖磁盘
+</source>
+        <translation>"Overwrite" = overwrite the file on disk with the editor content</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="976"/>
+        <source>「重新加载」= 丢弃编辑器的修改，从磁盘读取</source>
+        <translation>"Reload" = discard editor changes and read from disk>"Reload" = discard editor changes and read from disk</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="2067"/>
+        <source>正在查询修复...</source>
+        <translation>Looking up fixes...</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="2091"/>
+        <source>未找到可用修复</source>
+        <translation>No fixes available</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="2095"/>
+        <source>clangd 可能仍在索引，请稍后重试</source>
+        <translation>clangd may still be indexing; please try again later</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6535"/>
+        <source>AI Agent</source>
+        <translation>AI Agent</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6536"/>
+        <source>请先选中代码，或把光标放到有代码的行上。</source>
+        <translation>Select some code first, or place the cursor on a line with code.</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6544"/>
+        <source>请解释这段代码：</source>
+        <translation>Please explain this code:</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6548"/>
+        <source>请修复这段代码里的问题，说明修改理由：</source>
+        <translation>Please fix the issues in this code and explain the changes:</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6552"/>
+        <source>请为这段代码生成简洁的中文注释：</source>
+        <translation>Please generate concise Chinese comments for this code:</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6556"/>
+        <source>请给这段代码里的变量、函数起更好的名字，并说明理由：</source>
+        <translation>Please suggest better names for the variables and functions in this code, and explain the reasoning:</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6563"/>
+        <source>AI 自定义提问</source>
+        <translation>Ask AI (Custom)</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6564"/>
+        <source>请输入你的问题（会自动附带选中的代码）：</source>
+        <translation>Enter your question (the selected code will be attached automatically):</translation>
+    </message>
+    <message>
+        <location filename="../text_editor.cpp" line="6803"/>
         <source>跳转到行</source>
         <translation>Go to Line</translation>
     </message>
     <message>
-        <location filename="../text_editor.cpp" line="5005"/>
+        <location filename="../text_editor.cpp" line="6803"/>
         <source>行号:</source>
         <translation>Line number:</translation>
     </message>

@@ -10,6 +10,7 @@
 #include <QShowEvent>
 #include <QDebug>
 #include <algorithm>
+#include <QShortcut>
 
 namespace SprintIDE {
 
@@ -37,7 +38,18 @@ QuickOpenDialog::QuickOpenDialog(QWidget* parent)
     m_searchEdit = new QLineEdit(this);
     m_searchEdit->setPlaceholderText(
         tr("输入文件名进行过滤（支持路径片段，如 src/main.cpp）"));
-    m_searchEdit->setClearButtonEnabled(true);
+    {
+        auto* escSc = new QShortcut(QKeySequence(Qt::Key_Escape), m_searchEdit);
+        escSc->setContext(Qt::WidgetShortcut);
+        connect(escSc, &QShortcut::activated, this, [this]() {
+                if (m_searchEdit && !m_searchEdit->text().isEmpty()) {
+                    m_searchEdit->clear();
+                } else {
+                    // 已经空了再按 Esc → 关闭对话框（QuickOpen 惯例）
+                    reject();
+                }
+            });
+    }
     m_searchEdit->installEventFilter(this);   // 拦截 ↑↓ / Esc
     layout->addWidget(m_searchEdit);
 

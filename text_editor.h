@@ -627,6 +627,12 @@ private:
     // Tab 按下且前缀命中片段 → 展开；返回 true 表示已处理
     bool  tryExpandSnippet();
 
+    // v8.5：Python import 上下文补全
+    //   处理 `from X.` 和 `import X.` 两种上下文，
+    //   本地扫描 X 模块目录列出子模块（不依赖 LSP）
+    bool  tryImportCompletion(QList<CompletionEntry>* out);
+    QString resolvePythonModuleDirectory(const QString& modulePath);
+
     // ========== include 路径补全 ==========
     bool  isInIncludeContext(QString* prefixOut = nullptr) const;
     void  requestIncludeCompletions();
@@ -737,6 +743,7 @@ private:
     QAction *m_duplicateLineAction;
     QAction *m_deleteLineAction;
     QAction *m_gotoLineAction;
+    QAction *m_quickFixAction;
     // QAction *m_findAction;
     // QAction *m_replaceAction;
     // QAction *m_formatCodeAction;

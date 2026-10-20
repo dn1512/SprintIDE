@@ -992,7 +992,7 @@ void DebugManager::parseGdbOutput(const QString& output)
 
 void DebugManager::parseGdbStoppedEvent(const QString& event)
 {
-    // 错误写法（原始字符串字面量）
+    // 错误写法
     QRegularExpression fileRegex("file=\"([^\"]*)\"");
     QRegularExpression lineRegex("line=\"([^\"]*)\"");
     QRegularExpression reasonRegex("reason=\"([^\"]*)\"");

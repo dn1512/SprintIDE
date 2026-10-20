@@ -70,7 +70,7 @@ public:
     bool isServerRunning() const;
 
     void requestDefinition(const QString& filePath, int line, int column);
-    
+
     /**
      * @brief 请求某位置的代码动作（Quick Fix）
      * @param filePath 文件路径
@@ -111,6 +111,11 @@ public:
 
     void setCustomCommand(const QString& command) { m_serverPath = command; }
     void setCustomArguments(const QStringList& args) { m_customArguments = args; }
+
+    /// v8.5：设置语言特定的启动参数（来自 LSPManager 的 LSPConfig.arguments）
+    ///   优先级：m_customArguments > m_arguments > （空 → 走 clangd/jdtls 兜底）
+    void setArguments(const QStringList& args) { m_arguments = args; }
+
 signals:
     void serverStarted();
     void serverStopped();
@@ -126,7 +131,7 @@ signals:
     void completionReceived(const QString& filePath, const QList<LSPCompletionItem>& items);
 
     void definitionReceived(const QString& filePath, int line, int column);
-    
+
     /**
      * @brief 代码动作响应（可为空列表，表示没有可用修复）
      */
@@ -152,7 +157,7 @@ private:
     QString uriFromPath(const QString& path) const;
     QString pathFromUri(const QString& uri) const;
     QByteArray buildMessage(const QJsonObject& message);
-    
+
     void handleCodeActionResponse(const QJsonObject& response);
     int  m_codeActionRequestId = -1;
     QString m_codeActionFilePath;
@@ -170,6 +175,11 @@ private:
     QTimer* m_initTimer;
     QStringList m_customArguments;
     bool m_enableClangTidy;
+
+    // v8.5：来自 LSPManager 的语言特定启动参数
+    //   clangd / jdtls / 其他服务器的参数由 LSPManager 的 LSPConfig.arguments 提供，
+    //   LSPClient 不再硬编码。只有 m_customArguments（Python 等特殊场景）会覆盖它。
+    QStringList m_arguments;
     /**
      * @brief 处理补全响应
      */

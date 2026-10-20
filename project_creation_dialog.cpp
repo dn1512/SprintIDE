@@ -5,8 +5,7 @@
 //       和"语言特有选项组"。
 //    2. 语言与模板分离：语言下拉框决定显示哪些模板；模板下拉框只列出
 //       当前语言下的模板。
-//    3. 每种语言走各自的生成器函数（generatePythonProject 等），C++ 沿
-//       用原有 generateProjectFiles()。
+//    3. 每种语言走各自的生成器函数（generatePythonProject 等）
 #include "project_creation_dialog.h"
 #include "ui_project_creation_dialog.h"
 
@@ -101,7 +100,7 @@ static QString getDefaultProjectsPath()
     return QDir::current().absoluteFilePath("Projects");
 }
 
-// ------- C++ 示例代码（保持原样） -------
+// ------- C++ 示例代码 -------
 static const QString CONSOLE_APP_EXAMPLE =
     "#include <iostream>\n\n"
     "int main() {\n"
@@ -377,7 +376,6 @@ void ProjectCreationDialog::accept()
     }
 
     // 按语言分发到不同的生成器
-    // C++ 与 GenericAI 走原 generateProjectFiles()
     // 其余语言走各自的生成器
     bool ok = false;
     switch (m_result.language) {
@@ -419,7 +417,7 @@ void ProjectCreationDialog::accept()
     m_result.createdTime = QDateTime::currentDateTime();
 
     // ------------------------------------------------------------
-    // 6. Git 初始化（保持原有逻辑）
+    // 6. Git 初始化
     // ------------------------------------------------------------
     if (m_createGitRepo) {
         QProcess git;
@@ -590,7 +588,7 @@ void ProjectCreationDialog::onShowExampleCode()
     ProjectTemplate currentTemplate = getCurrentTemplate();
     QString exampleCode;
 
-    // C++ 走原有分支
+    // C++
     if (currentTemplate.language == ProjectLanguage::Cpp) {
         if (currentTemplate.type == ProjectType::ConsoleApp)   exampleCode = CONSOLE_APP_EXAMPLE;
         else if (currentTemplate.type == ProjectType::SimpleGame) exampleCode = SIMPLE_GAME_EXAMPLE;
@@ -678,12 +676,12 @@ void ProjectCreationDialog::setCompilerType(ProjectCompilerType type)
 
 void ProjectCreationDialog::setupUI()
 {
-    // ---------- 静态控件基础配置（原有） ----------
+    // ---------- 静态控件基础配置 ----------
     ui->projectNameLineEdit->setPlaceholderText(tr("例如: MyFirstGame"));
     ui->displayNameLineEdit->setPlaceholderText(tr("例如: 我的第一个游戏"));
     ui->locationLineEdit->setPlaceholderText(tr("选择项目保存的位置"));
 
-    // ---------- 模板下拉框（先空着，后面 refreshTemplateList 会填） ----------
+    // ---------- 模板下拉框 ----------
     ui->templateComboBox->clear();
 
     // ---------- C++ 编译器下拉框 ----------

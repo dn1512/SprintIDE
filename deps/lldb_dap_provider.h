@@ -18,10 +18,6 @@ namespace SprintIDE {
  *   5. VS Code CodeLLDB 扩展（按版本号从新到旧）
  *   6. Xcode.app / CommandLineTools
  *   7. Linux 常见路径
- *
- * 内嵌目录和用户数据目录当前（开发期）可能为空，此时静默跳过，
- * 不影响原有的"系统扫描"路径。未来打包时把工具链拷入即可生效，
- * 无需修改调用方。
  */
 class LldbDapProvider : public ToolchainProvider
 {

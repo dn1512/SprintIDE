@@ -733,6 +733,10 @@ add_executable(${PROJECT_NAME}
     outline/outline_item_delegate.cpp
     outline/outline_overlay.h
     outline/outline_overlay.cpp
+    problems/diagnostics_store.h
+    problems/diagnostics_store.cpp
+    problems/problems_panel.h
+    problems/problems_panel.cpp
 )
 
 # ============================================================
@@ -920,7 +924,7 @@ if(APPLE)
         )
     endif()
 
-    # 原有的额外框架
+    # 为macOS添加额外的框架
     target_link_libraries(${PROJECT_NAME} PRIVATE
         "-framework AppKit"
         "-framework Foundation"

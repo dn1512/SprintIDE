@@ -6,6 +6,9 @@
 #include "log/output_panel.h"
 #include "ai/chat_panel.h"
 #include "debug_panel.h"
+#include "problems/problems_panel.h"
+#include "breakpoint_list_panel.h"
+
 
 #include <QShortcut>
 #include <QApplication>
@@ -66,7 +69,6 @@ void PanelFocusManager::installShortcuts()
             [this]() { focusPanel(Panel::AIChatPanel); });
     // ---------- 项目面板显隐 ----------
     //  原快捷键 Ctrl+Shift+E 被 macOS 输入法切换占用，
-    //  这里补一个更安全的组合。不影响原 action 的存在，
     //  菜单里显示的还是 Ctrl+Shift+E。
     install(QKeySequence("Ctrl+Alt+E"),
             [this]() { togglePanelVisibility(Panel::ProjectPanel); });
@@ -82,7 +84,13 @@ void PanelFocusManager::installShortcuts()
     //
     //  用【类型】而不是【索引】匹配——顺序变化不会出错
     // ============================================================
-    auto switchBottomTabByType = [this](const QString& type) {
+    // ============================================================
+    //  v8.5：第二个参数 forceShowHidden
+    //    - false（默认）：跳过隐藏 tab（调试面板未调试时隐藏，按快捷键不强制弹出）
+    //    - true：找到匹配 tab 就显示（断点 tab 默认隐藏，用户按 Ctrl+Alt+5 想主动看）
+    // ============================================================
+    auto switchBottomTabByType = [this](const QString& type,
+        bool forceShowHidden = false) {
         auto* tabs = m_window->findChild<QTabWidget*>("BottomTabWidget");
         if (!tabs) return;
 
@@ -93,7 +101,6 @@ void PanelFocusManager::installShortcuts()
         }
 
         for (int i = 0; i < tabs->count(); ++i) {
-            if (!tabs->isTabVisible(i)) continue;
             QWidget* w = tabs->widget(i);
             if (!w) continue;
 
@@ -102,28 +109,43 @@ void PanelFocusManager::installShortcuts()
                 && qobject_cast<OutputPanel*>(w)) {
                 match = true;
             } else if (type == QLatin1String("terminal")
-                       && qobject_cast<TerminalPanel*>(w)) {
+                && qobject_cast<TerminalPanel*>(w)) {
                 match = true;
             } else if (type == QLatin1String("debug")
-                       && qobject_cast<DebugPanel*>(w)) {
+                && qobject_cast<DebugPanel*>(w)) {
+                match = true;
+            } else if (type == QLatin1String("problems")
+                && qobject_cast<ProblemsPanel*>(w)) {
+                match = true;
+            } else if (type == QLatin1String("breakpoints")
+                && qobject_cast<BreakpointListPanel*>(w)) {
                 match = true;
             }
 
             if (match) {
+                if (!tabs->isTabVisible(i)) {
+                    if (!forceShowHidden) continue;
+                    tabs->setTabVisible(i, true);
+                }
                 tabs->setCurrentIndex(i);
                 focusBottomPanel();
                 return;
             }
         }
-        // 找不到（例如调试面板未显示）→ 静默忽略
+        // 找不到 → 静默忽略
     };
 
+
     install(QKeySequence("Ctrl+Alt+1"),
-            [switchBottomTabByType]() { switchBottomTabByType("output"); });
+        [switchBottomTabByType]() { switchBottomTabByType("output"); });
     install(QKeySequence("Ctrl+Alt+2"),
-            [switchBottomTabByType]() { switchBottomTabByType("terminal"); });
+        [switchBottomTabByType]() { switchBottomTabByType("problems"); });
     install(QKeySequence("Ctrl+Alt+3"),
-            [switchBottomTabByType]() { switchBottomTabByType("debug"); });
+        [switchBottomTabByType]() { switchBottomTabByType("terminal"); });
+    install(QKeySequence("Ctrl+Alt+4"),
+        [switchBottomTabByType]() { switchBottomTabByType("debug"); });
+    install(QKeySequence("Ctrl+Alt+5"),
+        [switchBottomTabByType]() { switchBottomTabByType("breakpoints", true); });
 
     // ============================================================
     //  编辑器标签左右切换

@@ -874,6 +874,16 @@ LanguageInfo LanguageDetector::detectLanguage(const QString& filePath) const
 
     // 2. 检查扩展名（如果有点号，规范化处理）
     if (!extension.isEmpty()) {
+        // v8.5：.ts 扩展名歧义处理
+        //   Qt Linguist 翻译源文件用 .ts（XML 格式），与 TypeScript 冲突。
+        //   读文件头区分：
+        //     以 <?xml 开头 → Qt 翻译文件（xml 语言，不触发 TS LSP）
+        //     否则         → 正常扩展名映射（typescript）
+        if (extension.compare(QLatin1String("ts"), Qt::CaseInsensitive) == 0
+            && isQtTranslationFile(filePath)) {
+            return getLanguage(QLatin1String("xml"));
+        }
+
         LanguageInfo lang = detectLanguageByExtension(extension);
         if (lang.id != "text") {
             return lang;
@@ -1095,6 +1105,49 @@ QString LanguageDetector::normalizeExtension(const QString& extension) const
 
     // 转换为小写（忽略大小写）
     return normalized.toLower();
+}
+
+// ============================================================
+// 判断 .ts 文件是否为 Qt Linguist 翻译源文件
+// ============================================================
+bool LanguageDetector::isQtTranslationFile(const QString& filePath) const
+{
+    QFileInfo fi(filePath);
+    if (!fi.exists() || !fi.isReadable()) {
+        return false;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    // 前 256 字节足够判断（XML 声明固定在前几十字节）
+    const QByteArray head = file.read(256);
+    file.close();
+
+    // 跳过 UTF-8 BOM
+    int i = 0;
+    if (head.size() >= 3
+        && static_cast<unsigned char>(head[0]) == 0xEF
+        && static_cast<unsigned char>(head[1]) == 0xBB
+        && static_cast<unsigned char>(head[2]) == 0xBF) {
+        i = 3;
+    }
+
+    // 跳过前导空白
+    while (i < head.size()) {
+        const char c = head.at(i);
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            ++i;
+        } else {
+            break;
+        }
+    }
+
+    // TypeScript 代码不会以 XML 声明开头（注释是 // 或 /*）。
+    // 只要以 <?xml 开头 → 视为 Qt Linguist 翻译源文件。
+    return head.mid(i, 5) == QByteArray("<?xml");
 }
 
 } // namespace SprintIDE

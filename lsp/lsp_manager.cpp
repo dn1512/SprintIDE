@@ -390,8 +390,35 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
         CppBuilder::ensureCompileCommands(root);
     }
     if (config.command == "jdtls") {
+        // 生成 Eclipse 元数据
         JavaUtils::ensureEclipseMetadata(root);
-        // ... 原有 JDTLS wrapper 生成代码 ...
+
+        // 获取项目模型，提取类路径
+        ProjectManager* pm = ProjectManager::instance();
+        ProjectModel* model = pm->javaProjectModel();
+        if (model) {
+            // 将类路径保存到 LSP 客户端的初始化参数中
+            // 注意：这里需要通过 config 传递，但 LSPConfig 没有额外字段
+            // 我们可以将类路径保存到 LSPClient 的成员中，在 startServer 时使用
+        }
+
+        // 确保 JDTLS wrapper 存在
+        QString wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.sh";
+        #ifdef Q_OS_WIN
+        wrapperPath = root + "/.SprintIDE/jdtls/jdtls_wrapper.bat";
+        #endif
+        if (!QFile::exists(wrapperPath)) {
+            JavaInfo javaInfo = JavaUtils::detectJava();
+            if (!javaInfo.isValid()) {
+                emit clientError(lang.id, "未找到 Java 17+，请安装 Java 21 并在设置中配置 JAVA_HOME。");
+                return nullptr;
+            }
+            if (!JavaUtils::ensureJdtlsWrapper(root, javaInfo, wrapperPath)) {
+                emit clientError(lang.id, "无法生成 JDTLS 启动脚本");
+                return nullptr;
+            }
+        }
+        config.command = wrapperPath;
     }
 
     // ========== Python 特殊处理 ==========
@@ -440,6 +467,12 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
 
     LSPClient *client = new LSPClient(this);
     client->setProjectRoot(root);
+
+    // ========== v8.5：把 LSPConfig.arguments 透传给 client ==========
+    //   这是 clangd 拿到 --header-insertion=iwyu 的唯一路径。
+    //   Python 等走 m_customArguments 的语言不受影响（优先级高于 m_arguments）。
+    client->setArguments(config.arguments);
+    qDebug() << "[LSP] 传给 clangd 的参数:" << config.arguments;
 
     // ========== Python 特定设置（自定义命令和初始化选项） ==========
     if (lang.id == "python") {

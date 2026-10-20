@@ -16,6 +16,7 @@
 #include <QTimer>
 #include <QMessageBox>
 #include <QDir>
+#include <QShortcut>
 
 namespace SprintIDE {
 
@@ -43,8 +44,20 @@ void SearchInFilesDialog::buildUi()
     searchRow->setSpacing(6);
 
     m_searchEdit = new QLineEdit(this);
-    m_searchEdit->setPlaceholderText(tr("输入查找内容..."));
-    m_searchEdit->setClearButtonEnabled(true);
+    m_searchEdit->setPlaceholderText(tr("输入查找内容... (Esc 清空)"));
+    // 不再启用 clearButton —— 见 OutputPanel 同类问题
+
+    // Esc 清空（焦点在搜索框时）
+    {
+        auto* escSc = new QShortcut(QKeySequence(Qt::Key_Escape), m_searchEdit);
+        escSc->setContext(Qt::WidgetShortcut);
+        connect(escSc, &QShortcut::activated, this, [this]() {
+                if (m_searchEdit && !m_searchEdit->text().isEmpty()) {
+                    m_searchEdit->clear();
+                }
+            });
+    }
+
     connect(m_searchEdit, &QLineEdit::textChanged,
             this, &SearchInFilesDialog::onSearchTextChanged);
     connect(m_searchEdit, &QLineEdit::returnPressed,

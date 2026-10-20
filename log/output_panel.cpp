@@ -46,7 +46,7 @@ void OutputPanel::buildUi()
     // ---------- 工具条 ----------
     auto* toolbar = new QWidget(this);
     toolbar->setObjectName("OutputToolbar");
-    
+
     auto* h = new QHBoxLayout(toolbar);
     h->setContentsMargins(6, 4, 6, 4);
     h->setSpacing(6);
@@ -54,9 +54,22 @@ void OutputPanel::buildUi()
     toolbar->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     m_search = new QLineEdit(toolbar);
-    m_search->setPlaceholderText(tr("在输出中过滤..."));
-    m_search->setClearButtonEnabled(true);
+    m_search->setPlaceholderText(tr("在输出中过滤... (Esc 清空)"));
     m_search->setMaximumWidth(260);
+    m_search->setFixedHeight(24);
+
+    {
+        auto* escSc = new QShortcut(QKeySequence(Qt::Key_Escape), m_search);
+        escSc->setContext(Qt::WidgetShortcut);
+        connect(escSc, &QShortcut::activated, this, [this]() {
+                if (m_search && !m_search->text().isEmpty()) {
+                    m_search->clear();
+                } else if (m_search) {
+                    // 已经是空的 → 焦点退出搜索框（回日志列表）
+                    if (m_view) m_view->setFocus();
+                }
+            });
+    }
     connect(m_search, &QLineEdit::textChanged,
             this, &OutputPanel::onSearchChanged);
     h->addWidget(m_search);

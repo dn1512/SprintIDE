@@ -171,10 +171,10 @@ public slots:
                               const QString &chunk, bool isEnd,
                               const QString &fullContent);
 
-    /// 状态变化（替代原来的 agentConnected / agentDisconnected）
+    /// 状态变化
     void onConnectionStateChanged(AiConnectionManager::State state);
 
-    /// 接收 Agent 消息（替代原来的 streamDataReceived / responseReceived）
+    /// 接收 Agent 消息
     void onAgentMessageReceived(const QJsonObject& message);
 
     void onAskRequired(const QString& itemId,

@@ -57,6 +57,8 @@
 #include <QLocale>
 #include <QEvent>
 #include <QKeySequence>
+#include <QTextStream>
+#include <QToolTip>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -461,6 +463,17 @@ MainWindow::MainWindow(QWidget *parent)
     m_isCompiling = false;
     connectCompileManagerSignals();
 
+    // ============================================================
+    //  v8.5 修复：诊断仓库必须在 setupDockWidgets() 之前创建
+    //    ProblemsPanel 的构造函数需要有效的 store 指针才会连接信号，
+    //    否则整个 ProblemsPanel 的初始化被跳过、树永远是空的。
+    // ============================================================
+    m_diagnosticsStore = new DiagnosticsStore(this);
+    connect(m_diagnosticsStore, &DiagnosticsStore::fileDiagnosticsChanged,
+        this, &MainWindow::syncDiagnosticsToEditor);
+    connect(m_diagnosticsStore, &DiagnosticsStore::diagnosticsChanged,
+        this, &MainWindow::onDiagnosticsChanged);
+
     // 从配置读取上次的主题
     // ThemeManager& tm = ThemeManager::instance();
     // {
@@ -710,6 +723,12 @@ void MainWindow::applyCurrentTheme()
     if (m_outputPanel) {
         m_outputPanel->applyTheme();
     }
+    if (m_problemsPanel) {
+        m_problemsPanel->applyTheme();
+    }
+
+    // Problems 状态栏指示器的文字色按当前主题刷新
+    onDiagnosticsChanged();
 
     // 性能标签用内联 HTML 颜色，主题切换需要主动重刷
     if (m_performanceMonitor && m_performanceLabel) {
@@ -1118,7 +1137,7 @@ void MainWindow::setupMenuBar()
         }
     });
 
-    // 设置动作（原编译配置）
+    // 设置动作
     editMenu->addSeparator();
 
     QAction *settingsAction = editMenu->addAction(QIcon(":/icons/icons/setting.svg"), tr("设置..."));
@@ -1371,6 +1390,35 @@ void MainWindow::setupMenuBar()
         // 或者更简单地提示用户"下次启动生效"
     });
 
+    // ============================================================
+    //  v8.5：诊断菜单
+    // ============================================================
+    QMenu* diagnosticsMenu = menuBar->addMenu(tr("诊断(&N)"));
+
+    QAction* showProblemsAction = diagnosticsMenu->addAction(tr("显示 Problems 面板"));
+    showProblemsAction->setShortcut(QKeySequence("Ctrl+Alt+P"));
+    connect(showProblemsAction, &QAction::triggered, this, [this]() {
+            if (m_bottomTabWidget && m_problemsPanel) {
+                const int idx = m_bottomTabWidget->indexOf(m_problemsPanel);
+                if (idx >= 0) {
+                    m_bottomDockWidget->setVisible(true);
+                    m_bottomTabWidget->setCurrentIndex(idx);
+                }
+            }
+        });
+    registerShortcut(QStringLiteral("diagnostics.showProblems"),
+        tr("显示 Problems 面板"), showProblemsAction);
+
+    diagnosticsMenu->addSeparator();
+
+    m_clearDiagnosticsAction = diagnosticsMenu->addAction(tr("清除所有诊断"));
+    connect(m_clearDiagnosticsAction, &QAction::triggered, this, [this]() {
+            if (m_diagnosticsStore) {
+                m_diagnosticsStore->clearAll();
+            }
+            logInfo(tr("已清除所有诊断"));
+        });
+
     // ==================== 帮助菜单 ====================
     QMenu *helpMenu = menuBar->addMenu(tr("帮助(&H)"));
 
@@ -1446,6 +1494,20 @@ void MainWindow::setupStatusBar()
     // 缩进
     m_indentLabel = new QLabel(tr("空格: 4"), statusBar);
     statusBar->addPermanentWidget(m_indentLabel);
+
+    // Problems 面板计数指示器 - 有错误：红字 "错误 N"，- 只有警告：黄字 "警告 M"，- 干净：隐藏，- 点击：切到 Problems tab
+    statusBar->addPermanentWidget(new QLabel(" | "));
+
+    m_problemsIndicatorLabel = new QLabel(statusBar);
+    m_problemsIndicatorLabel->setObjectName("ProblemsIndicator");
+    m_problemsIndicatorLabel->setCursor(Qt::PointingHandCursor);
+    m_problemsIndicatorLabel->setTextInteractionFlags(Qt::NoTextInteraction);
+    m_problemsIndicatorLabel->setToolTip(tr("点击查看 Problems 面板"));
+    m_problemsIndicatorLabel->setVisible(false);
+    statusBar->addPermanentWidget(m_problemsIndicatorLabel);
+
+    // 编译进度条（默认隐藏）
+    m_buildProgressBar = new QProgressBar(statusBar);
 
     // 编译进度条（默认隐藏）
     m_buildProgressBar = new QProgressBar(statusBar);
@@ -1556,8 +1618,58 @@ void MainWindow::setupDockWidgets()
             });
 
     m_bottomTabWidget->addTab(m_outputPanel,
-                              QIcon(":/icons/icons/run_view.svg"),
-                              tr("输出"));
+        QIcon(":/icons/icons/run_view.svg"),
+        tr("输出"));
+
+    // ============================================================
+    //  Problems 面板（v8.5）
+    // ============================================================
+    m_problemsPanel = new ProblemsPanel(m_diagnosticsStore, m_bottomTabWidget);
+    m_bottomTabWidget->addTab(m_problemsPanel,
+        QIcon(":/icons/icons/log_warning.svg"),
+        tr("问题"));
+
+    connect(m_problemsPanel, &ProblemsPanel::jumpToFileRequested,
+        this, [this](const QString& file, int line, int column) {
+            openFile(file);
+            if (TextEditor* ed = findEditorByFilePath(file)) {
+                d->editorTabs->setCurrentWidget(ed);
+                ed->gotoLine(line);
+                if (column > 0) {
+                    QTextCursor c = ed->textCursor();
+                    c.movePosition(QTextCursor::Right,
+                        QTextCursor::MoveAnchor, column - 1);
+                    ed->setTextCursor(c);
+                }
+                ed->setFocus();
+            }
+        });
+
+    connect(m_problemsPanel, &ProblemsPanel::quickFixRequested,
+        this, [this](const QString& file, int line, int /*column*/) {
+            // 先打开文件并定位到该行，再弹 Quick Fix 菜单
+            openFile(file);
+            TextEditor* ed = findEditorByFilePath(file);
+            if (!ed) return;
+            d->editorTabs->setCurrentWidget(ed);
+            ed->gotoLine(line);
+            ed->setFocus();
+
+            // 光标移到该行末尾 → 位置更贴近 Quick Fix 菜单的弹出点
+            QTextCursor c = ed->textCursor();
+            c.movePosition(QTextCursor::EndOfBlock);
+            ed->setTextCursor(c);
+
+            const QPoint globalPos = ed->viewport()->mapToGlobal(
+                ed->cursorRect().bottomLeft());
+            ed->showQuickFixMenuForLine(line, globalPos);
+        });
+
+    // 状态栏指示器点击 → 切到 Problems tab
+    //   （m_problemsIndicatorLabel 在 setupStatusBar 里已创建）
+    if (m_problemsIndicatorLabel) {
+        m_problemsIndicatorLabel->installEventFilter(this);
+    }
 
     // ============================================================
     //  底部容器：左侧窄条 + 右侧 Tab
@@ -2187,6 +2299,23 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
             return true;
         }
     }
+
+    // v8.5：Problems 指示器：左键点击 → 切到 Problems tab
+    if (watched == m_problemsIndicatorLabel
+        && event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton) {
+            if (m_bottomTabWidget && m_problemsPanel) {
+                const int idx = m_bottomTabWidget->indexOf(m_problemsPanel);
+                if (idx >= 0) {
+                    m_bottomDockWidget->setVisible(true);
+                    m_bottomTabWidget->setCurrentIndex(idx);
+                }
+            }
+            return true;
+        }
+    }
+
     return QMainWindow::eventFilter(watched, event);
 }
 
@@ -2396,6 +2525,11 @@ void MainWindow::openProject(const QString &path) {
     m_cachedProjectRoot  = actualRoot;
     m_cachedScanTime     = QDateTime::currentDateTime();
 
+    // v8.5：Qt 项目生成 .clangd
+    //   让 clangd 知道 Qt 头文件位置，避免 "Unknown type name 'QString'" 误报。
+    //   如果 clangd 已经在跑（罕见：用户先开文件再开项目），会提示重启。
+    ensureQtClangdConfig(actualRoot);
+
     ProjectModel* model = pm->javaProjectModel();
     if (model) {
         QString typeStr;
@@ -2419,9 +2553,12 @@ void MainWindow::openProject(const QString &path) {
         updateGitStatusIndicator();
     }
 
+    // 打开新项目时清空旧诊断
+    if (m_diagnosticsStore) {
+        m_diagnosticsStore->clearAll();
+    }
+
     // 延迟恢复上次会话
-    // 用 singleShot 确保当前 openProject 流程走完、UI 已就绪后再恢复，
-    // 避免在 MainWindow 构造期间被 main.cpp 提前调用导致 tab 错乱。
     QTimer::singleShot(150, this, &MainWindow::restoreSession);
 }
 
@@ -2439,10 +2576,13 @@ void MainWindow::closeProject()
         d->projectPanel->onGitStatusUpdated(QList<Git::GitFileStatus>{});
     }
 
+    // 清空所有诊断（项目切换后旧诊断无意义）
+    if (m_diagnosticsStore) {
+        m_diagnosticsStore->clearAll();
+    }
+
     updateGitActions();
     updateGitStatusIndicator();
-
-    // updateWindowTitle();
 }
 
 void MainWindow::openFile(const QString &path)
@@ -2532,7 +2672,7 @@ void MainWindow::openFile(const QString &path)
         client->requestDefinition(filePath, line, column);
     });
 
-    // ---- 本地历史（原有代码） ----
+    // ---- 本地历史 ----
     if (m_localHistory) {
         QString rootPath = d->currentProjectPath.isEmpty() ?
                                QFileInfo(path).absolutePath() :
@@ -2564,7 +2704,7 @@ void MainWindow::openFile(const QString &path)
             this, &MainWindow::onAIAssistRequested);
     editor->setAIAvailable(m_aiConnMgr && m_aiConnMgr->isReady());
 
-    // ---- 其他信号连接（原有） ----
+    // ---- 其他信号连接 ----
     connect(editor, &TextEditor::modificationChanged,
             this, &MainWindow::onEditorModificationChanged);
     connect(editor, &TextEditor::cursorPositionChanged,
@@ -2576,8 +2716,8 @@ void MainWindow::openFile(const QString &path)
     connect(editor, &TextEditor::autoSaved,
     this, [this](const QString& path) {
         m_statusLabel->setText(
-            QString(tr("已自动保存: %1"))
-                .arg(QFileInfo(path).fileName()));
+            QString(tr("已自动保存: "))
+                + QFileInfo(path).fileName());
         // 3 秒后恢复
         QTimer::singleShot(3000, this, [this]() {
             if (m_statusLabel) m_statusLabel->setText(tr("就绪"));
@@ -2586,8 +2726,8 @@ void MainWindow::openFile(const QString &path)
     connect(editor, &TextEditor::externalModificationDetected,
     this, [this](const QString& path) {
         m_statusLabel->setText(
-            QString(tr("⚠ 文件已被外部修改，自动保存已跳过: %1"))
-                .arg(QFileInfo(path).fileName()));
+            QString(tr("⚠ 文件已被外部修改，自动保存已跳过: "))
+                + QFileInfo(path).fileName());
     });
     connect(editor->document(), &QTextDocument::contentsChanged,
             this, [this, editor]() {
@@ -2673,6 +2813,18 @@ void MainWindow::openFile(const QString &path)
     // ---- LSP 打开文档 ----
     if (m_lspManager) {
         QString projectPath = findProjectRootForFile(path);
+
+        // 兜底——如果用户绕过 openProject 直接打开 .cpp 文件
+        //   （比如命令行传参、外部拖拽），clangd 启动前也确保 .clangd 存在。
+        //   这里只对 C++/Qt 文件做判断，其他语言不触发。
+        if (path.endsWith(".cpp", Qt::CaseInsensitive)
+            || path.endsWith(".cc", Qt::CaseInsensitive)
+            || path.endsWith(".cxx", Qt::CaseInsensitive)
+            || path.endsWith(".c", Qt::CaseInsensitive)
+            || path.endsWith(".h", Qt::CaseInsensitive)
+            || path.endsWith(".hpp", Qt::CaseInsensitive)) {
+            ensureQtClangdConfig(projectPath);
+        }
 
         LSPClient *client = m_lspManager->getClientForFile(path, projectPath);
         if (client) {
@@ -2811,8 +2963,8 @@ void MainWindow::createNewEditorTab(const QString& title)
     connect(editor, &TextEditor::autoSaved,
         this, [this](const QString& path) {
             m_statusLabel->setText(
-                QString(tr("已自动保存: %1"))
-                    .arg(QFileInfo(path).fileName()));
+                QString(tr("已自动保存: "))
+                    + QFileInfo(path).fileName());
             // 3 秒后恢复
             QTimer::singleShot(3000, this, [this]() {
                 if (m_statusLabel) m_statusLabel->setText(tr("就绪"));
@@ -2822,8 +2974,8 @@ void MainWindow::createNewEditorTab(const QString& title)
     connect(editor, &TextEditor::externalModificationDetected,
         this, [this](const QString& path) {
             m_statusLabel->setText(
-                QString(tr("⚠ 文件已被外部修改，自动保存已跳过: %1"))
-                    .arg(QFileInfo(path).fileName()));
+                QString(tr("⚠ 文件已被外部修改，自动保存已跳过: "))
+                    + QFileInfo(path).fileName());
         });
     // qDebug() << "breakpointToggled signal connected for editor:" << editor;
     bool isDark = ThemeManager::instance().isDarkTheme();
@@ -2833,13 +2985,21 @@ void MainWindow::createNewEditorTab(const QString& title)
 bool MainWindow::closeEditorTab(int index)
 {
     TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(index));
-    if (!editor) return true; // 无效标签，视为已关闭
+    if (!editor) return true;
+
+    const QString filePath = editor->filePath();
+
+    auto cleanupDiagnostics = [this, filePath]() {
+        if (m_diagnosticsStore && !filePath.isEmpty()) {
+            m_diagnosticsStore->clearFile(filePath);
+        }
+    };
 
     if (editor->isModified()) {
         QMessageBox msgBox(this);
         msgBox.setWindowTitle(tr("未保存的更改"));
         msgBox.setText(QString(tr("文件 '%1' 有未保存的更改。\n是否保存更改？"))
-                           .arg(editor->fileName()));
+            .arg(editor->fileName()));
         msgBox.setIcon(QMessageBox::Question);
         QPushButton *saveButton = msgBox.addButton(tr("保存(&S)"), QMessageBox::AcceptRole);
         QPushButton *discardButton = msgBox.addButton(tr("不保存(&D)"), QMessageBox::RejectRole);
@@ -2849,21 +3009,22 @@ bool MainWindow::closeEditorTab(int index)
 
         QAbstractButton* clicked = msgBox.clickedButton();
         if (clicked == saveButton) {
-            if (!editor->saveFile()) {
-                return false; // 保存失败，视为取消
-            }
+            if (!editor->saveFile()) return false;
             d->editorTabs->removeTab(index);
+            cleanupDiagnostics();
             onEditorModificationChanged(false);
             return true;
         } else if (clicked == discardButton) {
             d->editorTabs->removeTab(index);
+            cleanupDiagnostics();
             onEditorModificationChanged(false);
             return true;
-        } else { // 取消
+        } else {
             return false;
         }
     } else {
         d->editorTabs->removeTab(index);
+        cleanupDiagnostics();
         onEditorModificationChanged(false);
         return true;
     }
@@ -3029,17 +3190,23 @@ void MainWindow::onFileLoaded(const QString &filePath)
 
 void MainWindow::onFileSaved(const QString &filePath)
 {
-    // qDebug() << "onFileSaved called, filePath:" << filePath;
-    // qDebug() << "m_statusLabel:" << m_statusLabel;
-
-    // logInfo(QString("已保存文件: %1").arg(filePath));
-
     TextEditor* editor = qobject_cast<TextEditor*>(sender());
     if (editor) {
         int index = d->editorTabs->indexOf(editor);
         if (index >= 0) {
             d->editorTabs->setTabText(index, editor->fileName());
         }
+    }
+
+    // ============================================================
+    //  v8.5：保存后清空该文件的 LSP 诊断
+    //    - 用户保存时，文件内容已是最新，旧的 LSP 诊断（比如"未保存"相关的）
+    //      可能不再适用，主动清掉避免误报残留
+    //    - saveDocument 发出后，LSP 会重新分析并在 didChange 后推送新诊断
+    //    - 编译诊断（source = "compiler"）不受影响
+    // ============================================================
+    if (m_diagnosticsStore && !filePath.isEmpty()) {
+        m_diagnosticsStore->replace(filePath, QStringLiteral("lsp"), {});
     }
 
     if (m_lspManager && !filePath.isEmpty()) {
@@ -3049,11 +3216,9 @@ void MainWindow::onFileSaved(const QString &filePath)
         }
     }
 
-    // qDebug() << "Before setText";
     if (m_statusLabel) {
         m_statusLabel->setText(tr("文件已保存"));
     }
-    // qDebug() << "After setText";
 
     updateWindowTitle();
 
@@ -3130,6 +3295,27 @@ void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
         }
 
         ++syncedCount;
+    }
+
+    // ============================================================
+    //  1.5 v8.5：同步诊断到新路径
+    //    旧路径的诊断整体搬到新路径，避免残留 + 新路径缺诊断
+    // ============================================================
+    if (m_diagnosticsStore) {
+        const QList<Diagnostic> oldDiags = m_diagnosticsStore->forFile(oldPath);
+        if (!oldDiags.isEmpty()) {
+            // 按 source 分组后写到新路径
+            QHash<QString, QList<Diagnostic>> bySource;
+            for (const Diagnostic& d : oldDiags) {
+                Diagnostic copy = d;
+                copy.filePath = newPath;
+                bySource[d.source].append(copy);
+            }
+            m_diagnosticsStore->clearFile(oldPath);
+            for (auto it = bySource.constBegin(); it != bySource.constEnd(); ++it) {
+                m_diagnosticsStore->replace(newPath, it.key(), it.value());
+            }
+        }
     }
 
     // ============================================================
@@ -3300,23 +3486,24 @@ void MainWindow::onCompileStarted(const QString& taskId, const QString& sourceFi
     m_outputPanel->clear();
 
     appendLog(LogEntry::make(
-        LogKind::Compile, LogLevel::Info, "Compile",
-        QStringLiteral("开始编译: %1").arg(sourceFile),
-        sourceFile));
+            LogKind::Compile, LogLevel::Info, "Compile",
+            QStringLiteral("开始编译: %1").arg(sourceFile),
+            sourceFile));
 
     m_statusLabel->setText(QString(tr("正在编译 %1...")).arg(QFileInfo(sourceFile).fileName()));
 
-    for (int i = 0; i < d->editorTabs->count(); ++i) {
-        TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (editor) {
-            editor->clearAllMarkers();
-        }
+    // ============================================================
+    //  v8.5：清空旧的编译诊断（LSP 诊断不受影响）
+    //    - 用户能立刻看到"上一轮错误消失"，不必等编译完成
+    //    - 编译完成后由 onCompileFinished 写入新诊断
+    // ============================================================
+    if (m_diagnosticsStore) {
+        m_diagnosticsStore->clearSource(QStringLiteral("compiler"));
     }
 
     // 显示进度条
     m_buildProgressBar->setVisible(true);
     m_buildProgressBar->setValue(0);
-    // qDebug() << "编译开始，任务ID:" << taskId << "源文件:" << sourceFile;
 }
 
 void MainWindow::onCompileProgress(const QString& taskId, int progress, const QString& currentFile)
@@ -3416,6 +3603,65 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
 
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
 
+    // ============================================================
+    //  编译完成 → 收集所有错误/警告 → 按文件分组 → 写入 store
+    //   source = "compiler"
+    //  - 无论成功失败都做：
+    //    · 成功 → 清空所有之前的 "compiler" 诊断（可能上一轮失败过）
+    //    · 失败 → 全量替换 "compiler" 诊断
+    //  - LSP 的诊断（source = "lsp"）不受影响
+    // ============================================================
+    {
+        // 先清空上一轮的 compiler 诊断（避免旧错误残留）
+        m_diagnosticsStore->clearSource(QStringLiteral("compiler"));
+
+        if (!result.success) {
+            // 按 filePath 分组
+            QHash<QString, QList<Diagnostic>> byFile;
+
+            auto parseAndGroup = [&](const QStringList& lines,
+                                     const QString& severity) {
+                for (const QString& line : lines) {
+                    SprintIDE::ErrorMarker m = parseErrorLine(line);
+                    if (m.line <= 0 || m.filePath.isEmpty()) continue;
+
+                    // 相对路径 → 尝试相对项目根 / <项目根>/build
+                    QString absPath = m.filePath;
+                    if (!QFileInfo(absPath).isAbsolute()) {
+                        const QString projRoot = d->currentProjectPath;
+                        if (!projRoot.isEmpty()) {
+                            const QString cand1 = QDir(projRoot).absoluteFilePath(m.filePath);
+                            const QString cand2 = QDir(projRoot + "/build").absoluteFilePath(m.filePath);
+                            if (QFileInfo::exists(cand1))      absPath = cand1;
+                            else if (QFileInfo::exists(cand2)) absPath = cand2;
+                        }
+                    }
+                    // 规范化：绝对路径
+                    absPath = QFileInfo(absPath).absoluteFilePath();
+
+                    Diagnostic d;
+                    d.filePath  = absPath;
+                    d.line      = m.line;
+                    d.column    = m.column > 0 ? m.column : 1;
+                    d.severity  = severity;
+                    d.message   = m.message;
+                    d.source    = QStringLiteral("compiler");
+
+                    byFile[absPath].append(d);
+                }
+            };
+
+            parseAndGroup(result.errors,   QStringLiteral("error"));
+            parseAndGroup(result.warnings, QStringLiteral("warning"));
+
+            for (auto it = byFile.constBegin(); it != byFile.constEnd(); ++it) {
+                m_diagnosticsStore->replace(it.key(),
+                                            QStringLiteral("compiler"),
+                                            it.value());
+            }
+        }
+    }
+
     if (result.success) {
         appendLog(LogEntry::make(LogKind::Compile, LogLevel::Info, "Compile",
                          QStringLiteral("编译成功，耗时 %1ms").arg(elapsedMs)));
@@ -3445,7 +3691,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
             }
         }
 
-        // ========== 编译后自动启动调试（原有） ==========
+        // ========== 编译后自动启动调试 ==========
         if (m_compileForDebug) {
             m_compileForDebug = false;
 
@@ -3562,69 +3808,6 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
         if (m_autoRunAfterCompile) {
             m_autoRunAfterCompile = false;
             logInfo("编译失败，无法自动运行。");
-        }
-    }
-
-    // ========== 显示错误/警告标记（原有逻辑，保持不变） ==========
-    if (!result.success) {
-        // 清除所有编辑器的旧标记
-        for (int i = 0; i < d->editorTabs->count(); ++i) {
-            TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-            if (editor) {
-                editor->clearAllMarkers();
-            }
-        }
-
-        // 收集每个文件的错误和警告
-        QMap<QString, QList<SprintIDE::ErrorMarker>> fileErrors;
-        QMap<QString, QList<SprintIDE::ErrorMarker>> fileWarnings;
-
-        for (const QString& errorLine : result.errors) {
-            SprintIDE::ErrorMarker marker = parseErrorLine(errorLine);
-            if (marker.line > 0) {
-                for (int i = 0; i < d->editorTabs->count(); ++i) {
-                    TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-                    if (!editor) continue;
-                    if (QFileInfo(editor->filePath()).fileName() == QFileInfo(marker.filePath).fileName()) {
-                        editor->setErrorMarker(marker.filePath, marker.line, marker.column, marker.message);
-                        editor->viewport()->update();
-                        break;
-                    }
-                }
-            }
-        }
-
-        for (const QString& warningLine : result.warnings) {
-            SprintIDE::ErrorMarker marker = parseErrorLine(warningLine);
-            if (marker.line > 0) {
-                for (int i = 0; i < d->editorTabs->count(); ++i) {
-                    TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-                    if (!editor) continue;
-                    if (QFileInfo(editor->filePath()).fileName() == QFileInfo(marker.filePath).fileName()) {
-                        editor->setWarningMarker(marker.filePath, marker.line, marker.column, marker.message);
-                        editor->viewport()->update();
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 将标记添加到对应的编辑器
-        for (int i = 0; i < d->editorTabs->count(); ++i) {
-            TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-            if (!editor) continue;
-
-            QString filePath = editor->filePath();
-            if (fileErrors.contains(filePath)) {
-                for (const SprintIDE::ErrorMarker& marker : fileErrors[filePath]) {
-                    editor->setErrorMarker(marker.filePath, marker.line, marker.column, marker.message);
-                }
-            }
-            if (fileWarnings.contains(filePath)) {
-                for (const SprintIDE::ErrorMarker& marker : fileWarnings[filePath]) {
-                    editor->setWarningMarker(marker.filePath, marker.line, marker.column, marker.message);
-                }
-            }
         }
     }
 
@@ -3805,44 +3988,107 @@ void MainWindow::syncBreakpointsToDebugger()
     // qDebug() << "断点已同步到调试器";
 }
 
-
 void MainWindow::onLSPDiagnostics(const QString& filePath,
-                                  const QList<LSPDiagnostic>& diagnostics)
+    const QList<LSPDiagnostic>& diagnostics)
 {
     TextEditor* editor = findEditorByFilePath(filePath);
     if (!editor) return;
 
-    // 缓存本次诊断的完整信息（含 source / code），供后续 codeAction 请求原样回传
     m_lastDiagnosticsByFile[filePath] = diagnostics;
+
+    // ---- 过滤 → Diagnostic ----
+    DiagnosticFilter& filter = DiagnosticFilter::instance();
+    QList<Diagnostic> kept;
+
+    for (const LSPDiagnostic& diag : diagnostics) {
+        if (!filter.shouldKeep(diag)) continue;
+        if (diag.severity != "error" && diag.severity != "warning") continue;
+
+        Diagnostic d;
+        d.filePath  = filePath;
+        d.line      = diag.line;
+        d.column    = diag.column;
+        d.endLine   = diag.endLine;
+        d.endColumn = diag.endColumn;
+        d.severity  = diag.severity;
+        d.message   = diag.message;
+        d.source    = QStringLiteral("lsp");
+        d.code      = diag.code;
+        kept.append(d);
+    }
+
+    // ---- 写入 store ----
+    //   source = "lsp"：LSP 全量替换，不动编译错误（source = "compiler"）
+    m_diagnosticsStore->replace(filePath, QStringLiteral("lsp"), kept);
+}
+
+// ============================================================
+//  把 store 里某文件的诊断同步到编辑器的波浪线
+//   - clearAllMarkers → 遍历 store[filePath] → setErrorMarker/setWarningMarker
+//   - 由 fileDiagnosticsChanged 信号触发
+// ============================================================
+void MainWindow::syncDiagnosticsToEditor(const QString& filePath)
+{
+    // store 现在更早创建，可能在某些早期信号里触发，editorTabs 可能还没就绪，这里做防御
+    if (!d || !d->editorTabs) return;
+    if (!m_diagnosticsStore) return;
+    TextEditor* editor = findEditorByFilePath(filePath);
+    if (!editor) return;
 
     editor->clearAllMarkers();
 
-    DiagnosticFilter& filter = DiagnosticFilter::instance();
-
-    int keptErrors = 0;
-    int keptWarnings = 0;
-    int filtered = 0;
-
-    for (const LSPDiagnostic& diag : diagnostics) {
-        if (!filter.shouldKeep(diag)) {
-            ++filtered;
-            continue;
-        }
-        if (diag.severity == "error") {
-            editor->setErrorMarker(filePath, diag.line, diag.column, diag.message);
-            ++keptErrors;
-        } else if (diag.severity == "warning") {
-            editor->setWarningMarker(filePath, diag.line, diag.column, diag.message);
-            ++keptWarnings;
+    const QList<Diagnostic> diags = m_diagnosticsStore->forFile(filePath);
+    for (const Diagnostic& d : diags) {
+        if (d.isError()) {
+            editor->setErrorMarker(filePath, d.line, d.column, d.message);
+        } else if (d.isWarning()) {
+            editor->setWarningMarker(filePath, d.line, d.column, d.message);
         }
     }
+}
 
-    if (filtered > 0 || keptWarnings > 0) {
-        qDebug() << "[LSP]" << filePath
-                 << "error:" << keptErrors
-                 << "warning:" << keptWarnings
-                 << "filtered:" << filtered;
+// ============================================================
+//  v8.5：诊断变化 → 刷新状态栏计数
+// ============================================================
+void MainWindow::onDiagnosticsChanged()
+{
+    if (!m_problemsIndicatorLabel || !m_diagnosticsStore) return;
+
+    const int errs  = m_diagnosticsStore->errorCount();
+    const int warns = m_diagnosticsStore->warningCount();
+
+    ThemeManager& tm = ThemeManager::instance();
+
+    if (errs == 0 && warns == 0) {
+        m_problemsIndicatorLabel->setVisible(false);
+        return;
     }
+
+    m_problemsIndicatorLabel->setVisible(true);
+
+    // 图标 + 文字
+    //   有错误 → 红字 + 错误图标
+    //   无错误但有警告 → 黄字 + 警告图标
+    QStringList parts;
+    if (errs > 0) {
+        parts << QStringLiteral("✕ %1").arg(errs);
+    }
+    if (warns > 0) {
+        parts << QStringLiteral("⚠ %1").arg(warns);
+    }
+
+    const QColor color = (errs > 0)
+    ? tm.color(ThemeManager::UIElement::ErrorColor)
+    : tm.color(ThemeManager::UIElement::WarningColor);
+    m_problemsIndicatorLabel->setStyleSheet(QString(
+            "QLabel#ProblemsIndicator {"
+            "  color: %1;"
+            "  font-weight: 600;"
+            "  padding: 0 6px;"
+            "}"
+        ).arg(color.name()));
+
+    m_problemsIndicatorLabel->setText(parts.join("   "));
 }
 
 void MainWindow::onDefinitionReceived(const QString& file, int line, int column)
@@ -3880,7 +4126,7 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
     LSPClient* client = m_lspManager->getClientForFile(filePath, projectRoot);
     if (!client) return;
 
-    // 从缓存里取该行的原始诊断（保留 source / code）
+    // 从缓存里取该行的原始诊断
     // 不再从 ErrorMarker 现拼，避免丢失 clangd 需要的字段
     QList<LSPDiagnostic> diags;
     const QList<LSPDiagnostic> allDiags =
@@ -3898,7 +4144,7 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
         diags.append(d);
     }
 
-    // ---- codeActionReceived 一次性 connect（保留原有逻辑） ----
+    // ---- codeActionReceived 一次性 connect ----
     connect(client, &LSPClient::codeActionReceived,
             editor, &TextEditor::onCodeActionReceived,
             Qt::UniqueConnection);
@@ -4436,7 +4682,7 @@ void MainWindow::onStartDebug() {
         return;
     }
 
-    // ========== C++ / Java / 其他调试（原有逻辑） ==========
+    // ========== C++ / Java / 其他调试 ==========
     BuildTask task;
     task.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     task.language = detectLanguageTypeFromPath(sourceFile);
@@ -5599,7 +5845,6 @@ QProcess* MainWindow::createRunProcess(const QString& program,
                     if (!line.isEmpty()) logInfo(line);
                 }
 
-                // ---- 以下为原有 finished 逻辑，保持不变 ----
                 if (m_stoppingProcess) {
                     logInfo("程序已停止");
                 } else if (status == QProcess::NormalExit) {
@@ -7193,6 +7438,213 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
     m_cachedScanTime     = QDateTime::currentDateTime();
 }
 
+// ============================================================
+//  v8.5：为 Qt 项目生成 .clangd
+//    clangd 缺少 compile_commands.json 时找不到 Qt 头文件，
+//    会报大量 "Unknown type name 'QString'" 等误报。
+//    .clangd 是 clangd 官方支持的项目配置文件，
+//    clangd 启动时会自动读取项目根（或祖先目录）的 .clangd，
+//    把 CompileFlags.Add 里的参数追加到每个文件。
+//
+//  返回 true：新生成且 clangd 已在跑（需要提示用户重启 IDE）
+//  返回 false：不需要生成 / 已存在 / clangd 未启动（无需重启）
+// ============================================================
+bool MainWindow::ensureQtClangdConfig(const QString& projectPath)
+{
+    qDebug() << "[QtClangd] 进入, projectPath =" << projectPath;
+
+    if (projectPath.isEmpty()) return false;
+
+    // ---------- 1. 只在 Qt 项目里做 ----------
+    SprintIDE::CppProjectModel probe(projectPath);
+    probe.load();
+    if (!probe.isQtProject()) {
+        return false;
+    }
+
+    // ---------- 2. 读 QT_DIR ----------
+    QString qtDir;
+    if (auto* cfg = Application::instance().configManager()) {
+        const QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+        qtDir = sdkEnv.value("QT_DIR").toString();
+    }
+    if (qtDir.isEmpty()) {
+        qtDir = qEnvironmentVariable("QT_DIR");
+        qDebug() << "[QtClangd] 从 shell 环境变量读到 QT_DIR =" << qtDir;
+    }
+
+    qDebug() << "[QtClangd] 最终 qtDir = [" << qtDir << "]";
+
+    if (qtDir.isEmpty() || !QDir(qtDir).exists()) {
+        qDebug() << "[QtClangd] qtDir 为空或不存在，返回";
+        return false;
+    }
+
+    // ============================================================
+    //  v8.5：Qt 6.10 macOS 安装的两种布局
+    //    - framework：<QT_DIR>/lib/QtXxx.framework/Headers/
+    //    - include  ：<QT_DIR>/include/QtXxx
+    //  核心模块（Core/Gui/Widgets）在 framework 里，
+    //  辅助模块（Freetype 等）在 include 里。
+    //  两套都尝试，命中的都加上。
+    // ============================================================
+    const QString includeBase  = qtDir + "/include";
+    const QString frameworkLib = qtDir + "/lib";
+
+    if (!QDir(includeBase).exists() && !QDir(frameworkLib).exists()) {
+        qDebug() << "[QtClangd] Qt 目录里既没有 include/ 也没有 lib/，返回";
+        return false;
+    }
+
+    // 核心模块（framework 布局在 lib/QtXxx.framework/Headers）
+    static const QStringList kFrameworkModules = {
+        "QtCore", "QtGui", "QtWidgets", "QtNetwork",
+        "QtSql", "QtXml", "QtConcurrent", "QtSvg",
+        "QtQml", "QtQuick", "QtQuickControls2", "QtQmlModels",
+        "QtDBus", "QtPrintSupport", "QtTest", "QtMultimedia",
+        "QtOpenGL", "QtOpenGLWidgets", "QtCharts", "QtWebEngineWidgets",
+    };
+
+    // 辅助模块（include 布局在 include/QtXxx）
+    static const QStringList kIncludeModules = {
+        "QtFreetype", "QtHarfbuzz", "QtJpeg", "QtPng", "QtTools",
+    };
+
+    QStringList includeDirs;
+
+    // ---------- 1. framework 布局（核心模块） ----------
+    for (const QString& mod : kFrameworkModules) {
+        const QString fwPath = frameworkLib + "/" + mod + ".framework/Headers";
+        if (QDir(fwPath).exists()) {
+            includeDirs << fwPath;
+            qDebug() << "[QtClangd] ✓ framework:" << fwPath;
+        }
+    }
+
+    // ---------- 2. include 布局（辅助模块，可选） ----------
+    if (QDir(includeBase).exists()) {
+        for (const QString& mod : kIncludeModules) {
+            const QString incPath = includeBase + "/" + mod;
+            if (QDir(incPath).exists()) {
+                includeDirs << incPath;
+                qDebug() << "[QtClangd] ✓ include:" << incPath;
+            }
+        }
+    }
+
+    if (includeDirs.isEmpty()) {
+        qDebug() << "[QtClangd] 未找到任何 Qt 模块头文件目录"
+                 << "（frameworkLib =" << frameworkLib
+                 << "includeBase =" << includeBase << "）";
+        return false;
+    }
+
+    qDebug() << "[QtClangd] 共找到" << includeDirs.size() << "个模块目录";
+
+    // ---------- 4. 构造 .clangd 内容 ----------
+    QString content = "# Auto-generated by SprintIDE (v8.5)\n";
+    content += "# Qt SDK: " + qtDir + "\n";
+    content += "# 修改此文件后需重启 IDE 使 clangd 重读配置\n";
+    content += "CompileFlags:\n";
+    content += "  Add:\n";
+    for (const QString& d : includeDirs) {
+        content += "    - -I" + d + "\n";
+    }
+    for (const QString& def : {"QT_CORE_LIB", "QT_GUI_LIB", "QT_WIDGETS_LIB"}) {
+        content += "    - -D" + def + "\n";
+    }
+
+    const QString clangdFile = projectPath + "/.clangd";
+
+    // ---------- 5. 已存在且不是我们生成的 → 不动 ----------
+    //   只有以 "# Auto-generated by SprintIDE" 开头的才覆盖，
+    //   避免覆盖用户手写的内容。
+    if (QFile::exists(clangdFile)) {
+        QFile existing(clangdFile);
+        if (existing.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QString head = QString::fromUtf8(existing.read(64));
+            existing.close();
+
+            const bool isOurs = head.startsWith("# Auto-generated by SprintIDE");
+
+            if (!isOurs) {
+                qDebug() << "[QtClangd] .clangd 已存在且非自动生成，跳过:" << clangdFile;
+                return false;
+            }
+
+            // 是我们生成的 → 检查内容是否变化
+            QFile f(clangdFile);
+            if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                const QString currentContent = QString::fromUtf8(f.readAll());
+                f.close();
+                if (currentContent == content) {
+                    // 内容完全一致 → 不用重写
+                    return false;
+                }
+            }
+            // 内容有变（QT_DIR 升级等）→ 继续重写
+        }
+    }
+
+    // ---------- 6. 判断 clangd 是否已在跑 ----------
+    //   - 如果已跑：新 .clangd 不会立即生效，需要提示重启
+    //   - 如果没跑：下次打开文件时 clangd 启动，自动读取
+    bool clangdAlreadyRunning = false;
+    if (m_lspManager) {
+        // 查这个项目根下有没有已创建的 clangd client
+        // getClient(languageId, projectRoot) 返回已存在的 client（不创建）
+        LSPClient* existing = m_lspManager->getClient(
+            QStringLiteral("cpp"), projectPath);
+        if (existing && existing->isServerRunning()) {
+            clangdAlreadyRunning = true;
+        }
+    }
+
+    // ---------- 7. 写文件 ----------
+    QFile f(clangdFile);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "[QtClangd] 无法写入 .clangd:" << f.errorString();
+        return false;
+    }
+    {
+        QTextStream ts(&f);
+        ts.setEncoding(QStringConverter::Utf8);
+        ts << content;
+    }
+    f.close();
+
+    qDebug() << "[QtClangd] 已生成/更新 .clangd:" << clangdFile
+    << "模块数:" << includeDirs.size();
+
+    // ---------- 8. 提示用户 ----------
+    //   只在实际需要"重启才能生效"时才提示
+    //   （clangd 已经在跑 = 需要重启；没跑 = 下次打开文件自动生效）
+    logInfo(QStringLiteral("已为 Qt 项目生成 .clangd（Qt SDK: %1，%2 个模块）")
+        .arg(qtDir)
+        .arg(includeDirs.size()));
+
+    if (clangdAlreadyRunning) {
+        // clangd 已启动 → 新配置需要重启才能生效
+        logWarn(QStringLiteral(
+                "clangd 已启动，新的 Qt 分析配置需要重启 SprintIDE 后生效。"
+                "重启后 Qt 关键字误报（Unknown type name 'QString'）会消失。"));
+        if (m_statusLabel) {
+            m_statusLabel->setText(tr("已生成 Qt 分析配置，重启 IDE 后生效"));
+        }
+        // 一次性 QToolTip 提示（不打断操作，2 秒自动消失）
+        QToolTip::showText(
+            mapToGlobal(rect().center()),
+            tr("已生成 Qt 分析配置。\n重启 SprintIDE 后 Qt 关键字误报将消失。"),
+            this, QRect(), 2000);
+        return true;
+    }
+
+    // clangd 未启动 → 下次打开文件时自动读取，无需重启
+    logInfo(QStringLiteral(
+            "clangd 尚未启动，配置将在打开文件时自动生效。"));
+    return false;
+}
+
 void MainWindow::reloadLspFilterSettings()
 {
     ConfigManager* cfg = Application::instance().configManager();
@@ -7707,7 +8159,7 @@ void MainWindow::onRun()
 
         // 输出诊断信息
         logInfo(QString("使用 Python 解释器: %1").arg(python));
-        logInfo(QString("工作目录: %1").arg(projectPath));
+        logInfo(QString("工作目录: ") + projectPath);
         logInfo("正在运行...");
 
         // 构建命令参数
@@ -8446,8 +8898,7 @@ void MainWindow::onAIExplainError(const QString& errorText)
     if (errorText.trimmed().isEmpty()) return;
 
     const QString prompt =
-        tr("请解释下面这条编译/运行错误，说明原因和修复方法：\n```\n%1\n```")
-            .arg(errorText);
+        tr("请解释下面这条编译/运行错误，说明原因和修复方法：") + QString("\n```\n%1\n```").arg(errorText);
 
     onAIAssistRequested(prompt, QString(), 0, 0);
 }

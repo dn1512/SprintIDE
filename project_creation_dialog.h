@@ -77,9 +77,6 @@ struct ProjectTemplate
 
 // ============================================================
 //  项目创建结果结构体
-// ------------------------------------------------------------
-//  在原结构基础上，新增 language 字段，以便 MainWindow 根据
-//  语言做后续处理（打开入口文件、选择日志格式等）。
 // ============================================================
 struct ProjectCreationResult
 {
@@ -111,16 +108,6 @@ struct ProjectCreationResult
 
 // ============================================================
 //  项目创建对话框
-// ------------------------------------------------------------
-//  多语言版本：语言下拉框 + 模板下拉框 + 语言特有选项组。
-//  UI 结构（自上而下）：
-//    [项目名称] [显示名称] [位置] [浏览]
-//    [编程语言]  ← 新增
-//    [项目模板]  ← 原有
-//    [模板描述 / 文件列表]
-//    [语言特有选项] ← 新增
-//    [高级编译配置]  ← 原有（仅 C++ 显示）
-//    [底部按钮]
 // ============================================================
 class ProjectCreationDialog : public QDialog
 {
@@ -200,7 +187,7 @@ private:
     bool validateProjectName(const QString& name, QString& error) const;
     bool validateProjectPath(const QString& path, QString& error) const;
 
-    // ---------- C++ 项目生成流程（原逻辑保持不变） ----------
+    // ---------- C++ 项目生成流程 ----------
     bool createProjectStructure();
     bool generateProjectFiles();
     bool generateConfigFile();
@@ -257,7 +244,7 @@ private:
     // Python
     QCheckBox* m_pythonVenvCheckBox    = nullptr;  ///< 是否创建 .venv
     // QLineEdit* m_pythonInterpreterEdit = nullptr;  ///< 自定义解释器路径
-    QLineEdit* m_pythonVenvNameEdit    = nullptr;  ///< 虚拟环境目录名（替换原解释器路径）
+    QLineEdit* m_pythonVenvNameEdit    = nullptr;  ///< 虚拟环境目录名
     QLabel* m_pythonEntryLabel = nullptr;          ///入口文件名标签（复用）
 
     // Go

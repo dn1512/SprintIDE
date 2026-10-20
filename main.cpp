@@ -249,7 +249,6 @@ int main(int argc, char *argv[])
             qDebug() << "[main] --agent-mode：跳过项目选择对话框";
         }
         else if (projectPath.isEmpty()) {
-            // ---- 无参数：原有交互式选择对话框 ----
             while (true) {
                 ProjectSelectionDialog selDlg(projectManager->recentProjects());
 
@@ -294,7 +293,7 @@ int main(int argc, char *argv[])
                 if (!QDir().mkpath(projectPath)) {
                     QMessageBox::critical(
                         nullptr, QObject::tr("启动失败"),
-                        QObject::tr("无法创建目录：%1").arg(projectPath));
+                        QObject::tr("无法创建目录：") + projectPath);
                     return -1;
                 }
             }
@@ -366,7 +365,7 @@ int main(int argc, char *argv[])
             auto res = ToolchainManager::instance().resolve(ToolchainId::LldbDap);
             if (res.found) {
                 qDebug() << "[main] ✓ DAP adapter 已就绪:";
-                qDebug() << "   path:   " << res.executablePath; 
+                qDebug() << "   path:   " << res.executablePath;
                 qDebug() << "   version:" << res.version;
                 qDebug() << "   source: " << res.source;
             } else {
