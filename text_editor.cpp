@@ -908,20 +908,20 @@ bool TextEditor::loadFile(const QString &filePath)
     // 进入静默期：此后所有程序内部的文档改动都不算"用户修改"
     beginSilentModification();
 
+    // v8.5：setPlainText 之前先把 viewport margin 设好，
+    //   避免首帧 paint 时 top margin 还是 0（与面包屑重叠）。
+    //   updateLineNumberAreaWidth 现在用常量 24，不依赖 widget 的 isVisible/height。
+    updateLineNumberAreaWidth();
 
-    // 加载文本
     setPlainText(content);
     m_filePath = filePath;
 
-    // 面包屑：更新文件名 + 立即扫一次大纲
     if (m_breadcrumbBar) {
         m_breadcrumbBar->setFileDisplayName(QFileInfo(filePath).fileName());
     }
     if (m_outlineController) {
         m_outlineController->refreshNow();
     }
-
-    // 应用行距
     applyLineHeight();
 
     // 4. 应用语法高亮
@@ -6605,18 +6605,20 @@ void TextEditor::contextMenuEvent(QContextMenuEvent *event)
 
 void TextEditor::updateLineNumberAreaWidth()
 {
-    // 析构期间可能被回调，加防御
     if (!m_lineNumberArea) return;
 
+    // v8.5：用 m_showBreadcrumb 判断是否显示，不用 isVisible()
+    //   - isVisible() 在父控件未 show() 时恒为 false，
+    //     导致 loadFile 时 top margin = 0 → 首行与面包屑重叠
+    //   - 高度用常量（BreadcrumbBar::height() 在 resize 前不是 24）
+    static constexpr int kBreadcrumbHeight = 24;
+
     const int left   = m_showLineNumbers ? lineNumberAreaWidth() : 0;
-    const int top    = (m_showBreadcrumb && m_breadcrumbBar && m_breadcrumbBar->isVisible())
-    ? m_breadcrumbBar->height() : 0;
+    const int top    = (m_showBreadcrumb && m_breadcrumbBar)
+    ? kBreadcrumbHeight : 0;
     const int bottom = (m_findBarVisible && m_findBar)
     ? m_findBar->height() : 0;
 
-    // v8.5：参数顺序是 (left, top, right, bottom)
-    //   - top    : 面包屑高度（内容下移）
-    //   - bottom : 搜索栏高度（内容不被遮挡）
     setViewportMargins(left, top, 0, bottom);
 }
 
@@ -6624,15 +6626,14 @@ void TextEditor::relayout()
 {
     if (!m_lineNumberArea) return;
 
-    // 高度常量与 setGeometry 保持一致
-    constexpr int kFindBarHeight = 40;
+    constexpr int kFindBarHeight = 40;      // 高度常量与 setGeometry 保持一致
+    constexpr int kBreadcrumbHeight = 24;   // 与 updateLineNumberAreaWidth 保持一致
 
     // 三个区域的高度基准
-    const int topMargin    = (m_showBreadcrumb && m_breadcrumbBar
-        && m_breadcrumbBar->isVisible())
-    ? m_breadcrumbBar->height() : 0;
+    const int topMargin    = (m_showBreadcrumb && m_breadcrumbBar)
+                                 ? kBreadcrumbHeight : 0;
     const int bottomMargin = (m_findBarVisible && m_findBar)
-    ? kFindBarHeight : 0;
+                                 ? kFindBarHeight : 0;
 
     const QRect cr = contentsRect();
 

@@ -24,7 +24,7 @@ namespace SprintIDE {
     class BreadcrumbBar : public QWidget
     {
         Q_OBJECT
-        public:
+    public:
         explicit BreadcrumbBar(QWidget* parent = nullptr);
 
         /// 设置当前文件的符号树（来自 OutlineController）
@@ -36,11 +36,13 @@ namespace SprintIDE {
         /// 光标移动时调用：line 是 1-based 行号
         void updateCurrentLine(int line);
 
-        signals:
+        QSize sizeHint() const override;
+
+    signals:
         /// 用户点击某一级 breadcrumb 或菜单中的某一项
         void symbolJumpRequested(int line);
 
-        private:
+    private:
         void rebuild();
 
         /// 计算给定行所在的"符号路径"（从根到最深命中）

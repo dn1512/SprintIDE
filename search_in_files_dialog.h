@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QShowEvent>
 
 QT_BEGIN_NAMESPACE
 class QLineEdit;
@@ -43,6 +44,9 @@ public:
 signals:
     /// 双击某条结果时发出，line / column 均为 1-based
     void openFileAt(const QString& filePath, int line, int column);
+
+protected:
+    void showEvent(QShowEvent* event) override;
 
 private slots:
     void onSearchClicked();

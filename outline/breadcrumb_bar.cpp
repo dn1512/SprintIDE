@@ -59,6 +59,13 @@ namespace SprintIDE {
         rebuild();
     }
 
+    QSize BreadcrumbBar::sizeHint() const
+    {
+        // v8.5：固定高度 24，宽度由布局决定
+        //   重写 sizeHint 后，QWidget::height() 在布局前也能正确返回
+        return QSize(0, 24);
+    }
+
     void BreadcrumbBar::rebuild()
     {
         // 清空布局

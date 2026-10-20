@@ -156,6 +156,20 @@ QString SearchInFilesDialog::searchText() const
     return m_searchEdit ? m_searchEdit->text() : QString();
 }
 
+void SearchInFilesDialog::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
+
+    // v8.5：每次显示都把焦点给搜索框
+    //   用 singleShot(0) 确保在窗口完全激活后再 setFocus（macOS 上需要）
+    QTimer::singleShot(0, this, [this]() {
+            if (auto* edit = findChild<QLineEdit*>()) {
+                edit->setFocus();
+                edit->selectAll();
+            }
+        });
+}
+
 void SearchInFilesDialog::onSearchTextChanged(const QString& text)
 {
     if (m_searching) return;
