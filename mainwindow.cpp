@@ -123,6 +123,7 @@
 #include "log/log_list_model.h"     // 只需要 LogKind / LogLevel 常量时
 #include "breakpoint_list_panel.h"
 #include "panel_focus_manager.h"
+#include "rust/rust_debugger.h"
 
 
 using namespace SprintIDE;
@@ -4398,6 +4399,260 @@ void MainWindow::onStartDebug() {
         return;
     }
 
+    // ========== Rust 调试（DAP）==========
+    if (lang == LanguageType::Rust) {
+        qDebug() << "[onStartDebug] 进入 Rust DAP 分支";
+
+        QString projectPath = d->currentProjectPath.isEmpty()
+        ? QFileInfo(sourceFile).absolutePath()
+        : d->currentProjectPath;
+
+        // ---- 1. 选 target 名（同 onRun 逻辑）----
+        QString targetName;
+        {
+            const QString cargoToml = QDir(projectPath).absoluteFilePath("Cargo.toml");
+            QFile f(cargoToml);
+            if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream s(&f);
+                const QString content = s.readAll();
+                f.close();
+
+                const QFileInfo srcFi(sourceFile);
+                if (srcFi.absolutePath().contains("/src/bin/")) {
+                    targetName = srcFi.completeBaseName();
+                } else {
+                    static const QRegularExpression pkgRe(
+                        R"re(\[package\][^\[]*?^name\s*=\s*"([^"]+)")re",
+                        QRegularExpression::MultilineOption
+                        | QRegularExpression::DotMatchesEverythingOption);
+                    auto m = pkgRe.match(content);
+                    if (m.hasMatch()) targetName = m.captured(1);
+                }
+            }
+        }
+        if (targetName.isEmpty()) {
+            targetName = QFileInfo(sourceFile).completeBaseName();
+        }
+
+        // ---- 2. 构造 BuildTask 拿 exe 路径 ----
+        BuildTask task;
+        task.taskId      = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        task.language    = LanguageType::Rust;
+        task.projectPath = projectPath;
+        task.sourceFiles << sourceFile;
+        task.outputName  = targetName;
+        task.enableDebug = true;
+
+        if (!d->currentProjectPath.isEmpty()) {
+            ProjectConfig pc;
+            const QString cf = d->currentProjectPath + "/.lightcppproj";
+            QStringList errs;
+            if (pc.loadFromFile(cf, errs)) task.sdkConfig = pc.sdkEnvironment();
+        }
+
+        IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Rust);
+        QString exePath = builder ? builder->getExecutablePath(task) : QString();
+
+        // ---- 3. 未编译 → 提示编译并调试 ----
+        if (exePath.isEmpty() || !QFile::exists(exePath)) {
+            int reply = QMessageBox::question(
+                this, "编译并调试",
+                QString("Rust target '%1' 尚未编译，是否现在编译并调试？")
+                .arg(targetName),
+                QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                m_compileForDebug = true;
+                onBuildProject();
+            }
+            return;
+        }
+
+        // ---- 4. 解析 DAP adapter ----
+        //   Linux 优先 GDB DAP（GDB 14+ 的 --interpreter=dap），
+        //   其他平台或 GDB 不可用时回退 LLDB DAP。
+        ToolchainId preferred = ToolchainId::LldbDap;
+        #ifdef Q_OS_LINUX
+        if (ToolchainManager::instance().resolve(ToolchainId::GdbDap).found) {
+            preferred = ToolchainId::GdbDap;
+            qDebug() << "[onStartDebug] Linux 平台，Rust 优先使用 GDB DAP";
+        }
+        #endif
+        auto adapterRes = ToolchainManager::instance().resolve(preferred);
+
+        // 首选失败 → 尝试另一种 adapter
+        if (!adapterRes.found) {
+            ToolchainId fallback =
+            (preferred == ToolchainId::LldbDap)
+            ? ToolchainId::GdbDap
+            : ToolchainId::LldbDap;
+            qDebug() << "[onStartDebug] Rust 首选 adapter 不可用，回退到"
+            << toolchainIdName(fallback);
+            auto fb = ToolchainManager::instance().resolve(fallback);
+            if (fb.found) { adapterRes = fb; preferred = fallback; }
+        }
+
+        // 两者都没有 → 弹安装引导
+        if (!adapterRes.found) {
+            ToolchainManager::instance().resolveOrPrompt(preferred, this, &adapterRes);
+            if (!adapterRes.found) {
+                logError(QString("未找到 %1 调试适配器，调试中止。")
+                    .arg(toolchainIdName(preferred)));
+                return;
+            }
+        }
+
+        logInfo(QString("使用调试适配器: %1").arg(adapterRes.executablePath));
+
+        // ---- 5. 构建配置 ----
+        RustDebugConfig cfg;
+        cfg.adapterPath      = adapterRes.executablePath;
+        cfg.program          = exePath;
+        cfg.workingDirectory = QFileInfo(exePath).absolutePath();
+        cfg.stopOnEntry      = false;
+
+        // ---- 6. 首次创建 RustDebugger + 连接信号 ----
+        if (!m_rustDebugger) {
+            m_rustDebugger = new RustDebugger(this);
+
+            connect(m_rustDebugger, &RustDebugger::stopped, this,
+                [this](const QString& file, int line, const QString& reason) {
+                    logInfo(QString("调试暂停: %1:%2 (%3)")
+                        .arg(file).arg(line).arg(reason));
+
+                    // 空路径防护（DAP 有时不返回 source.path）
+                    if (file.isEmpty()) {
+                        logError("警告：调试器未返回源文件路径，无法跳转高亮");
+                        m_isDebugging = true;
+                        updateDebugActions();
+                        switchToDebugTab();
+                        return;
+                    }
+
+                    TextEditor* ed = findEditorByFilePath(file);
+                    if (!ed) { openFile(file); ed = currentEditor(); }
+                    else     { d->editorTabs->setCurrentWidget(ed); }
+
+                    if (ed) {
+                        ed->gotoLine(line);
+                        ed->setCurrentDebugLine(line);
+                        ed->setFocus();
+                        updateStatusBarPosition(ed);
+                    }
+                    m_isDebugging = true;
+                    updateDebugActions();
+                    switchToDebugTab();
+                });
+
+            connect(m_rustDebugger, &RustDebugger::continued,
+                this, &MainWindow::onDebuggerContinued);
+
+            connect(m_rustDebugger, &RustDebugger::exited, this,
+                [this](int code) {
+                    logInfo(QString("程序退出，退出码: %1").arg(code));
+                    onPythonDebugFinished();
+                });
+
+            connect(m_rustDebugger, &RustDebugger::terminated,
+                this, &MainWindow::onPythonDebugFinished);
+
+            connect(m_rustDebugger, &RustDebugger::outputReceived, this,
+                [this](const QString& out, bool err) {
+                    if (err) logError(out.toHtmlEscaped());
+                    else     logInfo(out);
+                    if (m_debugPanel) {
+                        m_debugPanel->appendConsoleOutput(out, err);
+                    }
+                });
+
+            connect(m_rustDebugger, &RustDebugger::errorOccurred, this,
+                [this](const QString& e) {
+                    logError("调试错误: " + e);
+                    m_isDebugging = false;
+                    updateDebugActions();
+                    if (m_debugPanel) m_debugPanel->setDebuggingState(false);
+                });
+
+            connect(m_rustDebugger, &RustDebugger::variablesUpdated, this,
+                [this](const QList<DebugVariable>& vars) {
+                    if (m_debugPanel) m_debugPanel->updateVariables(vars);
+                });
+
+            connect(m_rustDebugger, &RustDebugger::stackUpdated, this,
+                [this](const QList<StackFrame>& frames) {
+                    if (m_debugPanel) m_debugPanel->updateCallStack(frames);
+                });
+
+            // 变量懒加载 + 表达式求值
+            connect(m_debugPanel, &DebugPanel::variablesExpandRequested,
+                m_rustDebugger, &RustDebugger::requestChildVariables);
+            connect(m_debugPanel, &DebugPanel::evaluateRequested,
+                m_rustDebugger, &RustDebugger::evaluate);
+            connect(m_rustDebugger, &RustDebugger::childVariablesUpdated,
+                m_debugPanel, &DebugPanel::onChildVariablesUpdated);
+            connect(m_rustDebugger, &RustDebugger::evaluateResultReady,
+                m_debugPanel, &DebugPanel::onEvaluateResult);
+
+            // 内联变量显示（与 C++ 分支一致）
+            connect(m_rustDebugger, &RustDebugger::variablesUpdated, this,
+                [this](const QList<DebugVariable>& vars) {
+                    TextEditor* ed = currentEditor();
+                    if (!ed) return;
+
+                    QStringList parts;
+                    for (const DebugVariable& v : vars) {
+                        if (parts.size() >= 5) break;
+                        if (v.name.isEmpty() || v.value.isEmpty()) continue;
+                        QString val = v.value;
+                        if (val.length() > 40) {
+                            val = val.left(37) + QStringLiteral("...");
+                        }
+                        parts << QStringLiteral("%1 = %2").arg(v.name, val);
+                    }
+
+                    if (parts.isEmpty()) {
+                        ed->clearInlineValues();
+                    } else {
+                        ed->setInlineValues(
+                            ed->currentLine(),
+                            QStringLiteral("  ") + parts.join(QStringLiteral("   ")));
+                    }
+                });
+        }
+
+        // ---- 7. 启动 ----
+        if (m_rustDebugger->startDebugging(cfg)) {
+            logInfo("Rust 调试已启动");
+
+            if (m_debugPanel) {
+                m_debugPanel->clearConsole();
+                m_debugPanel->appendConsoleOutput(
+                    QString(tr("=== Rust 调试会话开始: %1 ==="))
+                    .arg(QFileInfo(sourceFile).fileName()),
+                    false);
+            }
+            m_isDebugging = true;
+            updateDebugActions();
+            switchToDebugTab();
+
+            if (m_debugPanel) {
+                m_debugPanel->setDebuggingState(true);
+                m_debugPanel->updateVariables({});
+                m_debugPanel->updateCallStack({});
+            }
+
+            QList<Breakpoint> allBps = m_debugManager->getBreakpoints();
+            m_rustDebugger->setBreakpoints(allBps);
+            logInfo(QString("已同步 %1 个断点").arg(allBps.size()));
+        } else {
+            logError("Rust 调试启动失败");
+            m_isDebugging = false;
+            updateDebugActions();
+            setDebugTabVisible(false);
+        }
+        return;
+    }
+
+
     // ==========  C++ 调试（DAP）==========
     if (lang == LanguageType::Cpp) {
         qDebug() << "[onStartDebug] 进入 C++ DAP 分支";
@@ -4761,6 +5016,24 @@ void MainWindow::onStopDebug() {
             return;
         }
 
+    if (isRustDebugging()) {
+        m_rustDebugger->stopDebugging();
+        delete m_rustDebugger;
+        m_rustDebugger = nullptr;
+
+        m_isDebugging = false;
+        updateDebugActions();
+        if (m_debugPanel) {
+            m_debugPanel->setDebuggingState(false);
+            m_debugPanel->updateVariables(QList<DebugVariable>());
+            m_debugPanel->updateCallStack(QList<StackFrame>());
+        }
+        TextEditor* editor = currentEditor();
+        if (editor) editor->clearCurrentDebugLine();
+        setDebugTabVisible(false);
+        return;
+    }
+
     if (isPythonDebugging()) {
         // 1. 停止调试进程
         m_pythonDebugger->stopDebugging();
@@ -4782,7 +5055,6 @@ void MainWindow::onStopDebug() {
         return;
     }
 
-    // ... 其他调试器（如 C++）的停止逻辑保持不变 ...
     if (m_debugManager && m_isDebugging) {
         m_debugManager->stopDebugging();
     }
@@ -4794,6 +5066,10 @@ void MainWindow::onStepOver()
 {
     if (isCppDebugging()) {
         m_cppDebugger->stepOver();
+        return;
+    }
+    if (isRustDebugging()) {
+        m_rustDebugger->stepOver();
         return;
     }
     if (isPythonDebugging()) {
@@ -4811,6 +5087,10 @@ void MainWindow::onStepInto()
         m_cppDebugger->stepInto();
         return;
     }
+    if (isRustDebugging()) {
+        m_rustDebugger->stepInto();
+        return;
+    }
     if (isPythonDebugging()) {
         m_pythonDebugger->stepInto();
         return;
@@ -4824,6 +5104,10 @@ void MainWindow::onStepOut()
 {
     if (isCppDebugging()) {
         m_cppDebugger->stepOut();
+        return;
+    }
+    if (isRustDebugging()) {
+        m_rustDebugger->stepOut();
         return;
     }
     if (isPythonDebugging()) {
@@ -4844,6 +5128,10 @@ void MainWindow::onContinueDebug()
 {
     if (isCppDebugging()) {
         m_cppDebugger->continueExecution();
+        return;
+    }
+    if (isRustDebugging()) {
+        m_rustDebugger->continueExecution();
         return;
     }
     if (isPythonDebugging()) {
@@ -5703,6 +5991,11 @@ bool MainWindow::isPythonDebugging() const
 bool MainWindow::isCppDebugging() const
 {
     return m_cppDebugger != nullptr && m_isDebugging;
+}
+
+bool MainWindow::isRustDebugging() const
+{
+    return m_rustDebugger != nullptr && m_isDebugging;
 }
 
 QStringList MainWindow::collectProjectFiles(bool forceRescan)
@@ -8183,6 +8476,110 @@ void MainWindow::onRun()
 
         // 使用 QProcess 异步运行（信号槽机制，不阻塞 UI 线程）
         QProcess* process = createRunProcess(python, args, projectPath, env);
+        process->start();
+        if (!process->waitForStarted(3000)) {
+            logError("启动失败: " + process->errorString());
+            process->deleteLater();
+            return;
+        }
+        markProcessRunning(process, sourceFile);
+        return;
+    }
+
+    // ========== Rust 异步运行 ==========
+    if (lang == LanguageType::Rust) {
+        if (editor->isModified()) {
+            if (!editor->saveFile()) {
+                QMessageBox::warning(this, "保存错误", "无法保存文件，运行中止。");
+                return;
+            }
+            sourceFile = editor->filePath();
+        }
+
+        QString projectPath = d->currentProjectPath.isEmpty()
+        ? QFileInfo(sourceFile).absolutePath()
+        : d->currentProjectPath;
+
+        // ---- 1. 选 target 名 ----
+        //   src/bin/<foo>.rs  → foo
+        //   其他（含 src/main.rs）→ [package] name
+        QString targetName;
+        {
+            const QString cargoToml = QDir(projectPath).absoluteFilePath("Cargo.toml");
+            QFile f(cargoToml);
+            if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream s(&f);
+                const QString content = s.readAll();
+                f.close();
+
+                const QFileInfo srcFi(sourceFile);
+                if (srcFi.absolutePath().contains("/src/bin/")) {
+                    targetName = srcFi.completeBaseName();
+                } else {
+                    static const QRegularExpression pkgRe(
+                        R"re(\[package\][^\[]*?^name\s*=\s*"([^"]+)")re",
+                        QRegularExpression::MultilineOption
+                        | QRegularExpression::DotMatchesEverythingOption);
+                    auto m = pkgRe.match(content);
+                    if (m.hasMatch()) targetName = m.captured(1);
+                }
+            }
+        }
+        if (targetName.isEmpty()) {
+            targetName = QFileInfo(sourceFile).completeBaseName();
+        }
+
+        // ---- 2. 构造 BuildTask，拿可执行文件路径 ----
+        BuildTask task;
+        task.taskId      = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        task.language    = LanguageType::Rust;
+        task.projectPath = projectPath;
+        task.sourceFiles << sourceFile;
+        task.outputName  = targetName;
+        task.enableDebug = true;   // 运行默认走 debug profile
+
+        if (!d->currentProjectPath.isEmpty()) {
+            ProjectConfig pc;
+            const QString cf = d->currentProjectPath + "/.lightcppproj";
+            QStringList errs;
+            if (pc.loadFromFile(cf, errs)) {
+                task.sdkConfig = pc.sdkEnvironment();
+            }
+        }
+
+        IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Rust);
+        QString exePath = builder ? builder->getExecutablePath(task) : QString();
+
+        // ---- 3. 未编译 / 过期 → 编译 + 运行 ----
+        const bool needBuild =
+        exePath.isEmpty() || !QFile::exists(exePath)
+        || QFileInfo(sourceFile).lastModified()
+        > QFileInfo(exePath).lastModified();
+
+        if (needBuild) {
+            int reply = QMessageBox::question(
+                this, "编译并运行",
+                QString("Rust target '%1' 尚未编译或已过期，是否现在编译并运行？")
+                .arg(targetName),
+                QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                m_autoRunAfterCompile = true;
+                onBuildProject();   // RustBuilder::build 会设 result.executablePath
+            }
+            return;
+        }
+
+        // ---- 4. 异步运行 ----
+        logInfo(QString("使用可执行文件: %1").arg(exePath));
+        logInfo(QString("cargo target: %1").arg(targetName));
+        logInfo("正在运行...");
+
+        QProcess* process = createRunProcess(
+            exePath,
+            QStringList(),
+            QFileInfo(exePath).absolutePath(),
+            QProcessEnvironment());   // 空 env，用系统默认
+
         process->start();
         if (!process->waitForStarted(3000)) {
             logError("启动失败: " + process->errorString());

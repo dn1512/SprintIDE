@@ -737,6 +737,10 @@ add_executable(${PROJECT_NAME}
     problems/diagnostics_store.cpp
     problems/problems_panel.h
     problems/problems_panel.cpp
+    rust/rust_project_model.h
+    rust/rust_project_model.cpp
+    rust/rust_debugger.h
+    rust/rust_debugger.cpp
 )
 
 # ============================================================

@@ -61,6 +61,7 @@
 #include "performance/performance_monitor.h"
 #include "problems/diagnostics_store.h"
 #include "problems/problems_panel.h"
+#include "rust/rust_debugger.h"
 
 class TextEditor;
 
@@ -487,6 +488,9 @@ private:
     void runExecutableAsync(const QString& executablePath);
 
     bool isCppDebugging() const;
+
+    bool isRustDebugging() const;
+
     // entry 必填（结构化）；颜色由 LogLevel 决定
     void appendLog(const LogEntry& entry);
 
@@ -558,6 +562,8 @@ private:
     PythonDebugger* m_pythonDebugger = nullptr;
 
     CppDebugger* m_cppDebugger = nullptr;
+
+    RustDebugger* m_rustDebugger = nullptr;
 
     QStringList m_cachedProjectFiles;
     QString     m_cachedProjectRoot;

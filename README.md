@@ -261,57 +261,75 @@ SprintIDE is designed to be **fully operable with keyboard only**. Every panel c
 
 This design philosophy extends to file navigation, code editing, build/run triggers, and debugging — everything can be done without reaching for the mouse.
 
-### Keyboard Shortcuts
+## Keyboard Shortcuts
 
-#### Panel Switching
+### Global / Editor Focus
 
-| Shortcut | Panel |
-| :------- | :---- |
-| Ctrl+1   | Editor |
-| Ctrl+2   | Project Tree |
-| Ctrl+3   | Outline / Breadcrumb |
-| Ctrl+4   | Problems |
-| Ctrl+5   | Breakpoints |
-| Ctrl+6   | Debug |
-| Ctrl+7   | Terminal |
-| Ctrl+8   | Output / Log |
-| Ctrl+9   | Chat (AI) |
+| Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| Find | ⌘F | Ctrl+F |
+| Replace | ⌘H | Ctrl+H |
+| Find Next | F3 | F3 |
+| Find Previous | ⇧F3 | Shift+F3 |
+| Close Find Bar | Esc | Esc |
+| Find in Files | ⇧⌘F | Ctrl+Shift+F |
+| Quick Open | ⌘O | Ctrl+O |
+| Go to Line | ⌘G | Ctrl+G |
+| Go to Definition | ⌘+Click | Ctrl+Click |
+| Quick Fix | ⌥ | Alt+Enter |
+| Toggle Comment | ⌘/ | Ctrl+/ |
+| Undo | ⌘Z | Ctrl+Z |
+| Redo | ⇧⌘Z | Ctrl+Shift+Z |
+| Copy Line | ⌘D | Ctrl+D |
+| Delete Line | ⌘Y | Ctrl+Y |
+| Save | ⌘S | Ctrl+S |
+| New Window | ⇧⌘N | Ctrl+Shift+N |
+| Open Settings | ⌘, | Ctrl+, |
+| Toggle Terminal | ⌘` | Ctrl+` |
+| Toggle Bottom Panel | ⌘J | Ctrl+J |
 
-#### File Navigation
+### When Focus is in Project Panel
 
-| Shortcut | Action |
-| :------- | :----- |
-| Ctrl+Tab | Switch between open files |
-| Ctrl+1~9 | Jump to file by index |
-| Ctrl+F   | Find in current file |
-| Ctrl+Shift+F | Find in files |
-| Ctrl+O   | Open file/project |
+| Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| Refresh Project Panel | ⇧⌘R | Ctrl+Shift+R |
+| Reveal Current File | ⇧⌘L | Ctrl+Shift+L |
 
-#### Editing
+### When Focus is in Output Panel
 
-| Shortcut | Action |
-| :------- | :----- |
-| Ctrl+S   | Save |
-| Ctrl+Z   | Undo |
-| Ctrl+Y   | Redo |
-| Ctrl+D   | Delete line |
-| Ctrl+C   | Copy line (when no selection) |
-| Ctrl+Shift+K | Delete line |
-| Ctrl+Shift+D | Duplicate line |
-| Alt+Enter | Quick Fix |
-| Ctrl+`   | Toggle outline overlay |
+| Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| Toggle Warnings | ⌥⌘W | Ctrl+Alt+W |
+| Toggle Errors | ⌥⌘R | Ctrl+Alt+R |
+| Toggle Info | ⌥⌘I | Ctrl+Alt+I |
+| Focus Log List | ⌥⌘N | Ctrl+Alt+N |
+| Follow Logs | ⌥⌘F | Ctrl+Alt+F |
+| Clear Logs | ⌥⌘K | Ctrl+Alt+K |
 
-#### Build & Debug
+### When Focus is in Editor
 
-| Shortcut | Action |
-| :------- | :----- |
-| Ctrl+B   | Build project |
-| Ctrl+R   | Run project |
-| Ctrl+F5  | Stop running |
-| F9       | Toggle breakpoint |
-| F10      | Step over |
-| F11      | Step into |
-| Shift+F11 | Step out |
+| Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| Focus Next Tab | ⌥⌘→ | Ctrl+Alt+→ |
+| Focus Previous Tab | ⌥⌘← | Ctrl+Alt+← |
+
+### Focus Navigation and Panel Switching
+
+| Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| Cycle to Next Panel | F6 | F6 |
+| Cycle to Previous Panel | ⇧F6 | Shift+F6 |
+| Focus Editor | ⌘1 | Ctrl+1 |
+| Focus Project Panel | ⌘2 | Ctrl+2 |
+| Focus Bottom Panel | ⌘3 | Ctrl+3 |
+| Bottom → Output | ⌥⌘1 | Ctrl+Alt+1 |
+| Bottom → Terminal | ⌥⌘2 | Ctrl+Alt+2 |
+| Bottom → Debug | ⌥⌘3 | Ctrl+Alt+3 |
+| Bottom → Problems | ⌥⌘4 | Ctrl+Alt+4 |
+| Bottom → Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
+| Show Problems Panel | ⌥⌘P | Ctrl+Alt+P |
+| Toggle AI Panel | ⇧⌘A | Ctrl+Shift+A |
+| Toggle Project Panel | ⌥⌘E | Ctrl+Alt+E |
 
 All shortcuts are configurable in **Settings -> Shortcuts**. Conflicts are highlighted in red.
 
@@ -571,57 +589,75 @@ SprintIDE 的设计目标是：**整个 IDE 可以完全不使用鼠标操作**�
 
 这个设计哲学延伸到文件导航、代码编辑、构建/运行触发、调试等所有操作 — 你可以完全不碰鼠标完成所有工作。
 
-### 快捷键参考
+### 快捷键总览
 
-#### 面板切换
+### 全局 / 编辑器焦点 / Global / Editor Focus
 
-| 快捷键     | 面板         |
-| :--------- | :----------- |
-| Ctrl+1     | 编辑器       |
-| Ctrl+2     | 项目树       |
-| Ctrl+3     | 大纲/面包屑  |
-| Ctrl+4     | Problems     |
-| Ctrl+5     | 断点         |
-| Ctrl+6     | 调试         |
-| Ctrl+7     | 终端         |
-| Ctrl+8     | 输出/日志    |
-| Ctrl+9     | 聊天（AI）   |
+| 功能 / Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| 查找 / Find | ⌘F | Ctrl+F |
+| 替换 / Replace | ⌘H | Ctrl+H |
+| 查找下一个 / Find Next | F3 | F3 |
+| 查找上一个 / Find Previous | ⇧F3 | Shift+F3 |
+| 关闭查找栏 / Close Find Bar | Esc | Esc |
+| 在文件中查找 / Find in Files | ⇧⌘F | Ctrl+Shift+F |
+| 快速打开 / Quick Open | ⌘O | Ctrl+O |
+| 跳转到行 / Go to Line | ⌘G | Ctrl+G |
+| 跳转到定义 / Go to Definition | ⌘+Click | Ctrl+Click |
+| Quick Fix | ⌥ | Alt+Enter |
+| 注释 / Toggle Comment | ⌘/ | Ctrl+/ |
+| 撤销 / Undo | ⌘Z | Ctrl+Z |
+| 重做 / Redo | ⇧⌘Z | Ctrl+Shift+Z |
+| 复制行 / Copy Line | ⌘D | Ctrl+D |
+| 删除行 / Delete Line | ⌘Y | Ctrl+Y |
+| 保存 / Save | ⌘S | Ctrl+S |
+| 新窗口 / New Window | ⇧⌘N | Ctrl+Shift+N |
+| 打开设置 / Open Settings | ⌘, | Ctrl+, |
+| 切换终端 / Toggle Terminal | ⌘\` | Ctrl+\` |
+| 显示/隐藏底部面板 / Toggle Bottom Panel | ⌘J | Ctrl+J |
 
-#### 文件导航
+### 焦点在项目面板时 / When Focus is in Project Panel
 
-| 快捷键     | 操作             |
-| :--------- | :--------------- |
-| Ctrl+Tab   | 在打开的文件间切换 |
-| Ctrl+1~9   | 按序号跳转到文件  |
-| Ctrl+F     | 当前文件查找     |
-| Ctrl+Shift+F | 多文件查找      |
-| Ctrl+O     | 打开文件/项目    |
+| 功能 / Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| 项目面板刷新 / Refresh Project Panel | ⇧⌘R | Ctrl+Shift+R |
+| 定位到当前编辑的文件 / Reveal Current File | ⇧⌘L | Ctrl+Shift+L |
 
-#### 编辑
+### 焦点在输出面板时 / When Focus is in Output Panel
 
-| 快捷键           | 操作           |
-| :--------------- | :------------- |
-| Ctrl+S           | 保存           |
-| Ctrl+Z           | 撤销           |
-| Ctrl+Y           | 重做           |
-| Ctrl+D           | 删除行         |
-| Ctrl+C           | 复制行（无选区时）|
-| Ctrl+Shift+K     | 删除行         |
-| Ctrl+Shift+D     | 复制行         |
-| Alt+Enter        | Quick Fix      |
-| Ctrl+\`          | 切换大纲浮层   |
+| 功能 / Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| 警告按钮切换 / Toggle Warnings | ⌥⌘W | Ctrl+Alt+W |
+| 错误按钮切换 / Toggle Errors | ⌥⌘R | Ctrl+Alt+R |
+| 信息按钮切换 / Toggle Info | ⌥⌘I | Ctrl+Alt+I |
+| 焦点跳到日志列表 / Focus Log List | ⌥⌘N | Ctrl+Alt+N |
+| 日志跟随 / Follow Logs | ⌥⌘F | Ctrl+Alt+F |
+| 清空日志 / Clear Logs | ⌥⌘K | Ctrl+Alt+K |
 
-#### 构建与调试
+### 焦点在编辑文件时 / When Focus is in Editor
 
-| 快捷键     | 操作         |
-| :--------- | :----------- |
-| Ctrl+B     | 构建项目     |
-| Ctrl+R     | 运行项目     |
-| Ctrl+F5    | 停止运行     |
-| F9         | 切换断点     |
-| F10        | 单步跳过     |
-| F11        | 单步进入     |
-| Shift+F11  | 单步跳出     |
+| 功能 / Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| 焦点跳到右侧标签 / Focus Next Tab | ⌥⌘→ | Ctrl+Alt+→ |
+| 焦点跳到左侧标签 / Focus Previous Tab | ⌥⌘← | Ctrl+Alt+← |
+
+### 焦点切换与面板导航 / Focus Navigation
+
+| 功能 / Function | macOS | Windows/Linux |
+| :--- | :--- | :--- |
+| 循环到下一个可见面板 / Cycle to Next Panel | F6 | F6 |
+| 反向循环 / Cycle to Previous Panel | ⇧F6 | Shift+F6 |
+| 聚焦编辑器 / Focus Editor | ⌘1 | Ctrl+1 |
+| 聚焦项目面板 / Focus Project Panel | ⌘2 | Ctrl+2 |
+| 聚焦底部面板 / Focus Bottom Panel | ⌘3 | Ctrl+3 |
+| 底部 → 输出 / Bottom → Output | ⌥⌘1 | Ctrl+Alt+1 |
+| 底部 → 终端 / Bottom → Terminal | ⌥⌘2 | Ctrl+Alt+2 |
+| 底部 → 调试 / Bottom → Debug | ⌥⌘3 | Ctrl+Alt+3 |
+| 底部 → 问题 / Bottom → Problems | ⌥⌘4 | Ctrl+Alt+4 |
+| 底部 → 断点 / Bottom → Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
+| 显示 Problems 面板 / Show Problems Panel | ⌥⌘P | Ctrl+Alt+P |
+| 显示/隐藏 AI 面板 / Toggle AI Panel | ⇧⌘A | Ctrl+Shift+A |
+| 显示/隐藏项目面板 / Toggle Project Panel | ⌥⌘E | Ctrl+Alt+E |
 
 所有快捷键可在 **设置 -> 快捷键** 中自定义。冲突快捷键会以红色标出。
 

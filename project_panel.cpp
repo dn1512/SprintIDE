@@ -51,7 +51,7 @@ static const QStringList DEFAULT_EXCLUDE_DIRS = {
 };
 
 static const QStringList SUPPORTED_EXTENSIONS = {
-    "mjs", "cjs", "tsx", "jsx", "ttf",
+    "mjs", "cjs", "tsx", "jsx", "ttf", "lock",
     "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx", "csv",
     "fish", "zsh", "bash", "sh", "lua", "pl", "php", "rb",
     "tsv", "parquet", "db", "sqlite", "c++", "woff2", "woff",

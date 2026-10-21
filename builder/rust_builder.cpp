@@ -166,26 +166,76 @@ QString RustBuilder::getExecutablePath(const BuildTask& task)
     if (projectPath.isEmpty() && !task.sourceFiles.isEmpty()) {
         projectPath = QFileInfo(task.sourceFiles.first()).absolutePath();
     }
+    if (projectPath.isEmpty()) return QString();
 
-    // Cargo 输出在 target/debug/ 或 target/release/
-    QString subDir = task.enableDebug ? "debug" : "release";
-    QString outName = task.outputName;
-
-    if (outName.isEmpty()) {
-        outName = QFileInfo(projectPath).fileName();
-        if (outName.isEmpty() && !task.sourceFiles.isEmpty()) {
-            outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+    // ============================================================
+    // 1. 向上找 workspace 根
+    //    Cargo workspace 的 target/ 在根，不在成员目录。
+    //    例：workspace/ 下有 workspace/Cargo.toml 和 workspace/member/Cargo.toml，
+    //        执行 cargo build 在 workspace/member 下，产物落在 workspace/target/。
+    // ============================================================
+    QString cargoRoot = projectPath;
+    {
+        QDir dir(projectPath);
+        while (!dir.isRoot()) {
+            if (QFile::exists(dir.absoluteFilePath("Cargo.toml"))) {
+                cargoRoot = dir.absolutePath();
+                break;
+            }
+            if (!dir.cdUp()) break;
         }
     }
 
-#ifdef Q_OS_WIN
+    // ============================================================
+    // 2. 决定 bin 名
+    //    a) task.outputName 非空 → 用它（onRun 里按源文件选好 target）
+    //    b) 否则从 Cargo.toml 的 [package] name 读
+    //    c) 再兜底目录名 / 源文件名
+    // ============================================================
+    QString outName = task.outputName;
+
+    if (outName.isEmpty()) {
+        const QString cargoToml = QDir(cargoRoot).absoluteFilePath("Cargo.toml");
+        QFile f(cargoToml);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream s(&f);
+            const QString content = s.readAll();
+            f.close();
+
+            // [package] 段里的 name
+            // 注：用 DotMatchesEverything + Multiline，跨行匹配 [package] 到下一个 [
+            static const QRegularExpression pkgRe(
+                R"re(\[package\][^\[]*?^name\s*=\s*"([^"]+)")re",
+                QRegularExpression::MultilineOption
+                | QRegularExpression::DotMatchesEverythingOption);
+            auto m = pkgRe.match(content);
+            if (m.hasMatch()) {
+                outName = m.captured(1);
+            }
+        }
+    }
+
+    if (outName.isEmpty()) {
+        outName = QFileInfo(projectPath).fileName();
+    }
+    if (outName.isEmpty() && !task.sourceFiles.isEmpty()) {
+        outName = QFileInfo(task.sourceFiles.first()).completeBaseName();
+    }
+    if (outName.isEmpty()) return QString();
+
+    #ifdef Q_OS_WIN
     if (!outName.endsWith(".exe", Qt::CaseInsensitive)) {
         outName += ".exe";
     }
-#endif
+    #endif
 
-    QString exePath = PathUtils::joinPaths({projectPath, "target", subDir, outName});
-    return exePath;
+    // ============================================================
+    // 3. profile：debug / release
+    //    与 build() 里的判断一致：task.enableDebug == false 时 --release
+    // ============================================================
+    const QString subDir = task.enableDebug ? "debug" : "release";
+
+    return PathUtils::joinPaths({cargoRoot, "target", subDir, outName});
 }
 
 QString RustBuilder::findCargoExecutable() const {
