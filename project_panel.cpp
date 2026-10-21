@@ -51,12 +51,17 @@ static const QStringList DEFAULT_EXCLUDE_DIRS = {
 };
 
 static const QStringList SUPPORTED_EXTENSIONS = {
-    "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx",
-    "h", "hpp", "hh", "hxx", "h++", "doc", "docx","ui",
+    "mjs", "cjs", "tsx", "jsx", "ttf",
+    "cpp", "c", "cc", "cxx", "c++", "xls", "xlsx", "csv",
+    "fish", "zsh", "bash", "sh", "lua", "pl", "php", "rb",
+    "tsv", "parquet", "db", "sqlite", "c++", "woff2", "woff",
+    "png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "plist",
+    "h", "hpp", "hh", "hxx", "h++", "doc", "docx","ui", "otf",
     "txt", "md", "json", "xml", "html", "css", "js", "ttf",
     "ini", "cfg", "conf", "pro", "pri", "yml", "ts", "icns",
+    "yaml", "toml", "adoc", "txt", "rst", "markdown", "md", "icns",
     "lightcppproj", "cmake", "makefile", "qm", "qrc", "svg", "png",
-    "py", "go", "rs", "java", "cs", "php"
+    "py", "go", "rs", "java", "cs", "kt"
 };
 
 // ==================== ExcludeDirProxyModel 实现 ====================
