@@ -1508,9 +1508,6 @@ void MainWindow::setupStatusBar()
 
     // 编译进度条（默认隐藏）
     m_buildProgressBar = new QProgressBar(statusBar);
-
-    // 编译进度条（默认隐藏）
-    m_buildProgressBar = new QProgressBar(statusBar);
     m_buildProgressBar->setMaximumSize(150, 20);
     m_buildProgressBar->setMinimum(0);
     m_buildProgressBar->setMaximum(100);
