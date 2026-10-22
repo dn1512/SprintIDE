@@ -93,8 +93,8 @@ bool RustBuilder::build(const BuildTask& task, BuildResult& result) {
             QString content = stream.readAll();
             cargoFile.close();
 
-            QRegularExpression regex(R"(name\s*=\s*['\"]([^'\"]+)['\"])");   // ← 现在可用
-            QRegularExpressionMatch match = regex.match(content);            // ← 现在可用
+            QRegularExpression regex(R"re(name\s*=\s*['"]([^'"]+)['"])re");
+            QRegularExpressionMatch match = regex.match(content);
             if (match.hasMatch()) {
                 projectName = match.captured(1);
                 exePath = PathUtils::joinPaths({task.projectPath, "target", targetDir, projectName});

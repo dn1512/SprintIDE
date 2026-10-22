@@ -237,6 +237,9 @@ private:
     void appendCreatedFile(const QString& filePath);
     bool saveProjectConfigFile();  ///< 统一保存 .lightcppproj 的辅助函数
 
+    /// @param existedBefore    本次操作前根目录是否已存在
+    void rollbackPartialProject(const QString& fullProjectPath, bool existedBefore);
+
     //  成员变量
     Ui::ProjectCreationDialog *ui;              ///< UI 对象（由 uic 生成）
     ProjectCreationResult      m_result;        ///< 项目创建结果
@@ -282,6 +285,7 @@ private:
     QLineEdit* m_genericCleanEdit = nullptr;       ///< clean 命令
 
     bool m_registerOnly = false;   ///< 仅注册项目（不创建文件）
+    bool m_acceptInProgress = false;   // 防止 accept() 重入
 };
 
 } // namespace SprintIDE

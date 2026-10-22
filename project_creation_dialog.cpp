@@ -328,31 +328,91 @@ QList<ProjectTemplate> ProjectCreationDialog::availableTemplates() const
 
 void ProjectCreationDialog::accept()
 {
-    // 输入校验
+    if (m_acceptInProgress) {
+        qDebug() << "[PCD] accept() 重入被拒绝（已在执行中）";
+        return;
+    }
+    m_acceptInProgress = true;
+
+    // ============================================================
+    //  【阶段 1】静态校验（不碰磁盘）
+    // ============================================================
     QStringList errors;
     if (!validateInput(errors)) {
+        m_acceptInProgress = false;   // ← 失败可重试
         QString errorMsg = tr("请修正以下错误：\n\n");
-        for (const QString& error : errors) {
-            errorMsg += "• " + error + "\n";
+        for (const QString& e : errors) {
+            errorMsg += "• " + e + "\n";
         }
         QMessageBox::warning(this, tr("输入错误"), errorMsg);
         return;
     }
 
-    // 重置结果对象，并记录当前语言
-    m_result.reset();
-    m_result.language = currentLanguage();   // 把语言写进结果
+    // ============================================================
+    //  【阶段 2】一次性快照 + 非空检查（在这里，只做一次）
+    //
+    //  顺序严格按你说的：
+    //    1. 取项目名 / 路径
+    //    2. 如果目标目录【不存在】→ 跳过非空检查，直接准备创建
+    //    3. 如果目标目录【存在】→ 检查是否非空
+    //    4. 非空 → 报错退出（这一次，报完就结束，不再二次检查）
+    //    5. 为空 / 不存在 → 继续往下创建
+    // ============================================================
+    const QString projectName   = ui->projectNameLineEdit->text().trimmed();
+    const QString projectPath   = ui->locationLineEdit->text().trimmed();
+    const QString fullProjectPath =
+        QDir(projectPath).absoluteFilePath(projectName);
+
+
+
+    qDebug() << "[PCD][DIAG] projectName =" << projectName;
+    qDebug() << "[PCD][DIAG] projectPath =" << projectPath;
+    qDebug() << "[PCD][DIAG] fullProjectPath =" << fullProjectPath;
+    qDebug() << "[PCD][DIAG] fullProjectPath exists =" << QDir(fullProjectPath).exists();
+    if (QDir(fullProjectPath).exists()) {
+        QDir d(fullProjectPath);
+        qDebug() << "[PCD][DIAG] entries =" << d.entryList(
+            QDir::AllEntries | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+    }
+
+    const bool dirExistedBefore = QDir(fullProjectPath).exists();
+
+    if (dirExistedBefore) {
+        m_acceptInProgress = false;   // ← 失败可重试
+        // 只在"目录已存在"这一种情况下，检查是否非空
+        QDir fullDir(fullProjectPath);
+        const QStringList entries = fullDir.entryList(
+            QDir::AllEntries | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+
+        bool hasRealContent = false;
+        for (const QString& e : entries) {
+            if (e.startsWith('.')) continue;   // 忽略 .DS_Store / ._xxx
+            hasRealContent = true;
+            break;
+        }
+
+        if (hasRealContent) {
+            QMessageBox::warning(
+                this, tr("目录冲突"),
+                tr("项目目录已存在且不为空：\n\n%1\n\n"
+                    "请更换项目名称，或先清理该目录。")
+                .arg(fullProjectPath));
+            return;
+        }
+    }
+    // 目录不存在 → 什么都不查，直接往下创建
 
     // ============================================================
-    // 仅注册模式 —— 不创建任何文件夹和文件
+    //  【阶段 3】重置结果 + 记录"目录是否本次新建"
+    // ============================================================
+    m_result.reset();
+    m_result.language = currentLanguage();
+
+    // ============================================================
+    //  【阶段 4】仅注册模式（不碰磁盘）
     // ============================================================
     if (m_registerOnly) {
-        const QString projectName = ui->projectNameLineEdit->text().trimmed();
-        const QString projectPath = ui->locationLineEdit->text().trimmed();
-        const QString fullProjectPath =
-            QDir(projectPath).absoluteFilePath(projectName);
-
-        // 仅写入 m_result，不碰磁盘
+        m_acceptInProgress = false;   // ← 失败可重试
         m_result.success     = true;
         m_result.projectPath = fullProjectPath;
         m_result.projectName = projectName;
@@ -360,55 +420,50 @@ void ProjectCreationDialog::accept()
         m_result.language    = currentLanguage();
         m_result.projectType = getCurrentTemplate().type;
         m_result.createdTime = QDateTime::currentDateTime();
-        // createdFiles / createdDirectories 保持为空
-
-        qDebug() << "[PCD] register-only mode, path:" << fullProjectPath;
-
         QDialog::accept();
         return;
     }
 
-    // 创建项目目录结构
+    // ============================================================
+    //  【阶段 5】创建目录（此时目录必然为空或不存在）
+    // ============================================================
     if (!createProjectStructure()) {
-        m_result.errorMessage = tr("无法创建项目目录结构");
+        m_acceptInProgress = false;   // ← 失败可重试
+        if (m_result.errorMessage.isEmpty()) {
+            m_result.errorMessage = tr("无法创建项目目录结构");
+        }
+        rollbackPartialProject(fullProjectPath, dirExistedBefore);
         QMessageBox::critical(this, tr("创建失败"), m_result.errorMessage);
         return;
     }
 
-    // 按语言分发到不同的生成器
-    // 其余语言走各自的生成器
+    // ============================================================
+    //  【阶段 6】按语言生成文件
+    // ============================================================
     bool ok = false;
     switch (m_result.language) {
-    case ProjectLanguage::Python:
-        ok = generatePythonProject();
-        break;
-    case ProjectLanguage::Go:
-        ok = generateGoProject();
-        break;
-    case ProjectLanguage::Rust:
-        ok = generateRustProject();
-        break;
-    case ProjectLanguage::Node:
-        ok = generateNodeProject();
-        break;
-    case ProjectLanguage::Cpp:
-    case ProjectLanguage::GenericAI:
-    default:
-        ok = generateProjectFiles();
-        break;
+        case ProjectLanguage::Python: ok = generatePythonProject(); break;
+        case ProjectLanguage::Go:     ok = generateGoProject();     break;
+        case ProjectLanguage::Rust:   ok = generateRustProject();   break;
+        case ProjectLanguage::Node:   ok = generateNodeProject();   break;
+        case ProjectLanguage::Cpp:
+        case ProjectLanguage::GenericAI:
+        default:                      ok = generateProjectFiles();  break;
     }
 
     if (!ok) {
+        m_acceptInProgress = false;   // ← 失败可重试
         if (m_result.errorMessage.isEmpty()) {
             m_result.errorMessage = tr("无法生成项目文件");
         }
+        rollbackPartialProject(fullProjectPath, dirExistedBefore);
         QMessageBox::critical(this, tr("创建失败"), m_result.errorMessage);
         return;
     }
 
-    // ------------------------------------------------------------
-    // 5. 统一记录结果
-    // ------------------------------------------------------------
+    // ============================================================
+    //  【阶段 7】记录成功结果
+    // ============================================================
     m_result.success     = true;
     m_result.projectPath = m_projectConfig.projectPath();
     m_result.projectName = m_projectConfig.projectName();
@@ -416,10 +471,11 @@ void ProjectCreationDialog::accept()
     m_result.projectType = m_projectConfig.projectType();
     m_result.createdTime = QDateTime::currentDateTime();
 
-    // ------------------------------------------------------------
-    // 6. Git 初始化
-    // ------------------------------------------------------------
+    // ============================================================
+    //  【阶段 8】Git 初始化（保持不变）
+    // ============================================================
     if (m_createGitRepo) {
+        m_acceptInProgress = false;   // ← 失败可重试
         QProcess git;
         git.setWorkingDirectory(m_projectConfig.projectPath());
         git.start("git", QStringList() << "init");
@@ -427,10 +483,12 @@ void ProjectCreationDialog::accept()
             git.waitForFinished(3000);
 
             if (m_initializeGitIgnore) {
-                QFile gitignore(QDir(m_projectConfig.projectPath()).absoluteFilePath(".gitignore"));
+                QFile gitignore(
+                    QDir(m_projectConfig.projectPath())
+                    .absoluteFilePath(".gitignore"));
                 if (gitignore.open(QIODevice::WriteOnly | QIODevice::Text)) {
                     QString content =
-                        tr("# 编译输出\n"
+                    tr("# 编译输出\n"
                         "bin/\n"
                         "build/\n"
                         "dist/\n"
@@ -472,7 +530,6 @@ void ProjectCreationDialog::accept()
 }
 
 //  用户交互槽函数
-
 void ProjectCreationDialog::onBrowseLocation()
 {
     QString dir = QFileDialog::getExistingDirectory(
@@ -1438,34 +1495,38 @@ void ProjectCreationDialog::refreshLanguageSpecificUI()
 }
 
 // 输入验证
-
 bool ProjectCreationDialog::validateInput(QStringList& errors) const
 {
     errors.clear();
 
-    QString projectName = ui->projectNameLineEdit->text().trimmed();
+    // ============================================================
+    //  只做"静态校验"，不碰磁盘
+    //
+    //  为什么不在 validateInput 里检查目录非空：
+    //    - 目录是否存在 / 是否为空，应该在【用户提交那一刻】由 accept()
+    //      统一判断一次，而不是在这里二次检查
+    //    - 这里只查"项目名合法 / 显示名非空 / 父路径可写"
+    //    - "目标目录非空"由 accept() 在【创建前】判断（见 2.2）
+    // ============================================================
+
+    // ---- 1. 项目名合法 ----
+    const QString projectName = ui->projectNameLineEdit->text().trimmed();
     QString nameError;
     if (!validateProjectName(projectName, nameError)) {
         errors.append(tr("项目名称: ") + nameError);
     }
 
-    QString displayName = ui->displayNameLineEdit->text().trimmed();
+    // ---- 2. 显示名非空 ----
+    const QString displayName = ui->displayNameLineEdit->text().trimmed();
     if (displayName.isEmpty()) {
         errors.append(tr("显示名称不能为空"));
     }
 
-    QString projectPath = ui->locationLineEdit->text().trimmed();
+    // ---- 3. 父路径可写 ----
+    const QString projectPath = ui->locationLineEdit->text().trimmed();
     QString pathError;
     if (!validateProjectPath(projectPath, pathError)) {
         errors.append(tr("项目路径: ") + pathError);
-    } else {
-        QString fullProjectPath = QDir(projectPath).absoluteFilePath(projectName);
-        if (QDir(fullProjectPath).exists()) {
-            QDir projectDir(fullProjectPath);
-            if (!projectDir.isEmpty()) {
-                errors.append(tr("项目目录已存在且不为空"));
-            }
-        }
     }
 
     return errors.isEmpty();
@@ -1499,6 +1560,8 @@ bool ProjectCreationDialog::validateProjectName(const QString& name, QString& er
 
 bool ProjectCreationDialog::validateProjectPath(const QString& path, QString& error) const
 {
+    qDebug() << "[PCD][DIAG] validateProjectPath called with:" << path;
+
     if (path.isEmpty()) {
         error = tr("项目路径不能为空");
         return false;
@@ -1544,24 +1607,35 @@ bool ProjectCreationDialog::createProjectStructure()
     QString projectPath = ui->locationLineEdit->text().trimmed();
     QString fullProjectPath = QDir(projectPath).absoluteFilePath(projectName);
 
-    // 创建项目根目录
-    QDir projectDir(fullProjectPath);
-    if (!projectDir.mkpath(".")) {
-        m_result.errorMessage = tr("无法创建项目目录: ") + fullProjectPath;
-        return false;
+    // ---- 创建项目根目录 ----
+    //
+    //  正确写法：QDir().mkpath(绝对路径)
+    //  错误写法：QDir(fullProjectPath).mkpath(".")
+    //
+    //  原因：mkpath(".") 的基准是 QDir 自己的路径。当 fullProjectPath 不存在时，
+    //        mkpath(".") 试图在"不存在的父路径"下创建 "." → 失败。
+    //        必须用 QDir().mkpath(绝对路径)，基准是当前工作目录，能正确逐级创建。
+    // ----
+    if (!QDir().mkpath(fullProjectPath)) {
+        // 二次确认：如果目录其实已经存在且可访问，视为成功
+        if (!QDir(fullProjectPath).exists()) {
+            m_result.errorMessage = tr("无法创建项目目录: ") + fullProjectPath;
+            return false;
+        }
     }
     m_result.createdDirectories.append(fullProjectPath);
 
-    // 按模板创建子目录
+    // ---- 按模板创建子目录 ----
     ProjectTemplate currentTemplate = getCurrentTemplate();
     for (const QString& dirName : currentTemplate.directories) {
-        QString dirPath = projectDir.absoluteFilePath(dirName);
-        if (projectDir.mkpath(dirName)) {
-            m_result.createdDirectories.append(dirPath);
-        } else {
-            m_result.errorMessage = tr("无法创建目录: ") + dirPath;
-            return false;
+        const QString dirPath = QDir(fullProjectPath).absoluteFilePath(dirName);
+        if (!QDir().mkpath(dirPath)) {
+            if (!QDir(dirPath).exists()) {
+                m_result.errorMessage = tr("无法创建目录: ") + dirPath;
+                return false;
+            }
         }
+        m_result.createdDirectories.append(dirPath);
     }
 
     // 更新 ProjectConfig 的路径
@@ -1737,6 +1811,8 @@ bool ProjectCreationDialog::generatePythonProject()
             // 超时不视为致命错误，用户可稍后手动创建
             qWarning() << "[ProjectCreationDialog] venv 创建超时（可稍后手动创建）";
         }
+
+        m_result.createdDirectories.append(QDir(m_projectConfig.projectPath()).absoluteFilePath(venvName));
     }
 
     return true;
@@ -2186,6 +2262,44 @@ bool ProjectCreationDialog::saveProjectConfigFile()
     }
     m_result.createdFiles.append(cfgPath);
     return true;
+}
+
+void ProjectCreationDialog::rollbackPartialProject(const QString& fullProjectPath,
+    bool existedBefore)
+{
+    if (fullProjectPath.isEmpty()) return;
+
+    QDir dir(fullProjectPath);
+    if (!dir.exists()) return;
+
+    if (!existedBefore) {
+        // 情况 A：本次新建的目录 → 整体删除
+        //   用户重试时不会再有残留，validateInput 的"非空"检查也不会误报
+        if (!dir.removeRecursively()) {
+            qWarning() << "[PCD] 回滚删除失败:" << fullProjectPath;
+        } else {
+            qDebug() << "[PCD] 已回滚删除目录:" << fullProjectPath;
+        }
+        return;
+    }
+
+    // 情况 B：目录本来就有（复用空目录）→ 只删本次写入的文件
+    //   避免误删用户原有文件
+    for (const QString& f : m_result.createdFiles) {
+        if (QFile::exists(f)) {
+            QFile::remove(f);
+        }
+    }
+    // 只删本次创建的目录（倒序，先删深层的）
+    QList<QString> dirs = m_result.createdDirectories;
+    std::sort(dirs.begin(), dirs.end(),
+        [](const QString& a, const QString& b) {
+            return a.length() > b.length();
+        });
+    for (const QString& d : dirs) {
+        if (d == fullProjectPath) continue;   // 根目录保留
+        QDir(d).removeRecursively();
+    }
 }
 
 } // namespace SprintIDE
