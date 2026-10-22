@@ -728,6 +728,16 @@ void MainWindow::applyCurrentTheme()
         m_problemsPanel->applyTheme();
     }
 
+    // 底部面板（含浮动状态）
+    //   浮动后 m_bottomDockWidget 是独立顶层窗口，主窗口的 QSS 不一定
+    //   会级联到它的标题栏，主动刷一次
+    if (m_bottomDockWidget) {
+        if (m_bottomDockWidget->isFloating()) {
+            applyThemeToDockWidget(m_bottomDockWidget,
+                ThemeManager::instance().isDarkTheme());
+        }
+    }
+
     // Problems 状态栏指示器的文字色按当前主题刷新
     onDiagnosticsChanged();
 
@@ -1364,6 +1374,57 @@ void MainWindow::setupMenuBar()
     registerShortcut(QStringLiteral("view.projectPanel"), tr("项目面板"), toggleProjectPanelAction);
     m_toggleProjectPanelAction = toggleProjectPanelAction;
 
+    // ============================================================
+    //  v8.6：底部面板布局子菜单
+    //    - 停靠到底部 / 左侧 / 右侧
+    //    - 浮出为独立窗口
+    //  这三个"停靠"入口和 Qt 原生的拖拽行为等价，只是给用户一个
+    //  更明确的菜单入口（尤其是浮出后想恢复时，用户不一定会想到
+    //  重新拖标题栏回主窗口）。
+    // ============================================================
+    QMenu* panelLayoutMenu = viewMenu->addMenu(tr("底部面板位置(&L)"));
+
+    QAction* dockBottomAction = panelLayoutMenu->addAction(tr("停靠到底部"));
+    connect(dockBottomAction, &QAction::triggered, this, [this]() {
+            if (!m_bottomDockWidget) return;
+            m_bottomDockWidget->setFloating(false);
+            m_bottomDockWidget->setVisible(true);
+            addDockWidget(Qt::BottomDockWidgetArea, m_bottomDockWidget);
+        });
+
+    QAction* dockLeftAction = panelLayoutMenu->addAction(tr("停靠到左侧"));
+    connect(dockLeftAction, &QAction::triggered, this, [this]() {
+            if (!m_bottomDockWidget) return;
+            m_bottomDockWidget->setFloating(false);
+            m_bottomDockWidget->setVisible(true);
+            addDockWidget(Qt::LeftDockWidgetArea, m_bottomDockWidget);
+        });
+
+    QAction* dockRightAction = panelLayoutMenu->addAction(tr("停靠到右侧"));
+    connect(dockRightAction, &QAction::triggered, this, [this]() {
+            if (!m_bottomDockWidget) return;
+            m_bottomDockWidget->setFloating(false);
+            m_bottomDockWidget->setVisible(true);
+            addDockWidget(Qt::RightDockWidgetArea, m_bottomDockWidget);
+        });
+
+    panelLayoutMenu->addSeparator();
+
+    QAction* floatPanelAction = panelLayoutMenu->addAction(tr("浮动为独立窗口"));
+    floatPanelAction->setShortcut(QKeySequence("Ctrl+Shift+J"));
+    floatPanelAction->setStatusTip(tr("把底部面板浮出为独立窗口（多显示器 / 单屏叠放）"));
+    connect(floatPanelAction, &QAction::triggered, this, [this]() {
+            if (!m_bottomDockWidget) return;
+            m_bottomDockWidget->setVisible(true);
+            m_bottomDockWidget->setFloating(true);
+            if (m_bottomDockWidget->width() < 700
+                || m_bottomDockWidget->height() < 400) {
+                m_bottomDockWidget->resize(900, 520);
+            }
+        });
+    registerShortcut(QStringLiteral("view.floatBottomPanel"),
+        tr("浮动底部面板"), floatPanelAction);
+
     // ---------- 代码大纲 ----------
     QAction* outlineAction = viewMenu->addAction(tr("代码大纲(&O)..."));
     outlineAction->setStatusTip(
@@ -1585,11 +1646,51 @@ void MainWindow::setupDockWidgets()
     // =============================== 底部面板 =============================
     m_bottomDockWidget = new QDockWidget(tr("面板"), this);
     m_bottomDockWidget->setObjectName("BottomPanel");
-    m_bottomDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-    m_bottomDockWidget->setFeatures(QDockWidget::DockWidgetClosable |
-                                    QDockWidget::DockWidgetMovable);
+
+    // ============================================================
+    //  v8.6：允许底部面板浮动 / 停靠到左右侧
+    //
+    //  原因：默认只允许 Bottom/Top 且不可浮动时，用户如果把输出
+    //        面板和编辑器都想给足高度，只能拖拽分隔条——主窗口高度
+    //        是固定的，两者互相挤压。允许浮动后，用户可以把输出
+    //        面板拖到第二块屏或独立窗口，编辑区拿满主窗口高度；
+    //        允许停靠到左右侧后，两者可以并排、都吃满垂直高度。
+    //
+    //  DockWidgetFloatable 让标题栏双击 / 拖出窗体可以浮出
+    //  Left/Right 让拖拽到窗体侧边可以停靠
+    // ============================================================
+    m_bottomDockWidget->setAllowedAreas(
+        Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea |
+        Qt::LeftDockWidgetArea   | Qt::RightDockWidgetArea);
+    m_bottomDockWidget->setFeatures(
+        QDockWidget::DockWidgetClosable  |
+        QDockWidget::DockWidgetMovable   |
+        QDockWidget::DockWidgetFloatable);
+
     m_bottomDockWidget->setMinimumHeight(0);
     m_bottomDockWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+    // 浮出时给出一个合理的初始大小（否则 Qt 用 sizeHint，可能很小）
+    // 浮出/回收时也重新刷一次主题（独立窗口的标题栏不一定会被主 QSS 覆盖）
+    connect(m_bottomDockWidget, &QDockWidget::topLevelChanged,
+        this, [this](bool floating) {
+            if (floating) {
+                if (m_bottomDockWidget->width() < 700
+                    || m_bottomDockWidget->height() < 400) {
+                    m_bottomDockWidget->resize(900, 520);
+                }
+            }
+
+            // 浮动时隐藏左侧窄条（独立窗口不需要快捷跳转按钮）
+            if (m_viewBreakpointsButton) {
+                if (QWidget* strip = m_viewBreakpointsButton->parentWidget()) {
+                    strip->setVisible(!floating);
+                }
+            }
+
+            applyCurrentTheme();
+        });
+
     connect(m_bottomDockWidget, &QDockWidget::visibilityChanged,
                 this, [this](bool visible) {
                     if (m_toggleBottomPanelAction) {
