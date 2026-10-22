@@ -137,6 +137,27 @@ public:
      */
     bool loadFromFile(const QString& filePath, QStringList& errors);
 
+    // ==================== 配置文件定位 / 扩展名（v8.5 新增） ====================
+
+    /// 根据语言标识返回配置文件扩展名
+    ///   cpp / qt / 空 → ".lightcppproj"（向后兼容）
+    ///   其他语言      → ".sprintide.json"
+    static QString configExtensionForLanguage(const QString& langId);
+
+    /// 判断文件名是否是已知的配置文件扩展名
+    static bool isKnownConfigExtension(const QString& fileName);
+
+    /// 在项目目录里按优先级查找配置文件，返回绝对路径；找不到返回空
+    ///   优先级：<目录名>.lightcppproj > <目录名>.sprintide.json
+    ///         > 目录内任意 *.lightcppproj > 任意 *.sprintide.json
+    static QString findConfigFile(const QString& projectPath);
+
+    /// 便捷方法：自动在 projectPath 里找配置文件并加载
+    bool loadFromProjectDir(const QString& projectPath, QStringList& errors);
+
+    /// 便捷方法：按 m_projectLanguage 决定扩展名，保存到 m_projectPath
+    bool saveToProjectDir(QStringList& errors) const;
+
     /**
      * @brief 保存配置到文件
      *
@@ -261,6 +282,11 @@ public:
     QString projectPath() const { return m_projectPath; }
     void setProjectPath(const QString& path);
 
+    /// 项目语言标识："cpp" / "qt" / "python" / "go" / "rust" / "node" / "generic_ai"
+    /// 决定配置文件扩展名：cpp/qt → .lightcppproj，其余 → .sprintide.json
+    QString projectLanguage() const { return m_projectLanguage; }
+    void setProjectLanguage(const QString& langId);
+
     ProjectType projectType() const { return m_projectType; }
     void setProjectType(ProjectType type);
 
@@ -368,6 +394,7 @@ private:
     QString m_displayName;      ///< 显示名称（中文描述）
     QString m_projectPath;      ///< 项目根目录路径
     ProjectType m_projectType;  ///< 项目类型
+    QString m_projectLanguage = QStringLiteral("cpp");  ///< 语言标识（决定配置文件扩展名）
 
     // ----- 版本信息 -----
     QString m_configVersion;    ///< 配置文件版本

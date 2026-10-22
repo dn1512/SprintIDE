@@ -97,6 +97,7 @@
         <file>icons/rust.svg</file>
         <file>icons/node.svg</file>
         <file>icons/ai.svg</file>
+        <file>icons/qt.svg</file>
 
         <!-- 文件夹展开与关闭 -->
         <file>icons/branch-closed.svg</file>

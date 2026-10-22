@@ -1185,21 +1185,25 @@ void MainWindow::setupMenuBar()
     // ==================== 构建菜单 ====================
     QMenu *buildMenu = menuBar->addMenu(tr("构建(&B)"));
 
-    QAction *compileFileAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译当前文件(&C)"));
-    compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
-    connect(compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
-    registerShortcut(QStringLiteral("build.compileFile"), tr("编译当前文件"), compileFileAction);
+    // 编译当前文件 —— 单文件编译（只适用于无构建系统的裸 .cpp）
+    m_compileFileAction = buildMenu->addAction(
+        QIcon(":/icons/icons/build.svg"), tr("编译当前文件(&C)"));
+    m_compileFileAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
+    m_compileFileAction->setStatusTip(tr("编译当前文件（CMake/Makefile 项目会自动切换为项目构建）"));
+    connect(m_compileFileAction, &QAction::triggered, this, &MainWindow::onCompile);
+    registerShortcut(QStringLiteral("build.compileFile"), tr("编译当前文件"), m_compileFileAction);
 
-    QAction *compileProjectAction = buildMenu->addAction(QIcon(":/icons/icons/build.svg"), tr("编译项目(&P)"));
-    compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
-    connect(compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
-    registerShortcut(QStringLiteral("build.compileProject"), tr("编译项目"), compileProjectAction);
+    // 编译项目 —— 走完整项目构建（CMake / Makefile / Python / Go / Rust / Node）
+    //   与工具栏 build 按钮共享同一个 QAction，保证快捷键、图标、enable 状态同步
+    m_compileProjectAction = buildMenu->addAction(
+        QIcon(":/icons/icons/build.svg"), tr("编译项目(&P)"));
+    m_compileProjectAction->setShortcut(QKeySequence("Ctrl+B"));
+    m_compileProjectAction->setStatusTip(tr("编译整个项目 (Ctrl+B)"));
+    connect(m_compileProjectAction, &QAction::triggered, this, &MainWindow::onBuildProject);
+    registerShortcut(QStringLiteral("build.compileProject"), tr("编译项目"), m_compileProjectAction);
 
     QAction *cleanBuildAction = buildMenu->addAction(tr("清理构建(&O)"));
     connect(cleanBuildAction, &QAction::triggered, this, &MainWindow::onCleanBuild);
-
-    // QAction *compileSettingsAction = buildMenu->addAction(QIcon(":/icons/icons/setting.svg"), "编译配置(&C)");
-    // connect(compileSettingsAction, &QAction::triggered, this, &MainWindow::onCompileSettings);
 
     // ==================== 调试菜单 ====================
     QMenu *debugMenu = menuBar->addMenu(tr("调试(&D)"));
@@ -1450,8 +1454,23 @@ void MainWindow::setupToolBar()
 
     toolBar->addSeparator();
 
-    QAction *buildAction = toolBar->addAction(QIcon(":/icons/icons/build.svg"),tr("编译"));
-    connect(buildAction, &QAction::triggered, this, &MainWindow::onBuildProject);
+    // ============================================================
+    //  工具栏「编译」按钮 = 编译项目
+    //    直接复用菜单里的 m_compileProjectAction（同一个 QAction 实例），
+    //    这样：
+    //      - 快捷键 Ctrl+B 只注册一次，不会 ambiguous
+    //      - 图标/文字/tooltip/enable 状态与菜单完全同步
+    //      - 行为与 Ctrl+B 100% 一致（都走 onBuildProject）
+    // ============================================================
+    if (m_compileProjectAction) {
+        toolBar->addAction(m_compileProjectAction);
+    } else {
+        // 防御：理论上不会到这里（构造函数里 setupMenuBar 先于 setupToolBar 执行）
+        QAction *fallback = toolBar->addAction(
+            QIcon(":/icons/icons/build.svg"), tr("编译项目"));
+        fallback->setShortcut(QKeySequence("Ctrl+B"));
+        connect(fallback, &QAction::triggered, this, &MainWindow::onBuildProject);
+    }
 
     m_runAction = toolBar->addAction(QIcon(":/icons/icons/run.svg"), tr("运行"));
     m_runAction->setShortcut(QKeySequence("Ctrl+R"));
@@ -2500,9 +2519,11 @@ void MainWindow::openProject(const QString &path) {
     // 更新面板
     if (d->projectPanel) {
         ProjectConfig config;
-        QString configFile = d->currentProjectPath + "/.lightcppproj";
         QStringList errors;
-        bool hasConfig = config.loadFromFile(configFile, errors);
+        bool hasConfig = config.loadFromProjectDir(d->currentProjectPath, errors);
+        if (!hasConfig) {
+            qDebug() << "[openProject] 未找到配置文件（项目将以纯源码目录打开）:" << errors;
+        }
         d->projectPanel->openProject(d->currentProjectPath, hasConfig ? &config : nullptr);
     }
 
@@ -4445,9 +4466,10 @@ void MainWindow::onStartDebug() {
 
         if (!d->currentProjectPath.isEmpty()) {
             ProjectConfig pc;
-            const QString cf = d->currentProjectPath + "/.lightcppproj";
             QStringList errs;
-            if (pc.loadFromFile(cf, errs)) task.sdkConfig = pc.sdkEnvironment();
+            if (pc.loadFromProjectDir(d->currentProjectPath, errs)) {
+                task.sdkConfig = pc.sdkEnvironment();
+            }
         }
 
         IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Rust);
@@ -4671,9 +4693,8 @@ void MainWindow::onStartDebug() {
 
         if (!d->currentProjectPath.isEmpty()) {
             ProjectConfig projConfig;
-            QString configFile = d->currentProjectPath + "/.lightcppproj";
             QStringList errors;
-            if (projConfig.loadFromFile(configFile, errors)) {
+            if (projConfig.loadFromProjectDir(d->currentProjectPath, errors)) {
                 task.sdkConfig = projConfig.sdkEnvironment();
             }
         }
@@ -4948,9 +4969,8 @@ void MainWindow::onStartDebug() {
 
     if (!d->currentProjectPath.isEmpty()) {
         ProjectConfig projConfig;
-        QString configFile = d->currentProjectPath + "/.lightcppproj";
         QStringList errors;
-        if (projConfig.loadFromFile(configFile, errors)) {
+        if (projConfig.loadFromProjectDir(d->currentProjectPath, errors)) {
             task.sdkConfig = projConfig.sdkEnvironment();
         }
     }
@@ -8101,8 +8121,20 @@ void MainWindow::onBuildProject()
     // ============================================================
     LanguageType lang = detectProjectLanguage(projectPath);
     if (lang == LanguageType::Unknown) {
+        // 没有项目构建系统标识 → 尝试按当前文件语言走单文件编译兜底
+        TextEditor* ed = currentEditor();
+        LanguageType fileLang = ed
+        ? detectLanguageTypeFromPath(ed->filePath())
+        : LanguageType::Unknown;
+
+        if (fileLang == LanguageType::Cpp) {
+            logInfo("未检测到项目构建系统，回退到单文件编译");
+            onCompile();
+            return;
+        }
+
         QMessageBox::warning(this, "无法识别项目类型",
-                             "未能识别项目语言。请确保项目根目录包含对应的构建文件（如 pom.xml, CMakeLists.txt 等）。");
+            "未能识别项目语言。请确保项目根目录包含对应的构建文件（如 pom.xml, CMakeLists.txt 等）。");
         return;
     }
 
@@ -8110,9 +8142,8 @@ void MainWindow::onBuildProject()
     // 第三步：加载项目配置与构建任务
     // ============================================================
     ProjectConfig projectConfig;
-    QString configFile = projectPath + "/.lightcppproj";
     QStringList errors;
-    if (!projectConfig.loadFromFile(configFile, errors)) {
+    if (!projectConfig.loadFromProjectDir(projectPath, errors)) {
         qWarning() << "Failed to load project config:" << errors.join(", ");
     }
 
@@ -8252,11 +8283,9 @@ void MainWindow::onCleanBuild()
 
     // 加载项目配置（获取输出目录等）
     ProjectConfig projectConfig;
-    QString configFile = d->currentProjectPath + "/.lightcppproj";
     QStringList errors;
-    if (!projectConfig.loadFromFile(configFile, errors)) {
+    if (!projectConfig.loadFromProjectDir(d->currentProjectPath, errors)) {
         qWarning() << "Failed to load project config:" << errors.join(", ");
-        // 仍可继续
     }
 
     // 构建 BuildTask
@@ -8304,17 +8333,30 @@ void MainWindow::onCleanBuild()
 
 void MainWindow::onCompile() {
     TextEditor* editor = currentEditor();
-    // Qt 文件必须走项目构建（AUTOMOC/AUTOUIC 只能由 CMake 处理）
+
+    // ============================================================
+    //  所有 CMake / Makefile 项目必须走项目构建
+    //  原因：
+    //   1. target 名来自 CMakeLists.txt，不能靠源文件名猜
+    //   2. 输出目录由 CMakeCache / CMAKE_RUNTIME_OUTPUT_DIRECTORY 决定
+    //   3. AUTOMOC/AUTOUIC/AUTORCC 只有 CMake 能处理
+    //   4. QT_DIR 注入（CMAKE_PREFIX_PATH）只在 onBuildProject 里做
+    //   5. CMake 项目通常是多文件，autoSaveAllFiles 必须执行
+    //  单文件编译路径只适用于无构建系统的裸 .cpp
+    // ============================================================
     if (!d->currentProjectPath.isEmpty()) {
-        SprintIDE::CppProjectModel probe(d->currentProjectPath);
-        probe.load();
-        if (probe.isQtProject()) {
-            logInfo("Qt 项目，切换到项目构建模式");
+        QDir projDir(d->currentProjectPath);
+        if (projDir.exists("CMakeLists.txt")
+            || projDir.exists("Makefile")
+            || projDir.exists("makefile")
+            || projDir.exists("GNUmakefile")) {
+            logInfo("检测到项目构建系统，「编译当前文件」自动切换为项目构建");
             onBuildProject();
             return;
         }
     }
 
+    // ---------- 以下才是真正的单文件编译路径 ----------
     if (!editor) {
         QMessageBox::information(this, "提示", "请先打开一个文件进行编译。");
         return;
@@ -8353,8 +8395,8 @@ void MainWindow::onCompile() {
     task.language = detectLanguageTypeFromPath(filePath);
     // 项目路径优先使用当前打开的项目，否则用文件所在目录
     task.projectPath = d->currentProjectPath.isEmpty() ?
-                           QFileInfo(filePath).absolutePath() :
-                           d->currentProjectPath;
+    QFileInfo(filePath).absolutePath() :
+    d->currentProjectPath;
     task.sourceFiles << filePath;
     task.outputName = QFileInfo(filePath).completeBaseName();
     task.outputDir = "bin"; // 可配置
@@ -8378,11 +8420,9 @@ void MainWindow::onCompile() {
     // 读取项目配置中的 SDK 环境
     if (!d->currentProjectPath.isEmpty()) {
         ProjectConfig projConfig;
-        QString configFile = d->currentProjectPath + "/.lightcppproj";
         QStringList errors;
-        if (projConfig.loadFromFile(configFile, errors)) {
+        if (projConfig.loadFromProjectDir(d->currentProjectPath, errors)) {
             task.sdkConfig = projConfig.sdkEnvironment();
-            // 如果是 Generic_AI，加载通用配置
             if (task.language == LanguageType::Generic_AI) {
                 task.aiCustomPayload = projConfig.genericBuildConfig();
             }
@@ -8540,9 +8580,8 @@ void MainWindow::onRun()
 
         if (!d->currentProjectPath.isEmpty()) {
             ProjectConfig pc;
-            const QString cf = d->currentProjectPath + "/.lightcppproj";
             QStringList errs;
-            if (pc.loadFromFile(cf, errs)) {
+            if (pc.loadFromProjectDir(d->currentProjectPath, errs)) {
                 task.sdkConfig = pc.sdkEnvironment();
             }
         }
@@ -8608,30 +8647,46 @@ void MainWindow::onRun()
 
         // 1. 判断项目路径
         QString projectPath = d->currentProjectPath.isEmpty()
-                                  ? QFileInfo(sourceFile).absolutePath()
-                                  : d->currentProjectPath;
+        ? QFileInfo(sourceFile).absolutePath()
+        : d->currentProjectPath;
 
-        // 2. 构造 BuildTask
+        // ============================================================
+        //  按构建系统区分：
+        //    CMake 项目 → outputName 留空让 CppBuilder 从 CMakeLists 取真实 target，
+        //                 outputDir = "build"（与 onStartDebug 对齐）
+        //    裸 .cpp    → outputName = basename，outputDir = "bin"
+        //  这样编译产物路径与 getExecutablePath 的查找路径才能对上，
+        //  否则 CMake 项目编到 build/<target> 后运行时会去 bin/<basename> 找，
+        //  必然提示"未编译"。
+        // ============================================================
+        QDir projDir(projectPath);
+        const bool isCMake = projDir.exists("CMakeLists.txt");
+
         BuildTask task;
-        task.taskId     = QUuid::createUuid().toString(QUuid::WithoutBraces);
-        task.language   = LanguageType::Cpp;
+        task.taskId      = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        task.language    = LanguageType::Cpp;
         task.projectPath = projectPath;
         task.sourceFiles << sourceFile;
-        task.outputName = QFileInfo(sourceFile).completeBaseName();
-        task.outputDir  = "bin";
         task.enableDebug = false;
 
-        // 3. 读取项目配置
+        if (isCMake) {
+            task.outputName = QString();     // 从 CMakeLists 取
+            task.outputDir  = "build";
+        } else {
+            task.outputName = QFileInfo(sourceFile).completeBaseName();
+            task.outputDir  = "bin";
+        }
+
+        // 2. 读取项目配置
         if (!d->currentProjectPath.isEmpty()) {
             ProjectConfig projConfig;
-            QString configFile = d->currentProjectPath + "/.lightcppproj";
             QStringList errors;
-            if (projConfig.loadFromFile(configFile, errors)) {
+            if (projConfig.loadFromProjectDir(d->currentProjectPath, errors)) {
                 task.sdkConfig = projConfig.sdkEnvironment();
             }
         }
 
-        // 4. 拿可执行文件路径
+        // 3. 拿可执行文件路径
         IBuilder* builder = BuilderFactory::createBuilder(task.language);
         QString executablePath;
         if (builder) {
@@ -8639,21 +8694,26 @@ void MainWindow::onRun()
         }
 
         bool needBuild = executablePath.isEmpty()
-                         || !QFile::exists(executablePath)
-                         || QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified();
+        || !QFile::exists(executablePath)
+        || QFileInfo(sourceFile).lastModified() > QFileInfo(executablePath).lastModified();
 
         if (needBuild) {
             int reply = QMessageBox::question(this, "编译并运行",
-                                              "文件尚未编译或已过期，是否现在编译并运行?",
-                                              QMessageBox::Yes | QMessageBox::No);
+                "文件尚未编译或已过期，是否现在编译并运行?",
+                QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::Yes) {
                 m_autoRunAfterCompile = true;
-                onCompile();
+                // CMake 项目走项目构建，裸 .cpp 走单文件编译
+                if (isCMake) {
+                    onBuildProject();
+                } else {
+                    onCompile();
+                }
             }
             return;
         }
 
-        // 5. 异步运行可执行文件
+        // 4. 异步运行可执行文件
         logInfo(QString("使用可执行文件: %1").arg(executablePath));
         logInfo("正在运行...");
 

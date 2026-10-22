@@ -422,6 +422,8 @@ private:
     QAction* m_stepOutAction = nullptr;
     QAction* m_continueAction = nullptr;
     QAction* m_addBreakpointAction = nullptr;
+    QAction* m_compileFileAction    = nullptr;   // 编译当前文件 (Ctrl+Shift+B)
+    QAction* m_compileProjectAction = nullptr;   // 编译项目 (Ctrl+B)
 
     bool isSourceNewerThanExecutable(const QString& sourceFile, const QString& executablePath);
     bool needsRecompile(const QString& sourceFile, const QString& executablePath);

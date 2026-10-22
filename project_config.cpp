@@ -74,6 +74,7 @@ ProjectConfig::~ProjectConfig()
 
 void ProjectConfig::initDefaults()
 {
+    m_projectLanguage = QStringLiteral("cpp");
     // 设置默认版本信息
     m_configVersion = CURRENT_CONFIG_VERSION;
     m_createdDate = QDateTime::currentDateTime();
@@ -241,6 +242,7 @@ bool ProjectConfig::fromJson(const QJsonObject& json, QStringList& errors)
     m_projectName = upgradedJson.value("project_name").toString();
     m_displayName = upgradedJson.value("display_name").toString();
     m_projectPath = upgradedJson.value("project_path").toString();
+    m_projectLanguage = upgradedJson.value("language").toString(QStringLiteral("cpp"));
 
     // 项目类型
     QString typeStr = upgradedJson.value("project_type").toString("console");
@@ -343,12 +345,16 @@ bool ProjectConfig::fromJson(const QJsonObject& json, QStringList& errors)
         m_sdkEnv[it.key()] = it.value().toVariant();
     }
 
-    // 新增：通用配置
+    // 通用配置
     QJsonObject genericObj = upgradedJson.value("generic_config").toObject();
     m_genericConfig.clear();
     for (auto it = genericObj.begin(); it != genericObj.end(); ++it) {
         m_genericConfig[it.key()] = it.value().toVariant();
     }
+
+    // Python 专属
+    m_pythonInterpreter = upgradedJson.value("python_interpreter").toString();
+    m_pythonVenv        = upgradedJson.value("python_venv").toString();
 
     // 验证加载的配置
     return validate(errors);
@@ -358,105 +364,128 @@ QJsonObject ProjectConfig::toJson() const
 {
     QJsonObject json;
 
-    // 基本信息
-    json["project_name"] = m_projectName;
-    json["display_name"] = m_displayName;
-    json["project_path"] = m_projectPath;
+    // ============================================================
+    //  通用字段（所有语言都写）
+    // ============================================================
+    json["project_name"]   = m_projectName;
+    json["display_name"]   = m_displayName;
+    json["project_path"]   = m_projectPath;
+    json["language"]       = m_projectLanguage;
+    json["config_version"] = CURRENT_CONFIG_VERSION;
+    json["created_date"]   = m_createdDate.toString(Qt::ISODate);
+    json["modified_date"]  = QDateTime::currentDateTime().toString(Qt::ISODate);
 
-    // 项目类型
+    // 项目类型（所有语言共用，语义弱但保留）
     QString typeStr;
     switch (m_projectType) {
-    case ProjectType::ConsoleApp: typeStr = "console"; break;
-    case ProjectType::SimpleGame: typeStr = "game"; break;
-    case ProjectType::GuiApp: typeStr = "gui"; break;
-    case ProjectType::EmptyProject: typeStr = "empty"; break;
+        case ProjectType::ConsoleApp:   typeStr = "console"; break;
+        case ProjectType::SimpleGame:   typeStr = "game";    break;
+        case ProjectType::GuiApp:       typeStr = "gui";     break;
+        case ProjectType::EmptyProject: typeStr = "empty";   break;
     }
     json["project_type"] = typeStr;
 
-    // 版本信息
-    json["config_version"] = CURRENT_CONFIG_VERSION;
-    json["created_date"] = m_createdDate.toString(Qt::ISODate);
-    json["modified_date"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-
-    // 文件列表
+    // 源文件列表（所有语言都应有）
     QJsonArray sourceArray;
     for (const QString& file : m_sourceFiles) {
         sourceArray.append(file);
     }
     json["source_files"] = sourceArray;
 
-    QJsonArray headerArray;
-    for (const QString& file : m_headerFiles) {
-        headerArray.append(file);
-    }
-    json["header_files"] = headerArray;
-
-    // 编译模式
-    json["compile_mode"] = (m_projectConfigMode == ProjectConfigMode::AdvancedMode) ? "advanced" : "simple";
-
-    // 编译器设置
-    QString compilerStr;
-    switch (m_projectCompilerType) {
-    case ProjectCompilerType::GCC: compilerStr = "gcc"; break;
-    case ProjectCompilerType::Clang: compilerStr = "clang"; break;
-    case ProjectCompilerType::MSVC: compilerStr = "msvc"; break;
-    case ProjectCompilerType::AutoDetect: compilerStr = "auto"; break;
-    }
-    json["compiler_type"] = compilerStr;
-    json["compiler_path"] = m_compilerPath;
-    json["cpp_standard"] = m_cppStandard;
-    json["optimization_level"] = m_optimizationLevel;
-    json["enable_debug_info"] = m_enableDebugInfo;
-    json["warning_level"] = m_warningLevel;
-    json["output_type"] = m_outputType;
+    // 输出路径（各语言语义不同但都可能有）
     json["output_path"] = m_outputPath;
 
-    // 包含路径和库设置
-    QJsonArray includeArray;
-    for (const QString& path : m_includePaths) {
-        includeArray.append(path);
-    }
-    json["include_paths"] = includeArray;
-
-    QJsonArray libPathArray;
-    for (const QString& path : m_libraryPaths) {
-        libPathArray.append(path);
-    }
-    json["library_paths"] = libPathArray;
-
-    QJsonArray libArray;
-    for (const QString& lib : m_libraries) {
-        libArray.append(lib);
-    }
-    json["libraries"] = libArray;
-
-    // 宏定义
-    QJsonArray defineArray;
-    for (const QString& define : m_defines) {
-        defineArray.append(define);
-    }
-    json["defines"] = defineArray;
-
-    // 扩展配置
+    // 通用扩展槽
     QJsonObject extraObj;
     for (auto it = m_extraConfig.constBegin(); it != m_extraConfig.constEnd(); ++it) {
         extraObj[it.key()] = QJsonValue::fromVariant(it.value());
     }
     json["extra_config"] = extraObj;
 
-    // SDK 环境
     QJsonObject sdkObj;
     for (auto it = m_sdkEnv.begin(); it != m_sdkEnv.end(); ++it) {
         sdkObj[it.key()] = QJsonValue::fromVariant(it.value());
     }
     json["sdk_env"] = sdkObj;
 
-    // 通用配置
-    QJsonObject genericObj;
-    for (auto it = m_genericConfig.begin(); it != m_genericConfig.end(); ++it) {
-        genericObj[it.key()] = QJsonValue::fromVariant(it.value());
+    // Python 专属（顺便补上之前漏掉的序列化）
+    if (m_projectLanguage.toLower() == "python") {
+        if (!m_pythonInterpreter.isEmpty()) {
+            json["python_interpreter"] = m_pythonInterpreter;
+        }
+        if (!m_pythonVenv.isEmpty()) {
+            json["python_venv"] = m_pythonVenv;
+        }
     }
-    json["generic_config"] = genericObj;
+
+    // ============================================================
+    //  C++ / Qt 专属字段
+    // ============================================================
+    const QString lang = m_projectLanguage.toLower();
+    const bool isCppFamily = (lang.isEmpty()
+        || lang == "cpp" || lang == "c" || lang == "c++"
+        || lang == "qt");
+
+    if (isCppFamily) {
+        json["compile_mode"] = (m_projectConfigMode == ProjectConfigMode::AdvancedMode)
+        ? "advanced" : "simple";
+
+        QString compilerStr;
+        switch (m_projectCompilerType) {
+            case ProjectCompilerType::GCC:        compilerStr = "gcc";   break;
+            case ProjectCompilerType::Clang:      compilerStr = "clang"; break;
+            case ProjectCompilerType::MSVC:       compilerStr = "msvc";  break;
+            case ProjectCompilerType::AutoDetect: compilerStr = "auto";  break;
+        }
+        json["compiler_type"]      = compilerStr;
+        json["compiler_path"]      = m_compilerPath;
+        json["cpp_standard"]       = m_cppStandard;
+        json["optimization_level"] = m_optimizationLevel;
+        json["warning_level"]      = m_warningLevel;
+        json["enable_debug_info"]  = m_enableDebugInfo;
+        json["output_type"]        = m_outputType;
+
+        QJsonArray includeArray;
+        for (const QString& p : m_includePaths) {
+            includeArray.append(p);
+        }
+        json["include_paths"] = includeArray;
+
+        QJsonArray libPathArray;
+        for (const QString& p : m_libraryPaths) {
+            libPathArray.append(p);
+        }
+        json["library_paths"] = libPathArray;
+
+        QJsonArray libArray;
+        for (const QString& l : m_libraries) {
+            libArray.append(l);
+        }
+        json["libraries"] = libArray;
+
+        QJsonArray defineArray;
+        for (const QString& d : m_defines) {
+            defineArray.append(d);
+        }
+        json["defines"] = defineArray;
+
+        QJsonArray headerArray;
+        for (const QString& f : m_headerFiles) {
+            headerArray.append(f);
+        }
+        json["header_files"] = headerArray;
+    }
+
+    // ============================================================
+    //  GenericAI 专属
+    // ============================================================
+    if (lang == "generic_ai") {
+        QJsonObject genericObj;
+        for (auto it = m_genericConfig.constBegin(); it != m_genericConfig.constEnd(); ++it) {
+            genericObj[it.key()] = QJsonValue::fromVariant(it.value());
+        }
+        json["generic_config"] = genericObj;
+    }
 
     return json;
 }
@@ -546,6 +575,9 @@ QJsonObject ProjectConfig::upgradeConfig(const QJsonObject& json, QStringList& e
     }
     if (!upgraded.contains("project_type")) {
         upgraded["project_type"] = "console";
+    }
+    if (!upgraded.contains("language")) {
+        upgraded["language"] = QStringLiteral("cpp");   // 老配置默认 C++
     }
 
     return upgraded;
@@ -829,6 +861,15 @@ void ProjectConfig::setProjectCompilerType(ProjectCompilerType type)
     }
 }
 
+void ProjectConfig::setProjectLanguage(const QString& langId)
+{
+    const QString normalized = langId.toLower().trimmed();
+    if (normalized != m_projectLanguage) {
+        m_projectLanguage = normalized;
+        m_modifiedDate = QDateTime::currentDateTime();
+    }
+}
+
 void ProjectConfig::setProjectName(const QString& name)
 {
     if (name != m_projectName && isValidProjectName(name)) {
@@ -1085,6 +1126,100 @@ bool ProjectConfig::validateDirPath(const QString& path, bool checkExists) const
     }
 
     return true;
+}
+
+// ==================== 配置文件定位 / 扩展名（v8.5 新增） ====================
+
+QString ProjectConfig::configExtensionForLanguage(const QString& langId)
+{
+    const QString s = langId.toLower().trimmed();
+
+    // C++ / Qt 保持 .lightcppproj：
+    //   1. 向后兼容大量已有项目
+    //   2. Qt 项目本质也是 CMake 项目，语义一致
+    if (s == "cpp" || s == "c" || s == "c++" || s == "qt" || s.isEmpty()) {
+        return QStringLiteral(".lightcppproj");
+    }
+
+    // Python / Go / Rust / Node / GenericAI 等用语义正确的扩展名
+    return QStringLiteral(".sprintide.json");
+}
+
+bool ProjectConfig::isKnownConfigExtension(const QString& fileName)
+{
+    static const QStringList kExtensions = {
+        QStringLiteral(".lightcppproj"),
+        QStringLiteral(".sprintide.json"),
+        QStringLiteral(".sprintide.toml")   // 预留：未来可能支持 TOML
+    };
+    const QString lower = fileName.toLower();
+    for (const QString& ext : kExtensions) {
+        if (lower.endsWith(ext)) return true;
+    }
+    return false;
+}
+
+QString ProjectConfig::findConfigFile(const QString& projectPath)
+{
+    QDir dir(projectPath);
+    if (!dir.exists()) return QString();
+
+    static const QStringList kExtensions = {
+        QStringLiteral(".lightcppproj"),
+        QStringLiteral(".sprintide.json"),
+        QStringLiteral(".sprintide.toml")
+    };
+
+    // 1. 优先：<目录名>.<ext> —— 最常见约定
+    const QString dirName = dir.dirName();
+    for (const QString& ext : kExtensions) {
+        const QString candidate = dir.absoluteFilePath(dirName + ext);
+        if (QFileInfo::exists(candidate)) return candidate;
+    }
+
+    // 2. 次选：目录里任意一个已知扩展名的文件
+    //    （用 entryList 而不是 QDirIterator，只扫当前层，不递归）
+    for (const QString& ext : kExtensions) {
+        const QStringList matches = dir.entryList(
+            QStringList{ "*" + ext },
+            QDir::Files | QDir::NoDotAndDotDot);
+        if (!matches.isEmpty()) {
+            return dir.absoluteFilePath(matches.first());
+        }
+    }
+
+    return QString();
+}
+
+bool ProjectConfig::loadFromProjectDir(const QString& projectPath, QStringList& errors)
+{
+    const QString configPath = findConfigFile(projectPath);
+    if (configPath.isEmpty()) {
+        errors.append(
+            QString("在项目目录里找不到配置文件"
+                "（支持 .lightcppproj / .sprintide.json）: %1")
+            .arg(projectPath));
+        return false;
+    }
+    return loadFromFile(configPath, errors);
+}
+
+bool ProjectConfig::saveToProjectDir(QStringList& errors) const
+{
+    if (m_projectPath.isEmpty()) {
+        errors.append("项目路径为空，无法保存配置");
+        return false;
+    }
+    if (m_projectName.isEmpty()) {
+        errors.append("项目名称为空，无法保存配置");
+        return false;
+    }
+
+    const QString ext = configExtensionForLanguage(m_projectLanguage);
+    const QString configPath =
+    QDir(m_projectPath).absoluteFilePath(m_projectName + ext);
+
+    return saveToFile(configPath, errors);
 }
 
 } // namespace SprintIDE

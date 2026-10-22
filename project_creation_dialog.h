@@ -42,12 +42,6 @@ namespace SprintIDE {
 
 // ============================================================
 //  编程语言枚举
-// ------------------------------------------------------------
-//  说明：
-//    这里故意【不包含 Java】。Java 的完整支持（Gradle/Maven
-//    项目模型、依赖解析、JDTLS 等）在 SprintIDE 里实现成本很
-//    高，不属于"从零创建项目"这一步能覆盖的场景。因此本对话
-//    框只暴露以下 6 种语言。
 // ============================================================
 enum class ProjectLanguage
 {
@@ -55,6 +49,7 @@ enum class ProjectLanguage
     Python,     ///< Python
     Go,         ///< Go
     Rust,       ///< Rust
+    Qt,       ///< Qt
     Node,       ///< Node.js（含 JavaScript / TypeScript 两种变体）
     GenericAI   ///< AI 通用适配器（命令从 .lightcppproj 的 JSON 读取）
 };
@@ -216,6 +211,11 @@ private:
     bool generateGoProject();
     bool generateRustProject();
     bool generateNodeProject();
+    bool generateQtProject();   ///< Qt 项目生成器
+
+    /// 按语言选择配置文件扩展名（C++/Qt 用 .lightcppproj，其余用 .sprintide.json）
+    /// 同时写一份 .lightcppproj 兼容旧加载器（MainWindow::openProject 目前只找它）
+    bool saveLanguageAwareConfig(ProjectLanguage lang);
 
     // ---------- UI 更新 ----------
     void updatePathPreview();
@@ -273,6 +273,10 @@ private:
 
     // Rust
     QComboBox* m_rustKindCombo = nullptr;          ///< bin / lib
+
+    QComboBox* m_qtTemplateCombo  = nullptr;   ///< Widget 应用 / 控制台 / 空白
+    QComboBox* m_qtVersionCombo   = nullptr;   ///< Qt5 / Qt6
+    QLineEdit* m_qtDirEdit        = nullptr;   ///< QT_DIR（可选，留空走系统探测）
 
     // Node
     QComboBox* m_nodeVariantCombo = nullptr;       ///< JavaScript / TypeScript
