@@ -13,7 +13,7 @@ static EditorRules makeCppLike()
     r.blockCommentEnd    = "*/";
 
     r.indentTriggers     = {"{", "public:", "private:", "protected:"};
-    r.dedentTriggers     = {"}"};
+    r.dedentTriggers     = {"fi", "done", "esac", "}", ")", ";;"};
     r.dedentLineStarters = {};           // C 语言不做输入时反缩进
 
     r.autoPairs = {
@@ -325,21 +325,54 @@ EditorRules EditorRules::forLanguage(const QString& id)
 // ============================================================
 // 便捷判断
 // ============================================================
-bool EditorRules::endsWithIndentTrigger(const QString& trimmedLine) const
+bool EditorRules::endsWithIndentTrigger(const QString& line) const
 {
-    if (trimmedLine.isEmpty()) return false;
-    for (const QString& t : indentTriggers) {
-        if (trimmedLine.endsWith(t)) return true;
+    if (line.isEmpty()) return false;
+
+
+    const QString t = line.trimmed();
+    if (t.isEmpty()) return false;
+
+    // ---- 大括号风格 ----
+    if (blockStyle == BlockStyle::Brace) {
+        if (t == QStringLiteral("default:")) {
+            return true;
+        }
+        if (t.startsWith(QStringLiteral("case "))
+            && t.endsWith(QLatin1Char(':'))) {
+            return true;
+        }
     }
-    return false;
+
+    // ---- Python 缩进风格 ----
+    if (blockStyle == BlockStyle::Indent) {
+        // 行注释跳过
+        if (t.startsWith(QLatin1Char('#'))) return false;
+        // : 结尾，排除 ::
+        return t.endsWith(QLatin1Char(':'))
+        && !t.endsWith(QStringLiteral("::"));
+    }
+
+    // ---- Shell / 其他：then / do / { ----
+    return t.endsWith(QStringLiteral("then"))
+    || t.endsWith(QStringLiteral("do"))
+    || t.endsWith(QLatin1Char('{'));
 }
 
-bool EditorRules::startsWithDedentTrigger(const QString& trimmedLine) const
+bool EditorRules::startsWithDedentTrigger(const QString& line) const
 {
-    if (trimmedLine.isEmpty()) return false;
-    for (const QString& t : dedentTriggers) {
-        if (trimmedLine.startsWith(t)) return true;
+    const QString t = line.trimmed();
+    if (t.isEmpty()) return false;
+
+    // ---- 大括号风格 ----
+    if (blockStyle == BlockStyle::Brace) {
+        // 纯关闭行：} / }; / } while ...;（但不含 } else {）
+        return t.startsWith(QLatin1Char('}'))
+        && !t.endsWith(QLatin1Char('{'));
     }
+
+    // ---- Python：没有"关闭行"概念，永远返回 false ----
+    //     缩进靠上下文决定，不靠行首字符
     return false;
 }
 

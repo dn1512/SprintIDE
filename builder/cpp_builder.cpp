@@ -13,6 +13,7 @@
 #include <QDirIterator>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QThread>
 
 #include <config_manager.h>
 #include "application.h"
@@ -251,7 +252,11 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
     }
 
 #ifdef Q_OS_WIN
-    buildArgs << "--" << "/m";
+{
+    const int cpuCount = QThread::idealThreadCount();
+    const int jobs = (cpuCount > 0) ? cpuCount : 4;
+    buildArgs << "--parallel" << QString::number(jobs);
+}
 #else
     buildArgs << "--" << "-j4";
 #endif

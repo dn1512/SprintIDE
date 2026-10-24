@@ -3548,6 +3548,10 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         if (tryAutoPair(typed)) return;
         // 9.4 常规输入 + 补全触发
         QPlainTextEdit::keyPressEvent(event);
+        if (tryAlignDedentKeyword()) {
+            // 已处理，跳过后续的补全逻辑（避免弹窗位置错误）
+            return;
+        }
         const QChar c = typed.at(0);
         if (isCompletionTriggerChar(c)) {
             // 优先识别 include 上下文
@@ -4537,49 +4541,112 @@ void TextEditor::autoIndentAfterReturn()
     const QString prevTrimmed = prevText.trimmed();
     const QString prevIndent  = findLogicalLineIndent(prevBlock);
 
-    //   空行也继承缩进
-    //   之前是 `if (prevTrimmed.isEmpty()) return;`，
-    //   导致"连续按回车"时第二次起缩进丢失。
-    //   JetBrains 的行为是：空行按回车 → 新行保持同样的缩进级别。
+    // 空行也继承缩进
     if (prevTrimmed.isEmpty()) {
         if (!prevIndent.isEmpty()) {
             cursor.insertText(prevIndent);
-            // 显式 setTextCursor，让 Up/Down 恢复按列对齐。
             setTextCursor(cursor);
         }
         return;
     }
 
-    // ---- 先做字符串前缀判断（O(前缀长度)），无触发就快速返回 ----
+    const QString langId = currentLanguageId();
+    const bool isPython  = langId.contains("python", Qt::CaseInsensitive);
+
+    // ---- EditorRules 原始判定 ----
     const bool mayIndent = m_editorRules.endsWithIndentTrigger(prevTrimmed);
     const bool mayDedent = m_editorRules.startsWithDedentTrigger(prevTrimmed);
 
-    if (!mayIndent && !mayDedent) {
+    // 大括号语义（覆盖 C/C++/Java/JS 等）
+    const bool braceOpener = prevTrimmed.endsWith(QLatin1Char('{'));
+    const bool braceCloser = prevTrimmed.startsWith(QLatin1Char('}'))
+    && !braceOpener;
+
+    // Python 复合语句头：`: ` 结尾（排除 `::`、排除注释行）
+    const bool pythonColon =
+    isPython
+    && prevTrimmed.endsWith(QLatin1Char(':'))
+    && !prevTrimmed.endsWith(QStringLiteral("::"))
+    && !prevTrimmed.startsWith(QLatin1Char('#'));
+
+    // 最终判定：
+    //   - isOpener：需要新行 +1 缩进
+    //   - isCloser：新行与上一行同级（关闭行后）
+    const bool isOpener = braceOpener || mayIndent || pythonColon;
+    const bool isCloser = braceCloser || (mayDedent && !braceOpener);
+
+    if (!isOpener && !isCloser) {
         if (!prevIndent.isEmpty()) {
             cursor.insertText(prevIndent);
-            // 显式 setTextCursor，让 Up/Down 恢复按列对齐。
             setTextCursor(cursor);
         }
         return;
     }
 
+    // 字符串/注释上下文保护（只对原本就支持 guard 的语言生效）
     const bool needGuard = m_editorRules.needsContextGuard();
     const bool prevSafe  = !needGuard
-                          || !isInsideString(prevBlock.position() + prevText.length());
+    || !isInsideString(prevBlock.position() + prevText.length());
 
     QString newIndent = prevIndent;
 
     if (prevSafe) {
-        if (mayIndent) {
-            newIndent = prevIndent + indentUnit();
-        } else if (mayDedent) {
+        if (isCloser) {
+            // 关闭行：新行和关闭行同级
             newIndent = prevIndent;
+        } else if (isOpener) {
+            if (pythonColon && !braceOpener && !mayIndent) {
+                int logicalIndent = leadingIndentWidth(prevText);
+
+                // 判断一行是否是 Python 复合语句头
+                auto isPythonCompoundHead = [](const QString& t) -> bool {
+                    static const QStringList kHeads = {
+                        QStringLiteral("def "),
+                        QStringLiteral("async def "),
+                        QStringLiteral("class "),
+                        QStringLiteral("if "),
+                        QStringLiteral("elif "),
+                        QStringLiteral("else:"),
+                        QStringLiteral("for "),
+                        QStringLiteral("async for "),
+                        QStringLiteral("while "),
+                        QStringLiteral("with "),
+                        QStringLiteral("async with "),
+                        QStringLiteral("try:"),
+                        QStringLiteral("except"),
+                        QStringLiteral("finally:"),
+                    };
+                    for (const QString& h : kHeads) {
+                        if (t.startsWith(h)) return true;
+                    }
+                    return false;
+                };
+
+                if (!isPythonCompoundHead(prevTrimmed)) {
+                    // prevBlock 是续行 → 向上找起始行
+                    QTextBlock b = prevBlock.previous();
+                    int scanned = 0;
+                    while (b.isValid() && scanned < 200) {
+                        const QString bt = b.text().trimmed();
+                        if (!bt.isEmpty() && isPythonCompoundHead(bt)) {
+                            logicalIndent = leadingIndentWidth(b.text());
+                            break;
+                        }
+                        b = b.previous();
+                        ++scanned;
+                    }
+                }
+
+                newIndent = QString(logicalIndent + m_tabWidth, ' ');
+            } else {
+                // 通用：新行 = 上一行缩进 + 一级
+                newIndent = prevIndent + indentUnit();
+            }
         }
     }
 
     if (!newIndent.isEmpty()) {
         cursor.insertText(newIndent);
-        // 显式 setTextCursor，让 Up/Down 恢复按列对齐。
         setTextCursor(cursor);
     }
 }
@@ -4658,48 +4725,100 @@ bool TextEditor::tryAlignDedentKeyword()
     const QString text = block.text();
     const QString trimmed = text.trimmed();
 
-    // 只在光标处于该行末尾时才处理
+    // 只在光标处于该行末尾（即刚好输入完关键字）时才处理
     if (cursor.positionInBlock() != text.length()) return false;
 
-    static const QStringList kKeywords = { "else", "catch", "finally" };
-    bool matched = false;
-    for (const QString& kw : kKeywords) {
-        if (trimmed == kw || trimmed == kw + " " || trimmed == kw + "{") {
-            matched = true; break;
-        }
+    // ============================================================
+    //  v8.5：用 EditorRules::lineStartsWithDedentKeyword 判断，
+    //    不再硬编码 else/catch/finally。
+    //    这样 C++ 的 public:/private:/case/default，
+    //    Python 的 else/elif/except/finally/case，
+    //    Ruby 的 else/elsif/when/rescue/ensure，
+    //    Shell 的 else/elif/fi/done/esac 全部自动支持。
+    // ============================================================
+    if (!m_editorRules.lineStartsWithDedentKeyword(trimmed)) {
+        return false;
     }
-    if (!matched) return false;
 
-    // 向上找最近的同级 { } 块的开头
-    int depth = 0;
+    // 找出与当前关键字配对的块开始行
+    // ---- 方案 A：大括号语言（C++ / Java / C#）----
+    if (m_editorRules.blockStyle == EditorRules::BlockStyle::Brace) {
+        // 从当前行向上扫，找最近的"块开始行"
+        //   对 case 1: / default:  → 找 switch 行
+        //   对 public: / private:   → 找 class 行（或上一个访问修饰符行）
+        int depth = 0;
+        QTextBlock b = block.previous();
+        int targetIndent = -1;
+        while (b.isValid()) {
+            const QString t = b.text().trimmed();
+            if (t.endsWith('}')) {
+                ++depth;
+            } else if (t.endsWith('{')) {
+                if (depth == 0) {
+                    targetIndent = leadingWhitespace(b.text()).length();
+                    break;
+                }
+                --depth;
+            } else if (depth == 0) {
+                // 找上一个同级的访问修饰符（public:/private:/case）
+                if (m_editorRules.lineStartsWithDedentKeyword(t)) {
+                    targetIndent = leadingWhitespace(b.text()).length();
+                    break;
+                }
+            }
+            b = b.previous();
+        }
+        if (targetIndent < 0) return false;
+
+        // 重设当前行缩进
+        QTextCursor c(block);
+        c.movePosition(QTextCursor::StartOfBlock);
+        c.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor,
+            text.length() - trimmed.length());
+        c.beginEditBlock();
+        c.removeSelectedText();
+        c.insertText(QString(targetIndent, ' '));
+        c.endEditBlock();
+
+        QTextCursor nc(block);
+        nc.movePosition(QTextCursor::EndOfBlock);
+        setTextCursor(nc);
+        return true;
+    }
+
+    // ---- 方案 B：Python / Ruby / Shell ----
+    //   缩进级别由上下文决定。用 dedentLineStarters 的核心逻辑：
+    //   向上找最近一个"缩进更浅"的行，把当前行缩进对齐到它
+    int curIndent = leadingIndentWidth(text);
     QTextBlock b = block.previous();
     int targetIndent = -1;
-    while (b.isValid()) {
-        const QString t = b.text().trimmed();
-        if (t.endsWith('}')) {
-            ++depth;
-        } else if (t.endsWith('{')) {
-            if (depth == 0) {
-                targetIndent = leadingWhitespace(b.text()).length();
-                break;
-            }
-            --depth;
+    int scanned = 0;
+    while (b.isValid() && scanned < 200) {
+        const QString bt = b.text();
+        if (bt.trimmed().isEmpty()) {
+            b = b.previous();
+            ++scanned;
+            continue;
+        }
+        const int bIndent = leadingIndentWidth(bt);
+        if (bIndent < curIndent) {
+            targetIndent = bIndent;
+            break;
         }
         b = b.previous();
+        ++scanned;
     }
-    if (targetIndent < 0) return false;
+    if (targetIndent < 0 || targetIndent >= curIndent) return false;
 
-    // 重设当前行缩进
     QTextCursor c(block);
     c.movePosition(QTextCursor::StartOfBlock);
     c.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor,
-                   text.length() - trimmed.length());
+        text.length() - trimmed.length());
     c.beginEditBlock();
     c.removeSelectedText();
     c.insertText(QString(targetIndent, ' '));
     c.endEditBlock();
 
-    // 光标跟随
     QTextCursor nc(block);
     nc.movePosition(QTextCursor::EndOfBlock);
     setTextCursor(nc);
@@ -6347,29 +6466,6 @@ int TextEditor::bracketDelta(const QString& line) const
     return d;
 }
 
-// ============================================================================
-//  返回 block 所在"逻辑行"的缩进
-//
-//  三种情况：
-//    1. block 是空行 / 缩进 0        → 返回自身缩进
-//    2. block 的上一行缩进 == 自身   → 同级续行（如参数列表内），返回自身缩进
-//    3. 向上找"缩进更浅 + bracketDelta > 0"的锚点行 → 返回锚点行缩进
-//       找不到 → 返回自身缩进
-//
-//  示例：
-//    t = threading.Thread(target=handle_client,
-//                         args=(conn, addr), daemon=True)
-//      ↑ 光标在 `args=...` 这行按回车时：
-//        - `args=...` 缩进 21，上一行 `t = ...` 缩进 0 ≠ 21
-//        - 向上扫到 `t = ...`，bracketDelta = +1 > 0 → 返回 0
-//
-//    foo(
-//        a,
-//        b,
-//        c            ← 光标在这行按回车
-//    )
-//      - `c` 缩进 4，上一行 `b,` 缩进 4 == 4 → 同级续行，返回 4
-// ============================================================================
 QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
 {
     if (!block.isValid()) return QString();
@@ -6385,7 +6481,6 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
         const QString selfIndent = leadingWhitespace(text);
         const int selfIndentWidth = leadingIndentWidth(text);
 
-        // ========== 优化 1 之后的闭合行特判 ==========
         if (m_editorRules.blockStyle == EditorRules::BlockStyle::Brace
             && !text.trimmed().isEmpty()) {
             const QString t = text.trimmed();
@@ -6395,9 +6490,12 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
             if (!endsWithComma && hasNetClose) {
                 constexpr int kMaxScanUp = 200;
                 int scanned = 0;
+                int needed = 1;   // 还需找 1 个未匹配的 { 才能闭合
+
                 QTextBlock b = block.previous();
                 while (b.isValid() && scanned < kMaxScanUp) {
-                    if (bracketDelta(b.text()) > 0) {
+                    needed -= bracketDelta(b.text());
+                    if (needed <= 0) {
                         return leadingWhitespace(b.text());
                     }
                     b = b.previous();
@@ -6424,7 +6522,7 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
             }
         }
 
-        // ---- 向上找锚点 ----
+        // ---- 向上找续行锚点 ----
         constexpr int kMaxScanUp = 200;
         int scanned = 0;
         QTextBlock b = block.previous();
