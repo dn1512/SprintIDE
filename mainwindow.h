@@ -119,6 +119,11 @@ public:
     void aiRequestBuild();      ///< 触发项目构建（等价 onBuildProject）
     void aiRequestRun();        ///< 触发运行当前文件（等价 onRun）
     void aiRequestStopRun();    ///< 停止正在运行的程序
+    /**
+    * @brief 更新 AI 模块的项目信息（handshake 或 event 用）
+    * main.cpp 在 openProject 前调用，让握手时就能带上 projectRoot。
+    */
+   void syncProjectInfoToAI(const QString& projectPath);
 
     // ========== 快捷键配置（供 ShortcutSettingsPage 使用）==========
     struct ShortcutEntry {

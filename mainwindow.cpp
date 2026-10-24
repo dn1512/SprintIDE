@@ -59,6 +59,7 @@
 #include <QKeySequence>
 #include <QTextStream>
 #include <QToolTip>
+#include <QCryptographicHash>
 
 #include "builder/java_maven_builder.h"
 #include "java/maven_project_model.h"
@@ -2680,6 +2681,38 @@ void MainWindow::openProject(const QString &path) {
 
     // 延迟恢复上次会话
     QTimer::singleShot(150, this, &MainWindow::restoreSession);
+
+    // 项目已打开，重新握手或单独上报（让 Agent 知道切换了项目）
+    if (m_aiConnMgr && m_aiConnMgr->isReady()) {
+        const QString projPath = d->currentProjectPath;
+        if (!projPath.isEmpty()) {
+            const QByteArray hash = QCryptographicHash::hash(
+                projPath.toUtf8(), QCryptographicHash::Sha1);
+            const QString projectId =
+            QString::fromLatin1(hash.toHex().left(16));
+            const QString projectName = QFileInfo(projPath).fileName();
+
+            m_aiConnMgr->setProjectInfo(projectId, projectName, projPath);
+
+            // 发一条通知给 Agent，让 Agent 知道项目变了
+            QJsonObject payload;
+            payload["projectId"]   = projectId;
+            payload["projectName"] = projectName;
+            payload["projectRoot"] = projPath;
+
+            QJsonObject msg;
+            msg["method"]          = "event";
+            msg["sessionId"]       = m_aiConnMgr->sessionId();
+            msg["requestId"]       = QString();
+            msg["protocolVersion"] = QStringLiteral("1.1");
+            msg["eventType"]       = QStringLiteral("projectChanged");
+            msg["payload"]         = payload;
+
+            m_aiConnMgr->sendRaw(msg);
+
+            qDebug() << "[AI] 已通知 Agent 项目变更:" << projectName;
+        }
+    }
 }
 
 
@@ -6416,6 +6449,44 @@ void MainWindow::aiRequestStopRun()
 
     m_aiRunStopInProgress = true;
     stopRunningProcess();
+}
+
+void MainWindow::syncProjectInfoToAI(const QString& projectPath)
+{
+    if (projectPath.isEmpty()) return;
+    if (!m_aiConnMgr) {
+        qDebug() << "[AI] syncProjectInfoToAI: m_aiConnMgr 为空（AI 未初始化）";
+        return;
+    }
+
+    const QByteArray hash = QCryptographicHash::hash(
+        projectPath.toUtf8(), QCryptographicHash::Sha1);
+    const QString projectId =
+    QString::fromLatin1(hash.toHex().left(16));
+    const QString projectName = QFileInfo(projectPath).fileName();
+
+    m_aiConnMgr->setProjectInfo(projectId, projectName, projectPath);
+    qDebug() << "[AI] 已设置项目信息:"
+    << projectName << "(" << projectPath << ")";
+
+    // 如果已经连上 → 立刻推 event；否则下次握手会带上
+    if (m_aiConnMgr->isReady()) {
+        QJsonObject payload;
+        payload["projectId"]   = projectId;
+        payload["projectName"] = projectName;
+        payload["projectRoot"] = projectPath;
+
+        QJsonObject msg;
+        msg["method"]          = "event";
+        msg["sessionId"]       = m_aiConnMgr->sessionId();
+        msg["requestId"]       = QString();
+        msg["protocolVersion"] = QStringLiteral("1.1");
+        msg["eventType"]       = QStringLiteral("projectChanged");
+        msg["payload"]         = payload;
+
+        m_aiConnMgr->sendRaw(msg);
+        qDebug() << "[AI] 已推送 projectChanged 事件";
+    }
 }
 
 // mainwindow.cpp - 实现

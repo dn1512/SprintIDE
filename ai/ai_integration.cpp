@@ -29,6 +29,8 @@
 #include <QMetaObject>
 #include <QTimer>
 #include <QUuid>
+#include <QCryptographicHash>
+#include <QFileInfo>
 
 namespace SprintIDE {
 
@@ -181,7 +183,56 @@ bool initializeAIIntegration(MainWindow *mainWindow,
 
     // ---- 7. 自动连接 ----
     if (autoConnect) {
+        // 上报项目信息给 Agent
+        if (mainWindow) {
+            const QString projPath = mainWindow->projectPath();
+            if (!projPath.isEmpty()) {
+                // projectId 用路径的 SHA1 前 16 位（与 ProjectExecutor 保持一致）
+                const QByteArray hash = QCryptographicHash::hash(
+                    projPath.toUtf8(), QCryptographicHash::Sha1);
+                const QString projectId =
+                QString::fromLatin1(hash.toHex().left(16));
+
+                const QString projectName =
+                QFileInfo(projPath).fileName();
+
+                connMgr->setProjectInfo(projectId, projectName, projPath);
+                qDebug() << "[AI Integration] handshake 将上报项目:"
+                << projectName << "(" << projPath << ")";
+            }
+        }
         connMgr->start(host, port, token, clientId);
+        QObject::connect(connMgr, &AiConnectionManager::connected,
+            mainWindow, [mainWindow, connMgr]() {
+                if (!mainWindow) return;
+                const QString projPath = mainWindow->projectPath();
+                if (projPath.isEmpty()) return;
+
+                const QByteArray hash = QCryptographicHash::hash(
+                    projPath.toUtf8(), QCryptographicHash::Sha1);
+                const QString projectId =
+                QString::fromLatin1(hash.toHex().left(16));
+                const QString projectName = QFileInfo(projPath).fileName();
+
+                connMgr->setProjectInfo(projectId, projectName, projPath);
+
+                QJsonObject payload;
+                payload["projectId"]   = projectId;
+                payload["projectName"] = projectName;
+                payload["projectRoot"] = projPath;
+
+                QJsonObject msg;
+                msg["method"]          = "event";
+                msg["sessionId"]       = connMgr->sessionId();
+                msg["requestId"]       = QString();
+                msg["protocolVersion"] = QStringLiteral("1.1");
+                msg["eventType"]       = QStringLiteral("projectChanged");
+                msg["payload"]         = payload;
+
+                connMgr->sendRaw(msg);
+                qDebug() << "[AI Integration] connected → 已推送 projectChanged:"
+                << projectName;
+            });
     } else {
         qDebug() << "[AI Integration] AutoConnect=false，跳过连接";
     }

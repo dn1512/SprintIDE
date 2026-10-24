@@ -104,6 +104,15 @@ bool AiConnectionManager::sendRaw(const QJsonObject& message)
     return m_transport->sendMessage(body);
 }
 
+void AiConnectionManager::setProjectInfo(const QString& projectId,
+    const QString& projectName,
+    const QString& projectRoot)
+{
+    m_projectId   = projectId;
+    m_projectName = projectName;
+    m_projectRoot = projectRoot;
+}
+
 // ------------------------------------------------------------
 // 传输层回调
 // ------------------------------------------------------------
@@ -233,6 +242,7 @@ void AiConnectionManager::sendHandshake()
     payload["clientVersion"]   = QStringLiteral("1.0.0");
     payload["projectId"]       = m_projectId;
     payload["projectName"]     = m_projectName;
+    payload["projectRoot"]     = m_projectRoot;
     payload["capabilities"]    = caps;
 
     QJsonObject msg;

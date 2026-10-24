@@ -64,6 +64,15 @@ public:
     /// 发送已经组装好的完整消息（供 ResultBuilder 使用）
     bool sendRaw(const QJsonObject& message);
 
+    /**
+    * @brief 设置当前项目信息（handshake 时发出去）
+    *
+    * 在 start() 之前调用。如果在连接建立后再改，需要重连才会生效。
+    */
+    void setProjectInfo(const QString& projectId,
+        const QString& projectName,
+        const QString& projectRoot);
+
 signals:
     void stateChanged(State newState);
     void connected();
@@ -97,6 +106,7 @@ private:
     QString m_clientName;
     QString m_projectId;
     QString m_projectName;
+    QString m_projectRoot;      //项目路径
     QString m_sessionId;
     QString m_handshakeRequestId;
 

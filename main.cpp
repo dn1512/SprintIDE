@@ -353,6 +353,8 @@ int main(int argc, char *argv[])
         // 创建主窗口
         // ============================================================
         auto mainWindow = std::make_unique<SprintIDE::MainWindow>();
+        qDebug() << "[main] MainWindow 构造完成，当前 projectPath="
+        << mainWindow->projectPath();
 
         if (projectManager->hasOpenProject()) {
             QString projectName = projectManager->currentProjectName();
