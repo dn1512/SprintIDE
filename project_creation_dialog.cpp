@@ -335,14 +335,14 @@ void ProjectCreationDialog::accept()
         qDebug() << "[PCD] accept() 重入被拒绝（已在执行中）";
         return;
     }
-    m_acceptInProgress = true;
+
+    AcceptGuard guard(m_acceptInProgress);
 
     // ============================================================
     //  【阶段 1】静态校验（不碰磁盘）
     // ============================================================
     QStringList errors;
     if (!validateInput(errors)) {
-        m_acceptInProgress = false;   // ← 失败可重试
         QString errorMsg = tr("请修正以下错误：\n\n");
         for (const QString& e : errors) {
             errorMsg += "• " + e + "\n";
@@ -381,7 +381,6 @@ void ProjectCreationDialog::accept()
     const bool dirExistedBefore = QDir(fullProjectPath).exists();
 
     if (dirExistedBefore) {
-        m_acceptInProgress = false;   // ← 失败可重试
         // 只在"目录已存在"这一种情况下，检查是否非空
         QDir fullDir(fullProjectPath);
         const QStringList entries = fullDir.entryList(
@@ -415,7 +414,6 @@ void ProjectCreationDialog::accept()
     //  【阶段 4】仅注册模式（不碰磁盘）
     // ============================================================
     if (m_registerOnly) {
-        m_acceptInProgress = false;   // ← 失败可重试
         m_result.success     = true;
         m_result.projectPath = fullProjectPath;
         m_result.projectName = projectName;
@@ -431,7 +429,6 @@ void ProjectCreationDialog::accept()
     //  【阶段 5】创建目录（此时目录必然为空或不存在）
     // ============================================================
     if (!createProjectStructure()) {
-        m_acceptInProgress = false;   // ← 失败可重试
         if (m_result.errorMessage.isEmpty()) {
             m_result.errorMessage = tr("无法创建项目目录结构");
         }
@@ -456,7 +453,6 @@ void ProjectCreationDialog::accept()
     }
 
     if (!ok) {
-        m_acceptInProgress = false;   // ← 失败可重试
         if (m_result.errorMessage.isEmpty()) {
             m_result.errorMessage = tr("无法生成项目文件");
         }
@@ -479,7 +475,6 @@ void ProjectCreationDialog::accept()
     //  【阶段 8】Git 初始化（保持不变）
     // ============================================================
     if (m_createGitRepo) {
-        m_acceptInProgress = false;   // ← 失败可重试
         QProcess git;
         git.setWorkingDirectory(m_projectConfig.projectPath());
         git.start("git", QStringList() << "init");
@@ -1703,12 +1698,17 @@ bool ProjectCreationDialog::validateProjectPath(const QString& path, QString& er
         return false;
     }
 
-    static const QString illegalChars = "<>:\"|?*";
-    for (const QChar& ch : illegalChars) {
-        if (path.contains(ch)) {
-            error = tr("路径包含非法字符");
-            return false;
-        }
+    // static const QString illegalChars = "<>:\"|?*";
+    // for (const QChar& ch : illegalChars) {
+        // if (path.contains(ch)) {
+            // error = tr("路径包含非法字符");
+            // return false;
+        // }
+    // }
+    const QString leaf = dir.dirName();
+    if (leaf.isEmpty() && !dir.isRoot()) {
+        error = tr("项目路径不合法");
+        return false;
     }
 
     if (!dir.exists()) {

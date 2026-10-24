@@ -181,6 +181,11 @@ private slots:
     void setCompilerType(ProjectCompilerType type);
 
 private:
+    struct AcceptGuard {
+        bool& flag;
+        explicit AcceptGuard(bool& f) : flag(f) { flag = true; }
+        ~AcceptGuard() { flag = false; }
+    };
     // ---------- 初始化 ----------
     void setupUI();
     void setupConnections();
