@@ -959,7 +959,7 @@ if(WIN32)
 
     if(EXISTS "${_sprint_ico}")
         message(STATUS "Windows 图标: ${_sprint_ico}")
-        string(REPLACE "\\" "/" _sprint_ico_tmp "${_sprint_ico}")
+
         string(REPLACE "/" "\\\\" _sprint_ico_for_rc "${_sprint_ico_tmp}")
 
         file(WRITE "${_sprint_generated_rc}"
@@ -970,14 +970,16 @@ if(WIN32)
 IDI_ICON1 ICON DISCARDABLE \"${_sprint_ico_for_rc}\"
 
 // ---- 版本信息 ----
+// 注：VS_FFI_FILEFLAGSMASK / VOS_NT_WINDOWS32 / VFT_APP / VFT2_UNKNOWN
+//     已换成数字常量，windres (MinGW) 也能识别
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION     ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0
 PRODUCTVERSION  ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0
-FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
-FILEOS          VOS_NT_WINDOWS32
-FILETYPE        VFT_APP
-FILESUBTYPE     VFT2_UNKNOWN
+FILEOS          0x40004L
+FILETYPE        0x1L
+FILESUBTYPE     0x0L
 BEGIN
     BLOCK \"StringFileInfo\"
     BEGIN
