@@ -1067,22 +1067,16 @@ QVariant ProjectConfig::getExtraValue(const QString& key, const QVariant& defaul
 }
 
 // ==================== 私有验证方法 ====================
-
 bool ProjectConfig::validateFilePath(const QString& path, bool checkExists) const
 {
-    if (path.isEmpty()) {
-        return false;
-    }
+    if (path.isEmpty()) return false;
 
-    // 检查路径是否包含非法字符（简化检查）
-    static const QString illegalChars = "<>:\"|?*";
-    for (const QChar& ch : illegalChars) {
-        if (path.contains(ch)) {
-            return false;
-        }
-    }
+    // 不做字符黑名单：
+    //   - ':' 在 Windows 盘符合法、在 macOS/Linux 路径完全合法
+    //   - '<>|?*' 的非法性由具体文件系统 API 决定（QFile::open 失败会报错）
+    //   - 字符串黑名单会误伤 UNC、长路径、设备路径等特殊情况
+    // 真正的路径合法性由调用方检测（QDir::mkpath / QFile::open 失败即非法）
 
-    // 如果是相对路径，相对于项目路径
     QString fullPath;
     if (QDir::isRelativePath(path)) {
         fullPath = QDir(m_projectPath).absoluteFilePath(path);
@@ -1090,29 +1084,16 @@ bool ProjectConfig::validateFilePath(const QString& path, bool checkExists) cons
         fullPath = path;
     }
 
-    // 检查文件是否存在
     if (checkExists) {
         return QFileInfo::exists(fullPath);
     }
-
     return true;
 }
 
 bool ProjectConfig::validateDirPath(const QString& path, bool checkExists) const
 {
-    if (path.isEmpty()) {
-        return false;
-    }
+    if (path.isEmpty()) return false;
 
-    // 检查路径是否包含非法字符
-    static const QString illegalChars = "<>:\"|?*";
-    for (const QChar& ch : illegalChars) {
-        if (path.contains(ch)) {
-            return false;
-        }
-    }
-
-    // 如果是相对路径，相对于项目路径
     QString fullPath;
     if (QDir::isRelativePath(path)) {
         fullPath = QDir(m_projectPath).absoluteFilePath(path);
@@ -1120,11 +1101,9 @@ bool ProjectConfig::validateDirPath(const QString& path, bool checkExists) const
         fullPath = path;
     }
 
-    // 检查目录是否存在
     if (checkExists) {
         return QDir(fullPath).exists();
     }
-
     return true;
 }
 
