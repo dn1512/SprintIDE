@@ -29,6 +29,7 @@ namespace SprintIDE {
 class PythonBuilder : public IBuilder {
 public:
     QProcessEnvironment prepareEnvironment(const BuildTask& task) override;
+    static QString resolvePythonInterpreter(const BuildTask& task);
     bool build(const BuildTask& task, BuildResult& result) override;
     bool clean(const BuildTask& task, BuildResult& result) override;
     bool run(const BuildTask& task, const BuildResult& buildResult, QString& output) override;

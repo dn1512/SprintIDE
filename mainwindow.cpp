@@ -104,9 +104,11 @@
 #include "python/python_virtual_env.h"
 #include "python/python_test_runner.h"
 #include "python/python_project_model.h"
-#include "cpp/cpp_project_model.h"
+#include "builder/python_builder.h"
 
+#include "cpp/cpp_project_model.h"
 #include "cpp/cpp_debugger.h"
+
 #include "deps/toolchain_manager.h"
 #include "deps/toolchain_types.h"
 #include "deps/toolchain_dialog.h"
@@ -4375,45 +4377,32 @@ void MainWindow::onStartDebug() {
     // ========== Python 调试 ==========
     if (lang == LanguageType::Python || sourceFile.endsWith(".py")) {
 
-        // ---- 获取解释器（与 onRun 逻辑一致） ----
-        auto model = ProjectManager::instance()->pythonProjectModel();
-        QString projectPath = d->currentProjectPath.isEmpty() ? QFileInfo(sourceFile).absolutePath() : d->currentProjectPath;
-        QString python;
+        QString projectPath = d->currentProjectPath.isEmpty()
+        ? QFileInfo(sourceFile).absolutePath()
+        : d->currentProjectPath;
 
-        // 1. 优先使用虚拟环境中的解释器
-        if (model && !model->interpreterPath().isEmpty()) {
-            python = model->interpreterPath();
-        }
-        // 2. 如果模型未提供，从 SDK 环境变量 PYTHON_HOME 读取
-        else if (python.isEmpty() || python == "python3") {
-            ConfigManager* cfg = Application::instance().configManager();
-            if (cfg) {
-                QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
-                if (sdkEnv.contains("PYTHON_HOME")) {
-                    QString pyHome = sdkEnv["PYTHON_HOME"].toString();
-                    if (!pyHome.isEmpty()) {
-#ifdef Q_OS_WIN
-                        QString pyExe = pyHome + "/python.exe";
-#else
-                        QString pyExe = pyHome; // macOS/Linux 通常直接是 bin/python3 或链接
-                        // macOS 特定路径检查
-#ifdef Q_OS_MAC
-                        if (pyExe.isEmpty() || pyExe == "python3") {
-                            if (QFile::exists("/opt/homebrew/bin/python3")) python = "/opt/homebrew/bin/python3";
-                            else if (QFile::exists("/usr/local/bin/python3")) python = "/usr/local/bin/python3";
-                        }
-#endif
-#endif
-                        if (QFile::exists(pyExe)) {
-                            python = pyExe;
-                        }
-                    }
-                }
+        // ---- 解释器解析：统一走 PythonBuilder::resolvePythonInterpreter ----
+        //   顺序：sdkConfig["pythonInterpreter"] → PythonProjectModel
+        //        → PYTHON_HOME → PATH 查找 → 平台兜底名
+        BuildTask task;
+        task.projectPath = projectPath;
+        task.sourceFiles << sourceFile;
+        {
+            ProjectConfig pc;
+            QStringList errs;
+            if (pc.loadFromProjectDir(projectPath, errs)) {
+                task.sdkConfig = pc.sdkEnvironment();
             }
         }
-        // 3. 最终 fallback
-        if (python.isEmpty()) {
-            python = "python3";
+
+        const QString python = PythonBuilder::resolvePythonInterpreter(task);
+
+        if (!QFileInfo(python).isFile()
+            && QStandardPaths::findExecutable(python).isEmpty()) {
+            QMessageBox::warning(this, tr("找不到 Python 解释器"),
+                tr("系统中未找到 Python 解释器。\n\n"
+                    "请安装 Python，或在 设置 → 环境变量 里配置 PYTHON_HOME。"));
+            return;
         }
 
         // 构建调试配置
@@ -8631,32 +8620,34 @@ void MainWindow::onRun()
     if (lang == LanguageType::Python) {
         auto model = ProjectManager::instance()->pythonProjectModel();
         QString projectPath = d->currentProjectPath.isEmpty() ?
-                                  QFileInfo(sourceFile).absolutePath() :
-                                  d->currentProjectPath;
-        QString python;
+        QFileInfo(sourceFile).absolutePath() :
+        d->currentProjectPath;
 
-        // 1. 优先使用虚拟环境中的解释器
-        if (model && !model->interpreterPath().isEmpty()) {
-            python = model->interpreterPath();
-        }
-
-        // 2. 如果模型未提供，从 SDK 环境变量 PYTHON_HOME 读取
-        if (python.isEmpty() || python == "python3") {
-            ConfigManager* cfg = Application::instance().configManager();
-            if (cfg) {
-                QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
-                if (sdkEnv.contains("PYTHON_HOME")) {
-                    QString pyHome = sdkEnv["PYTHON_HOME"].toString();
-                    if (!pyHome.isEmpty() && QFile::exists(pyHome)) {
-                        python = pyHome;
-                    }
-                }
+        // ---- 解释器解析：统一走 PythonBuilder::resolvePythonInterpreter ----
+        //   顺序：sdkConfig["pythonInterpreter"] → PythonProjectModel
+        //        → PYTHON_HOME → PATH 查找 → 平台兜底名
+        //   这样"运行"与"编译/调试"完全一致，
+        //   Windows 上不会再落到 "python3" 这个不存在的名字上。
+        BuildTask task;
+        task.projectPath = projectPath;
+        task.sourceFiles << sourceFile;
+        {
+            ProjectConfig pc;
+            QStringList errs;
+            if (pc.loadFromProjectDir(projectPath, errs)) {
+                task.sdkConfig = pc.sdkEnvironment();
             }
         }
 
-        // 3. 最终 fallback
-        if (python.isEmpty()) {
-            python = "python3";
+        const QString python = PythonBuilder::resolvePythonInterpreter(task);
+
+        // 解析结果为绝对文件路径 / PATH 里能找到 → 继续；否则明确报错
+        if (!QFileInfo(python).isFile()
+            && QStandardPaths::findExecutable(python).isEmpty()) {
+            QMessageBox::warning(this, tr("找不到 Python 解释器"),
+                tr("系统中未找到 Python 解释器。\n\n"
+                    "请安装 Python，或在 设置 → 环境变量 里配置 PYTHON_HOME。"));
+            return;
         }
 
         // 输出诊断信息
