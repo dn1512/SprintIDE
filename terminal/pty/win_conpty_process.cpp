@@ -8,6 +8,7 @@
 #include <QMetaObject>
 #include <QProcessEnvironment>
 #include <QThread>
+#include <QCoreApplication>
 
 #include <winternl.h>   // RTL_OSVERSIONINFOW
 
