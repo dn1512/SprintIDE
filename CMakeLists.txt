@@ -741,6 +741,13 @@ add_executable(${PROJECT_NAME}
     rust/rust_project_model.cpp
     rust/rust_debugger.h
     rust/rust_debugger.cpp
+    terminal/pty/pty_types.h
+    terminal/pty/pty_factory.h
+    terminal/pty/pty_factory.cpp
+    terminal/pty/unix_pty_process.h
+    terminal/pty/unix_pty_process.cpp
+    terminal/pty/win_conpty_process.h
+    terminal/pty/win_conpty_process.cpp
 )
 
 # ============================================================
@@ -782,6 +789,29 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Concurrent
     Qt6::Svg
 )
+
+target_sources(${PROJECT_NAME} PRIVATE
+    terminal/pty/pty_types.h
+    terminal/pty/pty_factory.h
+    terminal/pty/pty_factory.cpp
+)
+
+if(WIN32)
+target_sources(${PROJECT_NAME} PRIVATE
+    terminal/pty/win_conpty_process.h
+    terminal/pty/win_conpty_process.cpp
+)
+else()
+target_sources(${PROJECT_NAME} PRIVATE
+    terminal/pty/unix_pty_process.h
+    terminal/pty/unix_pty_process.cpp
+)
+# Linux: forkpty 在 libutil；macOS 在 libSystem（默认已链接）
+if(UNIX AND NOT APPLE)
+target_link_libraries(${PROJECT_NAME} PRIVATE util)
+endif()
+endif()
+
 
 # ========== 使用source_group创建设计文档中的模块结构 ==========
 

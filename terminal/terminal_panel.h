@@ -20,97 +20,115 @@
 #define TERMINAL_PANEL_H
 
 #include <QWidget>
-#include <QProcess>
 #include <QTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProcessEnvironment>
+#include <QVector>
+#include <QPair>
+#include <QTextCharFormat>
+#include <QPointer>
 
 namespace SprintIDE {
 
-class TerminalPanel : public QWidget
-{
-    Q_OBJECT
+    class IPtyProcess;   // 前置声明，避免头文件依赖 pty_types.h
 
-public:
-    explicit TerminalPanel(QWidget* parent = nullptr);
-    ~TerminalPanel();
+    class TerminalPanel : public QWidget
+    {
+        Q_OBJECT
 
-    void setWorkingDirectory(const QString& dir);
-    QString workingDirectory() const;
+        public:
+        explicit TerminalPanel(QWidget* parent = nullptr);
+        ~TerminalPanel();
 
-    void executeCommand(const QString& command);
-    bool isCommandRunning() const;
+        void setWorkingDirectory(const QString& dir);
+        QString workingDirectory() const;
 
-    void clearOutput();
-    void stopCurrentCommand();
-    void focusPanel();
+        void executeCommand(const QString& command);
+        bool isCommandRunning() const;
 
-signals:
-    void commandStarted(const QString& command);
-    void commandFinished(const QString& command, int exitCode);
-    void outputReceived(const QString& output, bool isError);
-    void workingDirectoryChanged(const QString& dir);
+        void clearOutput();
+        void stopCurrentCommand();
+        void focusPanel();
 
-protected:
-    // 拦截输入区键盘/鼠标事件，实现"伪终端"行为
-    bool eventFilter(QObject* obj, QEvent* event) override;
+        signals:
+        void commandStarted(const QString& command);
+        void commandFinished(const QString& command, int exitCode);
+        void outputReceived(const QString& output, bool isError);
+        void workingDirectoryChanged(const QString& dir);
 
-private slots:
-    void onProcessOutput();
-    void onProcessError();
-    void onProcessFinished(int exitCode, QProcess::ExitStatus status);
-    void onProcessErrorOccurred(QProcess::ProcessError error);
-    void recolorAllOutput();
+        protected:
+        bool eventFilter(QObject* obj, QEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
 
-private:
-    void setupUI();
+        private slots:
+        void onPtyReadyRead(const QByteArray& data);
+        void onPtyFinished(int exitCode, int exitStatus);
+        void onPtyError(const QString& message);
+        void recolorAllOutput();
 
-    // ---- 终端输出 API ----
-    // 追加进程原始输出（原样，不加换行）
-    void appendRaw(const QString& text);
-    // 追加系统提示行（自动前后补换行 + 特定颜色）
-    void appendSystemLine(const QString& text, bool isError = false);
-    // 在末尾打印新提示符，并记录输入起点
-    void printPrompt();
+        private:
+        void setupUI();
 
-    // ---- 命令输入 ----
-    // 提示符字符串（含虚拟环境前缀）
-    QString promptString() const;
-    // 用户按 Enter
-    void onCommandEntered();
-    // 上下键调历史（direction: -1=上 / +1=下）
-    void navigateHistory(int direction);
+        // ---- 输出 API ----
+        void appendSystemLine(const QString& text, bool isError = false);
+        void printPrompt();
 
-    void updateVenvForDirectory(const QString& dir);
+        // ---- 命令输入 ----
+        QString promptString() const;
+        void onCommandEntered();
+        void navigateHistory(int direction);
 
-    // 构造终端子进程环境（含 SDK 变量 + 虚拟环境）
-    QProcessEnvironment buildChildEnvironment() const;
+        void updateVenvForDirectory(const QString& dir);
+        QProcessEnvironment buildChildEnvironment() const;
 
-    // ---- UI ----
-    QTextEdit*   m_outputWidget = nullptr;
-    QPushButton* m_stopButton   = nullptr;
+        // 根据 QTextEdit 尺寸算 rows/cols → m_pty->resize()
+        void syncPtySize();
 
-    // ---- 运行状态 ----
-    QProcess* m_process = nullptr;
-    QString   m_currentCommand;
-    QString   m_workingDirectory;
-    bool      m_isCommandRunning = false;
+        // ---- ANSI 处理 ----
+        void feedAnsiBytes(const QByteArray& data);
+        void renderCurrentLine();           // 把当前行实时画到文档末尾
+        void flushCurrentLine();
+        void clearCurrentLineBuf();
 
-    // ---- 输入区起点 ----
-    // 提示符之后的位置，用户编辑被限制在此之后
-    int m_promptStart = -1;
+        // 当前行缓冲：每个字符 + 它的颜色格式
+        QVector<QPair<QChar, QTextCharFormat>> m_lineBuf;
+        int              m_cursorCol = 0;       // 当前行光标列
+        QTextCharFormat  m_currentFmt;          // 当前 SGR 状态
+        int              m_currentLineDocStart = -1;  // 当前行在 QTextDocument 中的起点
 
-    // ---- 历史 ----
-    QStringList m_commandHistory;
-    int         m_historyIndex = 0;
+        // CSI 状态机
+        enum class EscapeState { Normal, Escape, Csi, Osc };
+        EscapeState m_escapeState = EscapeState::Normal;
+        QString     m_escapeParams;             // CSI 参数字符串（不含 '[' 和终结字符）
 
-    // ---- 虚拟环境 ----
-    QString m_currentVenvPath;
-    QString m_currentPythonInterpreter;
-};
+        void processAnsiChar(QChar ch);
+        void handleCsi(QChar finalChar);
+        void handleSgr(const QStringList& params);
+
+        // ---- UI ----
+        QTextEdit*   m_outputWidget = nullptr;
+        QPushButton* m_stopButton   = nullptr;
+
+        // ---- 进程 ----
+        IPtyProcess* m_pty = nullptr;
+        QString      m_currentCommand;
+        QString      m_workingDirectory;
+        bool         m_isCommandRunning = false;
+
+        // ---- 空闲态输入起点 ----
+        int m_promptStart = -1;
+
+        // ---- 历史 ----
+        QStringList m_commandHistory;
+        int         m_historyIndex = 0;
+
+        // ---- 虚拟环境 ----
+        QString m_currentVenvPath;
+        QString m_currentPythonInterpreter;
+    };
 
 } // namespace SprintIDE
 
