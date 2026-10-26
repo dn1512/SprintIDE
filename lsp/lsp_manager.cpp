@@ -193,8 +193,11 @@ static QString findProjectRoot(const QString& startPath)
 //    • 全部走 QFileInfo::isFile() + isExecutable()，避免把目录误判为可执行文件
 //    • 未命中时打印 PATH，方便诊断"环境没采纳"类问题
 // ============================================================================
-QString LSPManager::findServerExecutable(const QString &command) const
+QString LSPManager::findServerExecutable(const QString &command,
+    QString* diagnosticOut) const
 {
+    if (diagnosticOut) diagnosticOut->clear();
+
     // ---------- 缓存 ----------
     if (m_serverCache.contains(command)) {
         return m_serverCache[command];
@@ -205,14 +208,84 @@ QString LSPManager::findServerExecutable(const QString &command) const
         return path;
     };
 
+    // ============================================================
+    // 辅助 1：验证某个可执行文件是否真正可用
+    //
+    //   只对"可能是 shim 的命令"做验证，其他命令直接信任（避免每次
+    //   LSP 启动都 spawn 一个进程做探测）。
+    //
+    //   rust-analyzer 的 ~/.cargo/bin/rust-analyzer 是 rustup 的 shim，
+    //   组件没装时 --version 会失败。但 PATH 里能找到这个 shim，
+    //   被误判为"已安装"。所以必须实际跑一次验证。
+    // ============================================================
+    auto verifyExecutable = [&command](const QString& path) -> bool {
+        // 只有 rust-analyzer 需要验证；其他 LSP 服务器（gopls / clangd /
+        // typescript-language-server 等）都是真实二进制，不是 shim。
+        if (command != "rust-analyzer") {
+            return true;
+        }
+
+        QProcess probe;
+        probe.setProgram(path);
+        probe.setArguments({"--version"});
+        probe.setProcessChannelMode(QProcess::MergedChannels);
+        probe.start();
+
+        if (!probe.waitForStarted(2000)) {
+            qWarning() << "[LSP Manager] 验证失败（启动超时）:" << path;
+            return false;
+        }
+        if (!probe.waitForFinished(2000)) {
+            probe.kill();
+            probe.waitForFinished(500);
+            qWarning() << "[LSP Manager] 验证失败（执行超时）:" << path;
+            return false;
+        }
+        if (probe.exitCode() != 0) {
+            const QString err = QString::fromLocal8Bit(probe.readAll()).left(200);
+            qWarning() << "[LSP Manager] 验证失败（退出码"
+            << probe.exitCode() << "）:" << path
+            << "输出:" << err;
+            return false;
+        }
+        return true;
+    };
+
+    // ============================================================
+    // 辅助 2：从 rustup toolchain 目录找真实 rust-analyzer
+    //
+    //   shim 不可用时，真身通常在：
+    //     ~/.rustup/toolchains/<toolchain>/bin/rust-analyzer
+    //   遍历所有 toolchain，取第一个存在的。
+    // ============================================================
+    auto findRealRustAnalyzer = [](const QString& home) -> QString {
+        const QString toolchainRoot = home + "/.rustup/toolchains";
+        QDir tcDir(toolchainRoot);
+        if (!tcDir.exists()) return QString();
+
+        const QStringList tcList = tcDir.entryList(
+            QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+
+        for (auto it = tcList.crbegin(); it != tcList.crend(); ++it) {
+            const QString realBin = tcDir.absoluteFilePath(
+                *it + "/bin/rust-analyzer");
+            QFileInfo fi(realBin);
+            if (fi.isFile() && fi.isExecutable()) {
+                return realBin;
+            }
+        }
+        return QString();
+    };
+
     // ---------- 1. 绝对路径 ----------
     if (QFileInfo(command).isAbsolute()) {
         QFileInfo fi(command);
-        if (fi.isFile() && fi.isExecutable()) {
+        if (fi.isFile() && fi.isExecutable() && verifyExecutable(command)) {
             qDebug() << "[LSP Manager] 使用绝对路径:" << command;
             return cacheAndReturn(command);
         }
-        qWarning() << "[LSP Manager] 绝对路径不可执行:" << command;
+        qWarning() << "[LSP Manager] 绝对路径不可执行或不可用:" << command;
+        if (diagnosticOut) *diagnosticOut = installHintFor(command);
         return cacheAndReturn(QString());
     }
 
@@ -220,8 +293,27 @@ QString LSPManager::findServerExecutable(const QString &command) const
     {
         const QString fromPath = QStandardPaths::findExecutable(command);
         if (!fromPath.isEmpty()) {
-            qDebug() << "[LSP Manager] 从 PATH 找到:" << command << "->" << fromPath;
-            return cacheAndReturn(fromPath);
+            if (verifyExecutable(fromPath)) {
+                qDebug() << "[LSP Manager] 从 PATH 找到:" << command
+                << "->" << fromPath;
+                return cacheAndReturn(fromPath);
+            }
+
+            // shim 存在但不可用 → 找 rustup toolchain 里的真实二进制
+            qWarning() << "[LSP Manager] PATH 里的" << command
+            << "不可用（可能是 shim）:" << fromPath;
+            const QString home = QDir::homePath();
+            const QString real = findRealRustAnalyzer(home);
+            if (!real.isEmpty() && verifyExecutable(real)) {
+                qDebug() << "[LSP Manager] 改用 rustup toolchain 里的真实路径:"
+                << real;
+                return cacheAndReturn(real);
+            }
+
+            // 真实路径也找不到 → 明确告知用户
+            qWarning() << "[LSP Manager] 找不到可用的" << command;
+            if (diagnosticOut) *diagnosticOut = installHintFor(command);
+            return cacheAndReturn(QString());
         }
     }
 
@@ -235,23 +327,23 @@ QString LSPManager::findServerExecutable(const QString &command) const
         QDir d(root);
         if (!d.exists()) return;
         const QStringList versions =
-            d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
         // 倒序：v22.15.1 排在 v20.x 前面
         for (auto it = versions.crbegin(); it != versions.crend(); ++it) {
             pmDirs << d.absoluteFilePath(*it + suffix);
         }
     };
 
-#if defined(Q_OS_MAC)
+    #if defined(Q_OS_MAC)
     collectVersionedDirs(home + "/.nvm/versions/node",                        "/bin");
     collectVersionedDirs(home + "/Library/Application Support/fnm/node-versions",
-                          "/installation/bin");
+        "/installation/bin");
     collectVersionedDirs(home + "/.asdf/installs/nodejs",                     "/bin");
     pmDirs << home + "/.volta/bin";
     pmDirs << home + "/.cargo/bin";             // rust-analyzer
     pmDirs << home + "/go/bin";                 // gopls（默认 GOPATH/bin）
     pmDirs << home + "/.local/bin";             // 通用用户本地
-#elif defined(Q_OS_LINUX)
+    #elif defined(Q_OS_LINUX)
     collectVersionedDirs(home + "/.nvm/versions/node",                        "/bin");
     collectVersionedDirs(home + "/.fnm/node-versions",                        "/installation/bin");
     collectVersionedDirs(home + "/.asdf/installs/nodejs",                     "/bin");
@@ -260,71 +352,180 @@ QString LSPManager::findServerExecutable(const QString &command) const
     pmDirs << home + "/go/bin";
     pmDirs << home + "/.local/bin";
     pmDirs << home + "/.npm-global/bin";
-#elif defined(Q_OS_WIN)
+    #elif defined(Q_OS_WIN)
     const QString appData = qEnvironmentVariable("APPDATA");
     if (!appData.isEmpty()) pmDirs << appData + "/npm";
     pmDirs << home + "/.cargo/bin";
     pmDirs << home + "/go/bin";
     pmDirs << home + "/.volta/bin";
-#endif
+    #endif
 
-#ifdef Q_OS_WIN
+    #ifdef Q_OS_WIN
     const QStringList exeSuffixes = {".exe", ".cmd", ".bat", ""};
-#else
+    #else
     const QStringList exeSuffixes = {""};
-#endif
+    #endif
+
+    // 标记：有没有遇到过"存在但不可用"的候选（用于判断给什么错误提示）
+    bool hadUnusableCandidate = false;
 
     for (const QString& dir : pmDirs) {
         for (const QString& suf : exeSuffixes) {
             const QString candidate = QDir(dir).absoluteFilePath(command + suf);
             QFileInfo fi(candidate);
-            if (fi.isFile() && fi.isExecutable()) {
+            if (!fi.isFile() || !fi.isExecutable()) continue;
+
+            if (verifyExecutable(candidate)) {
                 qDebug() << "[LSP Manager] 从包管理器目录找到:"
-                         << command << "->" << candidate;
+                << command << "->" << candidate;
                 return cacheAndReturn(candidate);
+            }
+
+            // 候选存在但不可用（典型：~/.cargo/bin/rust-analyzer 的 shim）
+            hadUnusableCandidate = true;
+            qWarning() << "[LSP Manager] 候选存在但不可用，跳过:" << candidate;
+
+            // 尝试从 rustup toolchain 拿真实二进制（只对 rust-analyzer 有效）
+            const QString real = findRealRustAnalyzer(home);
+            if (!real.isEmpty() && verifyExecutable(real)) {
+                qDebug() << "[LSP Manager] 改用 rustup toolchain 里的真实路径:"
+                << real;
+                return cacheAndReturn(real);
             }
         }
     }
 
     // ---------- 4. 系统常见路径 ----------
     QStringList sysPaths;
-#if defined(Q_OS_WIN)
+    #if defined(Q_OS_WIN)
     sysPaths << "C:/Program Files/LLVM/bin"
-             << "C:/Program Files (x86)/LLVM/bin"
-             << "C:/mingw64/bin"
-             << "C:/mingw/bin";
-#elif defined(Q_OS_MAC)
+    << "C:/Program Files (x86)/LLVM/bin"
+    << "C:/mingw64/bin"
+    << "C:/mingw/bin";
+    #elif defined(Q_OS_MAC)
     sysPaths << "/opt/homebrew/bin"                           // Apple Silicon
-             << "/usr/local/bin"                              // Intel
-             << "/opt/homebrew/opt/llvm/bin"                  // clangd（brew llvm）
-             << "/usr/local/opt/llvm/bin"
-             << "/usr/bin"
-             << "/opt/local/bin"                              // MacPorts
-             << "/Library/Developer/CommandLineTools/usr/bin";
-#else
+    << "/usr/local/bin"                              // Intel
+    << "/opt/homebrew/opt/llvm/bin"                  // clangd（brew llvm）
+    << "/usr/local/opt/llvm/bin"
+    << "/usr/bin"
+    << "/opt/local/bin"                              // MacPorts
+    << "/Library/Developer/CommandLineTools/usr/bin";
+    #else
     sysPaths << "/usr/bin"
-             << "/usr/local/bin"
-             << "/usr/local/go/bin"
-             << "/opt/bin"
-             << "/snap/bin";
-#endif
+    << "/usr/local/bin"
+    << "/usr/local/go/bin"
+    << "/opt/bin"
+    << "/snap/bin";
+    #endif
 
     for (const QString& dir : sysPaths) {
         for (const QString& suf : exeSuffixes) {
             const QString candidate = QDir(dir).absoluteFilePath(command + suf);
             QFileInfo fi(candidate);
-            if (fi.isFile() && fi.isExecutable()) {
+            if (!fi.isFile() || !fi.isExecutable()) continue;
+
+            if (verifyExecutable(candidate)) {
                 qDebug() << "[LSP Manager] 从系统路径找到:"
-                         << command << "->" << candidate;
+                << command << "->" << candidate;
                 return cacheAndReturn(candidate);
             }
+
+            hadUnusableCandidate = true;
+            qWarning() << "[LSP Manager] 系统路径候选存在但不可用:" << candidate;
         }
     }
 
     // ---------- 5. 未找到 ----------
-    qWarning() << "[LSP Manager] ✗ 未找到 LSP 服务器:" << command;
+    qWarning() << "[LSP Manager] ✗ 未找到可用的 LSP 服务器:" << command;
     qWarning() << "  PATH =" << qgetenv("PATH");
+    if (hadUnusableCandidate) {
+        qWarning() << "  提示：部分候选存在但 --version 验证失败，可能是 shim";
+    }
+
+    // 关键：把"如何修复"的信息带回给调用方
+    if (diagnosticOut) {
+        *diagnosticOut = installHintFor(command);
+    }
     return cacheAndReturn(QString());
+}
+
+QString LSPManager::installHintFor(const QString& command)
+{
+    if (command == "rust-analyzer") {
+        return QStringLiteral(
+            "rust-analyzer 组件未安装或不可用。\n"
+            "\n"
+            "请运行：\n"
+            "    rustup component add rust-analyzer\n"
+            "\n"
+            "然后重启 SprintIDE。\n"
+            "\n"
+            "验证安装：\n"
+            "    rust-analyzer --version");
+    }
+    if (command == "gopls") {
+        return QStringLiteral(
+            "gopls 未安装。\n"
+            "\n"
+            "请运行：\n"
+            "    go install golang.org/x/tools/gopls@latest\n"
+            "\n"
+            "然后确认 $HOME/go/bin 在 PATH 里（或重启 SprintIDE）。");
+    }
+    if (command == "typescript-language-server") {
+        return QStringLiteral(
+            "typescript-language-server 未安装。\n"
+            "\n"
+            "请运行：\n"
+            "    npm install -g typescript-language-server typescript");
+    }
+    if (command == "clangd") {
+        return QStringLiteral(
+            "clangd 未安装。\n"
+            "\n"
+            "macOS：brew install llvm\n"
+            "Ubuntu：sudo apt install clangd\n"
+            "然后确保 clangd 在 PATH 里。");
+    }
+    if (command == "pylsp") {
+        return QStringLiteral(
+            "pylsp 未安装。\n"
+            "\n"
+            "请运行：\n"
+            "    pip install python-lsp-server");
+    }
+    if (command == "jdtls") {
+        return QStringLiteral(
+            "JDTLS（Eclipse JDT Language Server）未安装。\n"
+            "\n"
+            "请从 https://github.com/eclipse/eclipse.jdt.ls 下载，\n"
+            "或通过包管理器安装 jdtls。");
+    }
+    if (command == "omnisharp") {
+        return QStringLiteral(
+            "OmniSharp 未安装。\n"
+            "\n"
+            "请从 https://github.com/OmniSharp/omnisharp-roslyn 下载。");
+    }
+    if (command == "intelephense") {
+        return QStringLiteral(
+            "intelephense 未安装。\n"
+            "\n"
+            "请运行：\n"
+            "    npm install -g intelephense");
+    }
+    if (command == "pyright-langserver") {
+        return QStringLiteral(
+            "pyright 未安装。\n"
+            "\n"
+            "请运行：\n"
+            "    npm install -g pyright");
+    }
+
+    // 未知命令：给出通用提示
+    return QStringLiteral("LSP 服务器未安装：%1\n"
+        "请确认该命令在 PATH 中，或在设置里指定完整路径。")
+    .arg(command);
 }
 
 // 生成客户端的唯一键
@@ -440,10 +641,22 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
         // Python 特殊处理：不通过 findServerExecutable 查找，因为我们使用自定义命令
         serverPath = config.command;  // 仅作为标识，实际可能不使用
     } else {
-        serverPath = findServerExecutable(config.command);
+        // ============================================================
+        // v8.5+：把"为什么没找到"的诊断信息带出来
+        //   - 未安装 → "请运行 xxx install"
+        //   - 存在但不可用（shim） → 也是安装提示（如 rustup component add）
+        // ============================================================
+        QString diagnostic;
+        serverPath = findServerExecutable(config.command, &diagnostic);
+
         if (serverPath.isEmpty()) {
-            qDebug() << "[LSP Manager] 未安装 LSP 服务器:" << config.command;
-            emit clientError(lang.id, "未安装服务器: " + config.command);
+            qDebug() << "[LSP Manager] LSP 服务器不可用:" << config.command
+            << " 诊断:" << diagnostic.left(200);
+
+            const QString msg = diagnostic.isEmpty()
+            ? ("未安装服务器: " + config.command)
+            : diagnostic;
+            emit clientError(lang.id, msg);
             return nullptr;
         }
     }

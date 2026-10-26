@@ -284,11 +284,17 @@ bool LSPClient::startServer(const QString& serverPath)
     m_pendingRequests[request["id"].toInt()] = "initialize";
     sendMessage(request);
 
-    m_initTimer->start(30000); // 30 秒超时
+    int timeoutMs = 30000;
+    if (isJdtls) {
+        timeoutMs = 60000;    // JDTLS 启动慢 得多给它点时间
+    } else if (m_serverPath.contains("rust-analyzer")
+        || m_serverPath.contains("gopls")) {
+        timeoutMs = 120000;   // rust-analyzer / gopls 首次索引依赖慢
+    }
+    m_initTimer->start(timeoutMs);
 
     return true;
 }
-
 
 void LSPClient::stopServer()
 {
@@ -616,8 +622,12 @@ void LSPClient::onReparseTimer()
 void LSPClient::onInitializeTimeout()
 {
     if (!m_initialized) {
-        emit serverError("JDTLS 初始化超时，请检查 Java 环境或日志文件。");
-        // 可选：重启服务器
+        // 用实际的 server 名，不再硬编码 JDTLS
+        const QString serverName = QFileInfo(m_serverPath).completeBaseName();
+        const QString tag = serverName.isEmpty()
+        ? QStringLiteral("LSP")
+        : serverName;
+        emit serverError(QString("%1 初始化超时（30 秒），请检查日志。").arg(tag));
     }
 }
 
@@ -830,6 +840,11 @@ void LSPClient::onServerErrorRead()
 
 void LSPClient::onServerFinished(int exitCode, QProcess::ExitStatus status)
 {
+    Q_UNUSED(exitCode);
+    Q_UNUSED(status);
+
+    // 进程退出了，初始化一定不会成功 停掉超时定时器，避免误报
+    m_initTimer->stop();
     m_initialized = false;
     emit serverStopped();
 }

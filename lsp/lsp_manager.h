@@ -145,11 +145,21 @@ private:
     void buildDefaultConfigs();
 
     /**
-     * @brief 检测系统中是否安装了指定的 LSP 服务器
-     * @param command 命令名（如 "clangd"）
-     * @return 找到返回可执行文件的完整路径，否则返回空字符串
+    * @brief 检测系统中是否安装了指定的 LSP 服务器
+    * @param command 命令名（如 "clangd"）
+    * @param diagnosticOut 可选输出参数：未找到时写入"如何安装"的提示
+    * @return 找到返回可执行文件的完整路径，否则返回空字符串
+    */
+    QString findServerExecutable(const QString &command,
+                                 QString* diagnosticOut = nullptr) const;
+
+    /**
+     * @brief 给用户看的"如何安装某个 LSP 服务器"提示
+     *
+     * 只被 findServerExecutable 内部调用（填充 diagnosticOut）。
+     * 纯函数，不依赖成员变量，故声明为 static。
      */
-    QString findServerExecutable(const QString &command) const;
+    static QString installHintFor(const QString& command);
 
     /**
      * @brief 生成客户端的唯一键（用于缓存）
@@ -170,7 +180,7 @@ private:
     // 成员变量
     QMap<QString, LSPClient *> m_clients;           ///< 客户端缓存（key → client）
     QMap<QString, LSPConfig> m_configs;             ///< 语言配置（languageId → LSPConfig）
-    QMap<QString, QString> m_serverCache;           ///< 服务器路径缓存（command → fullPath）
+    mutable QMap<QString, QString> m_serverCache;           ///< 服务器路径缓存（command → fullPath）
 
     bool m_initialized = false;
 };
