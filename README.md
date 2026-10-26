@@ -139,7 +139,7 @@ One-click compile, run, and clean for **C++ / Python / Go / Rust / JavaScript/Ty
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 # Create build directory and compile
@@ -186,7 +186,7 @@ SprintIDE **only provides source code**, so you need to compile it yourself.
 brew install cmake ninja qt@6
 
 # 2. Clone
-git clone https://github.com/your-username/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 # 3. Build
@@ -209,7 +209,7 @@ cmake .. -G Ninja -DCMAKE_PREFIX_PATH=~/Qt/6.10.1/macos
 ```bash
 sudo apt install cmake ninja-build     qt6-base-dev qt6-tools-dev qt6-svg-dev     libqt6-network6 qt6-l10n-tools
 
-git clone https://github.com/your-username/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 mkdir -p build && cd build
@@ -467,7 +467,7 @@ SprintIDE 为 AI Agent 提供了终端能力，但默认加锁：终端命令必
 
 ```bash
 # 克隆仓库
-git clone https://github.com/你的用户名/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 # 创建构建目录并编译
@@ -514,7 +514,7 @@ SprintIDE **只提供源码**，需要你自己编译。
 brew install cmake ninja qt@6
 
 # 2. 克隆
-git clone https://github.com/你的用户名/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 # 3. 构建
@@ -537,7 +537,7 @@ cmake .. -G Ninja -DCMAKE_PREFIX_PATH=~/Qt/6.10.1/macos
 ```bash
 sudo apt install cmake ninja-build     qt6-base-dev qt6-tools-dev qt6-svg-dev     libqt6-network6 qt6-l10n-tools
 
-git clone https://github.com/你的用户名/SprintIDE.git
+git clone https://github.com/dn1512/SprintIDE.git
 cd SprintIDE
 
 mkdir -p build && cd build
