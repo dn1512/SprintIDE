@@ -139,7 +139,7 @@ bool ExcludeDirProxyModel::lessThan(const QModelIndex& source_left,
 
     // ---------- 4. 文件夹优先 ----------
     if (leftIsDir != rightIsDir) {
-        return leftIsDir;   // 左边是目录 → 返回 true → 排在前面
+        return leftIsDir;   // 左边是目录 返回 true 排在前面
     }
 
     // ---------- 5. 同类之间：按文件名升序（不区分大小写） ----------
@@ -716,12 +716,12 @@ bool ProjectPanel::handleDrop(QDropEvent* event)
         const QString targetPath =
             QDir(dstDir).absoluteFilePath(srcInfo.fileName());
 
-        // 目标与源相同 → 跳过
+        // 目标与源相同 跳过
         if (QDir::cleanPath(srcPath) == QDir::cleanPath(targetPath)) {
             continue;
         }
 
-        // 目标已存在 → 跳过（可在这里弹提示，暂不弹）
+        // 目标已存在 跳过（可在这里弹提示，暂不弹）
         if (QFileInfo::exists(targetPath)) {
             qWarning() << "[Drop] 目标已存在，跳过:" << targetPath;
             continue;
@@ -986,14 +986,14 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
 {
     QWidget* toolbar = new QWidget(this);
     toolbar->setObjectName("ProjectPanelToolbar");
-    toolbar->setFixedHeight(26);                              // 26 → 22，更紧凑
+    toolbar->setFixedHeight(26);                              // 26 22，更紧凑
     toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QHBoxLayout* tl = new QHBoxLayout(toolbar);
     tl->setContentsMargins(6, 2, 6, 2);
     tl->setSpacing(4);
 
-    // 1：stretch 放最前面 → 后续控件全部靠右
+    // 1：stretch 放最前面 后续控件全部靠右
     tl->addStretch(1);
 
     // ============================================================
@@ -1021,8 +1021,8 @@ void ProjectPanel::setupToolbar(QVBoxLayout* parentLayout)
     tl->addWidget(m_locateButton);
 
     //  键盘快捷键
-    //    - Ctrl+Shift+L → 定位到当前编辑的文件
-    //    - Ctrl+Shift+R → 刷新项目面板
+    //    - Ctrl+Shift+L 定位到当前编辑的文件
+    //    - Ctrl+Shift+R 刷新项目面板
     {
         auto* locateSc = new QShortcut(QKeySequence("Ctrl+Shift+L"), this);
         locateSc->setContext(Qt::WidgetWithChildrenShortcut);
@@ -1379,7 +1379,7 @@ void ProjectPanel::updateGitSubMenuState()
                 break;
             }
         }
-        // 未出现在 status 里 → 已跟踪但当前干净（已提交）
+        // 未出现在 status 里 已跟踪但当前干净（已提交）
         if (!isUntracked && !isTracked) isTracked = true;
     }
 
@@ -1575,7 +1575,7 @@ QStandardItem* ProjectPanel::findOrCreateTestRoot()
 }
 
 // ============================================================
-//  外部请求刷新（按钮 / MainWindow 信号）→ 统一走这里
+//  外部请求刷新（按钮 / MainWindow 信号）统一走这里
 // ============================================================
 void ProjectPanel::onRefreshRequested()
 {
@@ -1588,7 +1588,7 @@ void ProjectPanel::onGitStatusUpdated(const QList<Git::GitFileStatus>& status)
 {
     if (!m_gitOverlay) return;
 
-    // 组装 absolutePath → FileStatus 的映射
+    // 组装 absolutePath FileStatus 的映射
     //   优先级：工作区状态 > 暂存区状态（因为用户更关心"当前文件有没有变"）
     //   注意：map 的 value 是枚举 FileStatus，不是结构体 GitFileStatus
     QMap<QString, Git::FileStatus> map;
@@ -1639,7 +1639,7 @@ void ProjectPanel::refreshExternalLibraries()
 {
     if (!m_treeProxy) return;
 
-    // 空项目或未识别语言 → 隐藏外部库节点
+    // 空项目或未识别语言 隐藏外部库节点
     if (m_projectPath.isEmpty()) {
         m_treeProxy->applyExternalLibraries({}, false);
         return;
@@ -1664,7 +1664,7 @@ void ProjectPanel::refreshExternalLibraries()
         &QFutureWatcher<QList<ExternalLibraryNode>>::finished,
         this, [this, projectPathAtStart]() {
             if (!m_treeProxy || !m_extLibWatcher) return;
-            // 项目切换后结果过期 → 丢弃
+            // 项目切换后结果过期 丢弃
             if (m_projectPath != projectPathAtStart) return;
 
             const auto roots = m_extLibWatcher->result();

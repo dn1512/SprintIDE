@@ -140,8 +140,8 @@ public:
     // ==================== 配置文件定位 / 扩展名（v8.5 新增） ====================
 
     /// 根据语言标识返回配置文件扩展名
-    ///   cpp / qt / 空 → ".lightcppproj"（向后兼容）
-    ///   其他语言      → ".sprintide.json"
+    ///   cpp / qt / 空 ".lightcppproj"（向后兼容）
+    ///   其他语言      ".sprintide.json"
     static QString configExtensionForLanguage(const QString& langId);
 
     /// 判断文件名是否是已知的配置文件扩展名
@@ -283,7 +283,7 @@ public:
     void setProjectPath(const QString& path);
 
     /// 项目语言标识："cpp" / "qt" / "python" / "go" / "rust" / "node" / "generic_ai"
-    /// 决定配置文件扩展名：cpp/qt → .lightcppproj，其余 → .sprintide.json
+    /// 决定配置文件扩展名：cpp/qt .lightcppproj，其余 .sprintide.json
     QString projectLanguage() const { return m_projectLanguage; }
     void setProjectLanguage(const QString& langId);
 

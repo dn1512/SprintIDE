@@ -85,7 +85,7 @@ quint64 processCpuTimeUs()
     ULARGE_INTEGER k{}, u{};
     k.LowPart  = kernel.dwLowDateTime;  k.HighPart = kernel.dwHighDateTime;
     u.LowPart  = user.dwLowDateTime;    u.HighPart = user.dwHighDateTime;
-    // FILETIME 单位 100ns → 微秒 = /10
+    // FILETIME 单位 100ns 微秒 = /10
     return (k.QuadPart + u.QuadPart) / 10ULL;
 
 #else
@@ -356,7 +356,7 @@ void PerformanceMonitor::sample()
 
         if (wallMs > 0 && procCpuUs >= m_lastProcessCpuUs) {
             const quint64 dProc = procCpuUs - m_lastProcessCpuUs;
-            // 微秒 → 毫秒；单核跑满 = 100%
+            // 微秒 毫秒；单核跑满 = 100%
             s.processCpuPercent =
                 100.0 * (double(dProc) / 1000.0) / double(wallMs);
         }

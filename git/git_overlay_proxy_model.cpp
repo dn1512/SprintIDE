@@ -40,13 +40,13 @@ QString GitOverlayProxyModel::resolveAbsolutePath(const QModelIndex& proxyIndex)
     if (!proxyIndex.isValid()) return QString();
     if (!m_fsModel || !m_intermediateProxy) return QString();
 
-    // 第一段：本 proxy → ExcludeDirProxyModel
+    // 第一段：本 proxy ExcludeDirProxyModel
     //   QIdentityProxyModel::mapToSource 会调用 sourceModel()->index(...)，
     //   对于 QSortFilterProxyModel 来说返回的就是它自己的 index
     QModelIndex excludeIdx = QIdentityProxyModel::mapToSource(proxyIndex);
     if (!excludeIdx.isValid()) return QString();
 
-    // 第二段：ExcludeDirProxyModel → QFileSystemModel
+    // 第二段：ExcludeDirProxyModel QFileSystemModel
     QModelIndex fsIdx = m_intermediateProxy->mapToSource(excludeIdx);
     if (!fsIdx.isValid()) return QString();
 

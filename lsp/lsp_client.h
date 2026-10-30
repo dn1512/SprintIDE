@@ -131,8 +131,11 @@ public:
     void setCustomArguments(const QStringList& args) { m_customArguments = args; }
 
     /// v8.5：设置语言特定的启动参数（来自 LSPManager 的 LSPConfig.arguments）
-    ///   优先级：m_customArguments > m_arguments > （空 → 走 clangd/jdtls 兜底）
+    ///   优先级：m_customArguments > m_arguments > （空 走 clangd/jdtls 兜底）
     void setArguments(const QStringList& args) { m_arguments = args; }
+
+    /// 修复 Rust 跳转：设置当前 client 的语言 ID（"cpp"/"rust"/"python"...）
+    void setLanguageId(const QString& id) { m_languageId = id; }
 
 signals:
     void serverStarted();
@@ -218,6 +221,11 @@ private:
     QString m_completionFilePath;
 
     QJsonObject m_customInitializationOptions;   // 自定义初始化选项
+
+    /// 修复 Rust 跳转：当前 client 服务的语言 ID
+    ///   用于 didOpen 时填充 textDocument.languageId
+    QString m_languageId;
+
 };
 
 } // namespace SprintIDE

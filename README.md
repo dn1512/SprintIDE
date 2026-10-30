@@ -123,7 +123,7 @@ One-click compile, run, and clean for **C++ / Python / Go / Rust / JavaScript/Ty
 
 - **PIMPL Decoupling**: MainWindow handles only generic UI logic; language-specific logic moves to corresponding Builder/LSPManager/Debugger
 - **Factory Pattern**: BuildFactory统一管理 registration and creation of all language Builders
-- **Strategy Pattern**: ToolchainManager four-level resolution strategy (user explicit → embedded → user data → system)
+- **Strategy Pattern**: ToolchainManager four-level resolution strategy (user explicit embedded user data system)
 - **Unified Message Routing**: OperationBus dispatches by domain + 7 Executors each handling their responsibility
 - **Policy Engine**: PolicyEngine guarantees user sovereignty (strictness only, never relaxed)
 - **Unified Diagnostic Source**: DiagnosticsStore unifies LSP and compiler diagnostics; editor squiggles/Problems tree/status bar count always consistent
@@ -310,7 +310,7 @@ This design philosophy extends to file navigation, code editing, build/run trigg
 
 | Function | macOS | Windows/Linux |
 | :--- | :--- | :--- |
-| Focus Next Tab | ⌥⌘→ | Ctrl+Alt+→ |
+| Focus Next Tab | ⌥⌘| Ctrl+Alt+|
 | Focus Previous Tab | ⌥⌘← | Ctrl+Alt+← |
 
 ### Focus Navigation and Panel Switching
@@ -322,11 +322,11 @@ This design philosophy extends to file navigation, code editing, build/run trigg
 | Focus Editor | ⌘1 | Ctrl+1 |
 | Focus Project Panel | ⌘2 | Ctrl+2 |
 | Focus Bottom Panel | ⌘3 | Ctrl+3 |
-| Bottom → Output | ⌥⌘1 | Ctrl+Alt+1 |
-| Bottom → Terminal | ⌥⌘2 | Ctrl+Alt+2 |
-| Bottom → Debug | ⌥⌘3 | Ctrl+Alt+3 |
-| Bottom → Problems | ⌥⌘4 | Ctrl+Alt+4 |
-| Bottom → Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
+| Bottom Output | ⌥⌘1 | Ctrl+Alt+1 |
+| Bottom Terminal | ⌥⌘2 | Ctrl+Alt+2 |
+| Bottom Debug | ⌥⌘3 | Ctrl+Alt+3 |
+| Bottom Problems | ⌥⌘4 | Ctrl+Alt+4 |
+| Bottom Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
 | Show Problems Panel | ⌥⌘P | Ctrl+Alt+P |
 | Toggle AI Panel | ⇧⌘A | Ctrl+Shift+A |
 | Toggle Project Panel | ⌥⌘E | Ctrl+Alt+E |
@@ -451,7 +451,7 @@ SprintIDE 为 AI Agent 提供了终端能力，但默认加锁：终端命令必
 
 - **PIMPL 解耦**：MainWindow 仅负责通用 UI 逻辑，语言特定逻辑迁移至对应的 Builder/LSPManager/调试器
 - **工厂模式**：BuilderFactory 统一管理各语言 Builder 的注册与创建
-- **策略模式**：ToolchainManager 四级解析策略（用户显式 → 内嵌 → 用户数据 → 系统）
+- **策略模式**：ToolchainManager 四级解析策略（用户显式 内嵌 用户数据 系统）
 - **统一消息路由**：OperationBus 按域分发 + 7 个 Executor 各司其职
 - **策略引擎**：PolicyEngine 保证用户主权（只加严不放宽）
 - **统一诊断数据源**：DiagnosticsStore 统一 LSP 和编译诊断，编辑器波浪线/Problems 树/状态栏计数三处始终一致
@@ -638,7 +638,7 @@ SprintIDE 的设计目标是：**整个 IDE 可以完全不使用鼠标操作**�
 
 | 功能 / Function | macOS | Windows/Linux |
 | :--- | :--- | :--- |
-| 焦点跳到右侧标签 / Focus Next Tab | ⌥⌘→ | Ctrl+Alt+→ |
+| 焦点跳到右侧标签 / Focus Next Tab | ⌥⌘| Ctrl+Alt+|
 | 焦点跳到左侧标签 / Focus Previous Tab | ⌥⌘← | Ctrl+Alt+← |
 
 ### 焦点切换与面板导航 / Focus Navigation
@@ -650,11 +650,11 @@ SprintIDE 的设计目标是：**整个 IDE 可以完全不使用鼠标操作**�
 | 聚焦编辑器 / Focus Editor | ⌘1 | Ctrl+1 |
 | 聚焦项目面板 / Focus Project Panel | ⌘2 | Ctrl+2 |
 | 聚焦底部面板 / Focus Bottom Panel | ⌘3 | Ctrl+3 |
-| 底部 → 输出 / Bottom → Output | ⌥⌘1 | Ctrl+Alt+1 |
-| 底部 → 终端 / Bottom → Terminal | ⌥⌘2 | Ctrl+Alt+2 |
-| 底部 → 调试 / Bottom → Debug | ⌥⌘3 | Ctrl+Alt+3 |
-| 底部 → 问题 / Bottom → Problems | ⌥⌘4 | Ctrl+Alt+4 |
-| 底部 → 断点 / Bottom → Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
+| 底部 输出 / Bottom Output | ⌥⌘1 | Ctrl+Alt+1 |
+| 底部 终端 / Bottom Terminal | ⌥⌘2 | Ctrl+Alt+2 |
+| 底部 调试 / Bottom Debug | ⌥⌘3 | Ctrl+Alt+3 |
+| 底部 问题 / Bottom Problems | ⌥⌘4 | Ctrl+Alt+4 |
+| 底部 断点 / Bottom Breakpoints | ⌥⌘5 | Ctrl+Alt+5 |
 | 显示 Problems 面板 / Show Problems Panel | ⌥⌘P | Ctrl+Alt+P |
 | 显示/隐藏 AI 面板 / Toggle AI Panel | ⇧⌘A | Ctrl+Shift+A |
 | 显示/隐藏项目面板 / Toggle Project Panel | ⌥⌘E | Ctrl+Alt+E |

@@ -56,7 +56,7 @@ namespace SprintIDE {
 
         const QStringList lines = text.split('\n');
 
-        // 统一的"深度回落 → 关闭符号"检查
+        // 统一的"深度回落 关闭符号"检查
         auto closeChecks = [&](int lineNo1Based) {
             // pendingFunction 何时进入 functionStack：后续行出现 { 时
             if (pendingFunction && depth > pendingFunction->startDepth) {

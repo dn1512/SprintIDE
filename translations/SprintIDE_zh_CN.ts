@@ -1613,7 +1613,7 @@ line too long
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="2750"/>
-        <source>已重命名: %1 → %2</source>
+        <source>已重命名: %1 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

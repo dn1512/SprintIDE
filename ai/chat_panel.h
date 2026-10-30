@@ -319,7 +319,7 @@ private:
     QPointer<AiConnectionManager> m_connMgr;
 
     QStringList m_conversationHistory;       ///< 对话历史（纯文本，用于上下文）
-    QMap<QString, QTextCursor> m_streamCursors; ///< 流式消息的文本光标（streamId → cursor）
+    QMap<QString, QTextCursor> m_streamCursors; ///< 流式消息的文本光标（streamId cursor）
     QMap<QString, QString> m_streamContents; ///< 流式消息的内容缓存
 
     bool m_isConnected = false;              ///< 是否已连接 Agent

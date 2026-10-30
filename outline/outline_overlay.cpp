@@ -108,7 +108,7 @@ namespace SprintIDE {
         m_propList->setItemDelegate(m_delegate);
         m_methodList->setItemDelegate(m_delegate);
 
-        // ---------- 鼠标点击 → 跳转 ----------
+        // ---------- 鼠标点击 跳转 ----------
         auto onItemClicked = [this](QListWidgetItem* item) {
             if (!item) return;
             const int line = item->data(Qt::UserRole + 3).toInt();
@@ -137,10 +137,10 @@ namespace SprintIDE {
         //   "点击浮层 item 时浮层先消失、itemClicked 不触发"问题
         //
         //   规则：
-        //     焦点 → nullptr（切到其他应用）         → 关闭
-        //     焦点 → 浮层自身或浮层内部控件          → 保持
-        //     焦点 → 父编辑器（点击编辑器回到编辑）  → 保持（由 TextEditor::mousePressEvent 关闭）
-        //     焦点 → 其他控件（文件树、终端等）      → 关闭
+        //     焦点 nullptr（切到其他应用）         关闭
+        //     焦点 浮层自身或浮层内部控件          保持
+        //     焦点 父编辑器（点击编辑器回到编辑）  保持（由 TextEditor::mousePressEvent 关闭）
+        //     焦点 其他控件（文件树、终端等）      关闭
         connect(qApp, &QApplication::focusChanged, this,
             [this](QWidget* /*old*/, QWidget* now) {
                 if (!isVisible()) return;
@@ -150,17 +150,17 @@ namespace SprintIDE {
                     return;
                 }
 
-                // 焦点在浮层内部 → 保持
+                // 焦点在浮层内部 保持
                 if (now == this || isAncestorOf(now)) return;
 
-                // 焦点在父编辑器 → 保持（后续由 TextEditor::mousePressEvent 处理）
+                // 焦点在父编辑器 保持（后续由 TextEditor::mousePressEvent 处理）
                 if (parentWidget()) {
                     if (now == parentWidget() || parentWidget()->isAncestorOf(now)) {
                         return;
                     }
                 }
 
-                // 其他 → 关闭
+                // 其他 关闭
                 hideOverlay();
             });
     }
@@ -268,7 +268,7 @@ namespace SprintIDE {
 
         setGeometry(x, y, w, h);
 
-        // 默认选中：左列有项 → 左列第一行；否则右列第一行
+        // 默认选中：左列有项 左列第一行；否则右列第一行
         m_activeList = m_propList;
         if (m_propList->count() > 0) {
             m_propList->setCurrentRow(0);

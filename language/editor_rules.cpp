@@ -318,7 +318,7 @@ EditorRules EditorRules::forLanguage(const QString& id)
     // ---- 默认：纯文本，关闭所有自动行为 ----
     if (id == "markdown" || id == "text")      return makePlain();
 
-    // ---- 未知语言 → 保守策略 ----
+    // ---- 未知语言 保守策略 ----
     return makePlain();
 }
 

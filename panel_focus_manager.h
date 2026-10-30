@@ -31,9 +31,9 @@ class MainWindow;
  * @brief 面板焦点与显隐管理器
  *
  * 提供键盘驱动的面板导航：
- *   - F6 / Shift+F6     → 循环切换焦点
- *   - Ctrl+1..4         → 直跳面板（macOS = Cmd+1..4）
- *   - Ctrl+Shift+A      → 显示/隐藏 AI 面板
+ *   - F6 / Shift+F6     循环切换焦点
+ *   - Ctrl+1..4         直跳面板（macOS = Cmd+1..4）
+ *   - Ctrl+Shift+A      显示/隐藏 AI 面板
  *
  * 设计：纯新增，不改动任何现有面板行为。
  */

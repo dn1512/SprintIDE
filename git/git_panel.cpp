@@ -742,7 +742,7 @@ void GitPanel::onRepositoryChanged(const GitRepositoryInfo& info)
         if (m_branchMenuBtn) m_branchMenuBtn->setEnabled(false);
         m_contentArea->setVisible(false);
         m_emptyRepoHint->setVisible(true);
-        // 有项目根但非仓库 → 显示「初始化仓库」按钮
+        // 有项目根但非仓库 显示「初始化仓库」按钮
         m_initBtn->setVisible(!m_projectRoot.isEmpty());
         m_emptyRepoHint->setText(
             m_projectRoot.isEmpty()
@@ -828,7 +828,7 @@ void GitPanel::onBranchActivated(int index)
     auto& gm = GitManager::instance();
     const auto info = gm.repositoryInfo();
 
-    // 已经是当前分支（且不是 detached HEAD）→ 什么都不做
+    // 已经是当前分支（且不是 detached HEAD）什么都不做
     if (!info.isDetachedHead && name == info.currentBranch) return;
 
     // ---- 1. 统计脏文件数量 ----
@@ -860,7 +860,7 @@ void GitPanel::onBranchActivated(int index)
                         .arg(dirtyCount).arg(untrackedCount);
     }
 
-    // ---- 3. 无风险 → 简单确认 ----
+    // ---- 3. 无风险 简单确认 ----
     if (!hasRisk) {
         const auto reply = QMessageBox::question(
             this, tr("切换分支"),
@@ -874,7 +874,7 @@ void GitPanel::onBranchActivated(int index)
         return;
     }
 
-    // ---- 4. 有风险 → 三按钮对话框 ----
+    // ---- 4. 有风险 三按钮对话框 ----
     QMessageBox box(this);
     box.setWindowTitle(tr("切换分支"));
     box.setIcon(QMessageBox::Warning);
@@ -901,9 +901,9 @@ void GitPanel::onBranchActivated(int index)
     }
 
     if (clicked == stashBtn) {
-        // 自动 stash → 切换；GitManager 内部会在 stash 完成后 checkout
+        // 自动 stash 切换；GitManager 内部会在 stash 完成后 checkout
         gm.stashPush(
-            tr("切换分支 %1 → %2 前自动暂存")
+            tr("切换分支 %1 %2 前自动暂存")
                 .arg(info.currentBranch.isEmpty()
                          ? QStringLiteral("(detached)")
                          : info.currentBranch,
@@ -955,7 +955,7 @@ void GitPanel::onNewBranchClicked()
         headLabel = info.currentBranch;
     }
     baseCombo->addItem(QStringLiteral("当前 HEAD（%1）").arg(headLabel),
-                       QString());   // data 为空 → 使用默认（当前 HEAD）
+                       QString());   // data 为空 使用默认（当前 HEAD）
 
     for (const auto& b : gm.branches()) {
         if (b.isRemote) continue;
@@ -1296,7 +1296,7 @@ void GitPanel::onCommitClicked()
         return;
     }
 
-    // 通过检查 → 提交
+    // 通过检查 提交
     gm.commit(msg, m_amendCheck->isChecked());
 
     m_messageEdit->clear();
@@ -1309,7 +1309,7 @@ void GitPanel::onStagedItemDoubleClicked(QListWidgetItem* item)
     const QString rel = item->data(Qt::UserRole).toString();
     const QString abs = item->data(Qt::UserRole + 1).toString();
 
-    // 双击已暂存文件 → 显示暂存区 vs HEAD 的 diff
+    // 双击已暂存文件 显示暂存区 vs HEAD 的 diff
     if (rel.isEmpty()) return;
 
     auto& gm = GitManager::instance();
@@ -1331,7 +1331,7 @@ void GitPanel::onUnstagedItemDoubleClicked(QListWidgetItem* item)
     const QString rel = item->data(Qt::UserRole).toString();
     const QString abs = item->data(Qt::UserRole + 1).toString();
 
-    // 双击未暂存文件 → 显示工作区 vs 暂存区的 diff
+    // 双击未暂存文件 显示工作区 vs 暂存区的 diff
     if (rel.isEmpty()) return;
 
     auto& gm = GitManager::instance();
@@ -1396,8 +1396,8 @@ void GitPanel::onUnstagedContextMenu(const QPoint& pos)
         //   rebase : "ours" = 目标分支（base）  , "theirs" = 你正在重放的提交
         //
         // 用户直觉里的"我的版本"= 我自己写的代码：
-        //   merge 时 → --ours
-        //   rebase 时 → --theirs
+        //   merge 时 --ours
+        //   rebase 时 --theirs
         //
         // 因此这里不暴露 ours/theirs 术语，直接用行为描述标签，
         // 并根据当前 operation 选择正确的底层命令。
@@ -1613,7 +1613,7 @@ void GitPanel::onStashContextMenu(const QPoint& pos)
 {
     auto* item = m_stashList->itemAt(pos);
 
-    // 空白处右键 → 清空所有 stash
+    // 空白处右键 清空所有 stash
     if (!item) {
         QMenu menu(this);
         QAction* clearAll = menu.addAction(tr("清空所有 Stash"));

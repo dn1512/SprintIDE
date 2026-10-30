@@ -33,10 +33,10 @@ namespace SprintIDE {
     *
     * 模型链：
     *   QFileSystemModel
-    *     → ExcludeDirProxyModel    (QSortFilterProxyModel)
-    *       → GitOverlayProxyModel  (QIdentityProxyModel)
-    *         → ProjectTreeProxyModel   ← 本类（QIdentityProxyModel）
-    *           → QTreeView
+    *     ExcludeDirProxyModel    (QSortFilterProxyModel)
+    *       GitOverlayProxyModel  (QIdentityProxyModel)
+    *         ProjectTreeProxyModel   ← 本类（QIdentityProxyModel）
+    *           QTreeView
     *
     * v8.5 修复：
     *   - 从 QAbstractProxyModel 改为 QIdentityProxyModel —— 复用其成熟的

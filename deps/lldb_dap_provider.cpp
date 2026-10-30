@@ -33,7 +33,7 @@ static QString bundledToolchainRoot()
     // 目标：.../SprintIDE.app/Contents/Frameworks/lldb
     QDir macosDir = appDir;
     if (macosDir.dirName() == "MacOS") {
-        macosDir.cdUp();          // → Contents
+        macosDir.cdUp();          // Contents
         return macosDir.absoluteFilePath("Frameworks/lldb");
     }
     // 非 bundle 运行（例如 Qt Creator 直接跑）：无内嵌
@@ -152,7 +152,7 @@ static ToolchainResolution tryCandidatesRelaxed(const QStringList& candidates,
 
 // ============================================================
 // 内部：枚举某个根目录下的候选可执行文件名
-//   顺序（重要）：codelldb → lldb-dap → lldb-vscode
+//   顺序（重要）：codelldb lldb-dap lldb-vscode
 //   理由：codelldb 是静态二进制，无需处理 dylib 依赖，最适合内嵌/拷贝
 // ============================================================
 static QStringList candidatesUnderRoot(const QString& root)
@@ -176,7 +176,7 @@ static QStringList candidatesUnderRoot(const QString& root)
 
 // ============================================================
 // 内部：扫描 ~/.vscode/extensions/vadimcn.vscode-lldb-*/
-//   按版本号排序（新 → 旧），返回所有候选（不判断是否存在）
+//   按版本号排序（新 旧），返回所有候选（不判断是否存在）
 // ============================================================
 static QStringList enumerateCodeLldbCandidates()
 {

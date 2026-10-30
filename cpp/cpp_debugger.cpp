@@ -20,7 +20,7 @@ static QString normalizeDapSourcePath(const QString& rawPath,
                                       const QString& rawName,
                                       const QString& workingDir)
 {
-    // 1. 绝对路径且存在 → 直接用
+    // 1. 绝对路径且存在 直接用
     if (!rawPath.isEmpty()) {
         QFileInfo fi(rawPath);
         if (fi.isAbsolute() && fi.exists()) return rawPath;
@@ -169,8 +169,8 @@ bool CppDebugger::startDebugging(const CppDebugConfig& config)
 // onAdapterInitialized
 //
 // 这个槽会被触发两次：
-//   1. initialize 响应到达  → 发送 launch
-//   2. initialized 事件到达 → setBreakpoints + configurationDone
+//   1. initialize 响应到达  发送 launch
+//   2. initialized 事件到达 setBreakpoints + configurationDone
 // ============================================================
 void CppDebugger::onAdapterInitialized()
 {
@@ -388,7 +388,7 @@ void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
         fileLower.startsWith("/usr/lib/dyld") ||
         fileLower.startsWith("/usr/lib/system") ||
         fileLower.contains("dyld") ||
-        // 路径根本不存在 → 一定是系统符号
+        // 路径根本不存在 一定是系统符号
         (!m_currentFile.isEmpty() && !QFile::exists(m_currentFile)) ||
         // 路径为空
         m_currentFile.isEmpty();
@@ -401,7 +401,7 @@ void CppDebugger::onStackTrace(const QList<Dap::StackFrame>& frames)
         return;
     }
 
-    // 4. 正常停止 → 通知上层
+    // 4. 正常停止 通知上层
     emit stopped(m_currentFile, m_currentLine, QStringLiteral("breakpoint"));
 
     // 5. 拉顶层作用域（变量）

@@ -50,7 +50,7 @@ private:
     ExecutionResult handleRename(const QJsonObject& item);
     ExecutionResult handleEdit(const QJsonObject& item);   // 骨架
 
-    /// 相对路径 → 绝对路径（基于当前项目根；无项目则基于 cwd）
+    /// 相对路径 绝对路径（基于当前项目根；无项目则基于 cwd）
     QString resolvePath(const QString& rawPath) const;
     MainWindow* m_mw = nullptr;
 };

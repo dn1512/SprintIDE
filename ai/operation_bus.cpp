@@ -50,7 +50,7 @@ void OperationBus::handleAgentMessage(const QJsonObject& message)
         return;
     }
 
-    // ---- 预扫描 chat.confirm：targetId → prompt / defaultApprove ----
+    // ---- 预扫描 chat.confirm：targetId prompt / defaultApprove ----
     QMap<QString, QString> confirmPrompts;
     QMap<QString, QString> confirmDefaults;
     for (const QJsonValue& v : items) {

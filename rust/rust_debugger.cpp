@@ -35,7 +35,7 @@ namespace SprintIDE {
     }
 
     // ============================================================
-    // Dap::Variable → DebugVariable（与 CppDebugger 的 toDebugVariables 一致）
+    // Dap::Variable DebugVariable（与 CppDebugger 的 toDebugVariables 一致）
     // ============================================================
     static QList<SprintIDE::DebugVariable> toDebugVariables(
         const QList<SprintIDE::Dap::Variable>& vars)
@@ -172,8 +172,8 @@ namespace SprintIDE {
     // onAdapterInitialized
     //
     // 与 CppDebugger::onAdapterInitialized **完全同构**：
-    //   第一次触发 = initialize 响应 → 发 launch
-    //   第二次触发 = initialized 事件 → setBreakpoints + configurationDone
+    //   第一次触发 = initialize 响应 发 launch
+    //   第二次触发 = initialized 事件 setBreakpoints + configurationDone
     // ============================================================
     void RustDebugger::onAdapterInitialized()
     {
@@ -381,7 +381,7 @@ namespace SprintIDE {
             return;
         }
 
-        // 正常停止 → 通知 MainWindow 高亮
+        // 正常停止 通知 MainWindow 高亮
         emit stopped(m_currentFile, m_currentLine, QStringLiteral("breakpoint"));
 
         // 拉顶层作用域（变量）

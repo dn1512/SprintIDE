@@ -334,7 +334,7 @@ ExecutionResult FileExecutor::handleEdit(const QJsonObject& item)
                                              ErrorCode::InvalidFields,
                                              QStringLiteral("Empty 'search' string"));
             }
-            // ---- 硬约束 2：search == replace → 跳过（无操作，视为成功） ----
+            // ---- 硬约束 2：search == replace 跳过（无操作，视为成功） ----
             if (search == replace) {
                 continue;
             }
@@ -393,7 +393,7 @@ ExecutionResult FileExecutor::handleEdit(const QJsonObject& item)
                                              data);
             }
 
-            // ---- 唯一匹配 → 替换 ----
+            // ---- 唯一匹配 替换 ----
             QTextCursor cursor = matches.first();
             editor->replaceWithIndentAlignment(cursor, replace);
             ++appliedCount;

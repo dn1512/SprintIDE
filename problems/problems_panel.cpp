@@ -249,7 +249,7 @@ namespace SprintIDE {
             fileItem->setText(0, display);
             fileItem->setIcon(0, QIcon(QStringLiteral(":/icons/icons/file_default.svg")));
             fileItem->setData(0, Qt::UserRole + 0, filePath);
-            fileItem->setData(0, Qt::UserRole + 1, -1);  // 无 line → 不是诊断
+            fileItem->setData(0, Qt::UserRole + 1, -1);  // 无 line 不是诊断
 
             QFont f = fileItem->font(0);
             f.setBold(true);

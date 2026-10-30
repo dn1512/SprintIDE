@@ -1019,10 +1019,10 @@ void ShortcutSettingsPage::saveSettings()
         const QString key = QStringLiteral("Shortcuts/") + rd.id;
 
         if (seq.isEmpty()) {
-            // 用户清空 → 存哨兵值
+            // 用户清空 存哨兵值
             cfg->setValue(key, QStringLiteral("__EMPTY__"));
         } else if (seq == rd.defaultShortcut) {
-            // 与默认一致 → 删掉配置项（回到"未自定义"状态）
+            // 与默认一致 删掉配置项（回到"未自定义"状态）
             cfg->remove(key);
         } else {
             cfg->setValue(key, seq.toString(QKeySequence::PortableText));
@@ -1200,7 +1200,7 @@ void ShortcutSettingsPage::onResetAll()
 
 void ShortcutSettingsPage::detectConflicts()
 {
-    // 收集所有非空快捷键 → 出现次数
+    // 收集所有非空快捷键 出现次数
     QMap<QString, int> count;
     QList<QKeySequence> all;
 

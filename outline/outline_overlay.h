@@ -72,7 +72,7 @@ namespace SprintIDE {
         void activateCurrent();
 
         signals:
-        /// 用户确认某一项（Enter 或 鼠标点击）→ 跳转到该行
+        /// 用户确认某一项（Enter 或 鼠标点击）跳转到该行
         void symbolActivated(int line);
 
         private:

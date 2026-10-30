@@ -48,7 +48,7 @@ namespace SprintIDE {
     //   1. 老 SDK（< 10.0.17763）头文件里没有这三个函数的声明，
     //      直接链接会报 LNK2019，且老系统上进程启动就崩。
     //   2. 老系统（Win7/8/Server 2016）kernel32.dll 里没有这三个符号，
-    //      GetProcAddress 返回 nullptr → available = false → 上层优雅降级。
+    //      GetProcAddress 返回 nullptr available = false 上层优雅降级。
     //   3. 不需要在 CMake 里链接额外库，纯运行时探测。
     // ===========================================================================
     struct ConPtyApi
@@ -116,15 +116,15 @@ namespace SprintIDE {
 
         // ---- ConPTY 与管道 ----
         HPCON  m_hPC         = nullptr;   // 伪终端句柄
-        HANDLE m_hInputWrite = nullptr;   // 我们写 → 子进程读
-        HANDLE m_hOutputRead = nullptr;   // 子进程写 → 我们读
+        HANDLE m_hInputWrite = nullptr;   // 我们写 子进程读
+        HANDLE m_hOutputRead = nullptr;   // 子进程写 我们读
 
         // ---- 子进程 ----
         PROCESS_INFORMATION m_pi{};       // hProcess / hThread / dwProcessId 等
 
         // ---- 输出读取线程 ----
         QThread*           m_readerThread = nullptr;
-        std::atomic<bool>  m_running{false};     // start 成功 → true；finished 后 → false
+        std::atomic<bool>  m_running{false};     // start 成功 true；finished 后 false
         std::atomic<bool>  m_stopReader{false};  // 析构时通知线程退出
     };
 

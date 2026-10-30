@@ -28,10 +28,10 @@ using namespace SprintIDE;
 //  采纳用户登录 + 交互 shell 的环境变量
 // ----------------------------------------------------------------------------
 //  为什么必须用 -lic 而不是 -lc：
-//    • 登录模式（-l）：读 /etc/zprofile → ~/.zprofile → ~/.zlogin
-//                      → Homebrew 注入路径在这里（Apple Silicon 的 /opt/homebrew/bin）
-//    • 交互模式（-i）：读 /etc/zshrc → ~/.zshrc
-//                      → nvm / fnm / volta / pyenv / asdf 的加载代码都在这里
+//    • 登录模式（-l）：读 /etc/zprofile ~/.zprofile ~/.zlogin
+//                      Homebrew 注入路径在这里（Apple Silicon 的 /opt/homebrew/bin）
+//    • 交互模式（-i）：读 /etc/zshrc ~/.zshrc
+//                      nvm / fnm / volta / pyenv / asdf 的加载代码都在这里
 //    • 只用 -l 会漏 .zshrc；只用 -i 会漏 .zprofile。必须同时用。
 //  另外：
 //    • 超时 5 秒（用户的 .zshrc 里可能有 conda / rvm 等重量级初始化）
@@ -194,14 +194,7 @@ int main(int argc, char *argv[])
 
         ProjectManager* projectManager = ProjectManager::instance();
 
-                // ============================================================
-        // ★ 解析命令行参数
-        //   支持的形式：
-        //     <path>                           → 打开/创建空项目
-        //     <path> --create <language>       → 创建项目骨架并打开
-        //     --agent-mode                     → 跳过对话框，进空主窗口
-        //     --create <language> <path>       → 等价于 <path> --create <language>
-        // ============================================================
+        // 解析命令行参数
         QString projectPath;
         QString createLanguage;      // 非空 = 需要生成骨架
         bool    createVenv = false;
@@ -288,7 +281,7 @@ int main(int argc, char *argv[])
             // ---- 有路径参数：自动创建/打开 ----
             const QDir projDir(projectPath);
 
-            // 1. 路径不存在 → 创建目录
+            // 1. 路径不存在 创建目录
             if (!projDir.exists()) {
                 if (!QDir().mkpath(projectPath)) {
                     QMessageBox::critical(
@@ -298,7 +291,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            // 2. 有 --create <lang> → 生成骨架
+            // 2. 有 --create <lang> 生成骨架
             if (!createLanguage.isEmpty()) {
                 ProjectScaffolder::CreateOptions opts;
                 opts.projectPath        = QFileInfo(projectPath).absoluteFilePath();
@@ -323,7 +316,7 @@ int main(int argc, char *argv[])
                              << "文件数:" << scRes.createdFiles.size();
                 }
             }
-            // 3. 没有 --create 且没有 .lightcpproj → 生成一个默认配置
+            // 3. 没有 --create 且没有 .lightcpproj 生成一个默认配置
             else {
                 const QFileInfoList configs = projDir.entryInfoList(
                     {QStringLiteral("*.lightcpproj")}, QDir::Files);

@@ -285,7 +285,7 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
         return;
     }
 
-    // 4. 落在行号数字区 → 转发给编辑器（选中行、拖选等）
+    // 4. 落在行号数字区 转发给编辑器（选中行、拖选等）
     m_editor->mousePressEvent(event);
 }
 
@@ -365,20 +365,20 @@ TextEditor::~TextEditor()
     //
     //  问题：
     //    m_highlighter 的析构会触发 QSyntaxHighlighter::setDocument(nullptr)
-    //    → QTextDocumentPrivate::finishEdit()
-    //    → QPlainTextDocumentLayout::documentChanged
-    //    → QWidgetTextControl::updateRequest
-    //    → emit TextEditor::updateRequest(rect, dy)
-    //    → 回调到 TextEditor::updateLineNumberArea
-    //    → 访问 m_lineNumberArea->width()
-    //    如果此时 m_lineNumberArea 已被 delete → 崩
+    //    QTextDocumentPrivate::finishEdit()
+    //    QPlainTextDocumentLayout::documentChanged
+    //    QWidgetTextControl::updateRequest
+    //    emit TextEditor::updateRequest(rect, dy)
+    //    回调到 TextEditor::updateLineNumberArea
+    //    访问 m_lineNumberArea->width()
+    //    如果此时 m_lineNumberArea 已被 delete 崩
     //
     //  修复：
     //    1. 先断开 document 与自身的所有信号连接（避免回调）
     //    2. 按"后创建的先删"的顺序删除成员
-    //       m_highlighter 依赖 document → 先删
-    //       m_lineNumberArea 被其他析构回调访问 → 后删
-    //    3. m_contextMenu / m_errorMarkerTimer 无依赖 → 任意顺序
+    //       m_highlighter 依赖 document 先删
+    //       m_lineNumberArea 被其他析构回调访问 后删
+    //    3. m_contextMenu / m_errorMarkerTimer 无依赖 任意顺序
     // ============================================================
 
     // 1. 断开 document 的所有信号（防止任何回调）
@@ -389,10 +389,10 @@ TextEditor::~TextEditor()
     disconnect(this, nullptr, nullptr, nullptr);
 
     // 3. 按依赖顺序删除
-    delete m_highlighter;        // 先删 → 其析构会触发 document 更新，但已断信号
+    delete m_highlighter;        // 先删 其析构会触发 document 更新，但已断信号
     m_highlighter = nullptr;
 
-    delete m_lineNumberArea;     // 后删 → 此时已无回调
+    delete m_lineNumberArea;     // 后删 此时已无回调
     m_lineNumberArea = nullptr;
 
     delete m_contextMenu;
@@ -456,7 +456,7 @@ void TextEditor::initEditor()
             }
         });
 
-    // 光标移动 → 更新面包屑
+    // 光标移动 更新面包屑
     connect(this, &TextEditor::cursorPositionChanged, this,
         [this](int line, int /*column*/) {
             if (m_breadcrumbBar && m_showBreadcrumb) {
@@ -464,7 +464,7 @@ void TextEditor::initEditor()
             }
         });
 
-    // 面包屑点击 → 跳转
+    // 面包屑点击 跳转
     connect(m_breadcrumbBar, &BreadcrumbBar::symbolJumpRequested,
         this, [this](int line) {
             gotoLine(line);
@@ -885,7 +885,7 @@ void TextEditor::createContextMenu()
     connect(m_aiAskAction,     &QAction::triggered, this,
             [this]() { triggerAIAssist(AIAssistKind::CustomAsk); });
 
-    // 初始未连接 → 禁用
+    // 初始未连接 禁用
     m_aiMenu->setEnabled(false);
     m_aiMenu->setToolTip(tr("AI Agent 未连接"));
 }
@@ -982,7 +982,7 @@ bool TextEditor::saveFile(const QString &source)
             reloadFile();
             return true;
         }
-        // reply == Save → 继续往下走（覆盖磁盘）
+        // reply == Save 继续往下走（覆盖磁盘）
     }
     if (m_saving) {
         qDebug() << "[TextEditor] saveFile 重入，已忽略";
@@ -1001,7 +1001,7 @@ bool TextEditor::saveFile(const QString &source)
         }
 
         // 手动保存前的冲突检测
-        // 若磁盘在 IDE 上次保存之后被外部修改 → 弹对话框
+        // 若磁盘在 IDE 上次保存之后被外部修改 弹对话框
         {
             QFileInfo fi(m_filePath);
             if (fi.exists() && m_lastSaveTime.isValid()
@@ -1022,7 +1022,7 @@ bool TextEditor::saveFile(const QString &source)
                     reloadFile();
                     return true;
                 }
-                // 走到这里 = 用户选了「保存」→ 继续往下执行写盘
+                // 走到这里 = 用户选了「保存」继续往下执行写盘
             }
         }
 
@@ -1148,7 +1148,7 @@ void TextEditor::setFilePath(const QString& path)
 
     m_filePath = path;
 
-    // 扩展名变了 → 语言可能变（例如 .txt 改成 .py）
+    // 扩展名变了 语言可能变（例如 .txt 改成 .py）
     if (oldExt != newExt && m_highlighter) {
         setLanguageByFilePath(path);
     }
@@ -1950,11 +1950,11 @@ void TextEditor::showFindBar()
     m_findLineEdit->setFocus();
     m_findLineEdit->selectAll();
 
-    // 若查找框已有内容但当前没有高亮 → 重新执行一次搜索
-    //   场景：关闭查找栏（Esc）→ clearHighlights 清空了 m_matchCursors，
+    // 若查找框已有内容但当前没有高亮 重新执行一次搜索
+    //   场景：关闭查找栏（Esc）clearHighlights 清空了 m_matchCursors，
     //   但查找框文本仍保留；重新 Ctrl+F 时需恢复高亮。
     //
-    //   若 m_matchCursors 非空 → 说明高亮还在（比如只是焦点切走又切回），
+    //   若 m_matchCursors 非空 说明高亮还在（比如只是焦点切走又切回），
     //   不重复触发。
     if (m_findLineEdit && !m_findLineEdit->text().isEmpty()
         && m_matchCursors.isEmpty()) {
@@ -2032,8 +2032,8 @@ void TextEditor::findPrevious()
 //  用户入口：Alt+Enter / 点击红点
 //
 //  职责：
-//    - 有缓存 → 直接弹菜单（调 showCodeActionMenu）
-//    - 无缓存 → 只发 LSP 请求，不弹菜单
+//    - 有缓存 直接弹菜单（调 showCodeActionMenu）
+//    - 无缓存 只发 LSP 请求，不弹菜单
 //              响应到达后由 onCodeActionReceived 弹菜单
 //
 //  ⚠️ 关键：本函数在"无缓存"分支中**不能**自己弹菜单，
@@ -2043,14 +2043,14 @@ void TextEditor::showQuickFixMenuForLine(int line, const QPoint& globalPos)
 {
     if (line < 1 || line > lineCount()) return;
 
-    // ---- 情况 1：有缓存 → 直接弹菜单，不再请求 ----
+    // ---- 情况 1：有缓存 直接弹菜单，不再请求 ----
     const QList<LSPCodeAction> cached = m_codeActionsByLine.value(line);
     if (!cached.isEmpty()) {
         showCodeActionMenu(line, globalPos, cached);
         return;
     }
 
-    // ---- 情况 2：无缓存 → 重置重试状态 + 发请求 ----
+    // ---- 情况 2：无缓存 重置重试状态 + 发请求 ----
     m_codeActionRetryCount     = 0;
     m_codeActionRetryLine      = line;
     m_codeActionRetryGlobalPos = globalPos;
@@ -2109,9 +2109,9 @@ void TextEditor::showCodeActionMenu(int line,
 //  LSP codeAction 响应到达
 //
 //  三种情况：
-//    1. 非空 → 缓存 + 弹菜单（正常成功路径）
-//    2. 空 + 未超重试上限 → 主动触发 didChange 催 clangd，延迟重试
-//    3. 空 + 超重试上限 → 弹"无可用修复"菜单
+//    1. 非空 缓存 + 弹菜单（正常成功路径）
+//    2. 空 + 未超重试上限 主动触发 didChange 催 clangd，延迟重试
+//    3. 空 + 超重试上限 弹"无可用修复"菜单
 //
 //   约束：本函数不调用 showQuickFixMenuForLine，避免递归
 // ============================================================
@@ -2124,7 +2124,7 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
     m_codeActionPendingLine = -1;
     if (line < 0) return;
 
-    // ---------- 情况 1：非空 → 缓存 + 弹菜单 ----------
+    // ---------- 情况 1：非空 缓存 + 弹菜单 ----------
     if (!actions.isEmpty()) {
         m_codeActionsByLine.insert(line, actions);
         m_codeActionRetryCount = 0;
@@ -2142,7 +2142,7 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
         const QPoint savedPos  = m_codeActionRetryGlobalPos;
 
         //   让 clangd 认为"内容真的变了"
-        //   clangd 对"内容相同"的 didChange 会跳过分析 → 诊断不更新 → 还是空
+        //   clangd 对"内容相同"的 didChange 会跳过分析 诊断不更新 还是空
         //   所以发两次 didChange：
         //     第一次：末尾加一个空格
         //     第二次：250ms 后恢复原样
@@ -2187,7 +2187,7 @@ void TextEditor::onCodeActionReceived(const QString& filePath,
         return;
     }
 
-    // ---------- 情况 3：重试耗尽 → 弹"无可用修复" ----------
+    // ---------- 情况 3：重试耗尽 弹"无可用修复" ----------
     m_codeActionRetryCount = 0;
     QToolTip::hideText();
     showCodeActionMenu(line, m_codeActionRetryGlobalPos, actions);
@@ -2306,14 +2306,14 @@ int TextEditor::findIncludeInsertLine() const
             continue;
         }
 
-        // ---------- 遇到第一行真正的代码 → 停 ----------
+        // ---------- 遇到第一行真正的代码 停 ----------
         break;
     }
 
     if (lastIncludeLine >= 0) {
         return lastIncludeLine + 1;   // 插到最后一个 include 之后
     }
-    return 0;                          // 没有任何 include → 插到文件头
+    return 0;                          // 没有任何 include 插到文件头
 }
 
 // ============================================================
@@ -2389,7 +2389,7 @@ void TextEditor::onFindTextChanged(const QString& text)
             best = i;
             break;
         }
-        // 循环跑完还没命中 → 保持 best = 0（回绕）
+        // 循环跑完还没命中 保持 best = 0（回绕）
         best = 0;
     }
 
@@ -2421,7 +2421,7 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
 
     QTextDocument::FindFlags flags;
     if (caseSensitive) flags |= QTextDocument::FindCaseSensitively;
-    if (wholeWord) flags |= QTextDocument::FindWholeWords;
+    if (wholeWord)     flags |= QTextDocument::FindWholeWords;
 
     QTextCursor cursor(document());
     cursor.movePosition(QTextCursor::Start);
@@ -2430,8 +2430,12 @@ void TextEditor::highlightAllMatches(const QString& text, bool caseSensitive, bo
         QTextCursor found = document()->find(text, cursor, flags);
         if (found.isNull()) break;
 
+        // 关键修复：光标保持原位置，插入内容不扩展选区
+        found.setKeepPositionOnInsert(true);
         m_matchCursors.append(found);
+
         cursor = found;
+        cursor.setKeepPositionOnInsert(false);  // 搜索游标要正常向后推进
     }
 
     // 从主题取色
@@ -2582,7 +2586,7 @@ void TextEditor::onToggleWholeWord(bool checked)
 
 void TextEditor::mousePressEvent(QMouseEvent* event)
 {
-    // 点击编辑器 → 关闭大纲浮层
+    // 点击编辑器 关闭大纲浮层
     if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
         m_outlineOverlay->hideOverlay();
     }
@@ -2678,7 +2682,7 @@ void TextEditor::mouseMoveEvent(QMouseEvent *event)
 
 void TextEditor::keyReleaseEvent(QKeyEvent *event)
 {
-    //  Cmd/Ctrl 松开 → 立即撤销视觉反馈
+    //  Cmd/Ctrl 松开 立即撤销视觉反馈
     if (event->key() == Qt::Key_Meta || event->key() == Qt::Key_Control) {
         m_ctrlHeldForDefinition = false;
         if (cursor().shape() == Qt::PointingHandCursor) {
@@ -2692,7 +2696,7 @@ void TextEditor::keyReleaseEvent(QKeyEvent *event)
 
 void TextEditor::leaveEvent(QEvent *event)
 {
-    //  鼠标离开编辑器 → 撤销一切
+    //  鼠标离开编辑器 撤销一切
     if (cursor().shape() == Qt::PointingHandCursor) {
         unsetCursor();
     }
@@ -3028,13 +3032,31 @@ int TextEditor::findBraceInBlock(const QTextBlock &block, bool opening) const
         return -1;
     }
 
-    QString text = block.text();
-    QChar target = opening ? '{' : '}';
+    const QString text = block.text();
+    const QChar target = opening ? '{' : '}';
 
+    // 修复：跳过字符串、字符字面量、行注释、块注释里的括号
+    bool inStr = false, inChar = false, inLine = false, inBlock = false, esc = false;
     for (int i = 0; i < text.length(); ++i) {
-        if (text[i] == target) {
-            return i;
+        const QChar c = text[i];
+        if (inLine) break;
+        if (inBlock) {
+            if (c == '*' && i + 1 < text.length() && text[i + 1] == '/') {
+                inBlock = false;
+                ++i;
+            }
+            continue;
         }
+        if (esc) { esc = false; continue; }
+        if (c == '\\') { esc = true; continue; }
+        if (c == '"' && !inChar) { inStr = !inStr; continue; }
+        if (c == '\'' && !inStr) { inChar = !inChar; continue; }
+        if (inStr || inChar) continue;
+        if (c == '/' && i + 1 < text.length()) {
+            if (text[i + 1] == '/') { inLine = true; break; }
+            if (text[i + 1] == '*') { inBlock = true; ++i; continue; }
+        }
+        if (c == target) return i;
     }
     return -1;
 }
@@ -3087,7 +3109,7 @@ void TextEditor::applyLineHeight()
 {
     const qreal want = ThemeManager::kEditorLineHeightPercent;
 
-    // 同一比例、且已经应用过 → 直接返回
+    // 同一比例、且已经应用过 直接返回
     if (m_lastAppliedLineHeight >= 0.0
         && qFuzzyCompare(m_lastAppliedLineHeight, want)) {
         return;
@@ -3123,15 +3145,32 @@ int TextEditor::findMatchingBraceLine(int line) const
         return -1;
     }
 
-    // 查找 '{' 或 '}'
+    // ========== 新增：缩进型语言（Python / Ruby）==========
+    //   按缩进层级找方法体结束行
+    const QString langId = currentLanguageId();
+    const bool isIndentLang = (langId == "python" || langId == "ruby");
+    if (isIndentLang) {
+        const int curIndent = leadingIndentWidth(block.text());
+        int endLine = line;   // 至少是起始行
+        QTextBlock b = block.next();
+        while (b.isValid()) {
+            const QString t = b.text();
+            if (t.trimmed().isEmpty()) { b = b.next(); continue; }   // 空行跳过
+            const int bIndent = leadingIndentWidth(t);
+            if (bIndent <= curIndent) break;
+            endLine = b.blockNumber() + 1;
+            b = b.next();
+        }
+        return endLine;   // 可能 == line 表示"无 body"，调用方会判 false
+    }
+
+    // ========== 大括号语言 ==========
     int bracePos = findBraceInBlock(block, true);
     bool isOpening = true;
-
     if (bracePos == -1) {
         bracePos = findBraceInBlock(block, false);
         isOpening = false;
     }
-
     if (bracePos == -1) {
         return -1;
     }
@@ -3139,36 +3178,92 @@ int TextEditor::findMatchingBraceLine(int line) const
     QTextDocument *doc = document();
     int position = block.position() + bracePos;
 
-    QChar braceChar = isOpening ? '{' : '}';
-    QChar otherBrace = isOpening ? '}' : '{';
-
-    int depth = 1;
-    int step = isOpening ? 1 : -1;
+    const QChar braceChar = isOpening ? '{' : '}';
+    const QChar otherBrace = isOpening ? '}' : '{';
+    const int step = isOpening ? 1 : -1;
     int pos = position + step;
+    int depth = 1;
+
+    // 修复：反向扫描（从 } 反查 {）简化处理，不做字符串/注释跟踪
+    //   —— 该分支实际是死代码（isFoldableBlock/toggleFold 都传起始行，恒有 {），
+    //      仅保留作为将来从 `}` 反查能力的接口
+    if (!isOpening) {
+        while (pos >= 0 && pos < doc->characterCount()) {
+            const QChar ch = doc->characterAt(pos);
+            if (ch == braceChar) {
+                ++depth;
+            } else if (ch == otherBrace) {
+                --depth;
+                if (depth == 0) {
+                    QTextBlock mb = doc->findBlock(pos);
+                    return mb.isValid() ? (mb.blockNumber() + 1) : -1;
+                }
+            }
+            pos += step;
+        }
+        return -1;
+    }
+
+    // 修复：正向扫描时跟踪字符串/注释状态
+    bool inLineComment = false;
+    bool inBlockComment = false;
+    QChar quoteChar = QChar::Null;
+    bool escaped = false;
 
     while (pos >= 0 && pos < doc->characterCount()) {
-        QChar ch = doc->characterAt(pos);
+        const QChar ch = doc->characterAt(pos);
+
+        if (inLineComment) {
+            if (ch == '\n') inLineComment = false;
+            ++pos;
+            continue;
+        }
+        if (inBlockComment) {
+            if (ch == '*' && pos + 1 < doc->characterCount()
+                && doc->characterAt(pos + 1) == '/') {
+                inBlockComment = false;
+                pos += 2;
+                continue;
+            }
+            ++pos;
+            continue;
+        }
+        if (!quoteChar.isNull()) {
+            if (escaped) { escaped = false; ++pos; continue; }
+            if (ch == '\\') { escaped = true; ++pos; continue; }
+            if (ch == quoteChar) { quoteChar = QChar::Null; ++pos; continue; }
+            ++pos;
+            continue;
+        }
+
+        if (ch == '"' || ch == '\'') {
+            quoteChar = ch;
+            ++pos;
+            continue;
+        }
+        if (ch == '/' && pos + 1 < doc->characterCount()) {
+            const QChar nxt = doc->characterAt(pos + 1);
+            if (nxt == '/') { inLineComment = true; pos += 2; continue; }
+            if (nxt == '*') { inBlockComment = true; pos += 2; continue; }
+        }
 
         if (ch == braceChar) {
-            depth++;
+            ++depth;
         } else if (ch == otherBrace) {
-            depth--;
+            --depth;
             if (depth == 0) {
-                QTextBlock matchedBlock = doc->findBlock(pos);
-                if (matchedBlock.isValid()) {
-                    int matchedLine = matchedBlock.blockNumber() + 1;
-                    // 确保返回的行号在有效范围内
+                QTextBlock mb = doc->findBlock(pos);
+                if (mb.isValid()) {
+                    const int matchedLine = mb.blockNumber() + 1;
                     if (matchedLine <= document()->blockCount()) {
                         return matchedLine;
                     }
-                    return -1;
                 }
                 return -1;
             }
         }
-        pos += step;
+        ++pos;
     }
-
     return -1;
 }
 
@@ -3186,18 +3281,27 @@ bool TextEditor::isFoldableBlock(int line) const
         return false;
     }
 
-    // 检查是否包含 '{'
-    int bracePos = findBraceInBlock(block, true);
+    const QString langId = currentLanguageId();
+    const bool isIndentLang = (langId == "python" || langId == "ruby");
+
+    // 修复：缩进型语言按 `:` 结尾判定
+    if (isIndentLang) {
+        const QString trimmed = block.text().trimmed();
+        if (trimmed.startsWith('#')) return false;   // 纯注释行
+        if (!trimmed.endsWith(':'))  return false;   // 非复合语句头
+        const int matchLine = findMatchingBraceLine(line);
+        return (matchLine > line);                   // 需要有 body
+    }
+
+    // 大括号语言
+    const int bracePos = findBraceInBlock(block, true);
     if (bracePos == -1) {
         return false;
     }
-
-    // 检查匹配的 '}' 是否在同一行
-    int matchLine = findMatchingBraceLine(line);
+    const int matchLine = findMatchingBraceLine(line);
     if (matchLine == -1 || matchLine == line) {
         return false;
     }
-
     return true;
 }
 
@@ -3262,32 +3366,30 @@ void TextEditor::toggleFold(int line)
         // qDebug() << "展开完成，移除折叠记录";
     } else {
         // ========== 折叠 ==========
-        // qDebug() << "--- 开始折叠（遍历块） ---";
-        QTextBlock block = document()->findBlockByLineNumber(line + 1 - 1); // line+1 行的块
+        // 起始块：起始行的下一行（行号 line+1）
+        QTextBlock block = document()->findBlockByLineNumber(line);
         if (!block.isValid()) {
-            // qDebug() << "起始块无效";
             return;
         }
-        // 遍历从 line+1 到 matchLine-1
+        // 遍历从 line+1 到 matchLine-1（不隐藏 matchLine 本身，它通常是 `}` 或 Python 的空行）
         while (block.isValid() && block.blockNumber() + 1 < matchLine) {
             block.setVisible(false);
-            // qDebug() << "折叠块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
             block = block.next();
         }
         m_foldedLines.insert(line);
-        // qDebug() << "折叠完成，添加折叠记录";
     }
 
-    // 强制文档重新布局
-    // qDebug() << "强制文档重排...";
+    // 折叠/展开后强制重排，避免后续折叠三角位置错位
     document()->markContentsDirty(0, document()->characterCount());
     document()->adjustSize();
 
-    viewport()->update();
-    m_lineNumberArea->update();
+    // 清空缩进缓存（块号在可见性变化后可能漂移）
+    m_logicalIndentCache.clear();
 
-    // qDebug() << "折叠列表现在:" << m_foldedLines.values();
-    // qDebug() << "=== toggleFold 结束 ===";
+    // 先 viewport 再行号区，最后再刷一次（Qt 会在 update() 后延迟到下一次事件循环，
+    // 三次 update 合并成一次，无额外开销，但能确保 geometry 已稳定）
+    viewport()->update();
+    if (m_lineNumberArea) m_lineNumberArea->update();
 }
 
 /**
@@ -3295,7 +3397,7 @@ void TextEditor::toggleFold(int line)
  */
 void TextEditor::updateFolding()
 {
-    // 没有任何折叠记录 → 块本身全部可见，无需遍历整个文档
+    // 没有任何折叠记录 块本身全部可见，无需遍历整个文档
     if (m_foldedLines.isEmpty()) {
         return;
     }
@@ -3345,11 +3447,11 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         if (m_completionActive) closeCompletion();
 
         if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
-            // 已显示 → 关闭
+            // 已显示 关闭
             m_outlineOverlay->hideOverlay();
         } else if (m_outlineOverlay && m_outlineController
             && document()->characterCount() <= 500000) {
-            // 未显示 → 打开
+            // 未显示 打开
             m_outlineOverlay->setSymbols(m_outlineController->symbols());
             const QRect cr = cursorRect();
             const QPoint globalPos = viewport()->mapToGlobal(cr.bottomLeft());
@@ -3400,7 +3502,7 @@ void TextEditor::keyPressEvent(QKeyEvent *event)
         }
     }
 
-    // Alt+Enter → 当前行 Quick Fix
+    // Alt+Enter 当前行 Quick Fix
     if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
         && (event->modifiers() & Qt::AltModifier)) {
         const int line = currentLine();
@@ -3599,9 +3701,9 @@ bool TextEditor::shouldTriggerCompletion(const QString& text, int cursorPos) con
 
 // ============================================================
 // 判断字符是否是"补全触发字符"
-//   - 字母、下划线 → 触发
-//   - . -> ::       → 触发（且触发后带上下文前缀）
-//   - 其它          → 不触发
+//   - 字母、下划线 触发
+//   - . -> ::       触发（且触发后带上下文前缀）
+//   - 其它          不触发
 // ============================================================
 bool TextEditor::isCompletionTriggerChar(QChar c) const
 {
@@ -3651,9 +3753,9 @@ void TextEditor::triggerCompletion()
     const int newAnchor = pos - prefix.length();
 
     // ---- 判断"上下文是否变化" ----
-    //   - 之前没有活跃补全 → 变化
-    //   - anchor 变了 → 变化（用户切到了新的 . / -> / :: 后）
-    //   - m_pendingLspItems 为空 → 变化（首次触发或上次 LSP 返回为空）
+    //   - 之前没有活跃补全 变化
+    //   - anchor 变了 变化（用户切到了新的 . / -> / :: 后）
+    //   - m_pendingLspItems 为空 变化（首次触发或上次 LSP 返回为空）
     //   只要不是"同一上下文内前缀变长/变短"，就重新请求 LSP；
     //   否则保留旧结果，本地过滤即可——避免"输入一个字符弹窗闪空 200ms"
     const bool anchorChanged =
@@ -3670,7 +3772,7 @@ void TextEditor::triggerCompletion()
         m_lspResponseWaiting = true;
         m_lspDebounceTimer->start();
     }
-    // else：同一上下文内继续输入字符 → 保留 m_pendingLspItems，
+    // else：同一上下文内继续输入字符 保留 m_pendingLspItems，
     //       rebuildCompletionList 会用新的 m_completionPrefix 重新过滤
 
     rebuildCompletionList();
@@ -3929,13 +4031,13 @@ void TextEditor::rebuildCompletionList()
     }
 
     // ---------- 4. 剔除"用户已完整输入"的补全项 ----------
-    //   规则：若某项的 insertText 与当前前缀完全相等 → 已经没有可补的内容，
+    //   规则：若某项的 insertText 与当前前缀完全相等 已经没有可补的内容，
     //        直接移除，避免"输入 pass 还提示 pass"这种无意义项。
     //
     //   为什么用 insertText 而不是 label：
-    //     - 函数项 label="print" / insertText="print()" → 用户输入 "print" 时，
+    //     - 函数项 label="print" / insertText="print()" 用户输入 "print" 时，
     //       我们仍希望保留（按 Tab 能补出括号），所以不能被误删。
-    //     - 纯标识符 label="pass"  / insertText="pass"    → 输入 "pass" 时删掉。
+    //     - 纯标识符 label="pass"  / insertText="pass"    输入 "pass" 时删掉。
     if (!m_completionPrefix.isEmpty()) {
         const QString prefix = m_completionPrefix;
         for (int i = all.size() - 1; i >= 0; --i) {
@@ -3958,7 +4060,7 @@ void TextEditor::rebuildCompletionList()
         if (!m_completionPopup->isVisible()) {
             m_completionPopup->showWithModel(m_completionModel, globalPos, 320);
         } else {
-            // 已可见 → 只调整尺寸和位置，不 show
+            // 已可见 只调整尺寸和位置，不 show
             const int rowHeight = m_completionPopup->sizeHintForRow(0) > 0
                                       ? m_completionPopup->sizeHintForRow(0) : 22;
             const int rows = qMin(m_completionModel->rowCount(), 10);
@@ -3987,7 +4089,7 @@ void TextEditor::requestLspCompletions(const QString& prefix)
 }
 
 // ============================================================
-// LSP 响应到达 → 合并 + 刷新
+// LSP 响应到达 合并 + 刷新
 // ============================================================
 void TextEditor::updateCompletionItems(const QList<LSPCompletionItem>& items)
 {
@@ -3995,7 +4097,7 @@ void TextEditor::updateCompletionItems(const QList<LSPCompletionItem>& items)
     m_lspResponseWaiting = false;
 
     if (!m_completionActive) {
-        // 用户在等待期间关闭了补全 → 丢弃
+        // 用户在等待期间关闭了补全 丢弃
         m_pendingLspItems.clear();
         return;
     }
@@ -4174,12 +4276,12 @@ QList<QTextCursor> TextEditor::findByNormalizedWhitespace(const QString& searchT
                 lastMatchedLine = j;
                 ++j;
             } else {
-                // 不匹配 → 中断本次尝试
+                // 不匹配 中断本次尝试
                 break;
             }
         }
 
-        // ---- 全部 token 都匹配 → 记录一段 ----
+        // ---- 全部 token 都匹配 记录一段 ----
         if (matchedBlocks == searchCount) {
             QTextCursor cursor(doc);
             QTextBlock firstBlock = doc->findBlockByNumber(i);
@@ -4267,7 +4369,7 @@ QList<TextEditor::MethodRange> TextEditor::findMethodRanges(const QString& metho
                 braceLine = sigLine;
                 bracePos  = openIdx;
             } else {
-                // 签名行没有 { → 向下找第一行有 { 的
+                // 签名行没有 { 向下找第一行有 { 的
                 for (int i = sigLine + 1; i < totalBlocks; ++i) {
                     const QString t = doc->findBlockByNumber(i).text();
                     int idx = t.indexOf('{');
@@ -4623,7 +4725,7 @@ void TextEditor::autoIndentAfterReturn()
                 };
 
                 if (!isPythonCompoundHead(prevTrimmed)) {
-                    // prevBlock 是续行 → 向上找起始行
+                    // prevBlock 是续行 向上找起始行
                     QTextBlock b = prevBlock.previous();
                     int scanned = 0;
                     while (b.isValid() && scanned < 200) {
@@ -4744,8 +4846,8 @@ bool TextEditor::tryAlignDedentKeyword()
     // ---- 方案 A：大括号语言（C++ / Java / C#）----
     if (m_editorRules.blockStyle == EditorRules::BlockStyle::Brace) {
         // 从当前行向上扫，找最近的"块开始行"
-        //   对 case 1: / default:  → 找 switch 行
-        //   对 public: / private:   → 找 class 行（或上一个访问修饰符行）
+        //   对 case 1: / default:  找 switch 行
+        //   对 public: / private:   找 class 行（或上一个访问修饰符行）
         int depth = 0;
         QTextBlock b = block.previous();
         int targetIndent = -1;
@@ -4875,7 +4977,7 @@ void TextEditor::jumpToMismatchedBracket()
         }
     }
 
-    // 扫描完仍有未闭合的开括号 → 跳最后一个
+    // 扫描完仍有未闭合的开括号 跳最后一个
     if (!stack.isEmpty()) {
         cursor.setPosition(stack.last().second);
     } else {
@@ -4894,7 +4996,7 @@ bool TextEditor::handleCommentShortcut(QKeyEvent* event)
     if (event->modifiers() != Qt::ControlModifier) return false;
 
     // 复用已有的 commentSelection / uncommentSelection
-    // 前者内部会判断"全已注释 → 反注释"
+    // 前者内部会判断"全已注释 反注释"
     commentSelection();
     return true;
 }
@@ -5094,12 +5196,12 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     //    1. 第一行：去掉所有前导缩进，从光标位置粘贴
     //    2. x = 粘贴后第一行的实际缩进
     //           = min(光标列, 行首缩进宽度)
-    //           （光标在缩进区内 → 光标列；光标在代码区 → 行首缩进）
+    //           （光标在缩进区内 光标列；光标在代码区 行首缩进）
     //    3. 判断"是否开启块"：用**拼接后的完整第一行**（不是剪贴板第一行）
     //           拼接后 = 光标前这一行的文本（去前导空白）
     //                  + 剪贴板第一行（去前导空白）
     //           例：光标在 "    if |"，剪贴板第一行 "(x == 1) {"
-    //               → 拼接后 "if (x == 1) {" → 行末 { → 开启块
+    //               拼接后 "if (x == 1) {" 行末 { 开启块
     //    4. 期望第二行缩进：
     //           - 开启块：x + tabWidth
     //           - 不开启：x
@@ -5144,7 +5246,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         }
     }
     if (firstIdx < 0) {
-        // 全是空行 → 走基类
+        // 全是空行 走基类
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
@@ -5364,12 +5466,12 @@ bool TextEditor::tryBraceNewline(const QString& input)
 
     // ---- 三行展开 ----
     // 布局（从 pos 开始）：
-    //   pos       → '{'
-    //   pos+1     → '\n'
-    //   pos+2     → innerIndent 第一个字符
+    //   pos       '{'
+    //   pos+1     '\n'
+    //   pos+2     innerIndent 第一个字符
     //   ...
-    //   pos+2+innerLen → '\n'
-    //   ...            → baseIndent + '}'
+    //   pos+2+innerLen '\n'
+    //   ...            baseIndent + '}'
     cursor.beginEditBlock();
     cursor.insertText("{");
     cursor.insertText("\n" + innerIndent);
@@ -5642,13 +5744,13 @@ bool TextEditor::handleSmartHomeSelection(QKeyEvent* event)
     // ---- 3. 决定目标列 ----
     int targetCol;
     if (activeCol <= 0) {
-        // 已在行首 → 什么都不做
+        // 已在行首 什么都不做
         return true;
     } else if (activeCol > firstNonWs) {
-        // 在代码区 → 选到首个非空白列
+        // 在代码区 选到首个非空白列
         targetCol = firstNonWs;
     } else {
-        // 已在缩进区 / 正好在首个非空白列 → 扩到列 0
+        // 已在缩进区 / 正好在首个非空白列 扩到列 0
         targetCol = 0;
     }
 
@@ -5662,8 +5764,8 @@ bool TextEditor::handleSmartHomeSelection(QKeyEvent* event)
 }
 
 // ============================================================================
-//  选中文本时输入 opening 字符 → 用一对字符包裹选区
-//  例：选中 foo，输入 " → "foo"；输入 ( → (foo)
+//  选中文本时输入 opening 字符 用一对字符包裹选区
+//  例：选中 foo，输入 " "foo"；输入 ( (foo)
 // ============================================================================
 bool TextEditor::trySurroundSelection(const QString& input)
 {
@@ -5708,8 +5810,8 @@ bool TextEditor::trySurroundSelection(const QString& input)
 }
 
 // ============================================================================
-//  Backspace 位于空配对中间 → 删除整对
-//  例：(|) 按 Backspace → |
+//  Backspace 位于空配对中间 删除整对
+//  例：(|) 按 Backspace |
 // ============================================================================
 bool TextEditor::tryDeletePairOnBackspace()
 {
@@ -5746,7 +5848,7 @@ bool TextEditor::tryDeletePairOnBackspace()
 }
 
 // ============================================================================
-//  在 C 风格块注释内回车 → 自动插入 " * "
+//  在 C 风格块注释内回车 自动插入 " * "
 //  触发条件：当前行 trimmed 以 "*" 或 "/*" 开头，且向上能追溯到 "/*"
 // ============================================================================
 bool TextEditor::tryContinueBlockComment()
@@ -6181,7 +6283,7 @@ void TextEditor::paintScrollBarMarkers()
     const int sbWidth    = sb->width();
 
     // 标记宽度随滚动条宽度自适应：
-    //   普通屏滚动条约 12px → markerWidth = 2；高 DPI 约 18px → 3
+    //   普通屏滚动条约 12px markerWidth = 2；高 DPI 约 18px 3
     //   用 /6 是为了让"红线"看起来像滚动条上一个细条，不喧宾夺主
     const int markerWidth  = qMax(2, sbWidth);
     const int markerHeight = qMax(2, sbWidth / 5);   // 高度同理
@@ -6415,7 +6517,7 @@ void TextEditor::endSilentModification()
 //
 //  用途：识别"续行锚点"
 //    - 某行 bracketDelta > 0（有未闭合开括号）
-//    - 且下一行缩进更深 → 下一行是这行的续行
+//    - 且下一行缩进更深 下一行是这行的续行
 //
 //  实现：
 //    - 跳过字符串（"" '' ``）内的括号
@@ -6505,7 +6607,7 @@ QString TextEditor::findLogicalLineIndent(const QTextBlock& block) const
             }
         }
 
-        // 空行 / 零缩进 → 自身
+        // 空行 / 零缩进 自身
         if (text.trimmed().isEmpty() || selfIndentWidth == 0) {
             return selfIndent;
         }
@@ -6565,7 +6667,7 @@ void TextEditor::setAIAvailable(bool available)
 
 // ============================================================================
 //  AI 辅助：触发一个操作
-//  1. 取选中文本（无选中 → 取当前整行）
+//  1. 取选中文本（无选中 取当前整行）
 //  2. 按 kind 拼 prompt
 //  3. emit aiAssistRequested 让 MainWindow 转给 AI 模块
 // ============================================================================
@@ -6574,7 +6676,7 @@ void TextEditor::triggerAIAssist(AIAssistKind kind)
     // ---- 1. 取代码 ----
     QString code = textCursor().selectedText();
     if (code.isEmpty()) {
-        // 无选中 → 用光标所在整行
+        // 无选中 用光标所在整行
         code = textCursor().block().text();
     }
     // 选区里的段落分隔符归一化为 '\n'
@@ -6707,7 +6809,7 @@ void TextEditor::updateLineNumberAreaWidth()
 
     // v8.5：用 m_showBreadcrumb 判断是否显示，不用 isVisible()
     //   - isVisible() 在父控件未 show() 时恒为 false，
-    //     导致 loadFile 时 top margin = 0 → 首行与面包屑重叠
+    //     导致 loadFile 时 top margin = 0 首行与面包屑重叠
     //   - 高度用常量（BreadcrumbBar::height() 在 resize 前不是 24）
     static constexpr int kBreadcrumbHeight = 24;
 
@@ -6822,7 +6924,7 @@ void TextEditor::onTextChanged()
         return;
     }
 
-    // 文档变化 → 逻辑行缩进缓存全部失效
+    // 文档变化 逻辑行缩进缓存全部失效
     m_logicalIndentCache.clear();
 
     if (!document()->isModified()) {
@@ -6844,6 +6946,23 @@ void TextEditor::onTextChanged()
 
     if (m_autoSaveTimer && !m_filePath.isEmpty()) {
         m_autoSaveTimer->start();   // 重置为 15 秒
+    }
+
+    // highlightAllMatches 只 setExtraSelections，不会触发 textChanged，没有递归风险
+    if (m_findBarVisible && m_findLineEdit
+        && !m_findLineEdit->text().isEmpty()) {
+        const int savedIndex = m_currentMatchIndex;
+        highlightAllMatches(m_findLineEdit->text(),
+            m_caseSensitiveCheck->isChecked(),
+            m_wholeWordCheck->isChecked());
+        if (!m_matchCursors.isEmpty()) {
+            m_currentMatchIndex = qBound(0, savedIndex,
+                m_matchCursors.size() - 1);
+            scrollToMatch(m_currentMatchIndex);
+        } else {
+            m_currentMatchIndex = -1;
+            m_matchCountLabel->setText("0/0");
+        }
     }
 }
 
@@ -6924,8 +7043,8 @@ int TextEditor::lineNumberAreaWidth() const
 
 // ============================================================================
 //  多行缩进 / 反缩进
-//  - increase = true  → Tab（在每行行首插入一个缩进单元）
-//  - increase = false → Shift+Tab（删除每行行首的一个缩进单元）
+//  - increase = true  Tab（在每行行首插入一个缩进单元）
+//  - increase = false Shift+Tab（删除每行行首的一个缩进单元）
 //  - 有选区：处理选区覆盖的所有完整行
 //  - 无选区：Tab 在光标处插入缩进；Shift+Tab 删除光标前一个缩进单元
 // ============================================================================
@@ -7016,7 +7135,7 @@ void TextEditor::indentSelection(bool increase)
 
     tmp.setPosition(selEnd);
     int endBlock = tmp.blockNumber();
-    // 选区末尾恰好停在行首 → 不算这一行（避免多缩进一行）
+    // 选区末尾恰好停在行首 不算这一行（避免多缩进一行）
     if (tmp.positionInBlock() == 0 && endBlock > startBlock) {
         --endBlock;
     }

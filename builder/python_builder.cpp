@@ -18,8 +18,8 @@ namespace SprintIDE {
 
     // ============================================================
     // 文件内辅助：在 PATH 里按平台候选名查找 Python 解释器
-    //   Windows: python.exe → python3.exe → py.exe（Python Launcher）
-    //   Unix   : python3 → python
+    //   Windows: python.exe python3.exe py.exe（Python Launcher）
+    //   Unix   : python3 python
     // 返回空串 = 找不到
     // ============================================================
     static QString findPythonInPath()
@@ -99,7 +99,7 @@ namespace SprintIDE {
                 return pythonHome;
             }
 
-            // 3b. 用户填的是安装目录 → 按平台试多个候选
+            // 3b. 用户填的是安装目录 按平台试多个候选
             #ifdef Q_OS_WIN
             const QStringList localCandidates = {
                 pythonHome + "/python.exe",
@@ -127,7 +127,7 @@ namespace SprintIDE {
             return fromPath;
         }
 
-        // ---- 5. 真的找不到 → 返回平台习惯名，让调用方报明确错误 ----
+        // ---- 5. 真的找不到 返回平台习惯名，让调用方报明确错误 ----
         #ifdef Q_OS_WIN
         qWarning() << "[Python] 未找到任何 Python 解释器，"
         "请安装 Python 或在设置里配置 PYTHON_HOME / pythonInterpreter";
@@ -276,7 +276,7 @@ namespace SprintIDE {
         }
 
         // ========== 3. 语法检查 ==========
-        // ★ 用跨平台解析出来的解释器，而不是硬编码 "python"
+        // 用跨平台解析出来的解释器，而不是硬编码 "python"
         QString python = resolvePythonInterpreter(task);
 
         ProcessManager pm;
@@ -324,7 +324,7 @@ namespace SprintIDE {
     }
 
     bool PythonBuilder::run(const BuildTask& task, const BuildResult& buildResult, QString& output) {
-        // ★ 复用同一个解释器解析逻辑
+        // 复用同一个解释器解析逻辑
         QString python = resolvePythonInterpreter(task);
 
         output = QString("使用 Python: %1\n").arg(python);

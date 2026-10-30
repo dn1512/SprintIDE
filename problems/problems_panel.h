@@ -34,11 +34,11 @@ namespace SprintIDE {
     * @brief Problems 面板：以文件为分组显示诊断
     *
     * 特性：
-    *  - 树形：文件 → 诊断列表
+    *  - 树形：文件 诊断列表
     *  - 三档过滤：错误 / 警告 / 信息
     *  - 文本搜索框
-    *  - 双击 → jumpToFileRequested(filePath, line, column)
-    *  - 右键 → quickFixRequested(filePath, line, column)
+    *  - 双击 jumpToFileRequested(filePath, line, column)
+    *  - 右键 quickFixRequested(filePath, line, column)
     *  - 颜色全部走 ThemeManager
     */
     class ProblemsPanel : public QWidget
@@ -55,7 +55,7 @@ namespace SprintIDE {
         /// 双击诊断 / 点击跳转
         void jumpToFileRequested(const QString& filePath, int line, int column);
 
-        /// 右键 → 请求 Quick Fix
+        /// 右键 请求 Quick Fix
         void quickFixRequested(const QString& filePath, int line, int column);
 
         private slots:

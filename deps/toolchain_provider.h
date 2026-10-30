@@ -40,7 +40,7 @@ using ToolchainDownloadProgress = std::function<void(int progress)>;
  *
  * 设计原则：
  *  - Provider 只负责"找到"或"安装/下载"，不感知 IDE 的业务逻辑
- *  - 解析顺序由 Manager 控制（bundled → user-config → system → PATH）
+ *  - 解析顺序由 Manager 控制（bundled user-config system PATH）
  *  - 未来加"下载器"时，只需实现 downloadAndInstall，不改动调用方
  */
 class ToolchainProvider

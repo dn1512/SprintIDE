@@ -9,7 +9,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QDebug>
-#include <QCoreApplication> 
+#include <QCoreApplication>
 #include <algorithm>
 #include <functional>    // for std::greater
 #include <QHash>
@@ -38,7 +38,7 @@ static QString bundledToolchainRoot()
     // applicationDirPath() = .../SprintIDE.app/Contents/MacOS
     QDir macosDir = appDir;
     if (macosDir.dirName() == "MacOS") {
-        macosDir.cdUp();          // → Contents
+        macosDir.cdUp();          // Contents
         return macosDir.absoluteFilePath("Frameworks/toolchain");
     }
     // 非 bundle 运行（Qt Creator 直接跑）：没有内嵌路径
@@ -124,7 +124,7 @@ void CppProjectModel::detectBuildSystem()
         return;
     }
 
-    // 检查是否存在 C/C++ 源文件 → SingleFile
+    // 检查是否存在 C/C++ 源文件 SingleFile
     QDirIterator it(m_projectPath,
                     {"*.cpp", "*.cxx", "*.cc", "*.c", "*.h", "*.hpp"},
                     QDir::Files,
@@ -225,7 +225,7 @@ void CppProjectModel::scanCMakeTargets()
     // ============================================================
     QHash<QString, QString> vars;
 
-    // project(X ...)  →  PROJECT_NAME = X
+    // project(X ...)   PROJECT_NAME = X
     {
         static QRegularExpression reProj(R"(project\s*\(\s*([A-Za-z0-9_\-\.]+))");
         auto m = reProj.match(content);
@@ -234,7 +234,7 @@ void CppProjectModel::scanCMakeTargets()
         }
     }
 
-    // set(VAR value)  →  VAR = value    （单值形式，忽略 list）
+    // set(VAR value)   VAR = value    （单值形式，忽略 list）
     {
         static QRegularExpression reSet(
             R"(set\s*\(\s*([A-Za-z0-9_]+)\s+([A-Za-z0-9_\-\.]+)\s*\))");
@@ -466,7 +466,7 @@ QString CppProjectModel::guessExecutablePath(const QString& targetName) const
     //
     // 用于 targetName 为空、或 targetName 与 .app 名不一致的场景。
     // 典型触发：CMakeLists 里写 add_executable(${PROJECT_NAME} ...)，
-    //           target 名无法静态解析 → targetName 为空。
+    //           target 名无法静态解析 targetName 为空。
     // ============================================================
     {
         for (const QString& root : searchDirs) {
@@ -476,7 +476,7 @@ QString CppProjectModel::guessExecutablePath(const QString& targetName) const
             const QFileInfoList bundles = r.entryInfoList(
                 {"*.app"}, QDir::Dirs | QDir::NoDotAndDotDot);
             for (const QFileInfo& b : bundles) {
-                // "SprintIDE.app" → "SprintIDE"
+                // "SprintIDE.app" "SprintIDE"
                 const QString appName = b.completeBaseName();
                 const QString inner =
                     b.absoluteFilePath() + "/Contents/MacOS/" + appName;
@@ -710,8 +710,8 @@ QString CppProjectModel::findCMakeExecutable()
     }
 
     qWarning() << "[CppProjectModel] 未找到命令行版 cmake。";
-    qWarning() << "  → macOS: brew install cmake";
-    qWarning() << "  → 或在 [设置 → 环境变量] 里配置 CMAKE_HOME";
+    qWarning() << "  macOS: brew install cmake";
+    qWarning() << "  或在 [设置 环境变量] 里配置 CMAKE_HOME";
     return QString();
 }
 
@@ -885,7 +885,7 @@ QString CppProjectModel::detectExistingGenerator(const QString& buildDir)
     const QString cacheFile = QDir(buildDir).absoluteFilePath("CMakeCache.txt");
     QFile file(cacheFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();   // 无 cache → 全新配置
+        return QString();   // 无 cache 全新配置
     }
 
     QTextStream in(&file);

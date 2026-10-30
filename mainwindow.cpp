@@ -123,7 +123,7 @@
 #include "quick_open_dialog.h"
 #include "search_in_files_dialog.h"
 #include "log/output_panel.h"
-#include "log/log_list_model.h"     // 只需要 LogKind / LogLevel 常量时
+#include "log/log_list_model.h"
 #include "breakpoint_list_panel.h"
 #include "panel_focus_manager.h"
 #include "rust/rust_debugger.h"
@@ -134,18 +134,12 @@ using namespace SprintIDE;
 namespace SprintIDE {
 
 // ============================================================================
-//  从文件路径向上查找真正的项目根
+//  从文件路径向上查找项目根
 //
-//  优先级（第一个命中的目录就是项目根）：
-//    1. compile_commands.json 所在的目录（CMake / clangd 项目的标准位置）
-//    2. CMakeLists.txt 所在的目录
-//    3. .git 所在的目录
-//    4. 其他语言的标识文件（pom.xml / package.json / pyproject.toml / Cargo.toml / go.mod）
-//    5. 都找不到 → 返回文件所在目录
-//
-//  为什么不能用 currentProjectPath：
-//    用户可能在项目 A 里打开项目 B 的文件（临时查看、跳转定义），
-//    LSP 必须按文件归属的项目解析，否则编译参数全错。
+//  有以下文件的就代表是根目录：
+//    1. compile_commands.json、CMakeLists.txt 、.git文件
+//    2. 其他语言的标识文件（pom.xml / package.json / pyproject.toml / Cargo.toml / go.mod）
+//    要是没有就按当前目录算根目录
 // ============================================================================
 static QString findProjectRootForFile(const QString& filePath)
 {
@@ -169,7 +163,7 @@ static QString findProjectRootForFile(const QString& filePath)
         if (!dir.cdUp()) break;
     }
 
-    // 向上到根还没找到 → 返回文件所在目录
+    // 向上到根还没找到 返回文件所在目录
     return QFileInfo(filePath).absolutePath();
 }
 
@@ -308,7 +302,7 @@ static QStringList scanFilesForQuickOpen(const QString& root, int maxFiles = 200
         ".dSYM"
     };
 
-    // 明显是二进制/构建产物 → 不列入快速打开
+    // 明显是二进制/构建产物 不列入快速打开
     static const QSet<QString> kSkipExt = {
         "o", "a", "so", "dylib", "dll", "exe", "d", "obj", "lib",
         "class", "jar", "war", "pyc", "pyo", "pdb", "ilk", "exp",
@@ -517,7 +511,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&tm, &ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
     connect(&tm, &ThemeManager::fontChanged, this, [this]() {
-        // 字体或字号变化 → 遍历所有编辑器重新应用
+        // 字体或字号变化 遍历所有编辑器重新应用
         applyCurrentTheme();
     });
 
@@ -569,7 +563,7 @@ MainWindow::MainWindow(QWidget *parent)
         }
         qDebug() << "AI 模块已集成到 MainWindow";
 
-        // AI 状态变化 → 同步到所有编辑器和 OutputPanel
+        // AI 状态变化 同步到所有编辑器和 OutputPanel
         if (m_aiConnMgr) {
             connect(m_aiConnMgr, &AiConnectionManager::stateChanged,
                     this, [this](AiConnectionManager::State) {
@@ -642,7 +636,7 @@ MainWindow::~MainWindow()
     //   在删除 TextEditor 之前，先把所有 document 到 MainWindow
     //   的信号连接全部切断。
     //   原因：TextEditor 的析构会触发 document->finishEdit() →
-    //   contentsChanged 信号 → MainWindow::onEditorTextChanged，
+    //   contentsChanged 信号 MainWindow::onEditorTextChanged，
     //   而那时 MainWindow 的 d 可能已删或即将被删。
     if (d && d->editorTabs) {
         for (int i = 0; i < d->editorTabs->count(); ++i) {
@@ -1726,7 +1720,7 @@ void MainWindow::setupDockWidgets()
                     d->editorTabs->setCurrentWidget(ed);
                     ed->gotoLine(line);
 
-                    // 若已知列号 → 精确定位到列
+                    // 若已知列号 精确定位到列
                     if (column > 0) {
                         QTextCursor c = ed->textCursor();
                         c.movePosition(QTextCursor::Right,
@@ -1776,7 +1770,7 @@ void MainWindow::setupDockWidgets()
             ed->gotoLine(line);
             ed->setFocus();
 
-            // 光标移到该行末尾 → 位置更贴近 Quick Fix 菜单的弹出点
+            // 光标移到该行末尾 位置更贴近 Quick Fix 菜单的弹出点
             QTextCursor c = ed->textCursor();
             c.movePosition(QTextCursor::EndOfBlock);
             ed->setTextCursor(c);
@@ -1786,7 +1780,7 @@ void MainWindow::setupDockWidgets()
             ed->showQuickFixMenuForLine(line, globalPos);
         });
 
-    // 状态栏指示器点击 → 切到 Problems tab
+    // 状态栏指示器点击 切到 Problems tab
     //   （m_problemsIndicatorLabel 在 setupStatusBar 里已创建）
     if (m_problemsIndicatorLabel) {
         m_problemsIndicatorLabel->installEventFilter(this);
@@ -1803,7 +1797,7 @@ void MainWindow::setupDockWidgets()
     // ---------- 左侧窄条 ----------
     QWidget* strip = new QWidget(bottomContainer);
     strip->setObjectName("BottomStrip");
-    strip->setFixedWidth(32);                                        // 28 → 32
+    strip->setFixedWidth(32);                                        // 28 32
     strip->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     QVBoxLayout* stripLayout = new QVBoxLayout(strip);
@@ -1818,7 +1812,7 @@ void MainWindow::setupDockWidgets()
         b->setIcon(QIcon(iconPath));
         b->setIconSize(QSize(14, 14));                               // 14×14
         b->setToolTip(tip);
-        b->setFixedSize(26, 26);                                     // 24 → 26
+        b->setFixedSize(26, 26);                                     // 24 26
         b->setCheckable(false);
         b->setFocusPolicy(Qt::NoFocus);
         b->setCursor(Qt::PointingHandCursor);
@@ -1975,7 +1969,7 @@ void MainWindow::setupConnections()
     // ============================================================
     //  项目面板：定位 / 刷新
     // ============================================================
-    // "定位"按钮 → 拿当前编辑器文件 → 调 locateFile
+    // "定位"按钮 拿当前编辑器文件 调 locateFile
     connect(d->projectPanel, &ProjectPanel::locateCurrentFileRequested,
             this, [this]() {
                 TextEditor* editor = currentEditor();
@@ -1983,7 +1977,7 @@ void MainWindow::setupConnections()
                 const QString filePath = editor->filePath();
                 if (filePath.isEmpty()) return;
 
-                // 文件不在当前项目根目录下 → 提示并跳过
+                // 文件不在当前项目根目录下 提示并跳过
                 if (!d->currentProjectPath.isEmpty()
                     && !filePath.startsWith(d->currentProjectPath)) {
                     logInfo(QString("文件 %1 不在当前项目内，无法定位")
@@ -1994,7 +1988,7 @@ void MainWindow::setupConnections()
                 d->projectPanel->locateFile(filePath);
             });
 
-    // ② 对外信号 → 项目面板刷新槽
+    // ② 对外信号 项目面板刷新槽
     connect(this, &MainWindow::projectPanelRefreshRequested,
             d->projectPanel, &ProjectPanel::onRefreshRequested,
             Qt::UniqueConnection);
@@ -2071,15 +2065,15 @@ void MainWindow::setupGitPanel()
     // 3. 默认隐藏（打开项目且是 git 仓库时才提示存在）
     m_gitDialog->hide();
 
-    // 4. 双击文件 → 打开编辑器
+    // 4. 双击文件 打开编辑器
     connect(m_gitPanel, &Git::GitPanel::fileDoubleClicked,
             this, &MainWindow::onGitFileDoubleClicked);
 
-    // 5 提交前身份检查失败 → 打开设置（定位到 Git 页）
+    // 5 提交前身份检查失败 打开设置（定位到 Git 页）
     connect(m_gitPanel, &Git::GitPanel::openSettingsRequested,
             this, &MainWindow::onOpenGitSettingsFromPanel);
 
-    // 6. 仓库/状态变化 → 更新菜单可用性 + 状态栏指示器
+    // 6. 仓库/状态变化 更新菜单可用性 + 状态栏指示器
     connect(&Git::GitManager::instance(), &Git::GitManager::repositoryChanged,
             this, [this](const Git::GitRepositoryInfo&) {
                 updateGitActions();
@@ -2091,12 +2085,12 @@ void MainWindow::setupGitPanel()
                 updateGitStatusIndicator();
             });
 
-    // 7. 命令失败 → 输出面板
+    // 7. 命令失败 输出面板
     if (d->projectPanel) {
         connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
                 d->projectPanel, &ProjectPanel::onGitStatusUpdated);
 
-        // 7.5 ProjectPanel 右键 Git 子菜单动作 → MainWindow 分发
+        // 7.5 ProjectPanel 右键 Git 子菜单动作 MainWindow 分发
         //     用 lambda 中转，避免 signal 参数类型跨头文件的 moc 问题
         connect(d->projectPanel, &ProjectPanel::gitActionRequested,
                 this, [this](SprintIDE::GitContextAction action,
@@ -2105,7 +2099,7 @@ void MainWindow::setupGitPanel()
         });
     }
 
-    // 8. Git 状态更新 → 转发给项目面板（文件颜色标记）
+    // 8. Git 状态更新 转发给项目面板（文件颜色标记）
     if (d->projectPanel) {
         connect(&Git::GitManager::instance(), &Git::GitManager::statusUpdated,
                 d->projectPanel, &ProjectPanel::onGitStatusUpdated);
@@ -2146,7 +2140,7 @@ void MainWindow::setupBreakpointListPanel()
         tr("断点"));
     m_bottomTabWidget->setTabVisible(idx, false);
 
-    // 双击 → 打开文件 + 跳转
+    // 双击 打开文件 + 跳转
     connect(m_breakpointListPanel, &BreakpointListPanel::breakpointActivated,
             this, [this](const QString& file, int line) {
                 openFile(file);
@@ -2257,7 +2251,7 @@ void MainWindow::refreshBreakpointListPanel()
 // ============================================================================
 void MainWindow::onToggleBreakpointTab()
 {
-    // 若 m_debugManager 已就绪但面板还没建 → 现场创建
+    // 若 m_debugManager 已就绪但面板还没建 现场创建
     if (!m_breakpointListPanel && m_debugManager) {
         setupBreakpointListPanel();
     }
@@ -2412,7 +2406,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 {
-    // 状态栏 Git 指示器：左键点击 → 打开 Git 窗口
+    // 状态栏 Git 指示器：左键点击 打开 Git 窗口
     if (watched == m_gitStatusLabel && event->type() == QEvent::MouseButtonRelease) {
         auto* me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton) {
@@ -2421,7 +2415,7 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
         }
     }
 
-    // v8.5：Problems 指示器：左键点击 → 切到 Problems tab
+    // v8.5：Problems 指示器：左键点击 切到 Problems tab
     if (watched == m_problemsIndicatorLabel
         && event->type() == QEvent::MouseButtonRelease) {
         auto* me = static_cast<QMouseEvent*>(event);
@@ -2441,7 +2435,7 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 }
 
 // ============================================================
-//  窗口激活 → 请求刷新项目面板
+//  窗口激活 请求刷新项目面板
 //
 //  使用 300ms 防抖，避免：
 //    - 从子对话框返回时立刻触发（此时不需要刷）
@@ -2784,8 +2778,8 @@ void MainWindow::openFile(const QString &path)
 
                 client->requestCompletion(filePath, line, column);
             });
-    // 跳转定义：编辑器的 definitionRequested → 找 client → 发请求
-    // client 的 definitionReceived → MainWindow::onDefinitionReceived
+    // 跳转定义：编辑器的 definitionRequested 找 client 发请求
+    // client 的 definitionReceived MainWindow::onDefinitionReceived
     connect(editor, &TextEditor::definitionRequested,
             this, [this](const QString& filePath, int line, int column) {
 
@@ -3267,7 +3261,7 @@ void MainWindow::onTabContextMenuRequested(int index, const QPoint &pos)
     QAction* chosen = menu.exec(pos);   // pos 已是全局坐标
     if (!chosen) return;
 
-    // exec() 期间 tab 顺序可能变化 → 用 target 重新定位当前索引
+    // exec() 期间 tab 顺序可能变化 用 target 重新定位当前索引
     const int cur = d->editorTabs->indexOf(target);
     if (cur < 0) return;                // target 已被别的路径关掉，安全退出
 
@@ -3281,7 +3275,7 @@ void MainWindow::onTabContextMenuRequested(int index, const QPoint &pos)
     // 倒序：[cur-1, cur-2, ..., 0]
     if (chosen == actCloseLeft) {
         for (int i = cur - 1; i >= 0; --i) {
-            if (!closeEditorTab(i)) break;   // 用户取消 → 中止
+            if (!closeEditorTab(i)) break;   // 用户取消 中止
         }
         return;
     }
@@ -3390,7 +3384,7 @@ void MainWindow::onFileSaved(const QString &filePath)
 
     // Git 状态刷新（文件保存后对应的 git status 可能变化）
     // 防抖：快速连按 Ctrl+S 时只触发一次刷新，避免反复
-    //   runAsync → cancelAsync → deleteLater 撞上生命周期问题
+    //   runAsync cancelAsync deleteLater 撞上生命周期问题
     if (Git::GitManager::instance().isActive()) {
         if (!m_gitRefreshDebounce) {
             m_gitRefreshDebounce = new QTimer(this);
@@ -3505,11 +3499,11 @@ void MainWindow::onFileRenamed(const QString& oldPath, const QString& newPath)
     // 4. 状态栏 + 输出面板反馈
     // ============================================================
     if (m_statusLabel) {
-        m_statusLabel->setText(QString(tr("已重命名: %1 → %2"))
+        m_statusLabel->setText(QString(tr("已重命名: %1 %2"))
                                    .arg(QFileInfo(oldPath).fileName(),
                                         QFileInfo(newPath).fileName()));
     }
-    logInfo(QString("已重命名: %1 → %2").arg(oldPath, newPath));
+    logInfo(QString("已重命名: %1 %2").arg(oldPath, newPath));
 
     qDebug() << "[MW] 已同步" << syncedCount << "个打开的编辑器";
 }
@@ -3715,16 +3709,16 @@ void MainWindow::onCompileOutput(const QString& taskId, const QString& output, b
         } else if (warningRegex.match(trimmed).hasMatch()) {
             level = LogLevel::Warning;
         } else if (noteRegex.match(trimmed).hasMatch()) {
-            // note 级别 → Info（颜色已交给 LogLevel，不再需要单独颜色）
+            // note 级别 Info（颜色已交给 LogLevel，不再需要单独颜色）
         } else if (progressRegex.match(trimmed).hasMatch()) {
-            // 进度 → Info
+            // 进度 Info
         } else if (isError) {
             level = LogLevel::Error;
         }
 
         SprintIDE::ErrorMarker marker = parseErrorLine(trimmed);
         if (marker.line > 0 && !marker.filePath.isEmpty()) {
-            // 相对路径 → 依次尝试相对项目根 / <项目根>/build 解析成绝对路径
+            // 相对路径 依次尝试相对项目根 / <项目根>/build 解析成绝对路径
             QString absPath = marker.filePath;
             if (!QFileInfo(absPath).isAbsolute()) {
                 const QString projRoot = d->currentProjectPath;
@@ -3759,11 +3753,11 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
     QString timeStr = QTime::currentTime().toString("hh:mm:ss");
 
     // ============================================================
-    //  编译完成 → 收集所有错误/警告 → 按文件分组 → 写入 store
+    //  编译完成 收集所有错误/警告 按文件分组 写入 store
     //   source = "compiler"
     //  - 无论成功失败都做：
-    //    · 成功 → 清空所有之前的 "compiler" 诊断（可能上一轮失败过）
-    //    · 失败 → 全量替换 "compiler" 诊断
+    //    · 成功 清空所有之前的 "compiler" 诊断（可能上一轮失败过）
+    //    · 失败 全量替换 "compiler" 诊断
     //  - LSP 的诊断（source = "lsp"）不受影响
     // ============================================================
     {
@@ -3780,7 +3774,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                     SprintIDE::ErrorMarker m = parseErrorLine(line);
                     if (m.line <= 0 || m.filePath.isEmpty()) continue;
 
-                    // 相对路径 → 尝试相对项目根 / <项目根>/build
+                    // 相对路径 尝试相对项目根 / <项目根>/build
                     QString absPath = m.filePath;
                     if (!QFileInfo(absPath).isAbsolute()) {
                         const QString projRoot = d->currentProjectPath;
@@ -3927,7 +3921,7 @@ void MainWindow::onCompileFinished(const QString& taskId, const CompileResult& r
                 const QString prefix = QString(" %1. ").arg(i + 1);
 
                 if (marker.line > 0 && !marker.filePath.isEmpty()) {
-                    // 相对路径 → 尝试相对项目根 / <项目根>/build 解析成绝对路径
+                    // 相对路径 尝试相对项目根 / <项目根>/build 解析成绝对路径
                     QString absPath = marker.filePath;
                     if (!QFileInfo(absPath).isAbsolute()) {
                         const QString projRoot = d->currentProjectPath;
@@ -4151,7 +4145,7 @@ void MainWindow::onLSPDiagnostics(const QString& filePath,
 
     m_lastDiagnosticsByFile[filePath] = diagnostics;
 
-    // ---- 过滤 → Diagnostic ----
+    // ---- 过滤 Diagnostic ----
     DiagnosticFilter& filter = DiagnosticFilter::instance();
     QList<Diagnostic> kept;
 
@@ -4179,7 +4173,7 @@ void MainWindow::onLSPDiagnostics(const QString& filePath,
 
 // ============================================================
 //  把 store 里某文件的诊断同步到编辑器的波浪线
-//   - clearAllMarkers → 遍历 store[filePath] → setErrorMarker/setWarningMarker
+//   - clearAllMarkers 遍历 store[filePath] setErrorMarker/setWarningMarker
 //   - 由 fileDiagnosticsChanged 信号触发
 // ============================================================
 void MainWindow::syncDiagnosticsToEditor(const QString& filePath)
@@ -4203,7 +4197,7 @@ void MainWindow::syncDiagnosticsToEditor(const QString& filePath)
 }
 
 // ============================================================
-//  v8.5：诊断变化 → 刷新状态栏计数
+//  v8.5：诊断变化 刷新状态栏计数
 // ============================================================
 void MainWindow::onDiagnosticsChanged()
 {
@@ -4222,8 +4216,8 @@ void MainWindow::onDiagnosticsChanged()
     m_problemsIndicatorLabel->setVisible(true);
 
     // 图标 + 文字
-    //   有错误 → 红字 + 错误图标
-    //   无错误但有警告 → 黄字 + 警告图标
+    //   有错误 红字 + 错误图标
+    //   无错误但有警告 黄字 + 警告图标
     QStringList parts;
     if (errs > 0) {
         parts << QStringLiteral("✕ %1").arg(errs);
@@ -4287,12 +4281,12 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
     const QList<LSPDiagnostic> allDiags =
         m_lastDiagnosticsByFile.value(filePath);
     for (const LSPDiagnostic& d : allDiags) {
-        // 诊断 range 与请求 range 有重叠 → 纳入
+        // 诊断 range 与请求 range 有重叠 纳入
         // 支持跨多行的诊断（Python 缩进错误 / Java 泛型错误等）
         const int dStartLine = d.line - 1;                        // 0-based
         const int dEndLine   = (d.endLine > 0 ? d.endLine : d.line) - 1;
 
-        // 无重叠 → 跳过
+        // 无重叠 跳过
         if (dEndLine < startLine || dStartLine > endLine) continue;
 
         // 起始行在同一行时，检查列范围（粗略）
@@ -4304,7 +4298,7 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
             editor, &TextEditor::onCodeActionReceived,
             Qt::UniqueConnection);
 
-    // ---- 客户端未就绪 → 等 serverReady ----
+    // ---- 客户端未就绪 等 serverReady ----
     if (!client->isReady()) {
         QPointer<LSPClient> clientPtr = client;
         auto connPtr = std::make_shared<QMetaObject::Connection>();
@@ -4382,8 +4376,8 @@ void MainWindow::onStartDebug() {
         : d->currentProjectPath;
 
         // ---- 解释器解析：统一走 PythonBuilder::resolvePythonInterpreter ----
-        //   顺序：sdkConfig["pythonInterpreter"] → PythonProjectModel
-        //        → PYTHON_HOME → PATH 查找 → 平台兜底名
+        //   顺序：sdkConfig["pythonInterpreter"] PythonProjectModel
+        //        PYTHON_HOME PATH 查找 平台兜底名
         BuildTask task;
         task.projectPath = projectPath;
         task.sourceFiles << sourceFile;
@@ -4401,7 +4395,7 @@ void MainWindow::onStartDebug() {
             && QStandardPaths::findExecutable(python).isEmpty()) {
             QMessageBox::warning(this, tr("找不到 Python 解释器"),
                 tr("系统中未找到 Python 解释器。\n\n"
-                    "请安装 Python，或在 设置 → 环境变量 里配置 PYTHON_HOME。"));
+                    "请安装 Python，或在 设置 环境变量 里配置 PYTHON_HOME。"));
             return;
         }
 
@@ -4598,7 +4592,7 @@ void MainWindow::onStartDebug() {
         IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Rust);
         QString exePath = builder ? builder->getExecutablePath(task) : QString();
 
-        // ---- 3. 未编译 → 提示编译并调试 ----
+        // ---- 3. 未编译 提示编译并调试 ----
         if (exePath.isEmpty() || !QFile::exists(exePath)) {
             int reply = QMessageBox::question(
                 this, "编译并调试",
@@ -4624,7 +4618,7 @@ void MainWindow::onStartDebug() {
         #endif
         auto adapterRes = ToolchainManager::instance().resolve(preferred);
 
-        // 首选失败 → 尝试另一种 adapter
+        // 首选失败 尝试另一种 adapter
         if (!adapterRes.found) {
             ToolchainId fallback =
             (preferred == ToolchainId::LldbDap)
@@ -4636,7 +4630,7 @@ void MainWindow::onStartDebug() {
             if (fb.found) { adapterRes = fb; preferred = fallback; }
         }
 
-        // 两者都没有 → 弹安装引导
+        // 两者都没有 弹安装引导
         if (!adapterRes.found) {
             ToolchainManager::instance().resolveOrPrompt(preferred, this, &adapterRes);
             if (!adapterRes.found) {
@@ -4855,7 +4849,7 @@ void MainWindow::onStartDebug() {
 
         auto adapterRes = ToolchainManager::instance().resolve(preferred);
 
-        // 首选失败 → 尝试另一种 adapter（跨平台兜底）
+        // 首选失败 尝试另一种 adapter（跨平台兜底）
         if (!adapterRes.found) {
             ToolchainId fallback =
                 (preferred == ToolchainId::LldbDap)
@@ -4872,7 +4866,7 @@ void MainWindow::onStartDebug() {
             }
         }
 
-        // 两者都没有 → 弹安装引导（对首选弹，用户可换）
+        // 两者都没有 弹安装引导（对首选弹，用户可换）
         if (!adapterRes.found) {
             ToolchainManager::instance().resolveOrPrompt(preferred, this, &adapterRes);
             if (!adapterRes.found) {
@@ -6351,7 +6345,7 @@ void MainWindow::markProcessRunning(QProcess* proc, const QString& sourcePath)
         m_runAction->setIcon(QIcon(":/icons/icons/stop.svg"));
         m_runAction->setText(tr("停止"));
         m_runAction->setToolTip(tr("停止运行 (Ctrl+R)"));
-        // 断开旧连接 → 连到停止
+        // 断开旧连接 连到停止
         disconnect(m_runAction, nullptr, this, nullptr);
         connect(m_runAction, &QAction::triggered, this, &MainWindow::stopRunningProcess);
     }
@@ -6393,12 +6387,12 @@ void MainWindow::stopRunningProcess()
 
     logInfo("正在停止程序...");
     m_stoppingProcess = true;
-    p->disconnect(this);        // ★ 断开所有信号，防止 waitForFinished 期间 finished 触发 markProcessFinished
+    p->disconnect(this);        // 断开所有信号，防止 waitForFinished 期间 finished 触发 markProcessFinished
 
     p->terminate();
     if (!p->waitForFinished(3000)) {
         if (m_runningProcess.isNull()) {
-            return;   // 已经被 finished 处理清空 → 结束
+            return;   // 已经被 finished 处理清空 结束
         }
 
         logWarn("程序未响应，强制结束");
@@ -6458,7 +6452,7 @@ void MainWindow::syncProjectInfoToAI(const QString& projectPath)
     qDebug() << "[AI] 已设置项目信息:"
     << projectName << "(" << projectPath << ")";
 
-    // 如果已经连上 → 立刻推 event；否则下次握手会带上
+    // 如果已经连上 立刻推 event；否则下次握手会带上
     if (m_aiConnMgr->isReady()) {
         QJsonObject payload;
         payload["projectId"]   = projectId;
@@ -6593,7 +6587,7 @@ void MainWindow::onQuickOpen()
         }
     }
 
-    // -------- 2. 完全没有项目上下文 → 退化为系统文件对话框 --------
+    // -------- 2. 完全没有项目上下文 退化为系统文件对话框 --------
     if (d->currentProjectPath.isEmpty()) {
         qDebug() << "[QuickOpen] 无项目上下文，回退到系统文件对话框";
         onOpenFile();
@@ -7117,11 +7111,11 @@ void MainWindow::onGitPush()
 
     // ============================================================
     // Push 前状态检查
-    //   1. 没有配置上游 → 引导用户先 push -u
-    //   2. behind > 0 → 落后远程，必须先 pull
-    //   3. 分叉（ahead>0 && behind>0）→ 需要 pull 后 merge/rebase
-    //   4. ahead == 0 → 没有新提交可推
-    //   5. 一切正常 → 放行
+    //   1. 没有配置上游 引导用户先 push -u
+    //   2. behind > 0 落后远程，必须先 pull
+    //   3. 分叉（ahead>0 && behind>0）需要 pull 后 merge/rebase
+    //   4. ahead == 0 没有新提交可推
+    //   5. 一切正常 放行
     // ============================================================
     const auto st = gm.currentUpstreamStatus();
 
@@ -7206,7 +7200,7 @@ void MainWindow::onGitPull()
 
     // 已经在最新状态
     if (st.behind == 0) {
-        // 但 working tree 可能脏 → pull 会失败
+        // 但 working tree 可能脏 pull 会失败
         int dirtyCount = 0;
         for (const auto& s : gm.currentStatus()) {
             if (s.isStaged() || s.hasUnstagedChanges()) ++dirtyCount;
@@ -7390,7 +7384,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
         bool staged = false;
         for (const auto& s : gm.currentStatus()) {
             if (s.absolutePath == firstAbs) {
-                // 有工作区改动 → 显示 worktree diff；否则显示 staged diff
+                // 有工作区改动 显示 worktree diff；否则显示 staged diff
                 staged = !s.hasUnstagedChanges() && s.isStaged();
                 break;
             }
@@ -7594,7 +7588,7 @@ void MainWindow::onProjectPanelGitAction(int action, const QStringList& filePath
         QMessageBox::information(
             this, QStringLiteral("尚未实现"),
             QStringLiteral("该功能将在后续版本提供，<br>"
-                           "请使用「Git → 打开 Git 窗口」进行相关操作。"));
+                           "请使用「Git 打开 Git 窗口」进行相关操作。"));
         break;
     }
 }
@@ -7679,17 +7673,17 @@ void MainWindow::onComment()
     //   （加了 `// ` 前缀后光标绝对位置往后移，列号也会变）
     const int colBefore = editor->textCursor().positionInBlock();
 
-    // commentSelection 内部会自动判断"全已注释 → 反注释"
+    // commentSelection 内部会自动判断"全已注释 反注释"
     //   所以这里一次调用就覆盖"注释"和"取消注释"两种情况
     editor->commentSelection();
 
     // 光标下移到下一行
     QTextCursor c = editor->textCursor();
     QTextBlock next = c.block().next();
-    if (!next.isValid()) return;   // 已在最后一行 → 不动
+    if (!next.isValid()) return;   // 已在最后一行 不动
 
     const QString nextText = next.text();
-    // 若下一行不够长 → 落到行尾（不能超过行末）
+    // 若下一行不够长 落到行尾（不能超过行末）
     const int targetCol = qMin(colBefore, nextText.length());
 
     c.setPosition(next.position() + targetCol);
@@ -7816,7 +7810,7 @@ void MainWindow::loadAllProjectFiles(const QString& projectPath)
     //   1. 排除构建产物 / 元数据目录（build、.git、node_modules …）
     //   2. QDir::NoSymLinks —— 不跟随符号链接
     //      原因：macOS .framework 里存在 QtCore ↔ Versions/5/QtCore
-    //            的双向链接，跟随会导致无限递归 → 崩溃
+    //            的双向链接，跟随会导致无限递归 崩溃
     //   3. 深度硬限制，防止路径过深的仓库耗尽栈/内存
     // ============================================================
     static const QStringList kExcludeDirs = {
@@ -8027,7 +8021,7 @@ bool MainWindow::ensureQtClangdConfig(const QString& projectPath)
 
     const QString clangdFile = projectPath + "/.clangd";
 
-    // ---------- 5. 已存在且不是我们生成的 → 不动 ----------
+    // ---------- 5. 已存在且不是我们生成的 不动 ----------
     //   只有以 "# Auto-generated by SprintIDE" 开头的才覆盖，
     //   避免覆盖用户手写的内容。
     if (QFile::exists(clangdFile)) {
@@ -8043,17 +8037,17 @@ bool MainWindow::ensureQtClangdConfig(const QString& projectPath)
                 return false;
             }
 
-            // 是我们生成的 → 检查内容是否变化
+            // 是我们生成的 检查内容是否变化
             QFile f(clangdFile);
             if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 const QString currentContent = QString::fromUtf8(f.readAll());
                 f.close();
                 if (currentContent == content) {
-                    // 内容完全一致 → 不用重写
+                    // 内容完全一致 不用重写
                     return false;
                 }
             }
-            // 内容有变（QT_DIR 升级等）→ 继续重写
+            // 内容有变（QT_DIR 升级等）继续重写
         }
     }
 
@@ -8095,7 +8089,7 @@ bool MainWindow::ensureQtClangdConfig(const QString& projectPath)
         .arg(includeDirs.size()));
 
     if (clangdAlreadyRunning) {
-        // clangd 已启动 → 新配置需要重启才能生效
+        // clangd 已启动 新配置需要重启才能生效
         logWarn(QStringLiteral(
                 "clangd 已启动，新的 Qt 分析配置需要重启 SprintIDE 后生效。"
                 "重启后 Qt 关键字误报（Unknown type name 'QString'）会消失。"));
@@ -8110,7 +8104,7 @@ bool MainWindow::ensureQtClangdConfig(const QString& projectPath)
         return true;
     }
 
-    // clangd 未启动 → 下次打开文件时自动读取，无需重启
+    // clangd 未启动 下次打开文件时自动读取，无需重启
     logInfo(QStringLiteral(
             "clangd 尚未启动，配置将在打开文件时自动生效。"));
     return false;
@@ -8273,7 +8267,7 @@ void MainWindow::onBuildProject()
     // 如果经过以上步骤仍为空，给出明确提示并退出
     if (projectPath.isEmpty()) {
         QMessageBox::information(this, "提示",
-                                 "无法确定项目路径。请先打开一个文件，或通过 \"文件 → 打开项目\" 打开项目根目录。");
+                                 "无法确定项目路径。请先打开一个文件，或通过 \"文件 打开项目\" 打开项目根目录。");
         return;
     }
 
@@ -8282,7 +8276,7 @@ void MainWindow::onBuildProject()
     // ============================================================
     LanguageType lang = detectProjectLanguage(projectPath);
     if (lang == LanguageType::Unknown) {
-        // 没有项目构建系统标识 → 尝试按当前文件语言走单文件编译兜底
+        // 没有项目构建系统标识 尝试按当前文件语言走单文件编译兜底
         TextEditor* ed = currentEditor();
         LanguageType fileLang = ed
         ? detectLanguageTypeFromPath(ed->filePath())
@@ -8624,8 +8618,8 @@ void MainWindow::onRun()
         d->currentProjectPath;
 
         // ---- 解释器解析：统一走 PythonBuilder::resolvePythonInterpreter ----
-        //   顺序：sdkConfig["pythonInterpreter"] → PythonProjectModel
-        //        → PYTHON_HOME → PATH 查找 → 平台兜底名
+        //   顺序：sdkConfig["pythonInterpreter"] PythonProjectModel
+        //        PYTHON_HOME PATH 查找 平台兜底名
         //   这样"运行"与"编译/调试"完全一致，
         //   Windows 上不会再落到 "python3" 这个不存在的名字上。
         BuildTask task;
@@ -8641,12 +8635,12 @@ void MainWindow::onRun()
 
         const QString python = PythonBuilder::resolvePythonInterpreter(task);
 
-        // 解析结果为绝对文件路径 / PATH 里能找到 → 继续；否则明确报错
+        // 解析结果为绝对文件路径 / PATH 里能找到 继续；否则明确报错
         if (!QFileInfo(python).isFile()
             && QStandardPaths::findExecutable(python).isEmpty()) {
             QMessageBox::warning(this, tr("找不到 Python 解释器"),
                 tr("系统中未找到 Python 解释器。\n\n"
-                    "请安装 Python，或在 设置 → 环境变量 里配置 PYTHON_HOME。"));
+                    "请安装 Python，或在 设置 环境变量 里配置 PYTHON_HOME。"));
             return;
         }
 
@@ -8704,8 +8698,8 @@ void MainWindow::onRun()
         : d->currentProjectPath;
 
         // ---- 1. 选 target 名 ----
-        //   src/bin/<foo>.rs  → foo
-        //   其他（含 src/main.rs）→ [package] name
+        //   src/bin/<foo>.rs  foo
+        //   其他（含 src/main.rs）[package] name
         QString targetName;
         {
             const QString cargoToml = QDir(projectPath).absoluteFilePath("Cargo.toml");
@@ -8752,7 +8746,7 @@ void MainWindow::onRun()
         IBuilder* builder = BuilderFactory::createBuilder(LanguageType::Rust);
         QString exePath = builder ? builder->getExecutablePath(task) : QString();
 
-        // ---- 3. 未编译 / 过期 → 编译 + 运行 ----
+        // ---- 3. 未编译 / 过期 编译 + 运行 ----
         const bool needBuild =
         exePath.isEmpty() || !QFile::exists(exePath)
         || QFileInfo(sourceFile).lastModified()
@@ -8815,9 +8809,9 @@ void MainWindow::onRun()
 
         // ============================================================
         //  按构建系统区分：
-        //    CMake 项目 → outputName 留空让 CppBuilder 从 CMakeLists 取真实 target，
+        //    CMake 项目 outputName 留空让 CppBuilder 从 CMakeLists 取真实 target，
         //                 outputDir = "build"（与 onStartDebug 对齐）
-        //    裸 .cpp    → outputName = basename，outputDir = "bin"
+        //    裸 .cpp    outputName = basename，outputDir = "bin"
         //  这样编译产物路径与 getExecutablePath 的查找路径才能对上，
         //  否则 CMake 项目编到 build/<target> 后运行时会去 bin/<basename> 找，
         //  必然提示"未编译"。
@@ -9409,7 +9403,7 @@ void MainWindow::applyShortcutsFromConfig()
 
         const QString key = QStringLiteral("Shortcuts/") + entry.id;
         if (!cfg->contains(key)) {
-            // 用户从未改过 → 保持默认
+            // 用户从未改过 保持默认
             continue;
         }
 
@@ -9523,7 +9517,7 @@ void MainWindow::onAIExplainError(const QString& errorText)
 void MainWindow::onNewWindow()
 {
     // 启动一个新的 SprintIDE 进程
-    //   不传参数 → 新实例会弹出项目选择对话框（或空白主窗口）
+    //   不传参数 新实例会弹出项目选择对话框（或空白主窗口）
     //   QProcess::startDetached 让新进程独立于当前实例，父进程退出不影响它
     const QString appPath = QCoreApplication::applicationFilePath();
     if (appPath.isEmpty()) return;

@@ -63,7 +63,7 @@ namespace SprintIDE {
                     api.available = false;
                 }
             } else {
-                // 拿不到版本号 → 保守起见禁用
+                // 拿不到版本号 保守起见禁用
                 api.available = false;
             }
         }
@@ -76,7 +76,7 @@ namespace SprintIDE {
     //   CreateProcessW 的 lpCommandLine 解析规则（简化版）：
     //     - 空格 / 制表符 分隔参数
     //     - 双引号包裹含空格的参数
-    //     - 反斜杠紧邻双引号时需要成对加倍（\\" → \\\"）
+    //     - 反斜杠紧邻双引号时需要成对加倍（\\" \\\"）
     //   这里只处理最常见的情况，够 ssh / cmd / powershell 用
     // ============================================================================
     namespace {
@@ -92,7 +92,7 @@ namespace SprintIDE {
             QString escaped = arg;
             // 先把 \ 后面跟 " 的情况加倍反斜杠（简化处理）
             // 完整实现见 MSDN "Parsing C++ Command-Line Arguments"
-            // 这里只做 " → \" 转义，足够 ssh -p 22 root@x 这类命令
+            // 这里只做 " \" 转义，足够 ssh -p 22 root@x 这类命令
             escaped.replace(QLatin1Char('"'), QLatin1String("\\\""));
 
             return QLatin1Char('"') + escaped + QLatin1Char('"');
@@ -199,10 +199,10 @@ namespace SprintIDE {
         }
 
         // ---------- 1. 创建两个管道（父子进程间通信） ----------
-        //   inRead  : 子进程 stdin  →  ConPTY
+        //   inRead  : 子进程 stdin   ConPTY
         //   inWrite : 父进程写入
         //   outRead : 父进程读取  ←  ConPTY
-        //   outWrite: ConPTY 写入 →  子进程 stdout/stderr
+        //   outWrite: ConPTY 写入  子进程 stdout/stderr
         HANDLE inRead = nullptr, inWrite = nullptr;
         HANDLE outRead = nullptr, outWrite = nullptr;
 
@@ -370,7 +370,7 @@ namespace SprintIDE {
     }
 
     // ============================================================================
-    // write() —— 用户键盘输入 → 子进程 stdin
+    // write() —— 用户键盘输入 子进程 stdin
     // ============================================================================
     void WinConPtyProcess::write(const QByteArray& data)
     {

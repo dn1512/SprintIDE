@@ -486,6 +486,7 @@ set(OUTLINE_SOURCES
     outline/python_outline_provider.cpp
     outline/outline_item_delegate.cpp
     outline/outline_overlay.cpp
+    outline/rust_outline_provider.cpp
 )
 
 set(OUTLINE_HEADERS
@@ -498,6 +499,7 @@ set(OUTLINE_HEADERS
     outline/python_outline_provider.h
     outline/outline_item_delegate.h
     outline/outline_overlay.h
+    outline/rust_outline_provider.h
 )
 
 # 创建可执行文件
@@ -733,6 +735,8 @@ add_executable(${PROJECT_NAME}
     outline/outline_item_delegate.cpp
     outline/outline_overlay.h
     outline/outline_overlay.cpp
+    outline/rust_outline_provider.h
+    outline/rust_outline_provider.cpp
     problems/diagnostics_store.h
     problems/diagnostics_store.cpp
     problems/problems_panel.h
@@ -751,7 +755,7 @@ add_executable(${PROJECT_NAME}
 )
 
 # ============================================================
-# 国际化（i18n）：.ts → .qm 并打包进 Qt 资源系统
+# 国际化（i18n）：.ts .qm 并打包进 Qt 资源系统
 #   - 运行时通过 ":/i18n/SprintIDE_<locale>.qm" 加载
 #   - 若 translations/ 目录下没有 .ts，则本段自动跳过（首次 clone 不报错）
 # ============================================================
@@ -940,7 +944,7 @@ if(APPLE)
             MACOSX_BUNDLE_BUNDLE_NAME "${APP_NAME}"
             MACOSX_BUNDLE_BUNDLE_VERSION "${APP_VERSION}"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${APP_VERSION}"
-            MACOSX_BUNDLE_ICON_FILE "app_icon.icns"    # ★ 新增
+            MACOSX_BUNDLE_ICON_FILE "app_icon.icns"
         )
         # 把 icns 加到 bundle 资源列表
         target_sources(${PROJECT_NAME} PRIVATE "${MACOSX_ICON_FILE}")
@@ -1099,7 +1103,7 @@ message(STATUS "==========================================")
 
 
 # ============================================================
-# macOS 打包：make deploy → 把 Qt 依赖库塞进 SprintIDE.app
+# macOS 打包：make deploy 把 Qt 依赖库塞进 SprintIDE.app
 # ============================================================
 if(APPLE)
     # 定位 macdeployqt：优先用 Qt6 安装目录下的 bin，其次走 PATH

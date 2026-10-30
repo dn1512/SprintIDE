@@ -50,7 +50,7 @@ public:
 private:
     PolicyEngine() = default;
 
-    /// "file.delete" → "FileDelete"
+    /// "file.delete" "FileDelete"
     static QString typeToPolicyKey(const QString& type);
 };
 

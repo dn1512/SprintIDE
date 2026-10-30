@@ -5,7 +5,7 @@ namespace SprintIDE {
 namespace Protocol {
 
 // ------------------------------------------------------------
-// type → 必填字段表（v1.1 全集）
+// type 必填字段表
 // ------------------------------------------------------------
 const QMap<QString, QStringList>& Validator::requiredFieldsMap()
 {

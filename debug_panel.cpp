@@ -234,8 +234,8 @@ void DebugPanel::updateVariables(const QList<DebugVariable>& variables)
 void DebugPanel::appendConsoleOutput(const QString& output, bool isError)
 {
     // v8.5：颜色从 ThemeManager 取，跟随主题切换
-    //   - 错误 → ErrorColor
-    //   - 普通 → TextColor
+    //   - 错误 ErrorColor
+    //   - 普通 TextColor
     ThemeManager& tm = ThemeManager::instance();
     const QString color = tm.colorString(
         isError ? ThemeManager::UIElement::ErrorColor
@@ -371,8 +371,8 @@ void DebugPanel::onEvaluateResult(const QString& expression,
     if (!m_evalOutput) return;
 
     // v8.5：颜色从 ThemeManager 取
-    //   - 结果值 → PrimaryColor（强调，一眼看到结果）
-    //   - 类型   → SecondaryTextColor（弱化）
+    //   - 结果值 PrimaryColor（强调，一眼看到结果）
+    //   - 类型   SecondaryTextColor（弱化）
     ThemeManager& tm = ThemeManager::instance();
     const QString valueColor = tm.colorString(
         ThemeManager::UIElement::PrimaryColor);

@@ -38,7 +38,7 @@ namespace SprintIDE {
  *   - 显示安装命令（只读文本框，便于复制）
  *   - 提供 "复制命令" / "我已安装，重新检测" / "稍后" 三个按钮
  *
- * 用户点击 "我已安装" → dialog accept → Manager 重新 resolve
+ * 用户点击 "我已安装" dialog accept Manager 重新 resolve
  */
 class ToolchainDialog : public QDialog
 {

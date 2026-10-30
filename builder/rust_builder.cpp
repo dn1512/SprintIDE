@@ -188,7 +188,7 @@ QString RustBuilder::getExecutablePath(const BuildTask& task)
 
     // ============================================================
     // 2. 决定 bin 名
-    //    a) task.outputName 非空 → 用它（onRun 里按源文件选好 target）
+    //    a) task.outputName 非空 用它（onRun 里按源文件选好 target）
     //    b) 否则从 Cargo.toml 的 [package] name 读
     //    c) 再兜底目录名 / 源文件名
     // ============================================================

@@ -1590,8 +1590,8 @@ Continue?</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="906"/>
-        <source>切换分支 %1 → %2 前自动暂存</source>
-        <translation>Auto-stash before switching branch %1 → %2</translation>
+        <source>切换分支 %1 %2 前自动暂存</source>
+        <translation>Auto-stash before switching branch %1 %2</translation>
     </message>
     <message>
         <location filename="../git/git_panel.cpp" line="991"/>
@@ -3003,8 +3003,8 @@ Save changes?</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="3350"/>
-        <source>已重命名: %1 → %2</source>
-        <translation>Renamed: %1 → %2</translation>
+        <source>已重命名: %1 %2</source>
+        <translation>Renamed: %1 %2</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="3427"/>

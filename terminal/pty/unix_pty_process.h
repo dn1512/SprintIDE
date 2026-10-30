@@ -57,7 +57,7 @@ namespace SprintIDE {
         qint64 pid()       const override;
 
         private slots:
-        // master fd 可读 → 读数据 + 检查子进程是否退出
+        // master fd 可读 读数据 + 检查子进程是否退出
         void onReadable();
 
         private:

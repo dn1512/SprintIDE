@@ -251,7 +251,7 @@ ProjectCreationDialog::ProjectCreationDialog(QWidget *parent)
     qDebug() << "[PCD] loadDialogState 完成";
 
     // ---- 初始刷新 ----
-    qDebug() << "[PCD] → 即将执行初始刷新, m_languageComboBox ="
+    qDebug() << "[PCD] 即将执行初始刷新, m_languageComboBox ="
              << static_cast<void*>(m_languageComboBox);
     if (m_languageComboBox && m_languageComboBox->count() > 0) {
         const ProjectLanguage lang = currentLanguage();
@@ -265,7 +265,7 @@ ProjectCreationDialog::ProjectCreationDialog(QWidget *parent)
     }
 
     // ---- 应用第一个模板作为默认 ----
-    qDebug() << "[PCD] → 即将应用默认模板, ui->templateComboBox->count() ="
+    qDebug() << "[PCD] 即将应用默认模板, ui->templateComboBox->count() ="
              << ui->templateComboBox->count();
     if (!m_templates.isEmpty() && ui->templateComboBox->count() > 0) {
         ui->templateComboBox->setCurrentIndex(0);
@@ -279,7 +279,7 @@ ProjectCreationDialog::ProjectCreationDialog(QWidget *parent)
     }
 
     updatePathPreview();
-    qDebug() << "[PCD] → updatePathPreview 完成";
+    qDebug() << "[PCD] updatePathPreview 完成";
 
     m_initialized = true;
     qDebug() << "[PCD] 构造函数正常结束";
@@ -356,10 +356,10 @@ void ProjectCreationDialog::accept()
     //
     //  顺序严格按你说的：
     //    1. 取项目名 / 路径
-    //    2. 如果目标目录【不存在】→ 跳过非空检查，直接准备创建
-    //    3. 如果目标目录【存在】→ 检查是否非空
-    //    4. 非空 → 报错退出（这一次，报完就结束，不再二次检查）
-    //    5. 为空 / 不存在 → 继续往下创建
+    //    2. 如果目标目录【不存在】跳过非空检查，直接准备创建
+    //    3. 如果目标目录【存在】检查是否非空
+    //    4. 非空 报错退出（这一次，报完就结束，不再二次检查）
+    //    5. 为空 / 不存在 继续往下创建
     // ============================================================
     const QString projectName   = ui->projectNameLineEdit->text().trimmed();
     const QString projectPath   = ui->locationLineEdit->text().trimmed();
@@ -402,7 +402,7 @@ void ProjectCreationDialog::accept()
             return;
         }
     }
-    // 目录不存在 → 什么都不查，直接往下创建
+    // 目录不存在 什么都不查，直接往下创建
 
     // ============================================================
     //  【阶段 3】重置结果 + 记录"目录是否本次新建"
@@ -558,7 +558,7 @@ void ProjectCreationDialog::onProjectNameChanged(const QString& name)
     }
     updatePathPreview();
 
-    // 项目名变化 → 刷新文件列表里的 <项目名>.sprintide.json
+    // 项目名变化 刷新文件列表里的 <项目名>.sprintide.json
     if (m_initialized) {
         updateTemplateDescription();
     }
@@ -1213,9 +1213,9 @@ void ProjectCreationDialog::createLanguageComboBox()
 // 逻辑：
 //   1. 找到 templateComboBox 的父 widget 及其 layout
 //   2. 按 layout 类型分别处理：
-//        QFormLayout  → form->insertRow(...)
-//        QVBoxLayout  → 用 QHBoxLayout 把 label + combo 打包后插入
-//        QGridLayout  → 打印警告，提示用户手动调整布局
+//        QFormLayout  form->insertRow(...)
+//        QVBoxLayout  用 QHBoxLayout 把 label + combo 打包后插入
+//        QGridLayout  打印警告，提示用户手动调整布局
 // ------------------------------------------------------------
 void ProjectCreationDialog::insertLanguageComboBoxIntoLayout()
 {
@@ -1743,7 +1743,7 @@ bool ProjectCreationDialog::createProjectStructure()
     //  错误写法：QDir(fullProjectPath).mkpath(".")
     //
     //  原因：mkpath(".") 的基准是 QDir 自己的路径。当 fullProjectPath 不存在时，
-    //        mkpath(".") 试图在"不存在的父路径"下创建 "." → 失败。
+    //        mkpath(".") 试图在"不存在的父路径"下创建 "." 失败。
     //        必须用 QDir().mkpath(绝对路径)，基准是当前工作目录，能正确逐级创建。
     // ----
     if (!QDir().mkpath(fullProjectPath)) {
@@ -2121,8 +2121,8 @@ bool ProjectCreationDialog::generateNodeProject()
 
 // ============================================================
 //  按语言决定配置文件扩展名并保存
-//    cpp / qt  → .lightcppproj
-//    其他语言  → .sprintide.json
+//    cpp / qt  .lightcppproj
+//    其他语言  .sprintide.json
 //
 //  v8.5 简化版：不再写"兼容副本 .lightcppproj"，
 //  因为 MainWindow 现在用 ProjectConfig::loadFromProjectDir()
@@ -2673,7 +2673,7 @@ void ProjectCreationDialog::rollbackPartialProject(const QString& fullProjectPat
     if (!dir.exists()) return;
 
     if (!existedBefore) {
-        // 情况 A：本次新建的目录 → 整体删除
+        // 情况 A：本次新建的目录 整体删除
         //   用户重试时不会再有残留，validateInput 的"非空"检查也不会误报
         if (!dir.removeRecursively()) {
             qWarning() << "[PCD] 回滚删除失败:" << fullProjectPath;
@@ -2683,7 +2683,7 @@ void ProjectCreationDialog::rollbackPartialProject(const QString& fullProjectPat
         return;
     }
 
-    // 情况 B：目录本来就有（复用空目录）→ 只删本次写入的文件
+    // 情况 B：目录本来就有（复用空目录）只删本次写入的文件
     //   避免误删用户原有文件
     for (const QString& f : m_result.createdFiles) {
         if (QFile::exists(f)) {

@@ -312,12 +312,12 @@ public:
      *
      * 宽松匹配：
      *  - 找所有包含 "<方法名>(" 的行
-     *  - 若只有一行 → 用它作为方法起点
-     *  - 若多行 → 返回所有候选（让上层判定 METHOD_AMBIGUOUS）
+     *  - 若只有一行 用它作为方法起点
+     *  - 若多行 返回所有候选（让上层判定 METHOD_AMBIGUOUS）
      *
      * 边界识别：
-     *  - Python → 缩进层级
-     *  - 大括号语言 → { } 配对
+     *  - Python 缩进层级
+     *  - 大括号语言 { } 配对
      *
      * @return 每个候选方法体范围（首行号、末行号，1-based）
      */
@@ -567,14 +567,14 @@ private:
     int m_currentDebugLine;       // 当前调试执行的行号（-1表示无）
     QSet<int> m_disabledBreakpoints;      // 被禁用（灰色）的断点行
 
-    QMap<int, QString> m_inlineValues;   // 行号 → 显示的文本
+    QMap<int, QString> m_inlineValues;   // 行号 显示的文本
 
     // ========== Quick Fix（错误修复） ==========
     /// 鼠标悬停/光标停留的"错误行"（1-based，-1 = 无）
     /// 影响：行号区红点变大变实、行内波浪线加粗
     int m_hoveredErrorLine = -1;
 
-    /// LSP codeAction 结果缓存：起始行（1-based） → 该行的可用修复
+    /// LSP codeAction 结果缓存：起始行（1-based） 该行的可用修复
     QHash<int, QList<LSPCodeAction>> m_codeActionsByLine;
 
     /// 正在等待 LSP codeAction 响应的目标行（-1 = 无）
@@ -629,8 +629,8 @@ private:
     ///   智能"选到行首"——不含前导缩进
     ///   macOS：Cmd+Shift+Left
     ///   Windows/Linux：Shift+Home
-    ///   - 活动端在代码区 → 选到首个非空白列
-    ///   - 再按一次     → 扩到列 0
+    ///   - 活动端在代码区 选到首个非空白列
+    ///   - 再按一次     扩到列 0
     bool  handleSmartHomeSelection(QKeyEvent* event);
 
     // 选中文本被引号/括号包裹
@@ -642,7 +642,7 @@ private:
     // 块注释（/** ... */ 或 /* ... */）内回车自动补 " * "
     bool  tryContinueBlockComment();
 
-    // Tab 按下且前缀命中片段 → 展开；返回 true 表示已处理
+    // Tab 按下且前缀命中片段 展开；返回 true 表示已处理
     bool  tryExpandSnippet();
 
     // v8.5：Python import 上下文补全
@@ -711,9 +711,9 @@ private:
     int bracketDelta(const QString& line) const;
 
     ///   返回 block 所在"逻辑行"的缩进
-    ///   - 上一行缩进相同 → 同级续行，返回自身缩进
-    ///   - 向上找缩进更浅的"锚点行"（bracketDelta > 0）→ 返回锚点行缩进
-    ///   - 都没找到 → 返回自身缩进
+    ///   - 上一行缩进相同 同级续行，返回自身缩进
+    ///   - 向上找缩进更浅的"锚点行"（bracketDelta > 0）返回锚点行缩进
+    ///   - 都没找到 返回自身缩进
     QString findLogicalLineIndent(const QTextBlock& block) const;
 
     /// findLogicalLineIndent 的结果缓存

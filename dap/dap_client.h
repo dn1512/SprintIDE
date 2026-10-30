@@ -154,8 +154,8 @@ private:
     QProcess* m_process = nullptr;
     QByteArray m_buffer;
     int m_nextSeq = 1;
-    QMap<int, QString> m_pendingCommands;   ///< seq → command 名，用于响应匹配
-    QMap<int, int> m_pendingVariablesRef;   //seq → variablesReference
+    QMap<int, QString> m_pendingCommands;   ///< seq command 名，用于响应匹配
+    QMap<int, int> m_pendingVariablesRef;   //seq variablesReference
     State m_state = State::Disconnected;
     QString m_adapterID;
     QString m_clientID;

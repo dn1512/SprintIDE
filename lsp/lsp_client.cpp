@@ -1,3 +1,4 @@
+
 #include "lsp_client.h"
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -80,14 +81,9 @@ bool LSPClient::startServer(const QString& serverPath)
     if (!m_customArguments.isEmpty()) {
         args = m_customArguments;
     } else if (!m_arguments.isEmpty()) {
-        // LSPManager 显式指定了参数 → 追加 clangd 需要的动态参数（compile-commands-dir）
-        //   m_arguments 来自 LSPConfig.arguments，内容如：
-        //     ["--background-index", "--clang-tidy",
-        //      "--completion-style=detailed", "--header-insertion=iwyu"]
-        //   我们只在末尾追加 --compile-commands-dir，不覆盖其它参数。
+        // LSPManager 显式指定了参数（clangd：--header-insertion=iwyu 等）
         args = m_arguments;
         if (isJdtls) {
-            // JDTLS 有自己必需的参数（configuration / data），不能只追加
             QDir projectDir(m_projectRoot);
             QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
             QString configDir = jdtlsBase + "/config";
@@ -102,12 +98,13 @@ bool LSPClient::startServer(const QString& serverPath)
             args << "-configuration" << configDir;
             args << "-data" << workspaceDir;
             args << "-consoleLog";
-        } else if (!m_projectRoot.isEmpty()) {
-            // clangd：追加 compile-commands-dir
+        } else if (!m_projectRoot.isEmpty()
+            && m_serverPath.contains("clangd", Qt::CaseInsensitive)) {
+            // 修复：只有 clangd 才追加 compile-commands-dir
+            //   rust-analyzer / gopls 等收到这个未知参数会拒绝启动或误行为
             args << "--compile-commands-dir=" + m_projectRoot;
         }
     } else if (isJdtls) {
-        // 兜底：LSPManager 没传参数时，JDTLS 用内建参数
         QDir projectDir(m_projectRoot);
         QString jdtlsBase = projectDir.absoluteFilePath(".SprintIDE/jdtls");
         QString configDir = jdtlsBase + "/config";
@@ -122,11 +119,9 @@ bool LSPClient::startServer(const QString& serverPath)
         args << "-configuration" << configDir;
         args << "-data" << workspaceDir;
         args << "-consoleLog";
-    } else {
-        // 兜底：LSPManager 没传参数时，clangd 用内建参数（和老行为一致）
-        //   注意：这里的兜底参数里没有 --header-insertion=iwyu，
-        //   所以 Quick Fix 不会给"Insert #include"建议。
-        //   正常路径下 LSPManager 会通过 setArguments() 传入完整参数。
+    } else if (m_serverPath.contains("clangd", Qt::CaseInsensitive)) {
+        // 修复：只有 clangd 才用 clangd 内建参数兜底
+        //   rust-analyzer / gopls 走空参数，由它们自己读配置文件
         args << "--background-index";
         if (m_enableClangTidy) args << "--clang-tidy";
         if (!m_projectRoot.isEmpty()) args << "--compile-commands-dir=" + m_projectRoot;
@@ -564,7 +559,9 @@ void LSPClient::openDocument(const QString& filePath, const QString& content)
     QJsonObject params;
     QJsonObject textDocument;
     textDocument["uri"] = uri;
-    textDocument["languageId"] = "cpp";
+    textDocument["languageId"] = m_languageId.isEmpty()
+        ? QStringLiteral("cpp")
+        : m_languageId;
     textDocument["version"] = 1;
     textDocument["text"] = content;
 
@@ -832,7 +829,7 @@ void LSPClient::onServerErrorRead()
             trimmed.contains("error:") ||
             trimmed.contains("fatal error:") ||
             trimmed.contains("Exception") ||
-            trimmed.contains("Error:")) {   // ← "Error" → "Error:"，避免误杀 "ErrorCode" 等
+            trimmed.contains("Error:")) {   // "Error" "Error:"，避免误杀 "ErrorCode" 等
             emit serverError(tag + ": " + trimmed);
         }
     }

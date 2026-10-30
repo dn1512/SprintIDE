@@ -33,9 +33,9 @@ namespace Protocol {
  * @brief v1.1 协议校验器
  *
  * 职责：
- *  - 校验 Agent → IDE 消息的顶层信封
+ *  - 校验 Agent IDE 消息的顶层信封
  *  - 校验单个 item 的 type + 必填字段
- *  - 未知 type → 返回 isUnknownType=true（上层应静默跳过）
+ *  - 未知 type 返回 isUnknownType=true（上层应静默跳过）
  */
 class Validator
 {
@@ -68,7 +68,7 @@ public:
         }
     };
 
-    /// 校验 Agent → IDE 消息的信封（sessionId / protocolVersion / items）
+    /// 校验 Agent IDE 消息的信封（sessionId / protocolVersion / items）
     static Result validateEnvelope(const QJsonObject& msg);
 
     /// 校验单个 item（type + 必填字段）
@@ -78,7 +78,7 @@ public:
     static QList<Result> validateItems(const QJsonArray& items);
 
 private:
-    /// type → 必填字段列表（v1.1 type 全集）
+    /// type 必填字段列表（v1.1 type 全集）
     static const QMap<QString, QStringList>& requiredFieldsMap();
 };
 

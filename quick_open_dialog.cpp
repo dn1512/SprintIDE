@@ -45,7 +45,7 @@ QuickOpenDialog::QuickOpenDialog(QWidget* parent)
                 if (m_searchEdit && !m_searchEdit->text().isEmpty()) {
                     m_searchEdit->clear();
                 } else {
-                    // 已经空了再按 Esc → 关闭对话框（QuickOpen 惯例）
+                    // 已经空了再按 Esc 关闭对话框（QuickOpen 惯例）
                     reject();
                 }
             });
@@ -189,7 +189,7 @@ void QuickOpenDialog::refreshList(const QString& query)
         hits.append({abs, display, s});
     }
 
-    // 分数高 → 路径短（越短越可能相关）
+    // 分数高 路径短（越短越可能相关）
     std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) {
         if (a.score != b.score) return a.score > b.score;
         return a.display.size() < b.display.size();

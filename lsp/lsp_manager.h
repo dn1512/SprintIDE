@@ -178,9 +178,9 @@ private:
     LSPConfig getFallbackPythonLSPConfig() const;
 
     // 成员变量
-    QMap<QString, LSPClient *> m_clients;           ///< 客户端缓存（key → client）
-    QMap<QString, LSPConfig> m_configs;             ///< 语言配置（languageId → LSPConfig）
-    mutable QMap<QString, QString> m_serverCache;           ///< 服务器路径缓存（command → fullPath）
+    QMap<QString, LSPClient *> m_clients;           ///< 客户端缓存（key client）
+    QMap<QString, LSPConfig> m_configs;             ///< 语言配置（languageId LSPConfig）
+    mutable QMap<QString, QString> m_serverCache;           ///< 服务器路径缓存（command fullPath）
 
     bool m_initialized = false;
 };

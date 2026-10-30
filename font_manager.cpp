@@ -81,7 +81,7 @@ bool FontManager::isJetBrainsMonoAvailable()
 // ============================================================
 QString FontManager::primaryMonoFamily()
 {
-    // 内嵌字体加载成功 → 用它的实际家族名（可能是 "JetBrains Mono"
+    // 内嵌字体加载成功 用它的实际家族名（可能是 "JetBrains Mono"
     // 或 "JetBrains Mono Regular" 之类的变体，取 TTF 里的真实值）
     if (!g_primaryMonoFamily.isEmpty()) {
         return g_primaryMonoFamily;
@@ -115,7 +115,7 @@ QFont FontManager::getDefaultMonoFont(int pointSize)
         selectedFont = g_primaryMonoFamily;
     }
 
-    // ---- 2. 内嵌字体不可用 → 探测系统字体 ----
+    // ---- 2. 内嵌字体不可用 探测系统字体 ----
     if (selectedFont.isEmpty()) {
         const QStringList families = QFontDatabase::families();
 
@@ -140,7 +140,7 @@ QFont FontManager::getDefaultMonoFont(int pointSize)
         }
     }
 
-    // ---- 3. 全都没找到 → Qt 通用等宽别名 ----
+    // ---- 3. 全都没找到 Qt 通用等宽别名 ----
     if (selectedFont.isEmpty()) {
         selectedFont = "Monospace";
     }

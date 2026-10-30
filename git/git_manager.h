@@ -94,7 +94,7 @@ public:
     GitDiff diffFile(const QString& relativePath, bool staged) const;
 
     // 原始 diff 字符串（用于 Diff 窗口直接渲染）
-    //   relativePath 为空 → 显示全仓库 diff（含所有改动文件）
+    //   relativePath 为空 显示全仓库 diff（含所有改动文件）
     QString rawDiff(const QString& relativePath, bool staged) const;
     //   某个 commit 的完整 diff（含 commit header + 多文件 diff）
     QString rawCommitDiff(const QString& hash) const;
@@ -103,8 +103,8 @@ public:
     QList<GitStash> stashList() const;   // 同步（很快），立即返回当前 stash 列表
 
     // 创建 stash
-    //   includeUntracked = true  → 走 git stash push -u
-    //   thenCheckout 非空 → stash 完成后自动 checkout 该分支
+    //   includeUntracked = true  走 git stash push -u
+    //   thenCheckout 非空 stash 完成后自动 checkout 该分支
     //                       （用于"先暂存再切分支"流程）
     void stashPush(const QString& message,
                    bool includeUntracked = true,
@@ -139,8 +139,8 @@ public:
     bool isRebaseInProgress() const;
 
     // ---------- 丢弃更改 ----------
-    // 对未跟踪文件 → 删除文件
-    // 对已跟踪文件 → git checkout -- <path>（从索引恢复）
+    // 对未跟踪文件 删除文件
+    // 对已跟踪文件 git checkout -- <path>（从索引恢复）
     void discardFileChanges(const QString& relativePath);
 
     // ---------- 合并 / Rebase ----------

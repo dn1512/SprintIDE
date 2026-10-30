@@ -18,8 +18,8 @@ namespace SprintIDE {
         root.kind = ExternalLibraryNode::Kind::Root;
         // v8.5 修复：QFileInfo 没有 parent()，用 dir().dirName() 取父目录名
         //   sp = ".../.venv/lib/python3.11/site-packages"
-        //   QFileInfo(sp).dir() → QDir(".../.venv/lib/python3.11")
-        //   .dirName()          → "python3.11"
+        //   QFileInfo(sp).dir() QDir(".../.venv/lib/python3.11")
+        //   .dirName()          "python3.11"
         root.displayName = QFileInfo(sp).dir().dirName()
                            + QStringLiteral(" (site-packages)");
         root.absolutePath = sp;

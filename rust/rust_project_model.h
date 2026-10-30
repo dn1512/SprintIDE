@@ -30,7 +30,7 @@ namespace SprintIDE {
         RustTarget defaultBinary() const;   // 优先 src/main.rs 对应的 bin
         QStringList binaryNames() const;
 
-        /// 给定源文件 → 找到它属于哪个 bin target（用于 onRun 时选 target）
+        /// 给定源文件 找到它属于哪个 bin target（用于 onRun 时选 target）
         RustTarget targetForSource(const QString& sourceFile) const;
 
         /// 可执行文件路径：<root>/target/{debug,release}/<targetName>

@@ -84,7 +84,7 @@ namespace SprintIDE {
         void updateVenvForDirectory(const QString& dir);
         QProcessEnvironment buildChildEnvironment() const;
 
-        // 根据 QTextEdit 尺寸算 rows/cols → m_pty->resize()
+        // 根据 QTextEdit 尺寸算 rows/cols m_pty->resize()
         void syncPtySize();
 
         // ---- ANSI 处理 ----

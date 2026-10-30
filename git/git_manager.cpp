@@ -523,7 +523,7 @@ QString GitManager::rawDiff(const QString& relativePath, bool staged) const
     QStringList args = {"diff", "--no-color", "--unified=3"};
     if (staged) args << "--cached";
 
-    // relativePath 为空 → 显示全仓库差异
+    // relativePath 为空 显示全仓库差异
     if (!relativePath.isEmpty()) {
         args << "--" << relativePath;
     }
@@ -692,8 +692,8 @@ UpstreamStatus GitManager::currentUpstreamStatus() const
 void GitManager::acceptOurs(const QString& relativePath)
 {
     //  语义取决于当前操作：
-    //  merge  → 保留当前分支（HEAD）
-    //  rebase → 保留目标分支（base）
+    //  merge  保留当前分支（HEAD）
+    //  rebase 保留目标分支（base）
     //  调用方必须根据 operation 决定是否调用本函数
     if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
 
@@ -718,8 +718,8 @@ void GitManager::acceptOurs(const QString& relativePath)
 void GitManager::acceptTheirs(const QString& relativePath)
 {
     //  语义取决于当前操作：
-    //  merge  → 保留被合入的分支
-    //  rebase → 保留你正在重放的提交
+    //  merge  保留被合入的分支
+    //  rebase 保留你正在重放的提交
     //  调用方必须根据 operation 决定是否调用本函数
     if (!d->repoInfo.isValid || relativePath.isEmpty()) return;
 
@@ -950,7 +950,7 @@ void GitManager::onCommandFinished(const QString& tag, const GitCommand::Result&
                 d->projectRoot.clear();
                 setProjectRoot(saved);
             }
-            // createBranch 不切换分支，但分支列表变了 → 触发 UI 刷新下拉框
+            // createBranch 不切换分支，但分支列表变了 触发 UI 刷新下拉框
             else if (tag == QStringLiteral("createBranch")) {
                 emit repositoryChanged(d->repoInfo);
             }
@@ -1046,7 +1046,7 @@ QList<GitFileStatus> GitManager::parseStatusPorcelainV2(const QString& output) c
         const QChar type = rec.at(0);
 
         if (type == QChar('1')) {
-            // 1 XY sub mH mI mW hH hI <path>     → 8 固定字段 + path
+            // 1 XY sub mH mI mW hH hI <path>     8 固定字段 + path
             const QStringList parts = splitFixedFields(rec, 9);
             if (parts.size() < 9) continue;
 
@@ -1062,7 +1062,7 @@ QList<GitFileStatus> GitManager::parseStatusPorcelainV2(const QString& output) c
         }
         else if (type == QChar('2')) {
             // 2 XY sub mH mI mW hH hI <X><score> <path>
-            // 在 -z 模式下 path 与 origPath 之间用 NUL 分隔 → 下一个 token
+            // 在 -z 模式下 path 与 origPath 之间用 NUL 分隔 下一个 token
             const QStringList parts = splitFixedFields(rec, 10);
             if (parts.size() < 10) continue;
 
@@ -1080,7 +1080,7 @@ QList<GitFileStatus> GitManager::parseStatusPorcelainV2(const QString& output) c
             result.append(s);
         }
         else if (type == QChar('u')) {
-            // u XY sub m1 m2 m3 mW h1 h2 h3 <path>   → 10 固定字段 + path
+            // u XY sub m1 m2 m3 mW h1 h2 h3 <path>   10 固定字段 + path
             const QStringList parts = splitFixedFields(rec, 11);
             if (parts.size() < 11) continue;
 

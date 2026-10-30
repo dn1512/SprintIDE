@@ -121,9 +121,9 @@ public:
      * @return 检测到的语言信息，如果无法识别则返回默认语言
      *
      * 主要用于 Shebang 行检测：
-     *   #!/usr/bin/env python  → Python
-     *   #!/bin/bash           → Shell
-     *   #!/usr/bin/node       → JavaScript
+     *   #!/usr/bin/env python  Python
+     *   #!/bin/bash           Shell
+     *   #!/usr/bin/node       JavaScript
      */
     LanguageInfo detectLanguageByContent(const QString& content) const;
 
@@ -241,16 +241,16 @@ private:
     * @brief 判断 .ts 文件是否为 Qt Linguist 翻译源文件
     *
     * Qt 翻译文件用 .ts 扩展名（XML 格式），与 TypeScript 冲突。
-    * 通过读文件头判断：以 <?xml 开头 → Qt 翻译文件。
+    * 通过读文件头判断：以 <?xml 开头 Qt 翻译文件。
     * 仅在扩展名为 .ts 时调用，避免其他文件的 IO 开销。
     */
    bool isQtTranslationFile(const QString& filePath) const;
 
     // 成员变量
-    QMap<QString, LanguageInfo> m_languages;        ///< 语言 ID → 语言信息
-    QMap<QString, QString> m_extensionMap;          ///< 扩展名 → 语言 ID
-    QMap<QString, QString> m_fileNameMap;           ///< 特殊文件名 → 语言 ID
-    QMap<QString, QString> m_shebangMap;            ///< Shebang 关键词 → 语言 ID
+    QMap<QString, LanguageInfo> m_languages;        ///< 语言 ID 语言信息
+    QMap<QString, QString> m_extensionMap;          ///< 扩展名 语言 ID
+    QMap<QString, QString> m_fileNameMap;           ///< 特殊文件名 语言 ID
+    QMap<QString, QString> m_shebangMap;            ///< Shebang 关键词 语言 ID
 
     bool m_initialized = false;                     ///< 是否已初始化
 

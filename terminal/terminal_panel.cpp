@@ -249,11 +249,11 @@ namespace SprintIDE {
     }
 
     // ============================================================================
-    // 按键 → 写入 PTY 的字节
+    // 按键 写入 PTY 的字节
     // ============================================================================
     static QByteArray keyToPtyBytes(QKeyEvent* ke)
     {
-        // Ctrl+字母 → 0x01-0x1A
+        // Ctrl+字母 0x01-0x1A
         if ((ke->modifiers() & Qt::ControlModifier) && !ke->text().isEmpty()) {
             const int key = ke->key();
             if (key >= Qt::Key_A && key <= Qt::Key_Z) {
@@ -321,12 +321,12 @@ namespace SprintIDE {
 
             // ---------- 运行态 ----------
             if (m_isCommandRunning && m_pty) {
-                // Ctrl+C 有选区 → 复制
+                // Ctrl+C 有选区 复制
                 if (ke->matches(QKeySequence::Copy)) {
                     if (m_outputWidget->textCursor().hasSelection()) return false;
                 }
 
-                // Ctrl+V → 粘贴，换行转 \r
+                // Ctrl+V 粘贴，换行转 \r
                 if (ke->matches(QKeySequence::Paste)) {
                     QString paste = QApplication::clipboard()->text();
                     paste.replace(QLatin1String("\r\n"), QLatin1String("\r"));
@@ -503,7 +503,7 @@ namespace SprintIDE {
     }
 
     // ============================================================================
-    // 执行命令 → 创建 PTY 子进程
+    // 执行命令 创建 PTY 子进程
     // ============================================================================
     void TerminalPanel::executeCommand(const QString& command)
     {
@@ -610,7 +610,7 @@ namespace SprintIDE {
     }
 
     // ============================================================================
-    // PTY 输出 → ANSI 状态机
+    // PTY 输出 ANSI 状态机
     // ============================================================================
     void TerminalPanel::onPtyReadyRead(const QByteArray& data)
     {
@@ -674,7 +674,7 @@ namespace SprintIDE {
 
         QTextCursor c(m_outputWidget->document());
 
-        // 当前行尚未在文档中定位 → 从末尾开始
+        // 当前行尚未在文档中定位 从末尾开始
         if (m_currentLineDocStart < 0) {
             c.movePosition(QTextCursor::End);
             m_currentLineDocStart = c.position();
@@ -835,7 +835,7 @@ namespace SprintIDE {
                 break;
 
                 case 38: {
-                    // 38;5;N → 256 色   38;2;R;G;B → truecolor
+                    // 38;5;N 256 色   38;2;R;G;B truecolor
                     if (i + 1 < params.size()) {
                         int mode = params[i + 1].toInt(&ok);
                         if (ok && mode == 5 && i + 2 < params.size()) {

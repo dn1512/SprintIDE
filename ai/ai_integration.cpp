@@ -91,7 +91,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     // ---- 5. 组件互连 ----
     chatPanel->setConnectionManager(connMgr);
 
-    // 用户发消息 → handleUserMessage
+    // 用户发消息 handleUserMessage
     QObject::connect(chatPanel, &ChatPanel::userMessageSent,
                      mainWindow,
                      [mainWindow, connMgr, chatPanel](const QString &message, bool includeContext) {
@@ -101,7 +101,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     // ---- 6 创建 OperationBus 并注册 Executor（阶段 1） ----
     OperationBus* operationBus = new OperationBus(connMgr, mainWindow);
 
-    // 协议层日志 → OutputPanel
+    // 协议层日志 OutputPanel
     QObject::connect(operationBus, &OperationBus::logInfoMessage,
                      mainWindow,
                      [mainWindow](const QString& message) {
@@ -148,7 +148,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     SystemExecutor* sysExec = new SystemExecutor(mainWindow);
     operationBus->registerExecutor(sysExec);
 
-    // ChatExecutor 的 notify → ChatPanel 系统消息
+    // ChatExecutor 的 notify ChatPanel 系统消息
     QObject::connect(chatExec, &ChatExecutor::notifyRequested,
                      chatPanel,
                      [chatPanel](const QString& level,
@@ -169,7 +169,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
     QObject::connect(chatPanel, &ChatPanel::askAnswered,
                      operationBus, &OperationBus::resumeAfterAsk);
 
-    // Agent 消息 → OperationBus 路由
+    // Agent 消息 OperationBus 路由
     QObject::connect(connMgr, &AiConnectionManager::agentMessageReceived,
                      operationBus, &OperationBus::handleAgentMessage);
 
@@ -230,7 +230,7 @@ bool initializeAIIntegration(MainWindow *mainWindow,
                 msg["payload"]         = payload;
 
                 connMgr->sendRaw(msg);
-                qDebug() << "[AI Integration] connected → 已推送 projectChanged:"
+                qDebug() << "[AI Integration] connected 已推送 projectChanged:"
                 << projectName;
             });
     } else {

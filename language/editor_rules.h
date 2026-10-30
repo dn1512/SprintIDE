@@ -31,8 +31,8 @@ namespace SprintIDE {
  * @brief 每种语言的编辑器交互行为规则
  *
  * 与 LanguageInfo（语法高亮）解耦：
- *   - LanguageInfo  → 高亮颜色、关键字列表
- *   - EditorRules   → 注释符、缩进触发、自动配对、大括号换行
+ *   - LanguageInfo  高亮颜色、关键字列表
+ *   - EditorRules   注释符、缩进触发、自动配对、大括号换行
  *
  * 使用方式（只在打开文件时调用一次）：
  *   m_editorRules = EditorRules::forLanguage("python");
@@ -62,11 +62,11 @@ struct EditorRules
     // ============================================================
     // 2. 缩进触发（按回车时使用）
     // ============================================================
-    // 上一行"去掉空白后"以其中任意一个字符串结尾 → 新行缩进 +1 级
+    // 上一行"去掉空白后"以其中任意一个字符串结尾 新行缩进 +1 级
     // 例：C/C++ 的 "{"，Python 的 ":"，Shell 的 "then"、"do"
     QStringList indentTriggers;
 
-    // 上一行"去掉空白后"以其中任意一个字符串开头 → 新行缩进 -1 级
+    // 上一行"去掉空白后"以其中任意一个字符串开头 新行缩进 -1 级
     // 例：C 的 "}"，Shell 的 "fi" "done" "esac"，Ruby 的 "end"
     QStringList dedentTriggers;
 
@@ -83,8 +83,8 @@ struct EditorRules
     // ============================================================
     // 4. 大括号换行（按 { 时是否触发三行展开）
     // ============================================================
-    // true  → 输入 { 时插入 "{\n    <光标>\n}"（C/C++/Java/JS/Go/Rust/C#）
-    // false → { 只做一个普通字符（Python/Shell/Ruby/Markdown 等）
+    // true  输入 { 时插入 "{\n    <光标>\n}"（C/C++/Java/JS/Go/Rust/C#）
+    // false { 只做一个普通字符（Python/Shell/Ruby/Markdown 等）
     bool autoBraceOnNewline = false;
 
     // ============================================================

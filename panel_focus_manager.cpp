@@ -94,7 +94,7 @@ void PanelFocusManager::installShortcuts()
         auto* tabs = m_window->findChild<QTabWidget*>("BottomTabWidget");
         if (!tabs) return;
 
-        // 若底部面板隐藏 → 先显示
+        // 若底部面板隐藏先显示
         auto* dock = m_window->findChild<QDockWidget*>("BottomPanel");
         if (dock && !dock->isVisible()) {
             dock->setVisible(true);
@@ -132,7 +132,7 @@ void PanelFocusManager::installShortcuts()
                 return;
             }
         }
-        // 找不到 → 静默忽略
+        // 找不到就静默忽略
     };
 
 
@@ -152,7 +152,7 @@ void PanelFocusManager::installShortcuts()
     //
     //  作用域：WindowShortcut —— 焦点在主窗口内任意位置都响应
     //  触发条件：当前焦点在编辑器（由 currentFocusedPanel 判定）
-    //            否则直接忽略，避免在项目面板按 → 结果标签变了
+    //            否则直接忽略，避免在项目面板按 -> 结果标签变了
     // ============================================================
     auto switchEditorTab = [this](int direction) {
         // 只在焦点位于编辑器时才处理
@@ -216,7 +216,7 @@ void PanelFocusManager::cycleFocus(int direction)
 PanelFocusManager::Panel
 PanelFocusManager::nextVisiblePanel(Panel current, int direction) const
 {
-    // 固定顺序：Editor → ProjectPanel → BottomPanel → AIChatPanel
+    // 固定顺序：Editor -> ProjectPanel -> BottomPanel -> AIChatPanel
     static const Panel kOrder[] = {
         Panel::Editor,
         Panel::ProjectPanel,

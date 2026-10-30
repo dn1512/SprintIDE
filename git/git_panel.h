@@ -57,9 +57,9 @@ public:
     void refreshAll();
 
 signals:
-    // 双击文件 → 交给 MainWindow 打开编辑器
+    // 双击文件 交给 MainWindow 打开编辑器
     void fileDoubleClicked(const QString& absolutePath);
-    // 提交前检查失败 → 引导用户去设置页
+    // 提交前检查失败 引导用户去设置页
     void openSettingsRequested();
 
 private slots:
@@ -68,8 +68,8 @@ private slots:
     void onStatusUpdated(const QList<GitFileStatus>& status);
 
     // 合并 / Rebase / 操作横幅
-    void onMergeIntoCurrent();       // 选择分支 → merge
-    void onRebaseOnto();             // 选择分支 → rebase
+    void onMergeIntoCurrent();       // 选择分支 merge
+    void onRebaseOnto();             // 选择分支 rebase
     void onAbortOperation();         // 中止当前操作
     void onContinueOperation();      // 继续 rebase
     void onBusyChanged(bool busy);

@@ -63,8 +63,8 @@ ExecutionResult SystemExecutor::handleGetServerAddress(const QJsonObject& item)
 //
 // 语义：
 //   - 与当前配置对比
-//     * 相同  → 返回 { changed: false }，不做任何操作
-//     * 不同  → 写入配置，500ms 后重启 AI 连接，返回 { changed: true }
+//     * 相同  返回 { changed: false }，不做任何操作
+//     * 不同  写入配置，500ms 后重启 AI 连接，返回 { changed: true }
 //
 // 为什么延迟 500ms：
 //   当前 item 的响应还需要用现有连接发回给 Agent，
@@ -105,7 +105,7 @@ ExecutionResult SystemExecutor::handleSetServerAddress(const QJsonObject& item)
     const QString oldHost = cfg->value("AI/Host", "127.0.0.1").toString();
     const int     oldPort = cfg->value("AI/Port", 9876).toInt();
 
-    // ---- 相同 → 不改 ----
+    // ---- 相同 不改 ----
     if (oldHost == newHost && oldPort == newPort) {
         QJsonObject data;
         data["changed"]           = false;
@@ -116,7 +116,7 @@ ExecutionResult SystemExecutor::handleSetServerAddress(const QJsonObject& item)
             itemId, QStringLiteral("system.setServerAddress"), data);
     }
 
-    // ---- 不同 → 写配置 ----
+    // ---- 不同 写配置 ----
     cfg->setValue("AI/Host", newHost);
     cfg->setValue("AI/Port", newPort);
 

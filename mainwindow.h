@@ -514,7 +514,7 @@ private:
     /// 标记"运行结束"（恢复 UI）
     void markProcessFinished();
 
-    /// 停止当前运行的程序（terminate → kill）
+    /// 停止当前运行的程序（terminate kill）
     void stopRunningProcess();
 
     /// 是否正在运行程序
@@ -548,7 +548,7 @@ private:
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态
 
     // ========== 快捷键注册表 ==========
-    /// id → entry。id 用 "domain.action" 格式（如 "file.save"）
+    /// id entry。id 用 "domain.action" 格式（如 "file.save"）
     QMap<QString, ShortcutEntry> m_shortcutRegistry;
 
     /// 注册一个可配置快捷键（在 action 创建后立即调用）

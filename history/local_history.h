@@ -190,7 +190,7 @@ private:
     QString m_projectRoot;
     int m_maxVersions = 100;
 
-    // 元数据缓存：文件路径 → 版本列表
+    // 元数据缓存：文件路径 版本列表
     QMap<QString, QList<HistoryVersion>> m_metadata;
     bool m_metadataLoaded = false;
 };

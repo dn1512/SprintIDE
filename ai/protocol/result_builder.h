@@ -33,12 +33,12 @@ namespace Protocol {
  * @brief 把 ExecutionResult 序列化成 v1.1 协议回执
  *
  * 每个方法对应一个 buildXxx：
- *  - buildIdeResult       → IDE → Agent 的 ideResult
- *  - buildCommandResult   → commandResult
- *  - buildQueryResult     → queryResult
- *  - buildFileContent     → fileContent
- *  - buildBatchResult     → batchResult
- *  - buildDiagnose        → diagnose（主动推送，不属于某个 item）
+ *  - buildIdeResult       IDE Agent 的 ideResult
+ *  - buildCommandResult   commandResult
+ *  - buildQueryResult     queryResult
+ *  - buildFileContent     fileContent
+ *  - buildBatchResult     batchResult
+ *  - buildDiagnose        diagnose（主动推送，不属于某个 item）
  *
  * 所有方法返回"完整消息"（含 method / sessionId / requestId / payload），
  * 上层（AiConnectionManager）只需 sendRaw() 即可。

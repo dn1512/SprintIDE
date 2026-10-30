@@ -15,7 +15,7 @@ PolicyEngine& PolicyEngine::instance()
 
 QString PolicyEngine::typeToPolicyKey(const QString& type)
 {
-    // "file.delete" → "FileDelete"
+    // "file.delete" "FileDelete"
     QStringList parts = type.split(QLatin1Char('.'));
     QString key;
     for (const QString& p : parts) {

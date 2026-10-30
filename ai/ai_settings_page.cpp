@@ -232,7 +232,7 @@ void AISettingsPage::saveSettings()
     cfg->setValue("AI/Policy/CommandInstallDep",m_installDepCheck->isChecked());
     cfg->setValue("AI/Policy/AllowShell",       m_allowShellCheck->isChecked());
 
-    // 地址/端口发生变化 → 提示需要重启才生效
+    // 地址/端口发生变化 提示需要重启才生效
     if (host != m_activeHost || port != m_activePort) {
         m_statusLabel->setText(
             tr("⚠ 地址已更改，点击【重启 AI 服务器】后生效。"));

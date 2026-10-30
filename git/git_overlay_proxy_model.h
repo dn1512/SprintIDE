@@ -41,9 +41,9 @@ namespace Git {
  *
  * 模型链：
  *   QFileSystemModel
- *     → ExcludeDirProxyModel (QSortFilterProxyModel，过滤/排序)
- *       → GitOverlayProxyModel (本类，只覆写 DecorationRole)
- *         → QTreeView
+ *     ExcludeDirProxyModel (QSortFilterProxyModel，过滤/排序)
+ *       GitOverlayProxyModel (本类，只覆写 DecorationRole)
+ *         QTreeView
  *
  * 只做一件事：在 DecorationRole 上，把原始图标右下角叠一个状态色圆点。
  * 不改结构、不改数据、不改拖放行为。

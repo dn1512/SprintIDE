@@ -357,7 +357,7 @@ end tell
 EOT
         sync
 
-        # detach 有时 busy → 重试 3 次，最后强制
+        # detach 有时 busy 重试 3 次，最后强制
         for i in 1 2 3; do
             if hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null; then
                 break

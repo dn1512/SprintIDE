@@ -134,7 +134,7 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
             qDebug() << "[CppBuilder] build type 不匹配: cache ="
                      << (cachedBuildType.isEmpty() ? QString("<empty>") : cachedBuildType)
                      << "期望 =" << wantedBuildType
-                     << "→ 强制重新 configure";
+                     << "强制重新 configure";
             needConfigure = true;
         } else {
             qDebug() << "[CppBuilder] build type 匹配 (" << wantedBuildType
@@ -150,9 +150,9 @@ bool CppBuilder::buildWithCMake(const BuildTask& task, BuildResult& result)
                    << "-DCMAKE_BUILD_TYPE=" + wantedBuildType;   // 统一传，不再 if-else
 
         // ---- 决定生成器 ----
-        //   1) 已有 CMakeCache.txt → 沿用其 CMAKE_GENERATOR（避免冲突报错）
-        //   2) 全新配置 → 优先 Ninja，否则 Unix Makefiles
-        //   3) 都不可用 → 不传 -G，让 CMake 用平台默认生成器
+        //   1) 已有 CMakeCache.txt 沿用其 CMAKE_GENERATOR（避免冲突报错）
+        //   2) 全新配置 优先 Ninja，否则 Unix Makefiles
+        //   3) 都不可用 不传 -G，让 CMake 用平台默认生成器
         const QString existingGen = CppProjectModel::detectExistingGenerator(buildDir);
         QString chosenGen;
 
@@ -392,7 +392,7 @@ bool CppBuilder::cleanWithCMake(const BuildTask& task, BuildResult& result)
     const QString buildDir = model.buildDirectory();
 
     if (cmake.isEmpty() || !QDir(buildDir).exists()) {
-        // CMake 不可用或尚未构建 → 直接删除 build 目录
+        // CMake 不可用或尚未构建 直接删除 build 目录
         if (QDir(buildDir).exists()) {
             QDir(buildDir).removeRecursively();
         }
@@ -487,7 +487,7 @@ bool CppBuilder::ensureCompileCommands(const QString& projectPath)
         const QString builtJson = QDir(buildDir).absoluteFilePath("compile_commands.json");
         const QString rootJson  = QDir(projectPath).absoluteFilePath("compile_commands.json");
 
-        // ---- 1. build 目录里已存在 → 只做软链，不再 configure ----
+        // ---- 1. build 目录里已存在 只做软链，不再 configure ----
         if (QFile::exists(builtJson)) {
             if (QFile::exists(rootJson)) QFile::remove(rootJson);
             if (!QFile::link(builtJson, rootJson)) {
@@ -496,7 +496,7 @@ bool CppBuilder::ensureCompileCommands(const QString& projectPath)
             return true;
         }
 
-        // ---- 2. 不存在 → 不主动 configure，交给用户主动编译时触发 ----
+        // ---- 2. 不存在 不主动 configure，交给用户主动编译时触发 ----
         // 这样避免"仅仅打开项目/文件"就触发 cmake，进而可能弹出 GUI
         qDebug() << "[CppBuilder] compile_commands.json 尚未生成，"
                  << "等待用户主动编译时生成。";

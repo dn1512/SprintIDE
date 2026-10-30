@@ -51,9 +51,9 @@ namespace SprintIDE {
     *     同样会经历 dyld 启动阶段）
     *
     * 使用流程（与 CppDebugger 一致）：
-    *   startDebugging(cfg)  →  adapter 启动 → initialize 响应 → launch
-    *                        →  initialized 事件 → setBreakpoints + configurationDone
-    *                        →  stopped 事件 → 通知 MainWindow 高亮
+    *   startDebugging(cfg)   adapter 启动 initialize 响应 launch
+    *                         initialized 事件 setBreakpoints + configurationDone
+    *                         stopped 事件 通知 MainWindow 高亮
     */
     class RustDebugger : public QObject
     {
@@ -135,7 +135,7 @@ namespace SprintIDE {
         QString m_currentFile;
         int m_currentLine = 0;
 
-        // 顶层作用域 → 变量引用
+        // 顶层作用域 变量引用
         int m_localsVariablesRef = 0;
         QSet<int> m_topLevelRefs;       ///< 用于区分顶层 vs 子级 variables 响应
     };

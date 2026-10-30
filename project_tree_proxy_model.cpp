@@ -63,7 +63,7 @@ namespace SprintIDE {
 
         const int srcCount = QIdentityProxyModel::rowCount(projRoot);
 
-        // ---- 隐藏 → 显示 ----
+        // ---- 隐藏 显示 ----
         if (!m_externalVisible && visible) {
             beginInsertRows(projRoot, srcCount, srcCount);
             m_externalModel->clear();
@@ -75,7 +75,7 @@ namespace SprintIDE {
             return;
         }
 
-        // ---- 显示 → 隐藏 ----
+        // ---- 显示 隐藏 ----
         if (m_externalVisible && !visible) {
             beginRemoveRows(projRoot, srcCount, srcCount);
             m_externalVisible = false;
@@ -173,18 +173,18 @@ namespace SprintIDE {
     {
         if (!child.isValid()) return QModelIndex();
 
-        // 虚拟根节点 → parent 是项目根
+        // 虚拟根节点 parent 是项目根
         if (isExternalRoot(child)) {
             return projectRootIndex();
         }
 
-        // 虚拟子树内部 → parent 是父 QStandardItem
+        // 虚拟子树内部 parent 是父 QStandardItem
         if (isExternalIndex(child)) {
             QStandardItem* cItem = decodeStandardItem(child);
             if (!cItem) return QModelIndex();
             QStandardItem* pItem = cItem->parent();
             if (!pItem || pItem == m_externalModel->invisibleRootItem()) {
-                // 直接子节点 → parent 是虚拟根
+                // 直接子节点 parent 是虚拟根
                 QModelIndex projRoot = projectRootIndex();
                 if (!projRoot.isValid()) return QModelIndex();
                 int srcCount = QIdentityProxyModel::rowCount(projRoot);
@@ -193,7 +193,7 @@ namespace SprintIDE {
             return createIndex(pItem->row(), 0, encodeStandardItem(pItem));
         }
 
-        // 普通节点 → 基类处理（不递归）
+        // 普通节点 基类处理（不递归）
         return QIdentityProxyModel::parent(child);
     }
 

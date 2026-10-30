@@ -124,7 +124,7 @@ private:
     QString m_currentFile;
     int m_currentLine = 0;
 
-    // 顶层作用域 → 变量引用
+    // 顶层作用域 变量引用
     int m_localsVariablesRef = 0;
 
     QSet<int> m_topLevelRefs;

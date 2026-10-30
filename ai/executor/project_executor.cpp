@@ -333,9 +333,9 @@ ExecutionResult ProjectExecutor::handleRegister(const QJsonObject& item)
 //   overwriteIfExists   可选，默认 false
 //
 // 语义：
-//   - 目录不存在   → 创建
-//   - 目录存在且空 → 直接用
-//   - 目录存在非空 → 拒绝（除非 overwriteIfExists=true）
+//   - 目录不存在   创建
+//   - 目录存在且空 直接用
+//   - 目录存在非空 拒绝（除非 overwriteIfExists=true）
 //   - 生成骨架 + .lightcpproj
 //   - 打开项目
 // ------------------------------------------------------------

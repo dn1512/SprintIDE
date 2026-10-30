@@ -407,7 +407,7 @@ void SearchInFilesDialog::onItemActivated(QTreeWidgetItem* item, int /*column*/)
     if (!item) return;
     const QString path = item->data(0, Qt::UserRole).toString();
     if (path.isEmpty()) {
-        // 顶层文件节点 → 折叠/展开
+        // 顶层文件节点 折叠/展开
         item->setExpanded(!item->isExpanded());
         return;
     }

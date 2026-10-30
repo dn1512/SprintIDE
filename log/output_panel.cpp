@@ -65,7 +65,7 @@ void OutputPanel::buildUi()
                 if (m_search && !m_search->text().isEmpty()) {
                     m_search->clear();
                 } else if (m_search) {
-                    // 已经是空的 → 焦点退出搜索框（回日志列表）
+                    // 已经是空的 焦点退出搜索框（回日志列表）
                     if (m_view) m_view->setFocus();
                 }
             });
@@ -436,7 +436,7 @@ void OutputPanel::focusPanel()
         };
 
         // 三个过滤按钮：切换"选中/未选中"状态
-        //   复用现有 toggled → onFilterChanged 链路，不改任何过滤逻辑
+        //   复用现有 toggled onFilterChanged 链路，不改任何过滤逻辑
         add("Ctrl+Alt+R", [this]() {
             if (m_chkErr) m_chkErr->setChecked(!m_chkErr->isChecked());
         });
@@ -501,7 +501,7 @@ bool OutputPanel::eventFilter(QObject* watched, QEvent* event)
         return QWidget::eventFilter(watched, event);
     }
 
-    // 固定顺序：搜索框 → 错误 → 警告 → 信息 → 跟随 → 清空 → 日志列表
+    // 固定顺序：搜索框 错误 警告 信息 跟随 清空 日志列表
     QWidget* order[] = {
         m_search,
         m_chkErr,
@@ -523,12 +523,12 @@ bool OutputPanel::eventFilter(QObject* watched, QEvent* event)
         }
     }
 
-    // Shift+Tab 或 Backtab → 反向
+    // Shift+Tab 或 Backtab 反向
     const bool backward = (key == Qt::Key_Backtab)
                           || (ke->modifiers() & Qt::ShiftModifier);
 
     if (idx < 0) {
-        // 焦点不在链上 → 落到第一个
+        // 焦点不在链上 落到第一个
         if (order[0]) order[0]->setFocus();
         return true;
     }

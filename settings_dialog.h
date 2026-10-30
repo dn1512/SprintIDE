@@ -204,7 +204,7 @@ private:
     QPushButton*  m_resetAllBtn = nullptr;
     QLabel*       m_statusLabel = nullptr;
 
-    // 表格行缓存（行号 → id / displayName / defaultShortcut）
+    // 表格行缓存（行号 id / displayName / defaultShortcut）
     struct RowData {
         QString      id;
         QString      displayName;

@@ -877,8 +877,8 @@ LanguageInfo LanguageDetector::detectLanguage(const QString& filePath) const
         // v8.5：.ts 扩展名歧义处理
         //   Qt Linguist 翻译源文件用 .ts（XML 格式），与 TypeScript 冲突。
         //   读文件头区分：
-        //     以 <?xml 开头 → Qt 翻译文件（xml 语言，不触发 TS LSP）
-        //     否则         → 正常扩展名映射（typescript）
+        //     以 <?xml 开头 Qt 翻译文件（xml 语言，不触发 TS LSP）
+        //     否则         正常扩展名映射（typescript）
         if (extension.compare(QLatin1String("ts"), Qt::CaseInsensitive) == 0
             && isQtTranslationFile(filePath)) {
             return getLanguage(QLatin1String("xml"));
@@ -1146,7 +1146,7 @@ bool LanguageDetector::isQtTranslationFile(const QString& filePath) const
     }
 
     // TypeScript 代码不会以 XML 声明开头（注释是 // 或 /*）。
-    // 只要以 <?xml 开头 → 视为 Qt Linguist 翻译源文件。
+    // 只要以 <?xml 开头 视为 Qt Linguist 翻译源文件。
     return head.mid(i, 5) == QByteArray("<?xml");
 }
 

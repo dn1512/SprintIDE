@@ -30,7 +30,7 @@ ExecutionResult EnvExecutor::execute(const QJsonObject& item)
 }
 
 // ------------------------------------------------------------
-// 查询键 → 可执行文件名
+// 查询键 可执行文件名
 // ------------------------------------------------------------
 QString EnvExecutor::keyToExecutable(const QString& key) const
 {

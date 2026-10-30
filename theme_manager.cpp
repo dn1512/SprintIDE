@@ -705,14 +705,14 @@ QString ThemeManager::buildStyleSheet() const
                "QToolBar {"
                "  background-color: %1;"
                "  border: none;"
-               "  spacing: 6px;"                // 2px → 6px
-               "  padding: 4px 6px;"            // 4px → 4px 6px（左右多一点）
+               "  spacing: 6px;"                // 2px -> 6px
+               "  padding: 4px 6px;"            // 4px -> 4px 6px（左右多一点）
                "} "
                // 分隔符：让左右有呼吸空间
                "QToolBar::separator {"
                "  background: %2;"
                "  width: 1px;"
-               "  margin: 6px 8px;"             // 4px 6px → 6px 8px
+               "  margin: 6px 8px;"             // 4px 6px -> 6px 8px
                "} "
                // ToolButton：加 min-width/min-height 保证图标有最小展示空间
                "QToolButton {"
@@ -753,9 +753,9 @@ QString ThemeManager::buildStyleSheet() const
                "  max-width: 12px;"
                "  min-height: 12px;"
                "  max-height: 12px;"
-               "  padding: 0;"              // ★ 清空内边距，让图标填满
+               "  padding: 0;"              // 清空内边距，让图标填满
                "  border: none;"
-               "  border-radius: 6px;"      // ★ 12px 按钮 → 6px 圆角 = 正圆
+               "  border-radius: 6px;"      // 12px 按钮 -> 6px 圆角 = 正圆
                "  background: transparent;"
                "  color: %1;"
                "}"

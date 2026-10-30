@@ -52,7 +52,7 @@ private:
     /// 把一个查询键解析为 JSON 值（path 或 version 或 null）
     QJsonValue lookupEnvKey(const QString& key) const;
 
-    /// 查询键 → 可执行文件名（"python.version" → "python3"）
+    /// 查询键 可执行文件名（"python.version" "python3"）
     QString keyToExecutable(const QString& key) const;
 
     /// 执行 <exe> --version 取版本字符串

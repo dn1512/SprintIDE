@@ -185,7 +185,7 @@ static QString findProjectRoot(const QString& startPath)
 //    2. QStandardPaths —— 使用当前进程 PATH（已在 main.cpp 被采纳为登录 shell 的 PATH）
 //    3. 语言版本管理器目录（nvm / fnm / volta / asdf / pyenv / cargo / gopath）
 //    4. 系统常见路径（Homebrew / /usr/local / /usr/bin …）
-//    5. 未找到 → 缓存空结果 + 输出可诊断日志
+//    5. 未找到 缓存空结果 + 输出可诊断日志
 //
 //  关键设计：
 //    • 结果无条件缓存（包括"未找到"），避免重复扫描文件系统
@@ -299,7 +299,7 @@ QString LSPManager::findServerExecutable(const QString &command,
                 return cacheAndReturn(fromPath);
             }
 
-            // shim 存在但不可用 → 找 rustup toolchain 里的真实二进制
+            // shim 存在但不可用 找 rustup toolchain 里的真实二进制
             qWarning() << "[LSP Manager] PATH 里的" << command
             << "不可用（可能是 shim）:" << fromPath;
             const QString home = QDir::homePath();
@@ -310,7 +310,7 @@ QString LSPManager::findServerExecutable(const QString &command,
                 return cacheAndReturn(real);
             }
 
-            // 真实路径也找不到 → 明确告知用户
+            // 真实路径也找不到 明确告知用户
             qWarning() << "[LSP Manager] 找不到可用的" << command;
             if (diagnosticOut) *diagnosticOut = installHintFor(command);
             return cacheAndReturn(QString());
@@ -543,7 +543,7 @@ LSPConfig LSPManager::getConfigForLanguage(const QString &languageId) const
         return m_configs[languageId];
     }
 
-    // 检查是否匹配父语言（如 typescript → javascript）
+    // 检查是否匹配父语言（如 typescript javascript）
     if (languageId == "typescript" && m_configs.contains("javascript")) {
         return m_configs["javascript"];
     }
@@ -643,8 +643,8 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
     } else {
         // ============================================================
         // v8.5+：把"为什么没找到"的诊断信息带出来
-        //   - 未安装 → "请运行 xxx install"
-        //   - 存在但不可用（shim） → 也是安装提示（如 rustup component add）
+        //   - 未安装 "请运行 xxx install"
+        //   - 存在但不可用（shim） 也是安装提示（如 rustup component add）
         // ============================================================
         QString diagnostic;
         serverPath = findServerExecutable(config.command, &diagnostic);
@@ -686,6 +686,10 @@ LSPClient* LSPManager::getClientForFile(const QString &filePath,
     //   Python 等走 m_customArguments 的语言不受影响（优先级高于 m_arguments）。
     client->setArguments(config.arguments);
     qDebug() << "[LSP] 传给 clangd 的参数:" << config.arguments;
+
+    // 修复 Rust 跳转：把语言 ID 告诉 client
+    //   didOpen 时用作 textDocument.languageId（以前硬编码 "cpp"）
+    client->setLanguageId(lang.id);
 
     // ========== Python 特定设置（自定义命令和初始化选项） ==========
     if (lang.id == "python") {

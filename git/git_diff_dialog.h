@@ -36,9 +36,9 @@ namespace Git {
  * @brief 通用 Git diff 查看窗口
  *
  * 使用场景：
- *   1. 双击 GitPanel 里未暂存的文件 → 显示工作区 vs 暂存区的 diff
- *   2. 双击 GitPanel 里已暂存的文件 → 显示暂存区 vs HEAD 的 diff
- *   3. 双击 GitPanel 里的历史条目   → 显示该 commit 的完整 diff
+ *   1. 双击 GitPanel 里未暂存的文件 显示工作区 vs 暂存区的 diff
+ *   2. 双击 GitPanel 里已暂存的文件 显示暂存区 vs HEAD 的 diff
+ *   3. 双击 GitPanel 里的历史条目   显示该 commit 的完整 diff
  *
  * 特性：
  *   - HTML 着色渲染（+/-/@@/header 各自颜色）
@@ -54,7 +54,7 @@ public:
     ~GitDiffDialog() override;
 
     // ---- 显示：单文件 diff ----
-    //   relativePath 为空 → 全仓库 diff
+    //   relativePath 为空 全仓库 diff
     //   openFileAbsolutePath 非空时启用"打开文件"按钮
     void showFileDiff(const QString& title,
                       const QString& diffText,

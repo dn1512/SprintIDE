@@ -131,8 +131,8 @@ private:
         int        totalCount = 0;
         int        failCount  = 0;
         QSet<QString>          rejectedTargets;
-        QMap<QString, QString> confirmPrompts;    // targetId → prompt
-        QMap<QString, QString> confirmDefaults;   // targetId → defaultApprove
+        QMap<QString, QString> confirmPrompts;    // targetId prompt
+        QMap<QString, QString> confirmDefaults;   // targetId defaultApprove
     };
 
     struct PausedState {

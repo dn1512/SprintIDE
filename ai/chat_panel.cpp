@@ -608,13 +608,13 @@ void ChatPanel::onConnectionStateChanged(AiConnectionManager::State state) {
 }
 
 void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
-    // 1. reply → ChatPanel 气泡
+    // 1. reply ChatPanel 气泡
     const QString reply = msg.value("reply").toString();
     if (!reply.isEmpty()) {
         addAIMessage(reply);
     }
 
-    // 2. items → 阶段 0 暂不处理，阶段 1 交给 OperationBus
+    // 2. items 阶段 0 暂不处理，阶段 1 交给 OperationBus
     //    这里只记日志
     const QJsonArray items = msg.value("items").toArray();
     if (!items.isEmpty()) {
@@ -622,7 +622,7 @@ void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
             << "个 items（已交给 OperationBus 处理）";
     }
 
-    // 3. error → OutputPanel（不进 ChatPanel）
+    // 3. error OutputPanel（不进 ChatPanel）
     if (msg.contains("error")) {
         const QJsonObject err = msg.value("error").toObject();
         qWarning() << "[AI] Agent 错误:" << err.value("code").toString()
@@ -844,8 +844,8 @@ QString ChatPanel::formatMessage(const QString &sender, const QString &content) 
 
     // ============================================================
     //  用 HTML 表格保证左右分列（这是 Qt 里最可靠的方式）
-    //   - AI   → 左 78%，右 22% 空
-    //   - 用户 → 左 22% 空，右 78%
+    //   - AI   左 78%，右 22% 空
+    //   - 用户 左 22% 空，右 78%
     // ============================================================
     if (isUser) {
         return QString(

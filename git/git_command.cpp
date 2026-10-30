@@ -203,9 +203,9 @@ void GitCommand::cancelAsync()
     if (m_process) {
         m_cancelled = true;
 
-        // 先断开 m_process → this 的所有信号连接，
+        // 先断开 m_process this 的所有信号连接，
         // 这样 waitForFinished 期间即使派发事件循环、即使 finished 被发出，
-        // 也不会有任何槽（onProcessFinished）响应 → m_process 不会被中途置空
+        // 也不会有任何槽（onProcessFinished）响应 m_process 不会被中途置空
         m_process->disconnect(this);
 
         if (m_process->state() != QProcess::NotRunning) {
@@ -230,7 +230,6 @@ void GitCommand::onTimeout()
     if (!m_process) return;
     m_cancelled = true;
 
-    // ★ kill 之前先断开信号，
     //   防止 kill 触发的 finished 在本函数返回前回调 onProcessFinished
     m_process->disconnect(this);
 

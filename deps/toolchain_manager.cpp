@@ -91,7 +91,7 @@ bool ToolchainManager::resolveOrPrompt(ToolchainId id,
         return true;
     }
 
-    // 未找到 → 弹窗引导
+    // 未找到 弹窗引导
     ToolchainInstallHint hint = installHint(id);
     ToolchainDialog dlg(hint, id, dialogParent);
     if (dlg.exec() == QDialog::Accepted) {
