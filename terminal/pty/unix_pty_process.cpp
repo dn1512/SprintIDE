@@ -112,7 +112,7 @@ bool UnixPtyProcess::start(const QString& program,
         for (const QString& a : args) {
             argBytes.append(a.toUtf8());
         }
-        argBytes.append(QByteArray());
+        // argBytes.append(QByteArray());    //这行有问题，先搁着。
 
         QList<char*> argv;
         argv.reserve(argBytes.size() + 1);
