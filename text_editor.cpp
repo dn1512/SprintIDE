@@ -2380,7 +2380,7 @@ void TextEditor::onFindTextChanged(const QString& text)
         return;
     }
 
-    // ✅ v8.4：就近选择当前匹配
+    //   v8.4：就近选择当前匹配
     //   - 优先取第一个 selectionStart() >= basePos 的匹配
     //   - 若没有（光标位于最后一个匹配之后），回绕到第 0 个
     int best = 0;
@@ -5301,74 +5301,6 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         if (minOrigIndent != std::numeric_limits<int>::max()
             && minOrigIndent < delta) {
             delta = 0;   // 如果行会被扣成"负缩进" 放弃调整，整块原样粘贴。
-        }
-    }
-
-    {
-        int depth = 0;
-        int maxDepth = 0;
-        for (int i = firstIdx; i < lines.size(); ++i) {
-            if (lines[i].trimmed().isEmpty()) continue;
-            depth += bracketDelta(lines[i]);
-            if (depth > maxDepth) maxDepth = depth;
-        }
-
-        if (maxDepth >= 1) {
-            // baseIndent = 首行拼接后实际落入的缩进列
-            const int baseIndent = x;
-
-            QStringList out;
-            out.reserve(lines.size());
-
-            int level = 0;
-            for (int i = 0; i < lines.size(); ++i) {
-                const QString& l = lines[i];
-
-                if (l.trimmed().isEmpty()) {
-                    out.append(QString());
-                    continue;
-                }
-
-                if (i == 0) {
-                    if (savedBaseIndent >= 0) {
-                        const int extra = qMax(0, savedBaseIndent - savedStartCol);
-                        out.append(QString(extra, ' ')
-                            + l.mid(leadingWhitespace(l).length()));
-                    } else {
-                        // 首行无条件去掉缩进
-                        // （lines[0] == "" 时走空行分支，后续行自然另起）
-                        out.append(l.mid(leadingWhitespace(l).length()));
-                    }
-                    level += bracketDelta(l);
-                    if (level < 0) level = 0;
-                    continue;
-                }
-
-                const QString tl = l.trimmed();
-                const bool startsWithCloser =
-                    !tl.isEmpty()
-                    && (tl.at(0) == '}' || tl.at(0) == ')' || tl.at(0) == ']');
-
-                const int effLevel = startsWithCloser
-                                         ? qMax(0, level - 1)
-                                         : level;
-
-                const QString indent(baseIndent + effLevel * tabWidth, ' ');
-                out.append(indent + tl);
-
-                level += bracketDelta(l);
-                if (level < 0) level = 0;
-            }
-
-            const QString joined = out.join('\n');
-
-            QTextCursor cursor = textCursor();
-            cursor.beginEditBlock();
-            cursor.insertText(joined);
-            cursor.endEditBlock();
-            setTextCursor(cursor);
-
-            return;   // 走完层级重建路径，跳过原来的 delta 组装
         }
     }
 
