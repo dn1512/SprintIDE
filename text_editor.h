@@ -540,6 +540,10 @@ private:
     QSet<int> m_foldedLines;
 
 
+    // 折叠行 → 折叠后缀文本（例如 " ... }" / " ..."）
+    //   用于 paintEvent 在折叠首行行尾绘制 JetBrains 风格的省略提示
+    QHash<int, QString> m_foldedDisplayText;
+
     // ========== 成员变量 ==========
     QString m_filePath;
     bool m_isModified;

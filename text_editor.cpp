@@ -127,7 +127,10 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
     int blockNumber = block.blockNumber();
     QPointF contentOffset = m_editor->contentOffset();
     qreal top = m_editor->blockBoundingGeometry(block).translated(contentOffset).top();
-    qreal bottom = top + m_editor->blockBoundingRect(block).height();
+    // 隐藏块高度一律视为 0，避免折叠时后续行 top 累积误差
+    qreal bottom = top + (block.isValid() && block.isVisible()
+                          ? m_editor->blockBoundingRect(block).height()
+                          : 0.0);
     int currentLine = m_editor->currentLine();
 
     // 尺寸常量
@@ -242,7 +245,10 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
 
         block = block.next();
         top = bottom;
-        bottom = top + m_editor->blockBoundingRect(block).height();
+        // 隐藏块 / 无效块高度视为 0，防止多折叠叠加误差
+        bottom = top + (block.isValid() && block.isVisible()
+                        ? m_editor->blockBoundingRect(block).height()
+                        : 0.0);
         ++blockNumber;
     }
 }
@@ -929,6 +935,7 @@ bool TextEditor::loadFile(const QString &filePath)
 
     // 5. 计算折叠
     m_foldedLines.clear();
+    m_foldedDisplayText.clear();
 
     // 结束静默期，重置为"干净"状态
     endSilentModification();
@@ -2875,6 +2882,52 @@ void TextEditor::paintEvent(QPaintEvent *event)
 
     QPainter painter(viewport());
 
+    if (!m_foldedDisplayText.isEmpty()) {
+        const QFontMetrics fm(font());
+        const QColor foldTextColor = ThemeManager::instance().color(
+            ThemeManager::UIElement::SecondaryTextColor);
+
+        for (auto it = m_foldedDisplayText.constBegin();
+             it != m_foldedDisplayText.constEnd(); ++it) {
+            const int line = it.key();
+            if (line < 1 || line > document()->blockCount()) continue;
+
+            QTextBlock block = document()->findBlockByNumber(line - 1);
+            if (!block.isValid() || !block.isVisible()) continue;
+
+            // 行尾光标位置
+            QTextCursor endCursor(block);
+            endCursor.movePosition(QTextCursor::EndOfBlock);
+            const QRect endRect = cursorRect(endCursor);
+
+            // 不在可见区域 → 跳过（视口滚动时减少绘制）
+            if (endRect.bottom() < event->rect().top() ||
+                endRect.top()    > event->rect().bottom()) {
+                continue;
+            }
+
+            painter.save();
+            painter.setFont(font());
+            painter.setPen(foldTextColor);
+
+            const int gap = fm.horizontalAdvance(QLatin1Char(' '));
+            const int x = endRect.right() + gap;
+            const int y = endRect.top();
+            const int h = endRect.height();
+
+            // 右侧剩余宽度不够显示时跳过（避免被裁成半截）
+            const int availW = viewport()->width() - x - 4;
+            if (availW > gap * 2) {
+                painter.drawText(
+                    QRect(x, y, availW, h),
+                    Qt::AlignLeft | Qt::AlignVCenter,
+                    it.value());
+            }
+
+            painter.restore();
+        }
+    }
+
     // ========== 绘制错误行背景 ==========
     for (const ErrorMarker& marker : m_errorMarkers) {
         int line = marker.line;
@@ -3350,20 +3403,16 @@ void TextEditor::toggleFold(int line)
 
     if (isFolded) {
         // ========== 展开 ==========
-        // qDebug() << "--- 开始展开（遍历块） ---";
         QTextBlock block = document()->findBlockByLineNumber(line - 1);
         if (!block.isValid()) {
-            // qDebug() << "起始块无效";
             return;
         }
-        // 遍历从起始行到匹配行之间的所有块
         while (block.isValid() && block.blockNumber() + 1 <= matchLine) {
             block.setVisible(true);
-            // qDebug() << "展开块 行号:" << block.blockNumber() + 1 << "内容:" << block.text().left(30);
             block = block.next();
         }
         m_foldedLines.remove(line);
-        // qDebug() << "展开完成，移除折叠记录";
+        m_foldedDisplayText.remove(line);
     } else {
         // ========== 折叠 ==========
         // 起始块：起始行的下一行（行号 line+1）
@@ -3371,12 +3420,32 @@ void TextEditor::toggleFold(int line)
         if (!block.isValid()) {
             return;
         }
-        // 遍历从 line+1 到 matchLine-1（不隐藏 matchLine 本身，它通常是 `}` 或 Python 的空行）
-        while (block.isValid() && block.blockNumber() + 1 < matchLine) {
+        // 折叠到 matchLine（含）：C++ 的 `}` 行 / Python 的 body 末行都隐藏
+        while (block.isValid() && block.blockNumber() + 1 <= matchLine) {
             block.setVisible(false);
             block = block.next();
         }
         m_foldedLines.insert(line);
+
+        //   计算折叠后缀（JetBrains 风格）
+        //   缩进语言（Python / Ruby）： " ..."
+        //   括号语言（C/C++/Rust/Go/Java/…）：
+        //       结束行带 "}" → " ... }"；否则 " ..."
+        const QString langId = currentLanguageId();
+        const bool isIndentLang = (langId == "python" || langId == "ruby");
+
+        QString suffix;
+        if (isIndentLang) {
+            suffix = QStringLiteral(" ...");
+        } else {
+            QTextBlock mb = document()->findBlockByNumber(matchLine - 1);
+            const bool hasClosingBrace =
+                mb.isValid() && mb.text().lastIndexOf('}') >= 0;
+            suffix = hasClosingBrace
+                         ? QStringLiteral(" ... }")
+                         : QStringLiteral(" ...");
+        }
+        m_foldedDisplayText[line] = suffix;
     }
 
     // 折叠/展开后强制重排，避免后续折叠三角位置错位
@@ -3404,6 +3473,7 @@ void TextEditor::updateFolding()
 
     // 清除所有折叠状态
     m_foldedLines.clear();
+    m_foldedDisplayText.clear();
 
     // 显示所有行
     QTextBlock block = document()->firstBlock();
@@ -5183,7 +5253,11 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
 
     // ---- 2. 切行 ----
     //   Qt 剪贴板的换行统一为 '\n'，但保险起见也兼容 '\r\n'
-    QStringList lines = raw.split(QRegularExpression("[\r\n]"));
+    QString normalizedRaw = raw;
+    normalizedRaw.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    normalizedRaw.replace(QLatin1Char('\r'), QLatin1Char('\n'));
+
+    QStringList lines = normalizedRaw.split(QLatin1Char('\n'));
     if (lines.isEmpty()) {
         QPlainTextEdit::insertFromMimeData(source);
         return;
@@ -5257,10 +5331,11 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     const int cursorCol = cur.positionInBlock();
     const int indentCol = leadingIndentWidth(curBlock.text());
 
-    //  有选区时用"原选区首行缩进"作为基准；
+    //  有选区：第一行落"选区起点列"（即光标前已有空白），不再补足到选区首行缩进
+    //  无选区：min(光标列, 行首缩进)
     int x;
     if (savedBaseIndent >= 0) {
-        x = savedBaseIndent;
+        x = savedStartCol;
     } else {
         x = qMin(cursorCol, indentCol);
     }
@@ -5315,18 +5390,15 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             continue;
         }
 
-        if (i == 0) {
-            QString deindented;
-            if (savedBaseIndent >= 0) {
-                // 有选区：补足缩进到原选区首行缩进
-                const int extra = qMax(0, savedBaseIndent - savedStartCol);
-                out.append(QString(extra, ' ')
-                    + l.mid(leadingWhitespace(l).length()));
-            } else {
-                out.append(l.mid(leadingWhitespace(l).length()));
-            }
+        //   用 firstIdx 而不是硬编码 i==0：
+        //   剪贴板开头可能带空行，"第一行代码"不一定在 lines[0]。
+        //   用 firstIdx 保证「真正的第一行代码」无条件去掉前导缩进，
+        //   其余行才走 delta 统一平移。这样即使剪贴板以空行开头，
+        //   也不会把第一行代码误当作"后续行"处理。
+        if (i == firstIdx) {
+            out.append(l.mid(leadingWhitespace(l).length()));
         } else {
-            // 后续行：按 delta 平移（保持原逻辑）
+            // 后续行：按 delta 统一平移（保持原逻辑，相对关系不变）
             if (delta >= 0) {
                 out.append(stripIndentByWidth(l, delta));
             } else {
