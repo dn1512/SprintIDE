@@ -443,6 +443,7 @@ private slots:
 
     // ========== 查找栏槽 ==========
     void onFindTextChanged(const QString& text);
+    void onFindTextEdited(const QString& text);
     void onFindNextClicked();
     void onFindPreviousClicked();
     void onReplaceTextChanged(const QString& text);
@@ -484,7 +485,11 @@ private:
 
     // 查找辅助
     void highlightAllMatches(const QString& text, bool caseSensitive, bool wholeWord);
+
     void scrollToMatch(int index);
+
+    void jumpToMatch(int index);
+
     void clearHighlights();
 
     /**

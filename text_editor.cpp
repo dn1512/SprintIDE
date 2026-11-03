@@ -282,12 +282,22 @@ void LineNumberArea::mousePressEvent(QMouseEvent *event)
     //    不可折叠行的折叠区不拦截，交给下方断点逻辑
     if (x < foldAreaWidth && m_editor->isFoldableBlock(line)) {
         m_editor->toggleFold(line);
+        m_editor->setFocus();
         return;
     }
 
     // 断点点击：整个左侧点击区（含不可折叠行的折叠区）
     if (x < clickAreaWidth) {
         emit m_editor->breakpointToggled(m_editor->filePath(), line);
+
+        m_editor->setFocus();
+        QTextCursor cur = m_editor->textCursor();
+        if (cur.hasSelection()) {
+            const int pos = cur.position();
+            cur.clearSelection();
+            cur.setPosition(pos);
+            m_editor->setTextCursor(cur);
+        }
         return;
     }
 
@@ -568,7 +578,17 @@ void TextEditor::setupFindBar()
     m_findLineEdit->setPlaceholderText(tr("输入查找内容..."));
     m_findLineEdit->setMinimumWidth(200);
     connect(m_findLineEdit, &QLineEdit::textChanged, this, &TextEditor::onFindTextChanged);
-    connect(m_findLineEdit, &QLineEdit::returnPressed, this, &TextEditor::onFindNextClicked);
+    connect(m_findLineEdit, &QLineEdit::textEdited,  this, &TextEditor::onFindTextEdited);
+
+    //   returnPressed：用户按 Enter 跳下一个（返回键不改变文本，不触发 textEdited）
+    //   hasFocus() 守卫：IME 打数字后按空格确认候选词时可能发 returnPressed，
+    //   但焦点已不在搜索框，不能跳转。
+    connect(m_findLineEdit, &QLineEdit::returnPressed, this, [this]() {
+        if (!m_findLineEdit || !m_findLineEdit->hasFocus()) {
+            return;
+        }
+        onFindNextClicked();
+    });
     layout->addWidget(m_findLineEdit);
 
     m_caseSensitiveCheck = new QCheckBox("Aa", m_findBar);
@@ -1930,20 +1950,6 @@ void TextEditor::showFindBar()
 {
     if (!m_findBar) return;
 
-    //   若当前有单行选区，自动带入查找输入框
-    //   - QTextCursor::selectedText() 把段落分隔符转成 U+2029，需要归一化
-    //   - 多行选区在"查找"里没有语义，跳过
-    {
-        const QTextCursor cur = textCursor();
-        if (cur.hasSelection()) {
-            QString sel = cur.selectedText();
-            sel.replace(QChar::ParagraphSeparator, '\n');
-            if (!sel.contains('\n') && !sel.trimmed().isEmpty()) {
-                m_findLineEdit->setText(sel);   // setText 会触发 onFindTextChanged 自动高亮
-            }
-        }
-    }
-
     m_findBarVisible = true;
     m_findBar->setVisible(true);
 
@@ -1954,15 +1960,41 @@ void TextEditor::showFindBar()
     updateLineNumberAreaWidth();
     relayout();
 
+    // 先让搜索框获得焦点，再 setText。
     m_findLineEdit->setFocus();
+
+    // 若当前有单行选区，自动带入查找输入框
+    bool hasInjectedSelection = false;
+    {
+        const QTextCursor cur = textCursor();
+        if (cur.hasSelection()) {
+            QString sel = cur.selectedText();
+            sel.replace(QChar::ParagraphSeparator, '\n');
+            if (!sel.contains('\n') && !sel.trimmed().isEmpty()) {
+                m_findLineEdit->setText(sel);   // 只刷高亮
+                hasInjectedSelection = true;
+            }
+        }
+    }
+
     m_findLineEdit->selectAll();
 
     // 若查找框已有内容但当前没有高亮 重新执行一次搜索
-    //   场景：关闭查找栏（Esc）clearHighlights 清空了 m_matchCursors，
-    //   但查找框文本仍保留；重新 Ctrl+F 时需恢复高亮。
-    //
-    //   若 m_matchCursors 非空 说明高亮还在（比如只是焦点切走又切回），
-    //   不重复触发。
+    if (m_findLineEdit && !m_findLineEdit->text().isEmpty()
+        && m_matchCursors.isEmpty()) {
+        onFindTextChanged(m_findLineEdit->text());
+    }
+
+    // 用户主动打开搜索栏 单次选中
+    if (hasInjectedSelection
+        && !m_matchCursors.isEmpty()
+        && m_currentMatchIndex >= 0) {
+        jumpToMatch(m_currentMatchIndex);
+    }
+
+    emit findBarVisibilityChanged(true);
+
+    // 若查找框已有内容但当前没有高亮 重新执行一次搜索
     if (m_findLineEdit && !m_findLineEdit->text().isEmpty()
         && m_matchCursors.isEmpty()) {
         onFindTextChanged(m_findLineEdit->text());
@@ -1973,22 +2005,8 @@ void TextEditor::showFindBar()
 
 void TextEditor::showFindBarWithReplace()
 {
-    //  与 showFindBar 相同的带入逻辑
-    if (m_findBar) {
-        const QTextCursor cur = textCursor();
-        if (cur.hasSelection()) {
-            QString sel = cur.selectedText();
-            sel.replace(QChar::ParagraphSeparator, '\n');
-            if (!sel.contains('\n') && !sel.trimmed().isEmpty()) {
-                m_findLineEdit->setText(sel);
-            }
-        }
-    }
-
     showFindBar();
 
-    // onToggleReplaceMode() 是"切换"不是"打开"，若替换行已经展开会被收起
-    // 所以这里直接展开，避免 Ctrl+H 连按两次的表现不一致
     if (!m_replaceMode) {
         onToggleReplaceMode();
     }
@@ -1999,6 +2017,15 @@ void TextEditor::hideFindBar()
     if (!m_findBar) return;
     m_findBarVisible = false;
     m_findBar->setVisible(false);
+    {
+        QTextCursor cur = textCursor();
+        if (cur.hasSelection()) {
+            const int pos = cur.position();   // 保持活动端位置
+            cur.clearSelection();
+            cur.setPosition(pos);
+            setTextCursor(cur);
+        }
+    }
     clearHighlights();
 
     // v8.5：去掉 viewport bottom margin，恢复内容区域
@@ -2013,6 +2040,27 @@ void TextEditor::hideFindBar()
         m_replaceAllButton->setVisible(false);
         m_toggleReplaceButton->setText("▼");
     }
+
+    //   关键：关闭搜索栏后，把焦点还给编辑器。
+    //   否则 m_findLineEdit 虽然隐藏但可能仍持有"某级焦点"，
+    //   后续输入法 / 某些平台的键盘事件仍可能触发它，
+    //   导致 returnPressed 等信号被误发 → 编辑器里打字异常。
+    if (m_findLineEdit) {
+        {
+            QSignalBlocker blocker(m_findLineEdit);
+            m_findLineEdit->clear();
+        }
+        m_findLineEdit->clearFocus();
+    }
+    if (m_replaceLineEdit) {
+        QSignalBlocker blocker(m_replaceLineEdit);
+        m_replaceLineEdit->clear();
+    }
+
+    if (this->isVisible()) {
+        setFocus(Qt::OtherFocusReason);
+    }
+
     emit findBarVisibilityChanged(false);
 }
 
@@ -2373,9 +2421,6 @@ void TextEditor::onFindTextChanged(const QString& text)
         return;
     }
 
-    // 记录"搜索基准点" —— 用户按 Ctrl+F 时的光标位置
-    // 注意：要在 highlightAllMatches 之前抓，因为之后 m_matchCursors
-    //      的 setExtraSelections 不改文档、不移动光标，但这行更保险。
     const int basePos = textCursor().selectionStart();
 
     highlightAllMatches(text,
@@ -2387,9 +2432,6 @@ void TextEditor::onFindTextChanged(const QString& text)
         return;
     }
 
-    //   v8.4：就近选择当前匹配
-    //   - 优先取第一个 selectionStart() >= basePos 的匹配
-    //   - 若没有（光标位于最后一个匹配之后），回绕到第 0 个
     int best = 0;
     for (int i = 0; i < m_matchCursors.size(); ++i) {
         if (m_matchCursors[i].selectionStart() >= basePos) {
@@ -2401,7 +2443,36 @@ void TextEditor::onFindTextChanged(const QString& text)
     }
 
     m_currentMatchIndex = best;
+
     scrollToMatch(m_currentMatchIndex);
+
+    m_matchCountLabel->setText(
+        QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
+}
+
+void TextEditor::onFindTextEdited(const QString& text)
+{
+    if (text.isEmpty()) return;
+    if (m_matchCursors.isEmpty()) return;
+
+    // 以编辑器当前光标位置为锚点，找最近的匹配
+    // （selectionStart() 在无选区时等于 position()，兼容两种状态）
+    const int basePos = textCursor().selectionStart();
+
+    int best = 0;
+    for (int i = 0; i < m_matchCursors.size(); ++i) {
+        if (m_matchCursors[i].selectionStart() >= basePos) {
+            best = i;
+            break;
+        }
+        best = 0;   // 循环跑完还没命中 → 回绕到第 0 个
+    }
+
+    m_currentMatchIndex = best;
+
+    // 单次选中。之后不会有任何非用户动作重新触发
+    jumpToMatch(m_currentMatchIndex);
+
     m_matchCountLabel->setText(
         QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
@@ -2410,7 +2481,7 @@ void TextEditor::onFindNextClicked()
 {
     if (m_matchCursors.isEmpty()) return;
     m_currentMatchIndex = (m_currentMatchIndex + 1) % m_matchCursors.size();
-    scrollToMatch(m_currentMatchIndex);
+    jumpToMatch(m_currentMatchIndex);   // ★ 用户主动跳转
     m_matchCountLabel->setText(QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
 
@@ -2418,7 +2489,7 @@ void TextEditor::onFindPreviousClicked()
 {
     if (m_matchCursors.isEmpty()) return;
     m_currentMatchIndex = (m_currentMatchIndex - 1 + m_matchCursors.size()) % m_matchCursors.size();
-    scrollToMatch(m_currentMatchIndex);
+    jumpToMatch(m_currentMatchIndex);   // ★ 用户主动跳转
     m_matchCountLabel->setText(QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
 
@@ -2476,9 +2547,8 @@ void TextEditor::scrollToMatch(int index)
 {
     if (index < 0 || index >= m_matchCursors.size()) return;
 
-    setTextCursor(m_matchCursors[index]);
-    centerCursor();
-
+    // ★ 只刷新高亮。绝不 setTextCursor / centerCursor。
+    //   任何"文档变化 → 重算匹配"的路径都不应该移动编辑器光标。
     ThemeManager& tm = ThemeManager::instance();
     const QColor normalColor  = tm.color(ThemeManager::UIElement::SearchMatchBackground);
     const QColor currentColor = tm.color(ThemeManager::UIElement::SearchCurrentMatchBackground);
@@ -2494,7 +2564,22 @@ void TextEditor::scrollToMatch(int index)
         selections.append(sel);
     }
     applySearchHighlights(selections);
+}
 
+void TextEditor::jumpToMatch(int index)
+{
+    if (index < 0 || index >= m_matchCursors.size()) return;
+
+    const int startPos = m_matchCursors[index].selectionStart();
+
+    QTextCursor cur(document());
+    cur.setPosition(startPos);   // 光标定位到匹配起点，无选区
+    setTextCursor(cur);
+
+    centerCursor();
+
+    // 只刷新高亮（当前匹配用更显眼的色，视觉上"看起来被选中"）
+    scrollToMatch(index);
 }
 
 void TextEditor::clearHighlights()
@@ -2597,11 +2682,15 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
     if (m_outlineOverlay && m_outlineOverlay->isVisible()) {
         m_outlineOverlay->hideOverlay();
     }
-    // 处理 Ctrl+左键（macOS 上为 Cmd+左键）
+
+    //  处理 Ctrl+左键（macOS 上为 Cmd+左键）
     if (event->button() == Qt::LeftButton &&
         (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) {
 
-        // 获取光标位置
+        // 先让基类处理点击：光标移到点击处 + 清除旧选区
+        QPlainTextEdit::mousePressEvent(event);
+
+        // 再尝试跳转定义
         QTextCursor cursor = cursorForPosition(event->pos());
         int pos = cursor.position();
         QString text = toPlainText();
@@ -2626,8 +2715,7 @@ void TextEditor::mousePressEvent(QMouseEvent* event)
             setCursor(Qt::PointingHandCursor);
         } else {
             qDebug() << "[TextEditor] No identifier at click position";
-            // 没有标识符，按普通点击处理
-            QPlainTextEdit::mousePressEvent(event);
+            // 光标已经由上方基类调用设置好了，无需额外处理
         }
         return;
     }
@@ -3507,6 +3595,31 @@ int TextEditor::lineCount() const
 
 void TextEditor::keyPressEvent(QKeyEvent *event)
 {
+    if (m_findBarVisible && !m_matchCursors.isEmpty()) {
+        QTextCursor cur = textCursor();
+        if (cur.hasSelection()) {
+            const int selStart = cur.selectionStart();
+            const int selEnd = cur.selectionEnd();
+
+            bool isSearchSelection = false;
+            for (const QTextCursor& m : m_matchCursors) {
+                if (m.selectionStart() == selStart
+                    && m.selectionEnd() == selEnd) {
+                    isSearchSelection = true;
+                    break;
+                }
+            }
+
+            if (isSearchSelection) {
+                // 保持活动端位置，清除选区
+                const int pos = cur.position();
+                cur.clearSelection();
+                cur.setPosition(pos);
+                setTextCursor(cur);
+            }
+        }
+    }
+
     const bool hasModifier =
     (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier));
 
@@ -5144,8 +5257,7 @@ bool TextEditor::trySmartBackspace()
     return true;
 }
 
-void TextEditor::matchParentheses()
-{
+void TextEditor::matchParentheses(){
     QTextCursor cursor = textCursor();
     int position = cursor.position();
 
@@ -5209,50 +5321,62 @@ void TextEditor::matchParentheses()
 // ============================================================================
 void TextEditor::insertFromMimeData(const QMimeData* source)
 {
-    if (!source) {
+    if (!source || !source->hasText()) {
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
-
-    if (!source->hasText()) {
-        QPlainTextEdit::insertFromMimeData(source);
-        return;
-    }
-
     const QString raw = source->text();
     if (raw.isEmpty()) {
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
 
-    int savedBaseIndent = -1;    // -1 = 无选区 / 走基类
+    // ============================================================
+    //  ★ 关键修复（解决"粘贴行顺序错乱 / 第一行跑最后"）：
+    //
+    //  1. 缓存粘贴目标位置 pasteAnchorPos / pasteEndPos。
+    //     removeSelectedText / insertText 都会触发 textChanged，
+    //     若 onTextChanged 里的 scrollToMatch 调用 setTextCursor，
+    //     后续再 textCursor() 拿到的就不是用户预期的位置了。
+    //     所以全程只用本地缓存的位置，不调 textCursor() 的中间状态。
+    //
+    //  2. removeSelectedText + insertText 用 beginEditBlock/endEditBlock
+    //     包起来，让 onTextChanged 只在最后触发一次，中间副作用被合并。
+    //
+    //  3. 换行归一化 "\r\n" → "\n"，避免 Windows CRLF 被 split 成两行。
+    //
+    //  4. 第一行判定用 firstIdx 而不是硬编码 0，兼容剪贴板开头有空行。
+    // ============================================================
+
+    // ---- 1. 缓存粘贴目标位置 ----
+    int savedBaseIndent = -1;
     int savedStartCol   = 0;
+    int pasteAnchorPos  = 0;
+    int pasteEndPos     = 0;
     {
         QTextCursor selCur = textCursor();
+        pasteAnchorPos = selCur.selectionStart();
+        pasteEndPos    = selCur.selectionEnd();
+
         if (selCur.hasSelection()) {
-            const int selStart = selCur.selectionStart();
-            QTextBlock selBlock = document()->findBlock(selStart);
+            QTextBlock selBlock = document()->findBlock(pasteAnchorPos);
             if (!selBlock.isValid()) {
                 QPlainTextEdit::insertFromMimeData(source);
                 return;
             }
-            const int startCol    = selStart - selBlock.position();
+            const int startCol    = pasteAnchorPos - selBlock.position();
             const int startIndent = leadingIndentWidth(selBlock.text());
             if (startCol > startIndent) {
-                // 局部替换
+                // 局部替换（选区起点不在缩进区）→ 走 Qt 默认
                 QPlainTextEdit::insertFromMimeData(source);
                 return;
             }
             savedBaseIndent = startIndent;
             savedStartCol   = startCol;
-            // 删除选区，光标落 selStart（选区起点）
-            selCur.removeSelectedText();
-            setTextCursor(selCur);
         }
     }
 
-    // ---- 2. 切行 ----
-    //   Qt 剪贴板的换行统一为 '\n'，但保险起见也兼容 '\r\n'
+    // ---- 2. 换行归一化 + split ----
     QString normalizedRaw = raw;
     normalizedRaw.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     normalizedRaw.replace(QLatin1Char('\r'), QLatin1Char('\n'));
@@ -5262,28 +5386,6 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
-
-    // ============================================================
-    //  粘贴缩进 —— "拼接判断 + 第二行基准" 策略
-    //
-    //  步骤：
-    //    1. 第一行：去掉所有前导缩进，从光标位置粘贴
-    //    2. x = 粘贴后第一行的实际缩进
-    //           = min(光标列, 行首缩进宽度)
-    //           （光标在缩进区内 光标列；光标在代码区 行首缩进）
-    //    3. 判断"是否开启块"：用**拼接后的完整第一行**（不是剪贴板第一行）
-    //           拼接后 = 光标前这一行的文本（去前导空白）
-    //                  + 剪贴板第一行（去前导空白）
-    //           例：光标在 "    if |"，剪贴板第一行 "(x == 1) {"
-    //               拼接后 "if (x == 1) {" 行末 { 开启块
-    //    4. 期望第二行缩进：
-    //           - 开启块：x + tabWidth
-    //           - 不开启：x
-    //    5. delta = 剪贴板第二行缩进 - 期望
-    //    6. 从第二行到最后一行，每行缩进减 delta
-    //       - delta > 0：去掉 delta 宽度的前导空白
-    //       - delta < 0：补 |delta| 个空格（罕见，对称处理）
-    // ============================================================
 
     const int tabWidth = qMax(1, m_tabWidth);
 
@@ -5299,7 +5401,6 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
 
     auto stripIndentByWidth = [&](const QString& line, int width) -> QString {
         if (width <= 0) return line;
-
         int consumed = 0;
         int i = 0;
         while (i < line.length() && consumed < width) {
@@ -5311,28 +5412,25 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         return line.mid(i);
     };
 
-    // ---- 3. 找剪贴板第一个非空行 ----
+    // ---- 3. 找第一个非空行 ----
     int firstIdx = -1;
     for (int i = 0; i < lines.size(); ++i) {
-        if (!lines[i].trimmed().isEmpty()) {
-            firstIdx = i;
-            break;
-        }
+        if (!lines[i].trimmed().isEmpty()) { firstIdx = i; break; }
     }
     if (firstIdx < 0) {
-        // 全是空行 走基类
         QPlainTextEdit::insertFromMimeData(source);
         return;
     }
 
-    // ---- 4. x = 粘贴后第一行的实际缩进 ----
-    const QTextCursor cur = textCursor();
-    const QTextBlock curBlock = cur.block();
-    const int cursorCol = cur.positionInBlock();
-    const int indentCol = leadingIndentWidth(curBlock.text());
+    // ---- 4. 用缓存的 pasteAnchorPos 计算目标行信息 ----
+    QTextBlock pasteBlock = document()->findBlock(pasteAnchorPos);
+    if (!pasteBlock.isValid()) {
+        QPlainTextEdit::insertFromMimeData(source);
+        return;
+    }
+    const int cursorCol = pasteAnchorPos - pasteBlock.position();
+    const int indentCol = leadingIndentWidth(pasteBlock.text());
 
-    //  有选区：第一行落"选区起点列"（即光标前已有空白），不再补足到选区首行缩进
-    //  无选区：min(光标列, 行首缩进)
     int x;
     if (savedBaseIndent >= 0) {
         x = savedStartCol;
@@ -5341,12 +5439,12 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     }
 
     // ---- 5. 拼接后的完整第一行 ----
-    const QString beforeCursor = curBlock.text().left(cursorCol);
+    const QString beforeCursor = pasteBlock.text().left(cursorCol);
     const QString firstClipLine = lines.isEmpty() ? QString() : lines[0];
     const QString combinedLine = beforeCursor.trimmed() + firstClipLine.trimmed();
     const bool triggers = m_editorRules.endsWithIndentTrigger(combinedLine);
 
-    // ---- 6. 剪贴板第二行的缩进（若无第二行，delta = 0） ----
+    // ---- 6. 剪贴板第二行缩进 ----
     int secondIdx = -1;
     int cb_second = 0;
     for (int i = firstIdx + 1; i < lines.size(); ++i) {
@@ -5363,8 +5461,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         delta = cb_second - expected;
     }
 
-    // ---- 7.5 修正 delta：保证最小缩进非负 ----
-    //    上面用"第一行 + 第二行"推 delta，是近似值。
+    // ---- 7.5 负缩进归零保护 ----
     if (secondIdx >= 0 && delta > 0) {
         int minOrigIndent = std::numeric_limits<int>::max();
         for (int i = secondIdx; i < lines.size(); ++i) {
@@ -5372,10 +5469,9 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             const int w = indentWidthOf(lines[i]);
             if (w < minOrigIndent) minOrigIndent = w;
         }
-
         if (minOrigIndent != std::numeric_limits<int>::max()
             && minOrigIndent < delta) {
-            delta = 0;   // 如果行会被扣成"负缩进" 放弃调整，整块原样粘贴。
+            delta = 0;
         }
     }
 
@@ -5390,15 +5486,10 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             continue;
         }
 
-        //   用 firstIdx 而不是硬编码 i==0：
-        //   剪贴板开头可能带空行，"第一行代码"不一定在 lines[0]。
-        //   用 firstIdx 保证「真正的第一行代码」无条件去掉前导缩进，
-        //   其余行才走 delta 统一平移。这样即使剪贴板以空行开头，
-        //   也不会把第一行代码误当作"后续行"处理。
         if (i == firstIdx) {
+            // 第一行（真正的第一行代码，可能是 lines[firstIdx] 而不是 lines[0]）
             out.append(l.mid(leadingWhitespace(l).length()));
         } else {
-            // 后续行：按 delta 统一平移（保持原逻辑，相对关系不变）
             if (delta >= 0) {
                 out.append(stripIndentByWidth(l, delta));
             } else {
@@ -5407,14 +5498,27 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
         }
     }
 
-    // ---- 9. 组装 & 插入 ----
     const QString joined = out.join('\n');
 
-    QTextCursor cursor = textCursor();
-    cursor.beginEditBlock();
-    cursor.insertText(joined);
-    cursor.endEditBlock();
-    setTextCursor(cursor);
+    // ---- 9. 一次性原子插入 ----
+    //   beginEditBlock / endEditBlock 保证：
+    //     - remove + insert 合并为一次 undo
+    //     - 中途的 textChanged 被合并，onTextChanged 只在 endEditBlock 触发一次
+    //   pasteAnchorPos / pasteEndPos 是缓存的绝对位置，不被 onTextChanged 干扰
+    QTextCursor editCursor(document());
+    editCursor.beginEditBlock();
+    editCursor.setPosition(pasteAnchorPos);
+    if (pasteEndPos > pasteAnchorPos) {
+        editCursor.setPosition(pasteEndPos, QTextCursor::KeepAnchor);
+    }
+    editCursor.removeSelectedText();            // 光标回退到 pasteAnchorPos
+    editCursor.insertText(joined);              // 光标到 joined 末尾
+    editCursor.endEditBlock();
+
+    // ---- 10. 光标放到粘贴末尾 ----
+    QTextCursor finalCursor(document());
+    finalCursor.setPosition(editCursor.position());
+    setTextCursor(finalCursor);
 }
 
 void TextEditor::mouseDoubleClickEvent(QMouseEvent* event)
@@ -6962,12 +7066,14 @@ void TextEditor::onTextChanged()
         if (!m_matchCursors.isEmpty()) {
             m_currentMatchIndex = qBound(0, savedIndex,
                 m_matchCursors.size() - 1);
+            // 只刷高亮
             scrollToMatch(m_currentMatchIndex);
         } else {
             m_currentMatchIndex = -1;
             m_matchCountLabel->setText("0/0");
         }
     }
+
 }
 
 void TextEditor::onGotoLineAction()

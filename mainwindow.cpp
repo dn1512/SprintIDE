@@ -133,6 +133,13 @@ using namespace SprintIDE;
 
 namespace SprintIDE {
 
+static QString canonicalPath(const QString& p)
+{
+    if (p.isEmpty()) return QString();
+    QString c = QFileInfo(p).canonicalFilePath();
+    return c.isEmpty() ? QFileInfo(p).absoluteFilePath() : c;
+}
+
 // ============================================================================
 //  从文件路径向上查找项目根
 //
@@ -2748,9 +2755,13 @@ void MainWindow::openFile(const QString &path)
     // ============================================================
     // 1. 检查文件是否已打开
     // ============================================================
+    const QString canonPath = canonicalPath(path);
+
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (editor && editor->filePath() == path) {
+        if (!editor) continue;
+
+        if (canonicalPath(editor->filePath()) == canonPath) {
             d->editorTabs->setCurrentIndex(i);
             return;
         }
@@ -3181,9 +3192,14 @@ bool MainWindow::closeEditorTab(int index)
 
 bool MainWindow::closeEditorForFile(const QString& filePath)
 {
+    const QString target = canonicalPath(filePath);
+    if (target.isEmpty()) return true;
+
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (editor && editor->filePath() == filePath) {
+        if (!editor) continue;
+
+        if (canonicalPath(editor->filePath()) == target) {
             return closeEditorTab(i); // 返回是否成功关闭
         }
     }
@@ -4326,9 +4342,14 @@ void MainWindow::onQuickFixRequested(const QString& filePath,
 // 辅助方法
 TextEditor* MainWindow::findEditorByFilePath(const QString& filePath)
 {
+    const QString target = canonicalPath(filePath);
+    if (target.isEmpty()) return nullptr;
+
     for (int i = 0; i < d->editorTabs->count(); ++i) {
         TextEditor* editor = qobject_cast<TextEditor*>(d->editorTabs->widget(i));
-        if (editor && editor->filePath() == filePath) {
+        if (!editor) continue;
+
+        if (canonicalPath(editor->filePath()) == target) {
             return editor;
         }
     }
