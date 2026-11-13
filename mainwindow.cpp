@@ -8675,19 +8675,31 @@ void MainWindow::onRun()
         args << "-u";
         args << sourceFile;
 
-        // ===== 构造环境变量（保留！后面 QProcess 要用） =====
+        // ===== 构造环境变量 =====
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         env.insert("PYTHONUNBUFFERED", "1");
-        if (model && !model->venvPath().isEmpty()) {
+
+        // 项目 venv → 全局 DefaultVenv → 解释器反推
+        QString venvRoot = model ? model->venvPath() : QString();
+        if (venvRoot.isEmpty()) {
+            if (auto* cfg = Application::instance().configManager()) {
+                venvRoot = cfg->value("Python/DefaultVenv").toString();
+            }
+        }
+        if (venvRoot.isEmpty()) {
+            venvRoot = PythonVirtualEnv::venvRootFromInterpreter(python);
+        }
+        if (!venvRoot.isEmpty()) {
 #ifdef Q_OS_WIN
-            QString binDir = model->venvPath() + "/Scripts";
+            const QString binDir = venvRoot + "/Scripts";
 #else
-            QString binDir = model->venvPath() + "/bin";
+            const QString binDir = venvRoot + "/bin";
 #endif
             if (QFile::exists(binDir)) {
                 QString path = env.value("PATH");
                 env.insert("PATH", binDir + QDir::listSeparator() + path);
-                env.insert("VIRTUAL_ENV", model->venvPath());
+                env.insert("VIRTUAL_ENV", venvRoot);
+                logInfo(QString("运行 venv: %1").arg(venvRoot));
             }
         }
         // =================================================

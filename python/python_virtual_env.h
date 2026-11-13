@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 #ifndef PYTHON_VIRTUAL_ENV_H
 #define PYTHON_VIRTUAL_ENV_H
 
@@ -26,18 +27,22 @@ namespace SprintIDE {
 
 class PythonVirtualEnv {
 public:
-    // 检测项目路径下的虚拟环境
     static QString detectVenv(const QString& projectPath);
-    // 创建虚拟环境（使用 system 或指定 python）
     static bool createVenv(const QString& projectPath, const QString& pythonPath = QString());
-    // 获取激活脚本路径（用于终端）
     static QString activateScriptPath(const QString& venvPath);
-    // 获取虚拟环境中的 Python 解释器路径
     static QString interpreterPath(const QString& venvPath);
-    // 获取虚拟环境中的 pip 路径
     static QString pipPath(const QString& venvPath);
-    // 判断是否为有效的虚拟环境
     static bool isValidVenv(const QString& venvPath);
+
+    // v8.6 新增：在 dirPath 下查找 venv / .venv / env 子目录，返回第一个命中的绝对路径
+    //   命中判据 = 目录内存在 pyvenv.cfg（不检查解释器是否可执行）
+    static QString findVenvInDir(const QString& dirPath);
+
+    // v8.6 新增：从解释器路径反推 venv 根
+    //   仅当路径形如 <root>/bin/python*（Unix）
+    //   或 <root>\Scripts\python*.exe（Windows）时返回 root，否则空串。
+    //   兼容断链 symlink：bin/python 是符号链接但目标已失效时仍能反推。
+    static QString venvRootFromInterpreter(const QString& interpreterPath);
 };
 
 } // namespace SprintIDE

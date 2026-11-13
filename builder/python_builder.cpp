@@ -13,6 +13,7 @@
 #include "python/python_project_model.h"
 #include "project_manager.h"
 #include "python/python_dependency_manager.h"
+#include "python/python_virtual_env.h"
 
 namespace SprintIDE {
 
@@ -49,11 +50,12 @@ namespace SprintIDE {
     // ============================================================
     // 跨平台 Python 解释器解析（供 PythonBuilder 与 MainWindow 共用）
     //   顺序：
-    //     1. task.sdkConfig["pythonInterpreter"]  —— 显式指定（绝对路径或裸名）
-    //     2. PythonProjectModel::interpreterPath() —— 项目 / venv 探测
-    //     3. PYTHON_HOME —— 支持填目录或可执行文件本身
-    //     4. PATH 查找 —— 跨平台兜底
-    //     5. 平台习惯名 —— 都找不到时返回，让调用方给出明确错误
+    //     1. task.sdkConfig["pythonInterpreter"]  —— 显式指定（项目级/任务级）
+    //     2. 项目自带 venv（仅当 PythonProjectModel::venvPath() 非空才认为存在）
+    //     3. 全局默认解释器（设置 → Python → 解释器 / 虚拟环境）
+    //     4. PYTHON_HOME —— 支持填目录或可执行文件本身
+    //     5. PATH 查找 —— 跨平台兜底
+    //     6. 平台习惯名 —— 都找不到时返回，让调用方给出明确错误
     // ============================================================
     QString PythonBuilder::resolvePythonInterpreter(const BuildTask& task)
     {
@@ -61,45 +63,57 @@ namespace SprintIDE {
         const QString explicitPy = task.sdkConfig.value("pythonInterpreter").toString();
         if (!explicitPy.isEmpty()) {
             const QFileInfo fi(explicitPy);
-            if (fi.isFile() && fi.isExecutable()) {
-                return explicitPy;
-            }
-            // 用户可能只写了裸名，如 "py" / "python.exe"
+            if (fi.isFile() && fi.isExecutable()) return explicitPy;
             const QString found = QStandardPaths::findExecutable(explicitPy);
-            if (!found.isEmpty()) {
-                return found;
-            }
+            if (!found.isEmpty()) return found;
             qWarning() << "[Python] pythonInterpreter 指定了但找不到:" << explicitPy;
         }
 
-        // ---- 2. PythonProjectModel::interpreterPath() ----
+        // ---- 2. 项目自带 venv ----
+        //   必须 venvPath() 非空才算，避免 interpreterPath() 的 PYTHON_HOME/python3 兜底
+        //   把后面全局设置的判断全挡掉。
         if (auto model = ProjectManager::instance()->pythonProjectModel()) {
-            const QString p = model->interpreterPath();
-            if (!p.isEmpty()) {
-                const QFileInfo fi(p);
-                if (fi.isFile() && fi.isExecutable()) {
-                    return p;
-                }
+            const QString venvRoot = model->venvPath();
+            if (!venvRoot.isEmpty()) {
+                const QString p = PythonVirtualEnv::interpreterPath(venvRoot);
+                if (!p.isEmpty()) return p;
             }
         }
 
-        // ---- 3. PYTHON_HOME（支持填目录或可执行文件） ----
-        QString pythonHome = task.sdkConfig.value("PYTHON_HOME").toString();
-        if (pythonHome.isEmpty()) {
-            if (auto* cfg = Application::instance().configManager()) {
-                const QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
-                pythonHome = sdkEnv.value("PYTHON_HOME").toString();
+        ConfigManager* cfg = Application::instance().configManager();
+
+        // ---- 3. 全局默认 venv ----
+        if (cfg) {
+            const QString venvRoot = cfg->value("Python/DefaultVenv").toString();
+            if (!venvRoot.isEmpty()) {
+                const QString p = PythonVirtualEnv::interpreterPath(venvRoot);
+                if (!p.isEmpty()) return p;
+                qWarning() << "[Python] 全局 venv 解析不出解释器:" << venvRoot
+                           << "（bin/python 可能缺失或 symlink 已失效），将 fallback";
             }
+        }
+
+        // ---- 4. 全局默认解释器（非 venv 场景）----
+        if (cfg) {
+            const QString saved = cfg->value("Python/DefaultInterpreter").toString();
+            if (!saved.isEmpty()) {
+                const QFileInfo fi(saved);
+                if ((fi.isFile() && fi.isExecutable()) || fi.isSymLink()) {
+                    return saved;
+                }
+                qWarning() << "[Python] 全局解释器路径无效:" << saved;
+            }
+        }
+
+        // ---- 5. PYTHON_HOME ----
+        QString pythonHome = task.sdkConfig.value("PYTHON_HOME").toString();
+        if (pythonHome.isEmpty() && cfg) {
+            const QVariantMap sdkEnv = cfg->value("Sdk/Environment").toMap();
+            pythonHome = sdkEnv.value("PYTHON_HOME").toString();
         }
         if (!pythonHome.isEmpty()) {
             const QFileInfo homeInfo(pythonHome);
-
-            // 3a. 用户填的是可执行文件本身
-            if (homeInfo.isFile() && homeInfo.isExecutable()) {
-                return pythonHome;
-            }
-
-            // 3b. 用户填的是安装目录 按平台试多个候选
+            if (homeInfo.isFile() && homeInfo.isExecutable()) return pythonHome;
             #ifdef Q_OS_WIN
             const QStringList localCandidates = {
                 pythonHome + "/python.exe",
@@ -121,20 +135,16 @@ namespace SprintIDE {
             qWarning() << "[Python] PYTHON_HOME 已设置但没找到解释器:" << pythonHome;
         }
 
-        // ---- 4. PATH 查找（跨平台兜底） ----
+        // ---- 6. PATH ----
         const QString fromPath = findPythonInPath();
-        if (!fromPath.isEmpty()) {
-            return fromPath;
-        }
+        if (!fromPath.isEmpty()) return fromPath;
 
-        // ---- 5. 真的找不到 返回平台习惯名，让调用方报明确错误 ----
+        // ---- 7. 兜底 ----
         #ifdef Q_OS_WIN
-        qWarning() << "[Python] 未找到任何 Python 解释器，"
-        "请安装 Python 或在设置里配置 PYTHON_HOME / pythonInterpreter";
+        qWarning() << "[Python] 未找到任何 Python 解释器";
         return QStringLiteral("python.exe");
         #else
-        qWarning() << "[Python] 未找到任何 Python 解释器，"
-        "请安装 Python 或在设置里配置 PYTHON_HOME / pythonInterpreter";
+        qWarning() << "[Python] 未找到任何 Python 解释器";
         return QStringLiteral("python3");
         #endif
     }
@@ -221,10 +231,29 @@ namespace SprintIDE {
             }
         }
 
-        // Python 特定：虚拟环境激活
+        // 虚拟环境激活
         QString venv = task.sdkConfig.value("venv").toString();
+        if (venv.isEmpty()) venv = env.value("PYTHON_VENV");
+
+        // 显式未指定时，按项目 venv → 全局 DefaultVenv → 解释器反推
         if (venv.isEmpty()) {
-            venv = env.value("PYTHON_VENV");
+            if (auto model = ProjectManager::instance()->pythonProjectModel()) {
+                venv = model->venvPath();
+            }
+        }
+        if (venv.isEmpty()) {
+            if (auto* cfg = Application::instance().configManager()) {
+                venv = cfg->value("Python/DefaultVenv").toString();
+            }
+        }
+        if (venv.isEmpty()) {
+            venv = PythonVirtualEnv::venvRootFromInterpreter(
+                resolvePythonInterpreter(task));
+        }
+        // 都没显式指定时，从解析出的解释器路径反推 venv 根
+        if (venv.isEmpty()) {
+            venv = PythonVirtualEnv::venvRootFromInterpreter(
+                resolvePythonInterpreter(task));
         }
         if (!venv.isEmpty()) {
             #ifdef Q_OS_WIN

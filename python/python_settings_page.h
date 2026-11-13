@@ -30,14 +30,28 @@ public:
     void loadSettings() override;
     void saveSettings() override;
 
+private slots:
+    void onPickVenv();
+    void onPickInterpreter();
+    void refreshInterpreterStatus();
+
 private:
-    QComboBox* m_interpreterCombo;
-    QCheckBox* m_autoVenv;
-    QComboBox* m_depManager;
-    QCheckBox* m_autoInstallDeps;
-    QComboBox* m_testRunner;
-    QComboBox* m_formatter;
-    QLineEdit* m_extraPipArgs;
+    void appendToCombo(const QString& path);
+
+    // ---- 解释器 / 虚拟环境 ----
+    QComboBox*   m_interpreterCombo       = nullptr;
+    QPushButton* m_pickVenvBtn            = nullptr;
+    QPushButton* m_pickInterpreterBtn     = nullptr;
+    QLabel*      m_interpreterStatusLabel = nullptr;
+
+    // ---- 依赖管理 ----
+    QComboBox* m_depManager      = nullptr;
+    QCheckBox* m_autoInstallDeps = nullptr;
+    QLineEdit* m_extraPipArgs    = nullptr;
+
+    // ---- 工具 ----
+    QComboBox* m_testRunner = nullptr;
+    QComboBox* m_formatter  = nullptr;
 };
 
 } // namespace SprintIDE
