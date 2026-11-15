@@ -9,6 +9,7 @@
 
 # 忽略 build 文件夹及其下所有文件
 build/
+build-asan/
 
 # 忽略 tools 文件夹及其下所有文件
 tools/

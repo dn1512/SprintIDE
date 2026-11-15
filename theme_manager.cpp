@@ -211,7 +211,7 @@ public:
         colors[UIElement::AIChatUserBubble]       = QColor("#2A3340");
         colors[UIElement::AIChatAIBubble]         = QColor("#1E2A32");
         colors[UIElement::AIChatAIBorder]         = QColor("#2BC0BD");
-        colors[UIElement::TerminalBackground]     = QColor("#1A1F26");
+        // colors[UIElement::TerminalBackground]     = QColor("#1A1F26");
         colors[UIElement::OutputPanelBackground]  = QColor("#1A1F26");
 
         // Git 面板
@@ -230,6 +230,40 @@ public:
         colors[UIElement::OutlineOverlayBorder]     = QColor("#3A4556");   // 略比边框亮，浮层更清晰
         colors[UIElement::OutlineOverlayDivider]    = QColor("#2F3848");
         colors[UIElement::OutlineOverlaySectionTitle] = QColor("#9AA7BB");
+
+        // 终端配色
+        colors[UIElement::TerminalBackground]          = QColor("#1A1F26");
+        colors[UIElement::TerminalForeground]          = QColor("#D4DCE8");
+        colors[UIElement::TerminalCursor]              = QColor("#4A9EFF");
+        colors[UIElement::TerminalSelection]           = QColor("#2A3340");
+        colors[UIElement::TerminalSelectionInactive]   = QColor(42, 51, 64, 120);
+        colors[UIElement::TerminalSearchMatch]         = QColor(235, 182, 91, 100);
+        colors[UIElement::TerminalSearchMatchActive]   = QColor("#EBB65B");
+        colors[UIElement::TerminalScrollbarHandle]     = QColor(74, 158, 255, 90);
+        colors[UIElement::TerminalScrollbarHandleHover]= QColor(74, 158, 255, 180);
+        colors[UIElement::TerminalLink]                = QColor("#4A9EFF");
+        colors[UIElement::TerminalTabBarBackground]    = QColor("#212730");
+        colors[UIElement::TerminalTabActiveBackground] = QColor("#2A3340");
+        colors[UIElement::TerminalTabInactiveText]     = QColor("#7A8599");
+        colors[UIElement::TerminalOverlayBackground]   = QColor("#212730");
+        colors[UIElement::TerminalOverlayBorder]       = QColor("#2F3848");
+
+        colors[UIElement::TerminalAnsiBlack]         = QColor("#000000");
+        colors[UIElement::TerminalAnsiRed]           = QColor("#CD3131");
+        colors[UIElement::TerminalAnsiGreen]         = QColor("#0DBC79");
+        colors[UIElement::TerminalAnsiYellow]        = QColor("#E5E510");
+        colors[UIElement::TerminalAnsiBlue]          = QColor("#2472C8");
+        colors[UIElement::TerminalAnsiMagenta]       = QColor("#BC3FBC");
+        colors[UIElement::TerminalAnsiCyan]          = QColor("#11A8CD");
+        colors[UIElement::TerminalAnsiWhite]         = QColor("#E5E5E5");
+        colors[UIElement::TerminalAnsiBrightBlack]   = QColor("#666666");
+        colors[UIElement::TerminalAnsiBrightRed]     = QColor("#F14C4C");
+        colors[UIElement::TerminalAnsiBrightGreen]   = QColor("#23D18B");
+        colors[UIElement::TerminalAnsiBrightYellow]  = QColor("#F5F543");
+        colors[UIElement::TerminalAnsiBrightBlue]    = QColor("#3B8EEA");
+        colors[UIElement::TerminalAnsiBrightMagenta] = QColor("#D670D6");
+        colors[UIElement::TerminalAnsiBrightCyan]    = QColor("#29B8DB");
+        colors[UIElement::TerminalAnsiBrightWhite]   = QColor("#E5E5E5");
     }
 
     // ------------------------------------------------------------
@@ -254,7 +288,7 @@ public:
         //  L2 输出 / 终端 —— 只比编辑器深一点点，保持"浅"
         // ============================================================
         colors[UIElement::OutputPanelBackground]  = QColor("#E8F1F0");   // H 174 L 94%
-        colors[UIElement::TerminalBackground]     = QColor("#E8F1F0");
+        // colors[UIElement::TerminalBackground]     = QColor("#E8F1F0");
 
         // ============================================================
         //  L3 行号区 —— 比编辑器深一档，做区域划分
@@ -373,6 +407,39 @@ public:
         colors[UIElement::OutlineOverlayBorder]     = QColor("#8FA09D");   // 比普通边框深，浮层更清晰
         colors[UIElement::OutlineOverlayDivider]    = QColor("#AEC0BE");
         colors[UIElement::OutlineOverlaySectionTitle] = QColor("#3F504C");
+
+        colors[UIElement::TerminalBackground]          = QColor("#F4F7FA");
+        colors[UIElement::TerminalForeground]          = QColor("#2C3848");
+        colors[UIElement::TerminalCursor]              = QColor("#0D6EFD");
+        colors[UIElement::TerminalSelection]           = QColor("#E8ECF0");
+        colors[UIElement::TerminalSelectionInactive]   = QColor(232, 236, 240, 140);
+        colors[UIElement::TerminalSearchMatch]         = QColor(235, 182, 91, 140);
+        colors[UIElement::TerminalSearchMatchActive]   = QColor("#EBB65B");
+        colors[UIElement::TerminalScrollbarHandle]     = QColor(13, 110, 253, 90);
+        colors[UIElement::TerminalScrollbarHandleHover]= QColor(13, 110, 253, 180);
+        colors[UIElement::TerminalLink]                = QColor("#0D6EFD");
+        colors[UIElement::TerminalTabBarBackground]    = QColor("#F4F7FA");
+        colors[UIElement::TerminalTabActiveBackground] = QColor("#E8ECF0");
+        colors[UIElement::TerminalTabInactiveText]     = QColor("#7A8599");
+        colors[UIElement::TerminalOverlayBackground]   = QColor("#FFFFFF");
+        colors[UIElement::TerminalOverlayBorder]       = QColor("#D0D7DE");
+
+        colors[UIElement::TerminalAnsiBlack]         = QColor("#000000");
+        colors[UIElement::TerminalAnsiRed]           = QColor("#CD3131");
+        colors[UIElement::TerminalAnsiGreen]         = QColor("#00BC00");
+        colors[UIElement::TerminalAnsiYellow]        = QColor("#949800");
+        colors[UIElement::TerminalAnsiBlue]          = QColor("#0451A5");
+        colors[UIElement::TerminalAnsiMagenta]       = QColor("#BC05BC");
+        colors[UIElement::TerminalAnsiCyan]          = QColor("#0598BC");
+        colors[UIElement::TerminalAnsiWhite]         = QColor("#555555");
+        colors[UIElement::TerminalAnsiBrightBlack]   = QColor("#666666");
+        colors[UIElement::TerminalAnsiBrightRed]     = QColor("#CD3131");
+        colors[UIElement::TerminalAnsiBrightGreen]   = QColor("#14CE14");
+        colors[UIElement::TerminalAnsiBrightYellow]  = QColor("#B5BA00");
+        colors[UIElement::TerminalAnsiBrightBlue]    = QColor("#0451A5");
+        colors[UIElement::TerminalAnsiBrightMagenta] = QColor("#BC05BC");
+        colors[UIElement::TerminalAnsiBrightCyan]    = QColor("#0598BC");
+        colors[UIElement::TerminalAnsiBrightWhite]   = QColor("#A5A5A5");
     }
 };
 

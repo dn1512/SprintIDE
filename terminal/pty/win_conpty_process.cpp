@@ -292,10 +292,28 @@ namespace SprintIDE {
         }
 
         // ---------- 4. 构造命令行 / 环境块 / 工作目录 ----------
-        const QString cmdLine = buildCommandLine(program, args);
-        std::wstring cmdLineW = cmdLine.toStdWString();
-        //   CreateProcessW 要求 lpCommandLine 是【可写缓冲区】，
-        //   所以必须用 std::wstring::data()（C++17 起非 const）
+        //
+        // Windows 上的命令处理（重要）：
+        //   1) 如果 program 本身是 cmd / cmd.exe，直接拼接后使用
+        //   2) 其他情况：一律通过 cmd.exe /c 中介，原因：
+        //      - pip / deactivate / dir / cd 等是 shell 内置或需要 cmd 在 PATH
+        //        里查找的，CreateProcessW 直接启动会报 ERROR_FILE_NOT_FOUND(2)
+        //      - 虚拟环境 .venv\Scripts 加入 PATH 后，cmd 能正确找到 pip.exe
+        //      - 命令行里带管道 / 重定向 / && 时，必须由 cmd 解释
+        QString fullCommandLine;
+        if (program.compare(QLatin1String("cmd"), Qt::CaseInsensitive) == 0
+            || program.compare(QLatin1String("cmd.exe"), Qt::CaseInsensitive) == 0) {
+            fullCommandLine = buildCommandLine(program, args);
+        } else {
+            // 把 program + args 重新拼成一条命令，交给 cmd /c 执行
+            QString rawCommand = program;
+            for (const QString& a : args) {
+                rawCommand += QLatin1Char(' ');
+                rawCommand += quoteArg(a);   // quoteArg 是匿名 namespace 里的静态函数
+            }
+            fullCommandLine = QStringLiteral("cmd.exe /c %1").arg(rawCommand);
+        }
+        std::wstring cmdLineW = fullCommandLine.toStdWString();
 
         const QByteArray envBlock = buildEnvironmentBlock(env);
 
@@ -306,13 +324,13 @@ namespace SprintIDE {
 
         // ---------- 5. CreateProcessW ----------
         BOOL ok = ::CreateProcessW(
-            nullptr,                                                   // 用命令行第一个 token 作可执行文件
-            cmdLineW.data(),                                           // 可写命令行
+            nullptr,
+            cmdLineW.data(),
             nullptr, nullptr,
-            FALSE,                                                     // 不继承句柄（ConPTY 句柄走 attribute list）
+            FALSE,
             EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
-            const_cast<char*>(envBlock.constData()),                   // 环境块
-            wd.empty() ? nullptr : wd.c_str(),                         // 工作目录
+            const_cast<char*>(envBlock.constData()),
+            wd.empty() ? nullptr : wd.c_str(),
             &si.StartupInfo,
             &m_pi);
 

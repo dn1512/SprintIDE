@@ -47,7 +47,7 @@
 #include "find_dialog.h"
 #include "replace_dialog.h"
 #include "lsp/lsp_manager.h"
-#include "terminal/terminal_panel.h"
+#include "terminal/terminal_tab_manager.h"
 
 #include "ai/ai_integration.h"
 #include "ai/chat_panel.h"
@@ -77,6 +77,7 @@ class BreakpointListPanel;
 class SearchInFilesDialog;
 class OutputPanel;
 class PanelFocusManager;
+class TerminalHistoryDialog;
 
 // Git 模块前向声明
 namespace Git { class GitPanel; }
@@ -347,6 +348,14 @@ public slots:
 
      void onNewWindow();   // 启动一个新 SprintIDE 实例
 
+     // 打开终端命令历史搜索框
+     void onShowTerminalHistory();
+
+     // 把当前编辑器选中的文本发送到终端（末尾自动加 \n 并回车执行）
+     void onSendSelectionToTerminal();
+     // 把当前编辑器选中的文本发送到终端，不自动回车（贴过去用户自己改）
+     void onSendSelectionToTerminalNoEnter();
+
 signals:
     // 请求项目面板刷新
     // 任何地方想刷新项目面板，只需要：
@@ -541,8 +550,9 @@ private:
 
     // LSPClient* m_lspClient = nullptr;
     LSPManager *m_lspManager;
-    TerminalPanel* m_terminalPanel = nullptr;  // 终端面板
-    // AI 模块成员
+    TerminalTabManager* m_terminalTabManager = nullptr;  // 终端 Tab 容器
+    TerminalHistoryDialog* m_terminalHistoryDialog = nullptr;  // 懒创建
+    // AI 模块成员TerminalTabManager* m_terminalTabManager = nullptr;  // 终端 Tab 容器
     ChatPanel *m_aiChatPanel = nullptr;
     AiConnectionManager *m_aiConnMgr = nullptr;   // 阶段 0：连接管理器
     QAction *m_aiAutoFixAction = nullptr;  // 用于菜单状态

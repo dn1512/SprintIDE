@@ -127,11 +127,27 @@
 #include "breakpoint_list_panel.h"
 #include "panel_focus_manager.h"
 #include "rust/rust_debugger.h"
+#include "terminal/terminal_panel.h"
+#include "terminal/terminal_tab_manager.h"
+#include "terminal/terminal_history_dialog.h"
+#include "terminal/terminal_view.h"
+#include <QtGui/qclipboard.h>
 
 
 using namespace SprintIDE;
 
 namespace SprintIDE {
+
+// 判断当前焦点是否在某个终端 View 里，是就返回它
+static TerminalView* focusTerminalView()
+{
+    QWidget* fw = QApplication::focusWidget();
+    while (fw) {
+        if (auto* view = qobject_cast<TerminalView*>(fw)) return view;
+        fw = fw->parentWidget();
+    }
+    return nullptr;
+}
 
 static QString canonicalPath(const QString& p)
 {
@@ -1196,6 +1212,29 @@ void MainWindow::setupMenuBar()
     connect(commentAction, &QAction::triggered, this, &MainWindow::onComment);
     registerShortcut(QStringLiteral("edit.comment"), tr("注释"), commentAction);
 
+    editMenu->addSeparator();
+
+    QAction* sendToTerminalAction = editMenu->addAction(
+        QIcon(":/icons/icons/terminal.svg"),
+        tr("发送选中到终端(&T)"));
+    sendToTerminalAction->setShortcut(QKeySequence("Ctrl+Alt+T"));
+    sendToTerminalAction->setStatusTip(
+        tr("把编辑器中选中的文本发送到当前终端并回车执行 (Ctrl+Alt+T)"));
+    connect(sendToTerminalAction, &QAction::triggered,
+            this, &MainWindow::onSendSelectionToTerminal);
+    registerShortcut(QStringLiteral("edit.sendToTerminal"),
+                     tr("发送选中到终端"), sendToTerminalAction);
+
+    QAction* sendToTerminalNoEnterAction = editMenu->addAction(
+        tr("发送选中到终端（不执行）"));
+    sendToTerminalNoEnterAction->setShortcut(QKeySequence("Ctrl+Alt+Shift+T"));
+    sendToTerminalNoEnterAction->setStatusTip(
+        tr("把编辑器中选中的文本发送到当前终端，由用户自己按回车 (Ctrl+Alt+Shift+T)"));
+    connect(sendToTerminalNoEnterAction, &QAction::triggered,
+            this, &MainWindow::onSendSelectionToTerminalNoEnter);
+    registerShortcut(QStringLiteral("edit.sendToTerminalNoEnter"),
+                     tr("发送选中到终端（不执行）"), sendToTerminalNoEnterAction);
+
     // ==================== 构建菜单 ====================
     QMenu *buildMenu = menuBar->addMenu(tr("构建(&B)"));
 
@@ -1337,11 +1376,25 @@ void MainWindow::setupMenuBar()
     QAction *terminalAction = toolsMenu->addAction(QIcon(":/icons/icons/terminal.svg"), tr("终端(&T)"));
     terminalAction->setShortcut(QKeySequence("Ctrl+`"));  // Cmd+`
     connect(terminalAction, &QAction::triggered, this, [this]() {
-        if (m_terminalPanel) {
-            m_terminalPanel->setVisible(!m_terminalPanel->isVisible());
+        // 切到终端 tab，并确保底部面板可见
+        switchToTerminalTab();
+        if (m_bottomDockWidget) {
+            m_bottomDockWidget->setVisible(true);
         }
     });
     registerShortcut(QStringLiteral("tools.terminal"), tr("终端"), terminalAction);
+
+    // 终端命令历史搜索
+    QAction* terminalHistoryAction = toolsMenu->addAction(
+        QIcon(":/icons/icons/terminal.svg"),
+        tr("终端命令历史(&H)..."));
+    terminalHistoryAction->setShortcut(QKeySequence("Ctrl+Shift+R"));
+    terminalHistoryAction->setStatusTip(
+        tr("跨会话、跨项目搜索终端命令历史 (Ctrl+Shift+R)"));
+    connect(terminalHistoryAction, &QAction::triggered,
+            this, &MainWindow::onShowTerminalHistory);
+    registerShortcut(QStringLiteral("tools.terminalHistory"),
+                     tr("终端命令历史"), terminalHistoryAction);
 
     // ==================== 视图菜单 ====================
     QMenu *viewMenu = menuBar->addMenu(tr("视图(&V)"));
@@ -1505,6 +1558,7 @@ void MainWindow::setupMenuBar()
 void MainWindow::setupToolBar()
 {
     QToolBar *toolBar = addToolBar(tr("主工具栏"));
+    toolBar->setObjectName(QStringLiteral("MainToolBar"));
     toolBar->setMovable(false);
     toolBar->setIconSize(QSize(20, 20));
 
@@ -1872,7 +1926,7 @@ void MainWindow::setupDockWidgets()
 
                     if (w == m_debugPanel) {
                         targetHeight = 420;
-                    } else if (w == m_terminalPanel) {
+                    } else if (w == m_terminalTabManager) {
                         targetHeight = 300;
                     } else if (w == m_outputPanel) {
                         targetHeight = 300;
@@ -2036,12 +2090,35 @@ void MainWindow::setupDebugPanel()
 
 void MainWindow::setupTerminalPanel()
 {
-    m_terminalPanel = new TerminalPanel(this);
-    m_bottomTabWidget->addTab(m_terminalPanel, QIcon(":/icons/icons/terminal.svg"), tr("终端"));
+    m_terminalTabManager = new TerminalTabManager(this);
+    m_bottomTabWidget->addTab(m_terminalTabManager,
+                              QIcon(":/icons/icons/terminal.svg"),
+                              tr("终端"));
 
+    // 首次创建的终端设置工作目录
     if (!d->currentProjectPath.isEmpty()) {
-        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
+        if (auto* cur = m_terminalTabManager->currentTerminal()) {
+            cur->setWorkingDirectory(d->currentProjectPath);
+        }
     }
+
+    // 转发"终端里 Cmd+点击 path:line:col"到 MainWindow
+    connect(m_terminalTabManager, &TerminalTabManager::openFileAtLine,
+            this, [this](const QString& path, int line, int col) {
+                if (path.isEmpty()) return;
+                openFile(path);
+                if (TextEditor* ed = findEditorByFilePath(path)) {
+                    d->editorTabs->setCurrentWidget(ed);
+                    ed->gotoLine(line);
+                    if (col > 0) {
+                        QTextCursor c = ed->textCursor();
+                        c.movePosition(QTextCursor::Right,
+                                       QTextCursor::MoveAnchor, col - 1);
+                        ed->setTextCursor(c);
+                    }
+                    ed->setFocus();
+                }
+            });
 }
 
 // ========== Git 面板设置 ==========
@@ -2400,6 +2477,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
         m_lspManager->shutdownAll();
     }
 
+    // 清理所有终端 Tab（提前杀 PTY 子进程，避免 Qt 析构顺序导致的僵尸进程）
+    if (m_terminalTabManager) {
+        m_terminalTabManager->closeAll();
+    }
+
     saveSession();          // 项目级 session
     saveWindowState();      // 全局窗口状态
 
@@ -2632,8 +2714,11 @@ void MainWindow::openProject(const QString &path) {
         d->projectPanel->openProject(d->currentProjectPath, hasConfig ? &config : nullptr);
     }
 
-    if (m_terminalPanel) {
-        m_terminalPanel->setWorkingDirectory(d->currentProjectPath);
+    if (m_terminalTabManager) {
+        // 只把"当前 Tab"的终端切到新工作目录，其他 Tab 保留
+        if (auto* cur = m_terminalTabManager->currentTerminal()) {
+            cur->setWorkingDirectory(d->currentProjectPath);
+        }
     }
 
     if (m_localHistory) {
@@ -5682,8 +5767,8 @@ void MainWindow::switchToOutputTab()
 
 void MainWindow::switchToTerminalTab()
 {
-    if (m_bottomTabWidget && m_terminalPanel) {
-        int terminalIndex = m_bottomTabWidget->indexOf(m_terminalPanel);
+    if (m_bottomTabWidget && m_terminalTabManager) {
+        int terminalIndex = m_bottomTabWidget->indexOf(m_terminalTabManager);
         if (terminalIndex >= 0) {
             m_bottomTabWidget->setCurrentIndex(terminalIndex);
         }
@@ -6691,47 +6776,46 @@ void MainWindow::onExit()
     close();
 }
 
-void MainWindow::onUndo()
-{
-    TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->undo();
-    }
-}
-
-void MainWindow::onRedo()
-{
-    TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->redo();
-    }
-}
-
-void MainWindow::onCut()
-{
-    TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->cut();
-    }
-}
-
 void MainWindow::onCopy()
 {
-    TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->copy();
+    if (auto* view = focusTerminalView()) {
+        view->copySelectionToClipboard();
+        return;
     }
+    TextEditor* editor = currentEditor();
+    if (editor) editor->copy();
 }
 
 void MainWindow::onPaste()
 {
-    TextEditor* editor = currentEditor();
-    if (editor) {
-        editor->paste();
+    if (auto* view = focusTerminalView()) {
+        view->pasteFromClipboard();
+        return;
     }
+    TextEditor* editor = currentEditor();
+    if (editor) editor->paste();
 }
 
+void MainWindow::onCut()
+{
+    if (focusTerminalView()) return;   // 终端无剪切
+    TextEditor* editor = currentEditor();
+    if (editor) editor->cut();
+}
 
+void MainWindow::onUndo()
+{
+    if (focusTerminalView()) return;
+    TextEditor* editor = currentEditor();
+    if (editor) editor->undo();
+}
+
+void MainWindow::onRedo()
+{
+    if (focusTerminalView()) return;
+    TextEditor* editor = currentEditor();
+    if (editor) editor->redo();
+}
 
 // ==================== 查找/替换槽函数 ====================
 // 取消使用FindDialog查找/替换，使用TextEdit中的内联查找和替换
@@ -8200,8 +8284,10 @@ void MainWindow::onNewProject()
 
             d->projectPanel->openProject(result.projectPath);
 
-            if (m_terminalPanel) {
-                m_terminalPanel->setWorkingDirectory(result.projectPath);
+            if (m_terminalTabManager) {
+                if (auto* cur = m_terminalTabManager->currentTerminal()) {
+                    cur->setWorkingDirectory(result.projectPath);
+                }
             }
 
         } else {
@@ -9557,6 +9643,119 @@ void MainWindow::onNewWindow()
 
     if (!QProcess::startDetached(appPath, QStringList())) {
         logError(tr("无法启动新窗口：") + appPath);
+    }
+}
+
+void MainWindow::onSendSelectionToTerminal()
+{
+    if (!m_terminalTabManager) return;
+
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    const QTextCursor cur = editor->textCursor();
+    if (!cur.hasSelection()) {
+        if (m_statusLabel) {
+            m_statusLabel->setText(tr("请先在编辑器中选中文本"));
+        }
+        return;
+    }
+
+    // 选中文本多行时保留换行（终端里执行多行会一次跑完）
+    QString text = cur.selectedText();
+    text.replace(QChar::ParagraphSeparator, QLatin1Char('\n'));
+
+    auto* term = m_terminalTabManager->currentTerminal();
+    if (!term) {
+        // 没有终端 → 新建一个
+        term = m_terminalTabManager->createTerminal(d->currentProjectPath);
+    }
+    if (!term) return;
+
+    // 确保终端可见
+    if (m_bottomDockWidget) m_bottomDockWidget->setVisible(true);
+    switchToTerminalTab();
+    term->focusPanel();
+
+    // 发给终端（末尾加 \n 回车执行）
+    if (!text.endsWith(QLatin1Char('\n'))) text.append(QLatin1Char('\n'));
+    term->executeCommand(text.trimmed());
+
+    if (m_statusLabel) {
+        m_statusLabel->setText(tr("已发送选中文本到终端"));
+    }
+}
+
+void MainWindow::onShowTerminalHistory()
+{
+    // 懒创建对话框
+    if (!m_terminalHistoryDialog) {
+        m_terminalHistoryDialog = new TerminalHistoryDialog(this);
+        connect(m_terminalHistoryDialog, &TerminalHistoryDialog::commandSelected,
+                this, [this](const QString& command, bool autoExecute) {
+                    if (command.isEmpty()) return;
+                    if (!m_terminalTabManager) return;
+
+                    auto* term = m_terminalTabManager->currentTerminal();
+                    if (!term) {
+                        term = m_terminalTabManager->createTerminal(d->currentProjectPath);
+                    }
+                    if (!term) return;
+
+                    if (m_bottomDockWidget) m_bottomDockWidget->setVisible(true);
+                    switchToTerminalTab();
+                    term->focusPanel();
+
+                    if (autoExecute) {
+                        term->executeCommand(command);
+                    } else {
+                        term->writeRaw(command.toUtf8());
+                    }
+                });
+    }
+
+    // 用当前项目作为默认过滤
+    if (m_terminalTabManager) {
+        if (auto* cur = m_terminalTabManager->currentTerminal()) {
+            m_terminalHistoryDialog->setCurrentProject(cur->workingDirectory());
+        }
+    }
+
+    m_terminalHistoryDialog->exec();
+}
+
+void MainWindow::onSendSelectionToTerminalNoEnter()
+{
+    if (!m_terminalTabManager) return;
+
+    TextEditor* editor = currentEditor();
+    if (!editor) return;
+
+    const QTextCursor cur = editor->textCursor();
+    if (!cur.hasSelection()) {
+        if (m_statusLabel) {
+            m_statusLabel->setText(tr("请先在编辑器中选中文本"));
+        }
+        return;
+    }
+
+    QString text = cur.selectedText();
+    text.replace(QChar::ParagraphSeparator, QLatin1Char('\n'));
+
+    auto* term = m_terminalTabManager->currentTerminal();
+    if (!term) {
+        term = m_terminalTabManager->createTerminal(d->currentProjectPath);
+    }
+    if (!term) return;
+
+    if (m_bottomDockWidget) m_bottomDockWidget->setVisible(true);
+    switchToTerminalTab();
+    term->focusPanel();
+
+    term->writeRaw(text.toUtf8());
+
+    if (m_statusLabel) {
+        m_statusLabel->setText(tr("已发送选中文本到终端（未执行）"));
     }
 }
 

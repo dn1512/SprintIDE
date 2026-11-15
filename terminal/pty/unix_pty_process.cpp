@@ -36,25 +36,57 @@ UnixPtyProcess::UnixPtyProcess(QObject* parent)
 
 UnixPtyProcess::~UnixPtyProcess()
 {
-    // 1. 杀子进程并同步等待
     if (m_running && m_childPid > 0) {
         const pid_t childPid = static_cast<pid_t>(m_childPid);
-        ::kill(childPid, SIGTERM);
         int status = 0;
-        ::waitpid(childPid, &status, 0);
+
+        // ---- 1. 温和：SIGTERM ----
+        ::kill(childPid, SIGTERM);
+
+        // ---- 2. 轮询最多 200ms（10ms 步长） ----
+        {
+            constexpr int kTimeoutMs = 200;
+            constexpr int kStepMs    = 10;
+            int waited = 0;
+            while (waited < kTimeoutMs) {
+                const pid_t r = ::waitpid(childPid, &status, WNOHANG);
+                if (r == childPid)              { m_running = false; break; }
+                if (r < 0 && errno == ECHILD)   { m_running = false; break; }
+                if (r < 0)                       break;  // 其他错误
+                ::usleep(kStepMs * 1000);
+                waited += kStepMs;
+            }
+        }
+
+        // ---- 3. 还没死 → SIGKILL ----
+        if (m_running) {
+            ::kill(childPid, SIGKILL);
+
+            constexpr int kTimeoutMs = 100;
+            constexpr int kStepMs    = 10;
+            int waited = 0;
+            while (waited < kTimeoutMs) {
+                const pid_t r = ::waitpid(childPid, &status, WNOHANG);
+                if (r == childPid)              { m_running = false; break; }
+                if (r < 0 && errno == ECHILD)   { m_running = false; break; }
+                if (r < 0)                       break;
+                ::usleep(kStepMs * 1000);
+                waited += kStepMs;
+            }
+        }
+
+        // 无论结果如何，m_running 都标记为 false（避免上层再做无意义的检查）
         m_running = false;
     }
 
-    // 2. 直接 delete notifier
-    //    析构里事件循环可能已停，deleteLater 不会被执行
+    // 4. 直接 delete notifier（析构里 deleteLater 不保证执行）
     if (m_notifier) {
         QObject::disconnect(m_notifier, nullptr, this, nullptr);
         delete m_notifier;
         m_notifier = nullptr;
     }
 
-    // 3. 关闭 fd（不调 closeMaster，因为它在槽里用了 deleteLater 是给
-    //    正常运行时用的，析构里要同步释放）
+    // 5. 关闭 fd
     if (m_masterFd >= 0) {
         ::close(m_masterFd);
         m_masterFd = -1;
@@ -149,19 +181,27 @@ void UnixPtyProcess::onReadable()
     if (m_masterFd < 0) return;
 
     char buf[8192];
+    bool eof = false;
     for (;;) {
         const ssize_t n = ::read(m_masterFd, buf, sizeof(buf));
         if (n > 0) {
             emit readyRead(QByteArray(buf, int(n)));
             continue;
         }
-        if (n == 0) break;                                   // EOF
-        if (errno == EAGAIN || errno == EWOULDBLOCK) break;  // 暂无更多数据
+        if (n == 0) { eof = true; break; }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) break;
         if (errno == EINTR) continue;
-        break;                                               // 其他错误
+        eof = true;
+        break;
     }
 
-    // 子进程结束检查（非阻塞）
+    // EOF 时立即关闭 fd + disable notifier（防 QSocketNotifier 无限触发）
+    if (eof) {
+        if (m_notifier) m_notifier->setEnabled(false);
+        closeMaster();
+    }
+
+    // 检查子进程结束（非阻塞）
     const pid_t childPid = static_cast<pid_t>(m_childPid);
     int status = 0;
     pid_t r = ::waitpid(childPid, &status, WNOHANG);

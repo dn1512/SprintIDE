@@ -1,0 +1,66 @@
+# ============================================================
+# LeakSanitizer 抑制规则
+#
+# 只抑制 Qt / macOS 系统框架的已知泄漏，不抑制 SprintIDE 自身的代码。
+# 如果报告里出现 `SprintIDE::` 或 `terminal/` 前缀，就是真问题。
+# ============================================================
+
+# ---- QtCore ----
+leak:QCoreApplication
+leak:QCoreApplicationPrivate
+leak:QThreadStorage
+leak:QThreadPoolThread
+leak:QThreadPoolPrivate
+leak:QSettingsPrivate
+leak:QMetaType
+leak:QVariantAnimation
+leak:QObjectPrivate::ConnectionData
+
+# ---- QtGui / QtWidgets ----
+leak:QGuiApplication
+leak:QGuiApplicationPrivate
+leak:QWidgetPrivate
+leak:QStyleHelper
+leak:QFontCache
+leak:QFontDatabase
+leak:QAccessible
+leak:QIconLoader
+leak:QTheme
+
+# ---- QtNetwork ----
+leak:QNetworkAccessManager
+leak:QNetworkDiskCache
+leak:QNetworkCookieJar
+
+# ---- QtSql ----
+leak:QSqlDatabasePrivate
+leak:QSqlDriver
+
+# ---- libqcocoa (macOS 平台插件) ----
+leak:qcocoa
+leak:QCocoaIntegration
+leak:QCocoaMenu
+leak:QCocoaWindow
+leak:QCocoaBackingStore
+
+# ---- libobjc / AppKit ----
+leak:libobjc
+leak:objc_*
+leak:AppKit
+leak:Foundation
+leak:CoreFoundation
+leak:NSApplication
+leak:NSMenuItem
+leak:NSEventThread
+
+# ---- libSystem ----
+leak:libsystem_kernel
+leak:libsystem_malloc
+
+# ---- libvterm（库自身的小分配，不影响判定） ----
+leak:vterm_new
+leak:screen_new
+
+# ---- 系统 dlopen 缓存 ----
+leak:dlopen
+leak:dyld

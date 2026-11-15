@@ -46,9 +46,9 @@ if(NOT Qt6_FOUND AND NOT DEFINED CMAKE_PREFIX_PATH)
     )
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg Sql)
 # 查找Qt组件
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Concurrent LinguistTools Svg Sql)
 
 # 应用程序信息
 set(APP_NAME "SprintIDE")
@@ -792,6 +792,79 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Network
     Qt6::Concurrent
     Qt6::Svg
+    Qt6::Sql
+)
+
+# ============================================================
+# P2: libvterm
+#
+#   third_party/libvterm 是本地 vendored 的 libvterm 源码（v0.3.3）。
+#
+#   encoding.c 里 #include "encoding/DECdrawing.inc" / "encoding/uk.inc"，
+#   这两个 .inc 是 .tbl 通过 tbl2inc_c.pl 生成的，已经手动放在
+#   src/encoding/ 下（用 `perl tbl2inc_c.pl` 生成过一次）。
+#
+#   encoding.c 位于 src/ 下，编译器默认先找"当前文件所在目录"，
+#   所以 #include "encoding/xxx.inc" 会自动解析到 src/encoding/xxx.inc，
+#   不需要把 .inc 加入 target_sources，也不需要 add_custom_command。
+# ============================================================
+enable_language(C)
+
+set(LIBVTERM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libvterm")
+
+if(NOT EXISTS "${LIBVTERM_DIR}/include/vterm.h")
+    message(FATAL_ERROR
+        "[libvterm] 缺少头文件: ${LIBVTERM_DIR}/include/vterm.h\n"
+        "请确认 third_party/libvterm 是完整的 libvterm 源码。"
+    )
+endif()
+
+if(NOT EXISTS "${LIBVTERM_DIR}/src/encoding/DECdrawing.inc")
+    message(FATAL_ERROR
+        "[libvterm] 缺少 ${LIBVTERM_DIR}/src/encoding/DECdrawing.inc\n"
+        "请先执行：\n"
+        "  cd ${LIBVTERM_DIR}\n"
+        "  perl tbl2inc_c.pl src/encoding/DECdrawing.tbl > src/encoding/DECdrawing.inc\n"
+        "  perl tbl2inc_c.pl src/encoding/uk.tbl > src/encoding/uk.inc\n"
+    )
+endif()
+
+file(GLOB LIBVTERM_C_SOURCES CONFIGURE_DEPENDS
+    ${LIBVTERM_DIR}/src/*.c
+)
+
+if(NOT LIBVTERM_C_SOURCES)
+    message(FATAL_ERROR
+        "[libvterm] ${LIBVTERM_DIR}/src 下没有任何 .c 源文件。\n"
+        "请重新下载 libvterm 源码。"
+    )
+endif()
+
+list(LENGTH LIBVTERM_C_SOURCES _lv_count)
+message(STATUS "[libvterm] 找到 ${_lv_count} 个源文件，路径: ${LIBVTERM_DIR}")
+
+target_sources(${PROJECT_NAME} PRIVATE ${LIBVTERM_C_SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${LIBVTERM_DIR}/include
+)
+
+target_sources(${PROJECT_NAME} PRIVATE
+    terminal/terminal_grid_model.h
+    terminal/terminal_grid_model.cpp
+    terminal/terminal_view.h
+    terminal/terminal_view.cpp
+    terminal/terminal_search_bar.h
+    terminal/terminal_search_bar.cpp
+    terminal/terminal_tab_manager.h
+    terminal/terminal_tab_manager.cpp
+    terminal/terminal_history_store.h
+    terminal/terminal_history_store.cpp
+    terminal/terminal_history_dialog.h
+    terminal/terminal_history_dialog.cpp
+    terminal/terminal_output_parser.h
+    terminal/terminal_output_parser.cpp
+    terminal/terminal_output_overlay.h
+    terminal/terminal_output_overlay.cpp
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

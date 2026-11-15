@@ -98,7 +98,7 @@ public:
         AIChatUserBubble,       // 用户气泡        #2A3340
         AIChatAIBubble,         // AI 气泡         #1E2A32
         AIChatAIBorder,         // AI 左侧竖条      #2BC0BD
-        TerminalBackground,     // 终端背景        #1A1F26
+        // TerminalBackground,     // 终端背景        #1A1F26
         OutputPanelBackground,  // 输出面板背景    #1A1F26
 
         // ---- Git 面板 ----
@@ -115,6 +115,41 @@ public:
         OutlineOverlayBorder,       // 浮层边框
         OutlineOverlayDivider,      // 左右分栏分割线
         OutlineOverlaySectionTitle,   // 分栏标题文字（比 SecondaryTextColor 稍亮）
+
+        // ===== 终端语义色 =====
+        TerminalBackground,
+        TerminalForeground,
+        TerminalCursor,
+        TerminalSelection,
+        TerminalSelectionInactive,
+        TerminalSearchMatch,
+        TerminalSearchMatchActive,
+        TerminalScrollbarHandle,
+        TerminalScrollbarHandleHover,
+        TerminalLink,
+        TerminalTabBarBackground,
+        TerminalTabActiveBackground,
+        TerminalTabInactiveText,
+        TerminalOverlayBackground,
+        TerminalOverlayBorder,
+
+        // ===== ANSI 标准 16 色（顺序固定，勿打乱；SGR 30-37 / 90-97）=====
+        TerminalAnsiBlack,
+        TerminalAnsiRed,
+        TerminalAnsiGreen,
+        TerminalAnsiYellow,
+        TerminalAnsiBlue,
+        TerminalAnsiMagenta,
+        TerminalAnsiCyan,
+        TerminalAnsiWhite,
+        TerminalAnsiBrightBlack,
+        TerminalAnsiBrightRed,
+        TerminalAnsiBrightGreen,
+        TerminalAnsiBrightYellow,
+        TerminalAnsiBrightBlue,
+        TerminalAnsiBrightMagenta,
+        TerminalAnsiBrightCyan,
+        TerminalAnsiBrightWhite,
     };
 
     static ThemeManager& instance();

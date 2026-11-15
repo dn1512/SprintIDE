@@ -2481,7 +2481,7 @@ void TextEditor::onFindNextClicked()
 {
     if (m_matchCursors.isEmpty()) return;
     m_currentMatchIndex = (m_currentMatchIndex + 1) % m_matchCursors.size();
-    jumpToMatch(m_currentMatchIndex);   // ★ 用户主动跳转
+    jumpToMatch(m_currentMatchIndex);   // 用户主动跳转
     m_matchCountLabel->setText(QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
 
@@ -2489,7 +2489,7 @@ void TextEditor::onFindPreviousClicked()
 {
     if (m_matchCursors.isEmpty()) return;
     m_currentMatchIndex = (m_currentMatchIndex - 1 + m_matchCursors.size()) % m_matchCursors.size();
-    jumpToMatch(m_currentMatchIndex);   // ★ 用户主动跳转
+    jumpToMatch(m_currentMatchIndex);   // 用户主动跳转
     m_matchCountLabel->setText(QString("%1/%2").arg(m_currentMatchIndex + 1).arg(m_matchCursors.size()));
 }
 
@@ -2547,7 +2547,7 @@ void TextEditor::scrollToMatch(int index)
 {
     if (index < 0 || index >= m_matchCursors.size()) return;
 
-    // ★ 只刷新高亮。绝不 setTextCursor / centerCursor。
+    // 只刷新高亮。绝不 setTextCursor / centerCursor。
     //   任何"文档变化 → 重算匹配"的路径都不应该移动编辑器光标。
     ThemeManager& tm = ThemeManager::instance();
     const QColor normalColor  = tm.color(ThemeManager::UIElement::SearchMatchBackground);
@@ -5332,7 +5332,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     }
 
     // ============================================================
-    //  ★ 关键修复（解决"粘贴行顺序错乱 / 第一行跑最后"）：
+    //  关键修复（解决"粘贴行顺序错乱 / 第一行跑最后"）：
     //
     //  1. 缓存粘贴目标位置 pasteAnchorPos / pasteEndPos。
     //     removeSelectedText / insertText 都会触发 textChanged，
