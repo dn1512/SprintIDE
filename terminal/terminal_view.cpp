@@ -137,6 +137,51 @@ TerminalView::TerminalView(QWidget* parent)
                 m_scrollOffset = maxValue - value;
                 viewport()->update();
             });
+    // ============================================================
+    // resize debounce
+    //
+    //   resizeEvent -> 记录 m_pendingRows/Cols -> 启动 500ms debounce
+    //   拖动中 debounce 反复重启，永不触发 setSize
+    //   鼠标松开 500ms 后 debounce 触发 -> setSize（重建 vterm < 10ms）
+    //   -> emit modelSizeChanged -> TerminalPanel 发 SIGWINCH -> shell 重绘
+    // ============================================================
+    m_sizeDebounceTimer = new QTimer(this);
+    m_sizeDebounceTimer->setSingleShot(true);
+    m_sizeDebounceTimer->setInterval(500);
+    connect(m_sizeDebounceTimer, &QTimer::timeout, this, [this]() {
+        if (!m_model) return;
+        if (!m_resizeAllowed) return;
+        if (m_pendingRows <= 0 || m_pendingCols <= 0) return;
+
+        // 鼠标还按着 -> 继续等
+        if (QApplication::mouseButtons() & Qt::LeftButton) {
+            m_sizeDebounceTimer->start();
+            return;
+        }
+
+        // 尺寸没变 -> 跳过
+        if (m_pendingRows == m_model->rows()
+            && m_pendingCols == m_model->cols()) {
+            m_pendingRows = 0;
+            m_pendingCols = 0;
+            return;
+        }
+
+        const int newRows = m_pendingRows;
+        const int newCols = m_pendingCols;
+        m_pendingRows = 0;
+        m_pendingCols = 0;
+
+        // 重建 vterm（< 10ms）
+        m_model->setSize(newRows, newCols);
+
+        // 通知 TerminalPanel 同步 PTY（发 SIGWINCH）
+        emit modelSizeChanged(newRows, newCols);
+
+        // 重排滚动条
+        QSignalBlocker blocker(verticalScrollBar());
+        updateScrollBarRange();
+    });
 }
 
 TerminalView::~TerminalView() = default;
@@ -202,14 +247,14 @@ void TerminalView::applyEditorFont(const QString& family, int pointSize)
     m_font = newFont;
     updateCharMetrics();
 
-    if (m_model
-        && viewport()->width()  > 100
-        && viewport()->height() > 100) {
+    if (m_model && m_resizeAllowed && m_sizeDebounceTimer) {
         const int cols = visibleColCount();
         const int rows = visibleRowCount();
-        if (cols != m_model->cols() || rows != m_model->rows()) {
-            m_model->setSize(rows, cols);
+        if (rows > 0 && rows <= 100 && cols > 0 && cols <= 500) {
+            m_pendingRows = rows;
+            m_pendingCols = cols;
         }
+        m_sizeDebounceTimer->start();
     }
 
     updateScrollBarRange();
@@ -263,21 +308,20 @@ void TerminalView::updateCharMetrics()
 
 int TerminalView::visibleRowCount() const
 {
-    if (m_charH <= 0) return 1;
+    if (m_charH <= 0) return 24;
     const int h = viewport()->height();
-    //   QAbstractScrollArea 在布局未完成时 viewport()->height() 可能返回
-    //   QWIDGETSIZE_MAX（16777215），导致 setSize 传给 libvterm 一个天文数字
-    //   的行数，resize_buffer 处理几千万 cell，UI 卡死几秒。
-    if (h <= 0 || h > 10000) return 24;
-    return qBound(1, int(h / m_charH), 500);
+    // 防御：viewport 尺寸 < 100px 或 > 10000px 时返回默认值
+    //   布局过程中 viewport 可能瞬时变成 24px（算出 1 行）
+    if (h < 100 || h > 10000) return 24;
+    return qBound(5, int(h / m_charH), 100);
 }
 
 int TerminalView::visibleColCount() const
 {
-    if (m_charW <= 0) return 1;
+    if (m_charW <= 0) return 80;
     const int w = viewport()->width();
-    if (w <= 0 || w > 10000) return 80;
-    return qBound(1, int(w / m_charW), 2000);
+    if (w < 100 || w > 10000) return 80;
+    return qBound(20, int(w / m_charW), 500);
 }
 
 // ============================================================================
@@ -407,24 +451,33 @@ void TerminalView::resizeEvent(QResizeEvent* e)
     QAbstractScrollArea::resizeEvent(e);
     if (!m_model) return;
 
-    //   防递归 + 完全异步：不在 resizeEvent 同步路径里动 m_model
-    //   否则 setVisible -> resizeEvent -> m_model->setSize -> dirty -> update
-    //   -> resizeEvent 可能形成死循环
-    if (m_inResize) return;
-    m_inResize = true;
+    // startShell 之前完全不动 model
+    //   构造期 viewport 尺寸不稳定（可能返回 1×8），会触发 libvterm bug
+    if (!m_resizeAllowed) return;
 
-    QTimer::singleShot(0, this, [this]() {
-        if (!m_model) { m_inResize = false; return; }
+    const int cols = visibleColCount();
+    const int rows = visibleRowCount();
+    if (rows > 0 && rows <= 100 && cols > 0 && cols <= 500) {
+        m_pendingRows = rows;
+        m_pendingCols = cols;
+    }
 
-        const int cols = visibleColCount();
-        const int rows = visibleRowCount();
-        if (cols != m_model->cols() || rows != m_model->rows()) {
-            m_model->setSize(rows, cols);
-            if (!m_searchQuery.isEmpty()) rebuildSearchMatches();
-        }
-        updateScrollBarRange();
-        m_inResize = false;
-    });
+    // 启动 debounce（拖动中反复重启，松开 500ms 后才触发 setSize）
+    if (m_sizeDebounceTimer) {
+        m_sizeDebounceTimer->start();
+    }
+}
+
+// 允许/禁止 resize
+void TerminalView::setResizeAllowed(bool allowed)
+{
+    m_resizeAllowed = allowed;
+
+    // 允许后如果有 pending 尺寸，启动 debounce
+    if (allowed && m_sizeDebounceTimer
+        && m_pendingRows > 0 && m_pendingCols > 0) {
+        m_sizeDebounceTimer->start();
+    }
 }
 
 // ============================================================================
@@ -436,7 +489,7 @@ void TerminalView::paintEvent(QPaintEvent* e)
 
     QPainter painter(viewport());
 
-    // 背景兜底：m_model 未 set 或 defaultBg 未注入 → 用 QPalette::Base
+    // 背景兜底：m_model 未 set 或 defaultBg 未注入 -> 用 QPalette::Base
     QColor bgColor = m_model ? m_model->defaultBg() : QColor();
     if (!bgColor.isValid()) {
         bgColor = viewport()->palette().color(QPalette::Base);
@@ -1240,8 +1293,8 @@ void TerminalView::captureInputForHistory(const QByteArray& bytes)
 // ★ E8：Shell 路径转义
 //
 //   拖文件到终端时，自动转义：
-//     - 纯字母数字/下划线/点/斜杠/连字符 → 原样
-//     - 其他 → 单引号包裹，路径中的单引号替换为 '\''
+//     - 纯字母数字/下划线/点/斜杠/连字符 -> 原样
+//     - 其他 -> 单引号包裹，路径中的单引号替换为 '\''
 // ============================================================================
 static QString shellEscapePath(const QString& path)
 {

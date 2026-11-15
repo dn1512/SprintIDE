@@ -125,6 +125,12 @@ void TerminalPanel::setupUI()
     connect(m_view, &TerminalView::commandSubmitted,
             this, &TerminalPanel::onCommandSubmitted);
 
+    // resize 后同步 PTY 尺寸（发 SIGWINCH）
+    connect(m_view, &TerminalView::modelSizeChanged,
+            this, [this](int /*rows*/, int /*cols*/) {
+                syncPtySize();
+            });
+
     // 输出结构化浮层：parent = this（浮在整个终端面板右上角）
     m_outputOverlay = new TerminalOutputOverlay(this);
     connect(m_outputOverlay, &TerminalOutputOverlay::actionTriggered,
@@ -362,6 +368,20 @@ void TerminalPanel::startShell()
 
     m_shellRunning      = true;
     m_shellStartPending = false;
+
+    if (m_view && m_model) {
+        const int cols = m_view->visibleColCount();
+        const int rows = m_view->visibleRowCount();
+        if (rows >= 5 && rows <= 100 && cols >= 20 && cols <= 500) {
+            m_model->setSize(rows, cols);
+        }
+    }
+
+    // 允许后续 resize（拖动面板会触发 debounce → setSize → SIGWINCH）
+    if (m_view) {
+        m_view->setResizeAllowed(true);
+    }
+
     emit commandStarted(program);
     emit shellRunningChanged(true);
 

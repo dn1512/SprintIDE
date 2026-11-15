@@ -24,7 +24,7 @@ struct TerminalGridModel::Impl
     QVector<QVector<TerminalCell>> cells;
     QVector<QVector<TerminalCell>> scrollback;
 
-    static constexpr int kScrollbackLimit = 10000;
+    static constexpr int kScrollbackLimit = 1000;
 
     int rows = 24;
     int cols = 80;
@@ -320,14 +320,19 @@ TerminalGridModel::TerminalGridModel(QObject* parent)
         }
     }
 
-    // ---- 创建 libvterm 实例 ----
+    initVTerm();
+}
+
+// ★ 初始化 / 重建 libvterm
+//   构造时调用一次；setSize() 每次重建时也调用
+void TerminalGridModel::initVTerm()
+{
     m_impl->vterm = vterm_new(m_impl->rows, m_impl->cols);
     vterm_set_utf8(m_impl->vterm, 1);
 
     m_impl->state  = vterm_obtain_state(m_impl->vterm);
     m_impl->screen = vterm_obtain_screen(m_impl->vterm);
 
-    // ---- 注册回调 ----
     static VTermScreenCallbacks kCallbacks = {
         .damage      = cbDamage,
         .movecursor  = cbMoveCursor,
@@ -359,32 +364,57 @@ TerminalGridModel::~TerminalGridModel()
 // ----------------------------------------------------------------------------
 void TerminalGridModel::setSize(int rows, int cols)
 {
-    rows = qBound(1, rows, 1000);
-    cols = qBound(1, cols, 2000);
+    rows = qBound(5, rows, 100);
+    cols = qBound(20, cols, 500);
 
     if (rows == m_impl->rows && cols == m_impl->cols) return;
 
+    // 1. 保留最近 1000 行 scrollback
+    QVector<QVector<TerminalCell>> savedScrollback;
+    if (!m_impl->scrollback.isEmpty()) {
+        const int keep = qMin(m_impl->scrollback.size(), 1000);
+        savedScrollback = m_impl->scrollback.mid(m_impl->scrollback.size() - keep);
+    }
+
+    // 2. 销毁旧 vterm
+    if (m_impl->vterm) {
+        vterm_free(m_impl->vterm);
+        m_impl->vterm  = nullptr;
+        m_impl->screen = nullptr;
+        m_impl->state  = nullptr;
+    }
+
+    // 3. 更新尺寸，重建 cells（全空白）
     m_impl->rows = rows;
     m_impl->cols = cols;
-
-    // 重建 cells
+    m_impl->cells.clear();
     m_impl->cells.resize(rows);
     for (int r = 0; r < rows; ++r) {
         m_impl->cells[r].resize(cols);
         for (int c = 0; c < cols; ++c) {
-            if (m_impl->cells[r][c].text.isEmpty()) {
-                m_impl->cells[r][c].fg = m_impl->defaultFg;
-                m_impl->cells[r][c].bg = m_impl->defaultBg;
-            }
+            m_impl->cells[r][c].fg = m_impl->defaultFg;
+            m_impl->cells[r][c].bg = m_impl->defaultBg;
         }
     }
 
-    // 通知 libvterm
-    if (m_impl->vterm) {
-        vterm_set_size(m_impl->vterm, rows, cols);
-    }
+    // 4. 重置状态
+    m_impl->cursorRow     = 0;
+    m_impl->cursorCol     = 0;
+    m_impl->cursorVisible = true;
+    m_impl->altScreenActive = false;
+    m_impl->bracketedPaste  = false;
+    m_impl->mouseProtocol   = 0;
+    m_impl->title.clear();
+    m_impl->inOsc52     = false;
+    m_impl->osc52Buffer.clear();
 
-    // 全屏 dirty
+    // 5. 重建 vterm
+    initVTerm();
+
+    // 6. 恢复 scrollback
+    m_impl->scrollback = savedScrollback;
+
+    // 7. 全屏 dirty
     m_impl->dirtyRect = QRect(0, 0, cols, rows);
     emit dirty(m_impl->dirtyRect);
 }

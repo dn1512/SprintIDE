@@ -58,6 +58,13 @@ public:
     //   - TerminalPanel 负责在这个调用之后再 syncPtySize() 把尺寸传给 PTY
     void applyEditorFont(const QString& family, int pointSize);
 
+    // 允许/禁止 resize（TerminalPanel 在 startShell 后才允许）
+    void setResizeAllowed(bool allowed);
+
+    // 供 TerminalPanel 计算初始 PTY 尺寸用
+    int visibleRowCount() const;
+    int visibleColCount() const;
+
     // 主题色（由 TerminalPanel 在主题切换时调用）
     // bg 由 model->defaultBg() 提供，不在这里设
     void setThemeColors(const QColor& selectionBg,
@@ -98,6 +105,10 @@ signals:
 
     // 右键菜单里的"清屏"被点击
     void clearRequested();
+
+    // 型尺寸变化（resize 完成后）
+    // TerminalPanel 监听此信号，调 syncPtySize 通知 PTY 发 SIGWINCH
+    void modelSizeChanged(int rows, int cols);
 
 protected:
     void paintEvent(QPaintEvent* e) override;
@@ -143,6 +154,14 @@ private:
     QFont m_font;
     qreal m_charW = 8.0;
     qreal m_charH = 16.0;
+
+    // resize debounce（拖动中合并，避免反复 setSize）
+    QTimer* m_sizeDebounceTimer = nullptr;
+    int     m_pendingRows       = 0;
+    int     m_pendingCols       = 0;
+
+    // 是否允许 resize（startShell 之后才允许）
+    bool m_resizeAllowed = false;
 
     bool m_inResize = false;
     bool m_inUpdate = false;
@@ -194,8 +213,6 @@ private:
 
     // ---- 几何 ----
     void updateCharMetrics();
-    int  visibleRowCount() const;
-    int  visibleColCount() const;
     QPoint cellPosToPixel(int row, int col) const;
     CellPos pixelToCellPos(const QPoint& p) const;
 
