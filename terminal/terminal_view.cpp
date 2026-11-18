@@ -534,6 +534,13 @@ void TerminalView::paintEvent(QPaintEvent* e)
         int c = 0;
         while (c < drawCols) {
             const TerminalCell& firstCell = rowData[c];
+
+            // 跳过延续 cell（width == 0），它已被前面的宽字符覆盖
+            if (firstCell.width == 0) {
+                ++c;
+                continue;
+            }
+
             const bool firstSel = isCellSelected(vr, c);
             const bool firstMatch = isCellInMatch(vr, c);
             const bool firstActiveMatch = isCellInActiveMatch(vr, c);
@@ -541,6 +548,13 @@ void TerminalView::paintEvent(QPaintEvent* e)
             int runEnd = c + 1;
             while (runEnd < drawCols) {
                 const TerminalCell& next = rowData[runEnd];
+
+                // 延续 cell 属于当前 run，跳过但让 runEnd 前进
+                if (next.width == 0) {
+                    ++runEnd;
+                    continue;
+                }
+
                 if (next.fg != firstCell.fg || next.bg != firstCell.bg
                     || next.attrs != firstCell.attrs)
                     break;
@@ -555,12 +569,14 @@ void TerminalView::paintEvent(QPaintEvent* e)
             int widthCells = 0;
             for (int k = c; k < runEnd; ++k) {
                 const auto& cell = rowData[k];
+                // 跳过延续 cell，不追加到 text
+                if (cell.width == 0) continue;
                 if (cell.text.isEmpty()) {
                     text.append(QLatin1Char(' '));
                 } else {
                     text.append(cell.text);
                 }
-                widthCells += (cell.width == 2) ? 2 : 1;
+                widthCells += cell.width;   // 直接加 width（0/1/2）
             }
 
             // ---- 背景 ----
@@ -573,7 +589,7 @@ void TerminalView::paintEvent(QPaintEvent* e)
             } else if (firstMatch) {
                 bg = m_matchBg.isValid() ? m_matchBg : fallbackHighlight;
             }
-            // ★ invalid 时跳过：背景已经 fillRect 过，不画黑块
+            // invalid 时跳过：背景已经 fillRect 过，不画黑块
             if (bg.isValid()) {
                 painter.fillRect(QRectF(c * m_charW, vr * m_charH,
                                         widthCells * m_charW, m_charH),
@@ -584,7 +600,7 @@ void TerminalView::paintEvent(QPaintEvent* e)
             QColor fg = firstCell.fg;
             if (firstCell.attrs & AttrReverse) fg = firstCell.bg;
             if (firstCell.attrs & AttrFaint) fg.setAlpha(160);
-            if (!fg.isValid()) fg = fallbackFg;    // ★ invalid 回退 QPalette::Text
+            if (!fg.isValid()) fg = fallbackFg;    // invalid 回退 QPalette::Text
 
             const bool bold   = (firstCell.attrs & AttrBold)   != 0;
             const bool italic = (firstCell.attrs & AttrItalic) != 0;
@@ -697,7 +713,7 @@ void TerminalView::paintCursor(QPainter& p)
 
     const QColor cursorColor = m_cursorFg.isValid()
         ? m_cursorFg
-        : viewport()->palette().color(QPalette::Text);   // ★ 兜底
+        : viewport()->palette().color(QPalette::Text);   // 兜底
 
     p.setCompositionMode(QPainter::CompositionMode_Difference);
     switch (m_model->cursorShape()) {
@@ -1290,7 +1306,7 @@ void TerminalView::captureInputForHistory(const QByteArray& bytes)
 }
 
 // ============================================================================
-// ★ E8：Shell 路径转义
+// E8：Shell 路径转义
 //
 //   拖文件到终端时，自动转义：
 //     - 纯字母数字/下划线/点/斜杠/连字符 -> 原样

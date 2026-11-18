@@ -69,15 +69,23 @@ struct TerminalGridModel::Impl
 // ----------------------------------------------------------------------------
 // 转换 libvterm 单元格 → TerminalCell
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// 转换 libvterm 单元格 → TerminalCell
-// ----------------------------------------------------------------------------
 TerminalCell TerminalGridModel::Impl::convertCell(const VTermScreenCell& vc) const
 {
     TerminalCell out;
 
+    if (vc.width == 0) {
+        out.text.clear();
+        out.width = 0;   // ★ 保留 0，不强制改成 1
+        out.fg = defaultFg;
+        out.bg = defaultBg;
+        return out;
+    }
+
     uint count = 0;
     while (count < VTERM_MAX_CHARS_PER_CELL && vc.chars[count] != 0) {
+        const uint32_t cp = vc.chars[count];
+        if (cp > 0x10FFFF) break;                    // 超出 Unicode 范围
+        if (cp >= 0xD800 && cp <= 0xDFFF) break;     // surrogate 非法
         ++count;
     }
     if (count > 0) {
@@ -86,7 +94,9 @@ TerminalCell TerminalGridModel::Impl::convertCell(const VTermScreenCell& vc) con
     } else {
         out.text.clear();
     }
-    out.width = vc.width > 0 ? quint8(vc.width) : quint8(1);
+
+    // ★ 直接赋 width：1=窄字符，2=宽字符（0 已经在上面 return 了）
+    out.width = quint8(vc.width);
 
     // 前景色
     const VTermColor& fg = vc.fg;
@@ -582,7 +592,6 @@ QString TerminalGridModel::selectedText(int sr, int sc, int er, int ec) const
 {
     if (m_impl->rows == 0) return {};
 
-    // 确保 sr <= er
     if (sr > er) { std::swap(sr, er); std::swap(sc, ec); }
 
     sr = qBound(0, sr, m_impl->rows - 1);
@@ -595,6 +604,8 @@ QString TerminalGridModel::selectedText(int sr, int sc, int er, int ec) const
 
         for (int c = startCol; c <= endCol; ++c) {
             const TerminalCell& cell = m_impl->cells[r][c];
+            // 跳过延续 cell（width == 0），它已被前一个宽字符覆盖
+            if (cell.width == 0) continue;
             if (cell.text.isEmpty()) {
                 out.append(QStringLiteral(" "));
             } else {
@@ -615,6 +626,8 @@ QString TerminalGridModel::plainText() const
     for (int r = 0; r < m_impl->rows; ++r) {
         for (int c = 0; c < m_impl->cols; ++c) {
             const auto& cell = m_impl->cells[r][c];
+            // 跳过延续 cell（width == 0）
+            if (cell.width == 0) continue;
             out.append(cell.text.isEmpty() ? QStringLiteral(" ") : cell.text);
         }
         out.append(QLatin1Char('\n'));
