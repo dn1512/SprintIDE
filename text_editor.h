@@ -492,6 +492,11 @@ private:
 
     void clearHighlights();
 
+    // Python 折叠区间缓存：起始行 → 结束行（均为 1-based）
+    QHash<int, int> m_pythonFoldRanges;
+    qint64          m_pythonFoldHash = -1;
+    void ensurePythonFoldRanges();
+
     /**
      * @brief 判断某行是否可折叠（是否包含大括号）
      */

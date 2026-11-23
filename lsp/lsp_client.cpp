@@ -256,8 +256,25 @@ bool LSPClient::startServer(const QString& serverPath)
     // ---- capabilities ----
     QJsonObject capabilities;
     QJsonObject textDocument;
-    textDocument["synchronization"] = QJsonObject{{"didSave", true}};
-    textDocument["completion"] = QJsonObject{{"dynamicRegistration", true}};
+
+    QJsonObject sync;
+    sync["didSave"] = true;
+    sync["change"]  = 1;                    // Full 同步
+    textDocument["synchronization"] = sync;
+
+    QJsonObject completionItem;
+    completionItem["snippetSupport"]       = true;
+    completionItem["documentationFormat"]  = QJsonArray{"markdown", "plaintext"};
+    completionItem["resolveSupport"]       = QJsonObject{
+        {"properties", QJsonArray{"documentation", "detail"}}
+    };
+
+    QJsonObject completion;
+    completion["dynamicRegistration"] = true;
+    completion["contextSupport"]      = true;         // 支持 triggerKind
+    completion["completionItem"]      = completionItem;
+    textDocument["completion"] = completion;
+
     textDocument["definition"] = QJsonObject{};
     textDocument["hover"] = QJsonObject{};
     textDocument["publishDiagnostics"] = QJsonObject{};
@@ -562,7 +579,9 @@ void LSPClient::openDocument(const QString& filePath, const QString& content)
     textDocument["languageId"] = m_languageId.isEmpty()
         ? QStringLiteral("cpp")
         : m_languageId;
-    textDocument["version"] = 1;
+    int& version = m_fileVersions[filePath];
+    version = 1;   // 打开时重置
+    textDocument["version"] = version;
     textDocument["text"] = content;
 
     params["textDocument"] = textDocument;
@@ -588,12 +607,15 @@ void LSPClient::changeDocument(const QString& filePath, const QString& content)
 
 void LSPClient::onReparseTimer()
 {
+    qDebug() << "[DBG] didChange FLUSH file:" << m_pendingFilePath
+    << "tail:" << m_pendingContent.right(40);
+
     if (m_pendingFilePath.isEmpty() || m_pendingContent.isEmpty()) {
         return;
     }
 
     QString uri = uriFromPath(m_pendingFilePath);
-    static int version = 1;
+    int& version = m_fileVersions[m_pendingFilePath];
 
     QJsonObject params;
     QJsonObject textDocument;
@@ -968,11 +990,22 @@ void LSPClient::enableClangTidy(bool enable)
 
 // ========== 代码补全实现 ==========
 
-void LSPClient::requestCompletion(const QString& filePath, int line, int column)
+void LSPClient::requestCompletion(const QString& filePath, int line, int column,
+                                  const QString& triggerChar)
 {
+    qDebug() << "[DBG] completion REQ at" << line << column
+             << "reparse pending:" << m_reparseTimer->isActive();
+
     if (!isReady()) {
         qDebug() << "LSP: completion skipped, not ready";
         return;
+    }
+
+    //   补全前强制 flush 待发的 didChange
+    //   否则 pylsp 看到的是旧文档，"." 后面的成员补全拿不到
+    if (m_reparseTimer->isActive()) {
+        m_reparseTimer->stop();
+        onReparseTimer();
     }
 
     QString uri = uriFromPath(filePath);
@@ -987,8 +1020,15 @@ void LSPClient::requestCompletion(const QString& filePath, int line, int column)
     position["character"] = column;
     params["position"] = position;
 
-    // 可选：上下文（当前触发的字符）
-    // params["context"] = QJsonObject{{"triggerKind", 1}}; // 1 = Invoked
+    // 上下文（TriggerCharacter / Invoked）
+    if (!triggerChar.isEmpty()) {
+        QJsonObject ctx;
+        ctx["triggerKind"]      = 2;              // TriggerCharacter
+        ctx["triggerCharacter"] = triggerChar;
+        params["context"] = ctx;
+    } else {
+        params["context"] = QJsonObject{{"triggerKind", 1}};   // Invoked
+    }
 
     QJsonObject request;
     request["jsonrpc"] = "2.0";
@@ -996,13 +1036,14 @@ void LSPClient::requestCompletion(const QString& filePath, int line, int column)
     request["method"] = "textDocument/completion";
     request["params"] = params;
 
-    // 保存当前请求的文件路径，响应回来时使用
     m_completionFilePath = filePath;
     m_completionRequestId = request["id"].toInt();
     m_pendingRequests[m_completionRequestId] = "completion";
 
     sendMessage(request);
-    qDebug() << "LSP: completion requested for" << filePath << "at" << line << ":" << column;
+    qDebug() << "LSP: completion requested for" << filePath
+             << "at" << line << ":" << column
+             << "triggerChar:" << triggerChar;
 }
 
 void LSPClient::setInitializationOptions(const QJsonObject& options)
@@ -1012,54 +1053,52 @@ void LSPClient::setInitializationOptions(const QJsonObject& options)
 
 void LSPClient::handleCompletionResponse(const QJsonObject& response)
 {
+    qDebug() << "[DBG] completion RSP raw:"
+    << QJsonDocument(response).toJson(QJsonDocument::Compact).left(300);
+
     QList<LSPCompletionItem> items;
     QString filePath = m_completionFilePath;
 
     // 解析响应
     QJsonValue result = response["result"];
-    if (result.isNull() || !result.isObject()) {
-        // 可能没有补全结果
+
+    QJsonArray arr;
+    if (result.isArray()) {
+        arr = result.toArray();                                   // CompletionItem[]
+    } else if (result.isObject()) {
+        arr = result.toObject()["items"].toArray();               // CompletionList
+    } else {
         emit completionReceived(filePath, items);
         return;
     }
 
-    QJsonObject resultObj = result.toObject();
-    QJsonValue itemsVal = resultObj["items"];
-    if (!itemsVal.isArray()) {
-        // 可能是直接返回的数组
-        itemsVal = result;
-    }
+    for (const QJsonValue& val : arr) {
+        QJsonObject obj = val.toObject();
+        LSPCompletionItem item;
+        item.label = obj["label"].toString();
+        item.kindCode = obj["kind"].toInt(0);
+        item.kind = completionKindToString(item.kindCode);
 
-    if (itemsVal.isArray()) {
-        QJsonArray arr = itemsVal.toArray();
-        for (const QJsonValue& val : arr) {
-            QJsonObject obj = val.toObject();
-            LSPCompletionItem item;
-            item.label = obj["label"].toString();
-            item.kindCode = obj["kind"].toInt(0);
-            item.kind = completionKindToString(item.kindCode);
-
-            // 插入文本：优先使用 insertText，否则使用 label
-            if (obj.contains("insertText")) {
-                item.insertText = obj["insertText"].toString();
-            } else {
-                item.insertText = item.label;
-            }
-
-            // 详细信息（可选）
-            if (obj.contains("detail")) {
-                item.detail = obj["detail"].toString();
-            } else if (obj.contains("documentation")) {
-                QJsonValue doc = obj["documentation"];
-                if (doc.isString()) {
-                    item.detail = doc.toString();
-                } else if (doc.isObject()) {
-                    item.detail = doc.toObject()["value"].toString();
-                }
-            }
-
-            items.append(item);
+        // 插入文本：优先使用 insertText，否则使用 label
+        if (obj.contains("insertText")) {
+            item.insertText = obj["insertText"].toString();
+        } else {
+            item.insertText = item.label;
         }
+
+        // 详细信息（可选）
+        if (obj.contains("detail")) {
+            item.detail = obj["detail"].toString();
+        } else if (obj.contains("documentation")) {
+            QJsonValue doc = obj["documentation"];
+            if (doc.isString()) {
+                item.detail = doc.toString();
+            } else if (doc.isObject()) {
+                item.detail = doc.toObject()["value"].toString();
+            }
+        }
+
+        items.append(item);
     }
 
     qDebug() << "LSP: completion received" << items.size() << "items for" << filePath;

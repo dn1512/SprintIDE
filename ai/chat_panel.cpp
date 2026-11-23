@@ -30,8 +30,6 @@ ChatPanel::ChatPanel(QWidget *parent)
 
     setupUI();
     setConnectionStatus(false);
-
-    qDebug() << "[ChatPanel] 已创建";
 }
 
 // ============================================================
@@ -341,7 +339,6 @@ bool ChatPanel::startStreamMessage(const QString &streamId)
     m_streamCursors[streamId] = cursor;
     m_streamContents[streamId] = "";
 
-    qDebug() << "[ChatPanel] 流式消息开始:" << streamId;
     return true;
 }
 
@@ -351,7 +348,6 @@ bool ChatPanel::startStreamMessage(const QString &streamId)
 bool ChatPanel::appendStreamChunk(const QString &streamId, const QString &chunk)
 {
     if (!m_streamCursors.contains(streamId)) {
-        qWarning() << "[ChatPanel] 流式消息不存在:" << streamId;
         return false;
     }
     if (chunk.isEmpty()) {
@@ -383,7 +379,6 @@ bool ChatPanel::appendStreamChunk(const QString &streamId, const QString &chunk)
 bool ChatPanel::finishStreamMessage(const QString &streamId, const QString &fullContent)
 {
     if (!m_streamCursors.contains(streamId)) {
-        qWarning() << "[ChatPanel] 流式消息不存在:" << streamId;
         return false;
     }
 
@@ -411,7 +406,6 @@ bool ChatPanel::finishStreamMessage(const QString &streamId, const QString &full
         emit historyChanged();
     }
 
-    qDebug() << "[ChatPanel] 流式消息结束:" << streamId;
     return true;
 }
 
@@ -505,7 +499,6 @@ void ChatPanel::focusPanel()
 
 void ChatPanel::setConnectionManager(AiConnectionManager* mgr) {
     m_connMgr = mgr;
-    qDebug() << "[ChatPanel] setConnectionManager called, mgr =" << mgr;
     if (!mgr) return;
 
     connect(mgr, &AiConnectionManager::stateChanged,
@@ -566,7 +559,6 @@ void ChatPanel::onClearClicked()
 // 私有槽：流式数据接收
 // ============================================================
 void ChatPanel::onConnectionStateChanged(AiConnectionManager::State state) {
-    qDebug() << "[ChatPanel] stateChanged: " << static_cast<int>(state);
     using S = AiConnectionManager::State;
 
     switch (state) {
@@ -617,16 +609,10 @@ void ChatPanel::onAgentMessageReceived(const QJsonObject& msg) {
     // 2. items 阶段 0 暂不处理，阶段 1 交给 OperationBus
     //    这里只记日志
     const QJsonArray items = msg.value("items").toArray();
-    if (!items.isEmpty()) {
-        qDebug() << "[ChatPanel] 收到" << items.size()
-            << "个 items（已交给 OperationBus 处理）";
-    }
 
     // 3. error OutputPanel（不进 ChatPanel）
     if (msg.contains("error")) {
         const QJsonObject err = msg.value("error").toObject();
-        qWarning() << "[AI] Agent 错误:" << err.value("code").toString()
-                   << err.value("message").toString();
         // 阶段 1 接入 OutputPanel 后改这里
     }
 }

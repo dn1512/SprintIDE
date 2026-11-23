@@ -77,8 +77,6 @@ bool AiConnectionManager::sendMethod(const QString& method,
                                      const QString& requestId)
 {
     if (m_state != State::Ready) {
-        qWarning() << "[AI] sendMethod rejected: not Ready, state="
-                   << static_cast<int>(m_state);
         return false;
     }
 
@@ -96,8 +94,6 @@ bool AiConnectionManager::sendMethod(const QString& method,
 bool AiConnectionManager::sendRaw(const QJsonObject& message)
 {
     if (m_state != State::Ready) {
-        qWarning() << "[AI] sendRaw rejected: not Ready, state="
-                   << static_cast<int>(m_state);
         return false;
     }
     const QByteArray body = QJsonDocument(message).toJson(QJsonDocument::Compact);
@@ -142,8 +138,6 @@ void AiConnectionManager::onTransportMessage(const QByteArray& jsonBody)
     QJsonParseError parseErr;
     const QJsonDocument doc = QJsonDocument::fromJson(jsonBody, &parseErr);
     if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
-        qWarning() << "[AI] Invalid JSON from agent:"
-                   << parseErr.errorString();
         return;
     }
     const QJsonObject msg = doc.object();
@@ -152,7 +146,6 @@ void AiConnectionManager::onTransportMessage(const QByteArray& jsonBody)
     if (m_state == State::Handshaking) {
         const QString reqId = msg.value("requestId").toString();
         if (reqId != m_handshakeRequestId) {
-            qWarning() << "[AI] Unexpected message during handshake";
             return;
         }
 
@@ -185,8 +178,6 @@ void AiConnectionManager::onTransportMessage(const QByteArray& jsonBody)
 
 void AiConnectionManager::onTransportError(const QString& error)
 {
-    qWarning() << "[AI] Transport error:" << error;
-
     // 连接失败时（Connecting / Reconnecting 状态）主动调度下一次重连。
     // 注意：TCP 连接被拒时只发 errorOccurred，不发 disconnected，
     // 所以不能指望 onTransportDisconnected 来兜底。

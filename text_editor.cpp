@@ -52,6 +52,83 @@
 
 namespace SprintIDE {
 
+namespace {
+
+    // 扫描 Python 一行的字符串状态
+    //   - 处理 \" \' \\ 转义
+    //   - 忽略 # 行注释（字符串外）
+    //   - 单行字符串内部跳过（不跨行）
+    //   - 三引号字符串跨行状态维护
+    void scanPythonStringState(const QString& line,
+                               bool& inTripleDQ,
+                               bool& inTripleSQ)
+    {
+        int i = 0;
+        const int n = line.length();
+
+        while (i < n) {
+            const QChar c = line[i];
+
+            // ---------- 三引号内 ----------
+            if (inTripleDQ) {
+                if (c == '\\') { i += 2; continue; }
+                if (i + 2 < n && line[i] == '"' && line[i+1] == '"' && line[i+2] == '"') {
+                    inTripleDQ = false;
+                    i += 3;
+                    continue;
+                }
+                ++i;
+                continue;
+            }
+            if (inTripleSQ) {
+                if (c == '\\') { i += 2; continue; }
+                if (i + 2 < n && line[i] == '\'' && line[i+1] == '\'' && line[i+2] == '\'') {
+                    inTripleSQ = false;
+                    i += 3;
+                    continue;
+                }
+                ++i;
+                continue;
+            }
+
+            // ---------- 正常状态 ----------
+            if (c == '#') break;   // 行注释
+
+            if (c == '"') {
+                if (i + 2 < n && line[i+1] == '"' && line[i+2] == '"') {
+                    inTripleDQ = true;
+                    i += 3;
+                    continue;
+                }
+                // 单行字符串（不跨行）
+                ++i;
+                while (i < n) {
+                    if (line[i] == '\\') { i += 2; continue; }
+                    if (line[i] == '"')  { ++i; break; }
+                    ++i;
+                }
+                continue;
+            }
+            if (c == '\'') {
+                if (i + 2 < n && line[i+1] == '\'' && line[i+2] == '\'') {
+                    inTripleSQ = true;
+                    i += 3;
+                    continue;
+                }
+                ++i;
+                while (i < n) {
+                    if (line[i] == '\\') { i += 2; continue; }
+                    if (line[i] == '\'') { ++i; break; }
+                    ++i;
+                }
+                continue;
+            }
+            ++i;
+        }
+    }
+
+} // namespace
+
 // ========== LineNumberArea类实现 ==========
 
 LineNumberArea::LineNumberArea(TextEditor *editor)
@@ -127,6 +204,9 @@ void LineNumberArea::paintEvent(QPaintEvent *event)
     int blockNumber = block.blockNumber();
     QPointF contentOffset = m_editor->contentOffset();
     qreal top = m_editor->blockBoundingGeometry(block).translated(contentOffset).top();
+    qDebug() << "[PAINT] firstVisibleBlock 1-based line =" << (blockNumber + 1)
+             << "top =" << top
+             << "event rect =" << event->rect();
     // 隐藏块高度一律视为 0，避免折叠时后续行 top 累积误差
     qreal bottom = top + (block.isValid() && block.isVisible()
                           ? m_editor->blockBoundingRect(block).height()
@@ -956,6 +1036,7 @@ bool TextEditor::loadFile(const QString &filePath)
     // 5. 计算折叠
     m_foldedLines.clear();
     m_foldedDisplayText.clear();
+    m_pythonFoldRanges.clear();
 
     // 结束静默期，重置为"干净"状态
     endSilentModification();
@@ -1282,7 +1363,7 @@ void TextEditor::applyTheme(const QString &themeName)
 
     if (m_highlighter) {
         m_highlighter->setTheme(isDark);
-        m_highlighter->rehighlight();          // ← 这里会触发 textChanged
+        m_highlighter->rehighlight();          // 这里会触发 textChanged
     }
 
     if (isDark) {
@@ -2044,7 +2125,7 @@ void TextEditor::hideFindBar()
     //   关键：关闭搜索栏后，把焦点还给编辑器。
     //   否则 m_findLineEdit 虽然隐藏但可能仍持有"某级焦点"，
     //   后续输入法 / 某些平台的键盘事件仍可能触发它，
-    //   导致 returnPressed 等信号被误发 → 编辑器里打字异常。
+    //   导致 returnPressed 等信号被误发 -> 编辑器里打字异常。
     if (m_findLineEdit) {
         {
             QSignalBlocker blocker(m_findLineEdit);
@@ -2465,7 +2546,7 @@ void TextEditor::onFindTextEdited(const QString& text)
             best = i;
             break;
         }
-        best = 0;   // 循环跑完还没命中 → 回绕到第 0 个
+        best = 0;   // 循环跑完还没命中 -> 回绕到第 0 个
     }
 
     m_currentMatchIndex = best;
@@ -2548,7 +2629,7 @@ void TextEditor::scrollToMatch(int index)
     if (index < 0 || index >= m_matchCursors.size()) return;
 
     // 只刷新高亮。绝不 setTextCursor / centerCursor。
-    //   任何"文档变化 → 重算匹配"的路径都不应该移动编辑器光标。
+    //   任何"文档变化 -> 重算匹配"的路径都不应该移动编辑器光标。
     ThemeManager& tm = ThemeManager::instance();
     const QColor normalColor  = tm.color(ThemeManager::UIElement::SearchMatchBackground);
     const QColor currentColor = tm.color(ThemeManager::UIElement::SearchCurrentMatchBackground);
@@ -2988,7 +3069,7 @@ void TextEditor::paintEvent(QPaintEvent *event)
             endCursor.movePosition(QTextCursor::EndOfBlock);
             const QRect endRect = cursorRect(endCursor);
 
-            // 不在可见区域 → 跳过（视口滚动时减少绘制）
+            // 不在可见区域 -> 跳过（视口滚动时减少绘制）
             if (endRect.bottom() < event->rect().top() ||
                 endRect.top()    > event->rect().bottom()) {
                 continue;
@@ -3281,7 +3362,7 @@ int TextEditor::findMatchingBraceLine(int line) const
         return -1;
     }
 
-    QTextBlock block = document()->findBlockByLineNumber(line - 1);
+    QTextBlock block = document()->findBlockByNumber(line - 1);
     if (!block.isValid()) {
         return -1;
     }
@@ -3292,17 +3373,38 @@ int TextEditor::findMatchingBraceLine(int line) const
     const bool isIndentLang = (langId == "python" || langId == "ruby");
     if (isIndentLang) {
         const int curIndent = leadingIndentWidth(block.text());
+
+        // 从起始行开始跟踪三引号状态
+        bool inTripleDQ = false;
+        bool inTripleSQ = false;
+        scanPythonStringState(block.text(), inTripleDQ, inTripleSQ);
+
         int endLine = line;   // 至少是起始行
         QTextBlock b = block.next();
         while (b.isValid()) {
             const QString t = b.text();
-            if (t.trimmed().isEmpty()) { b = b.next(); continue; }   // 空行跳过
+
+            // 在三引号字符串内部，不看缩进，直接算作 body
+            if (inTripleDQ || inTripleSQ) {
+                endLine = b.blockNumber() + 1;
+                scanPythonStringState(t, inTripleDQ, inTripleSQ);
+                b = b.next();
+                continue;
+            }
+
+            if (t.trimmed().isEmpty()) {   // 空行跳过
+                b = b.next();
+                continue;
+            }
+
             const int bIndent = leadingIndentWidth(t);
-            if (bIndent <= curIndent) break;
+            if (bIndent <= curIndent) break;   // 缩进回退 → body 结束
+
             endLine = b.blockNumber() + 1;
+            scanPythonStringState(t, inTripleDQ, inTripleSQ);
             b = b.next();
         }
-        return endLine;   // 可能 == line 表示"无 body"，调用方会判 false
+        return endLine;
     }
 
     // ========== 大括号语言 ==========
@@ -3413,36 +3515,30 @@ int TextEditor::findMatchingBraceLine(int line) const
  */
 bool TextEditor::isFoldableBlock(int line) const
 {
-    if (line < 1 || line > document()->blockCount()) {
-        return false;
-    }
-
-    QTextBlock block = document()->findBlockByLineNumber(line - 1);
-    if (!block.isValid()) {
-        return false;
-    }
+    if (line < 1 || line > document()->blockCount()) return false;
+    QTextBlock block = document()->findBlockByNumber(line - 1);
+    if (!block.isValid()) return false;
 
     const QString langId = currentLanguageId();
     const bool isIndentLang = (langId == "python" || langId == "ruby");
 
-    // 修复：缩进型语言按 `:` 结尾判定
     if (isIndentLang) {
         const QString trimmed = block.text().trimmed();
-        if (trimmed.startsWith('#')) return false;   // 纯注释行
-        if (!trimmed.endsWith(':'))  return false;   // 非复合语句头
-        const int matchLine = findMatchingBraceLine(line);
-        return (matchLine > line);                   // 需要有 body
+        if (trimmed.startsWith('#')) return false;
+        if (!trimmed.endsWith(':'))  return false;
+        const int m = findMatchingBraceLine(line);
+        qDebug() << "[FOLDABLE] line =" << line
+                 << "matchLine =" << m
+                 << "result =" << (m > line)
+                 << "text =" << trimmed.left(40);
+        return m > line;
     }
 
-    // 大括号语言
+    // 大括号语言原样
     const int bracePos = findBraceInBlock(block, true);
-    if (bracePos == -1) {
-        return false;
-    }
+    if (bracePos == -1) return false;
     const int matchLine = findMatchingBraceLine(line);
-    if (matchLine == -1 || matchLine == line) {
-        return false;
-    }
+    if (matchLine == -1 || matchLine == line) return false;
     return true;
 }
 
@@ -3472,12 +3568,11 @@ void TextEditor::toggleFold(int line)
         return;
     }
 
+    const QString langId = currentLanguageId();   // 后面算 suffix 还要用
+
     int matchLine = findMatchingBraceLine(line);
-    // qDebug() << "匹配行:" << matchLine;
-    if (matchLine == -1 || matchLine <= line) {
-        // qDebug() << "无效匹配行";
-        return;
-    }
+
+    if (matchLine == -1 || matchLine <= line) return;
 
     // 边界检查
     int totalLines = document()->blockCount();
@@ -3491,37 +3586,54 @@ void TextEditor::toggleFold(int line)
 
     if (isFolded) {
         // ========== 展开 ==========
-        QTextBlock block = document()->findBlockByLineNumber(line - 1);
-        if (!block.isValid()) {
-            return;
-        }
+        QTextBlock block = document()->findBlockByNumber(line - 1);   // 起始行本身
+        if (!block.isValid()) return;
+
+        const int dirtyFrom = block.position();
+        int dirtyTo = dirtyFrom;
+
+        // 展开 line..matchLine（含） 整段
         while (block.isValid() && block.blockNumber() + 1 <= matchLine) {
             block.setVisible(true);
+            // 恢复行数：从 block 的 layout 里拿实际行数
+            const int realLines = block.layout() ? block.layout()->lineCount() : 1;
+            block.setLineCount(realLines);          // 对应折叠时的 setLineCount(0)
+            dirtyTo = block.position() + block.length();
             block = block.next();
         }
         m_foldedLines.remove(line);
         m_foldedDisplayText.remove(line);
+
+        document()->markContentsDirty(dirtyFrom, dirtyTo - dirtyFrom);
+        document()->adjustSize();
+
+        m_logicalIndentCache.clear();
+        viewport()->update();
+        if (m_lineNumberArea) m_lineNumberArea->update();
     } else {
         // ========== 折叠 ==========
-        // 起始块：起始行的下一行（行号 line+1）
-        QTextBlock block = document()->findBlockByLineNumber(line);
-        if (!block.isValid()) {
-            return;
-        }
-        // 折叠到 matchLine（含）：C++ 的 `}` 行 / Python 的 body 末行都隐藏
+        QTextBlock block = document()->findBlockByNumber(line);
+        if (!block.isValid()) return;
+
+        const int dirtyFrom = block.position();
+        int dirtyTo = dirtyFrom;
+        int hideCount = 0;
+
         while (block.isValid() && block.blockNumber() + 1 <= matchLine) {
             block.setVisible(false);
+            block.setLineCount(0);
+            dirtyTo = block.position() + block.length();
             block = block.next();
+            ++hideCount;
         }
         m_foldedLines.insert(line);
+        qDebug() << "[TOGGLE] line =" << line
+                 << "matchLine =" << matchLine
+                 << "hidden count =" << hideCount
+                 << "expected =" << (matchLine - line);
 
-        //   计算折叠后缀（JetBrains 风格）
-        //   缩进语言（Python / Ruby）： " ..."
-        //   括号语言（C/C++/Rust/Go/Java/…）：
-        //       结束行带 "}" → " ... }"；否则 " ..."
-        const QString langId = currentLanguageId();
+        //  补回：设置折叠省略号后缀（paintEvent 靠它画 " ..."）
         const bool isIndentLang = (langId == "python" || langId == "ruby");
-
         QString suffix;
         if (isIndentLang) {
             suffix = QStringLiteral(" ...");
@@ -3534,6 +3646,13 @@ void TextEditor::toggleFold(int line)
                          : QStringLiteral(" ...");
         }
         m_foldedDisplayText[line] = suffix;
+
+        document()->markContentsDirty(dirtyFrom, dirtyTo - dirtyFrom);
+        document()->adjustSize();
+
+        m_logicalIndentCache.clear();
+        viewport()->update();
+        if (m_lineNumberArea) m_lineNumberArea->update();
     }
 
     // 折叠/展开后强制重排，避免后续折叠三角位置错位
@@ -4695,8 +4814,8 @@ bool TextEditor::autoSave()
     document()->setModified(false);
     m_lastSaveTime = QDateTime::currentDateTime();
 
-    // ---- LocalHistory 记录 ----
     if (m_localHistory) {
+        // ---- LocalHistory 记录 ----
         m_localHistory->saveVersion(m_filePath, toPlainText(),
                                     "自动保存", "auto");
     }
@@ -5343,7 +5462,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
     //  2. removeSelectedText + insertText 用 beginEditBlock/endEditBlock
     //     包起来，让 onTextChanged 只在最后触发一次，中间副作用被合并。
     //
-    //  3. 换行归一化 "\r\n" → "\n"，避免 Windows CRLF 被 split 成两行。
+    //  3. 换行归一化 "\r\n" -> "\n"，避免 Windows CRLF 被 split 成两行。
     //
     //  4. 第一行判定用 firstIdx 而不是硬编码 0，兼容剪贴板开头有空行。
     // ============================================================
@@ -5367,7 +5486,7 @@ void TextEditor::insertFromMimeData(const QMimeData* source)
             const int startCol    = pasteAnchorPos - selBlock.position();
             const int startIndent = leadingIndentWidth(selBlock.text());
             if (startCol > startIndent) {
-                // 局部替换（选区起点不在缩进区）→ 走 Qt 默认
+                // 局部替换（选区起点不在缩进区）-> 走 Qt 默认
                 QPlainTextEdit::insertFromMimeData(source);
                 return;
             }
@@ -7073,7 +7192,6 @@ void TextEditor::onTextChanged()
             m_matchCountLabel->setText("0/0");
         }
     }
-
 }
 
 void TextEditor::onGotoLineAction()
@@ -7325,6 +7443,210 @@ void TextEditor::toggleOutlineOverlay()
     const QRect cr = cursorRect();
     const QPoint globalPos = viewport()->mapToGlobal(cr.bottomLeft());
     m_outlineOverlay->showAt(globalPos);
+}
+
+// ============================================================================
+//  Python 折叠区间扫描（一次 O(n)）
+//
+//  处理：
+//    - 多行字符串 """ / ''' 内的行不参与结构识别
+//    - 括号深度 > 0 的行不参与结构识别
+//    - Tab 按 4 空格宽
+//    - elif / else / except / finally 归入原 if/try 折叠区，不开新块
+//    - 装饰器 @xxx 并入紧随其后的 def / class
+//    - 折叠区末尾不拖空行和纯注释行
+//
+//  返回：1-based 起始行 -> 1-based 结束行（仅含 body ≥ 1 行的块）
+// ============================================================================
+static QHash<int, int> computePythonFoldRanges(const QString& text)
+{
+    QHash<int, int> result;
+    const QStringList lines = text.split('\n');
+    const int N = lines.size();
+    if (N == 0) return result;
+
+    // ---------- 第一遍：逐行求"行首状态"（多行字符串 / 括号深度） ----------
+    enum State { Normal, InTripleDQ, InTripleSQ, InStrDQ, InStrSQ };
+    QVector<State> lineStartState(N, Normal);
+    QVector<int>   lineStartDepth(N, 0);
+
+    State st = Normal;
+    int   depth = 0;
+    for (int i = 0; i < N; ++i) {
+        lineStartState[i] = st;
+        lineStartDepth[i] = depth;
+        const QString& line = lines[i];
+        for (int j = 0; j < line.size(); ++j) {
+            const QChar c = line[j];
+            if (st == InStrDQ) {
+                if (c == '\\') { ++j; continue; }
+                if (c == '"') st = Normal;
+                continue;
+            }
+            if (st == InStrSQ) {
+                if (c == '\\') { ++j; continue; }
+                if (c == '\'') st = Normal;
+                continue;
+            }
+            if (st == InTripleDQ) {
+                if (c == '\\') { ++j; continue; }
+                if (j + 2 < line.size() && c == '"' && line[j+1] == '"' && line[j+2] == '"') {
+                    st = Normal; j += 2;
+                }
+                continue;
+            }
+            if (st == InTripleSQ) {
+                if (c == '\\') { ++j; continue; }
+                if (j + 2 < line.size() && c == '\'' && line[j+1] == '\'' && line[j+2] == '\'') {
+                    st = Normal; j += 2;
+                }
+                continue;
+            }
+            // Normal
+            if (c == '#') break;
+            if (c == '"') {
+                if (j + 2 < line.size() && line[j+1] == '"' && line[j+2] == '"') {
+                    st = InTripleDQ; j += 2;
+                } else {
+                    st = InStrDQ;
+                }
+                continue;
+            }
+            if (c == '\'') {
+                if (j + 2 < line.size() && line[j+1] == '\'' && line[j+2] == '\'') {
+                    st = InTripleSQ; j += 2;
+                } else {
+                    st = InStrSQ;
+                }
+                continue;
+            }
+            if (c == '(' || c == '[' || c == '{') ++depth;
+            else if (c == ')' || c == ']' || c == '}') depth = qMax(0, depth - 1);
+        }
+        // Python 单引号字符串不能跨行，行末若仍在内视为语法错，保守退出
+        if (st == InStrDQ || st == InStrSQ) st = Normal;
+    }
+
+    // ---------- 第二遍：缩进宽度（Tab=4） ----------
+    QVector<int> indent(N, 0);
+    for (int i = 0; i < N; ++i) {
+        int n = 0;
+        for (const QChar& c : lines[i]) {
+            if (c == ' ') ++n;
+            else if (c == '\t') n = (n / 4 + 1) * 4;
+            else break;
+        }
+        indent[i] = n;
+    }
+
+    // ---------- 第三遍：主扫描 ----------
+    struct Frame {
+        int startLine;
+        int indent;
+        int decoratorStartLine;   // -1 表示无装饰器
+    };
+    QVector<Frame> stack;
+    int pendingDecoratorStart = -1;
+
+    static const QRegularExpression reBlockHeader(
+        R"(^\s*(?:async\s+(?:def|for|with)|def|class|if|elif|else|for|while|with|try|except|finally|match|case)\b.*:\s*(?:#.*)?$)");
+    static const QRegularExpression reDecorator(R"(^\s*@\w)");
+
+    auto isContinuation = [](const QString& t) {
+        return t.startsWith("elif ") || t == "elif" ||
+               t.startsWith("else:") || t == "else" ||
+               t.startsWith("except") ||
+               t.startsWith("finally:");
+    };
+
+    // 从 from 往前找最后一个"内容行"（非空、非注释、非多行字符串内）
+    auto lastContentLineBefore = [&](int from) -> int {
+        for (int k = from; k >= 0; --k) {
+            const QString t = lines[k].trimmed();
+            if (t.isEmpty()) continue;
+            if (t.startsWith('#')) continue;
+            if (lineStartState[k] != Normal) continue;
+            return k;
+        }
+        return -1;
+    };
+
+    for (int i = 0; i < N; ++i) {
+        if (lineStartState[i] != Normal) continue;   // 多行字符串
+        if (lineStartDepth[i] > 0)       continue;   // 括号续行
+
+        const QString trimmed = lines[i].trimmed();
+        if (trimmed.isEmpty()) continue;
+        if (trimmed.startsWith('#')) continue;
+
+        if (reDecorator.match(trimmed).hasMatch()) {
+            if (pendingDecoratorStart < 0) pendingDecoratorStart = i;
+            continue;
+        }
+
+        const int curIndent = indent[i];
+
+        // 延续语句：弹掉"严格大于"当前缩进的块，不 push 新块
+        if (isContinuation(trimmed)) {
+            while (!stack.isEmpty() && stack.last().indent > curIndent) {
+                Frame f = stack.takeLast();
+                const int endContent = lastContentLineBefore(i - 1);
+                if (endContent >= f.startLine + 1) {
+                    const int foldStart = (f.decoratorStartLine >= 0)
+                        ? f.decoratorStartLine : f.startLine;
+                    result[foldStart + 1] = endContent + 1;
+                }
+            }
+            continue;
+        }
+
+        // 正常行：弹掉"大于等于"当前缩进的块（同级前块结束）
+        while (!stack.isEmpty() && stack.last().indent >= curIndent) {
+            Frame f = stack.takeLast();
+            const int endContent = lastContentLineBefore(i - 1);
+            if (endContent >= f.startLine + 1) {
+                const int foldStart = (f.decoratorStartLine >= 0)
+                    ? f.decoratorStartLine : f.startLine;
+                result[foldStart + 1] = endContent + 1;
+            }
+        }
+
+        if (reBlockHeader.match(trimmed).hasMatch()) {
+            stack.append({ i, curIndent, pendingDecoratorStart });
+            pendingDecoratorStart = -1;
+        }
+    }
+
+    // 末尾收尾
+    const int lastContent = lastContentLineBefore(N - 1);
+    while (!stack.isEmpty()) {
+        Frame f = stack.takeLast();
+        if (lastContent >= f.startLine + 1) {
+            const int foldStart = (f.decoratorStartLine >= 0)
+                ? f.decoratorStartLine : f.startLine;
+            result[foldStart + 1] = lastContent + 1;
+        }
+    }
+
+    return result;
+}
+
+void TextEditor::ensurePythonFoldRanges()
+{
+    const QString text = toPlainText();
+    const qint64 h = qHash(text);
+    if (h == m_pythonFoldHash) return;    // 内容没变，不重算
+
+    m_pythonFoldHash   = h;
+    m_pythonFoldRanges = computePythonFoldRanges(text);
+
+    qDebug() << "[PYFOLD] recomputed," << m_pythonFoldRanges.size() << "ranges";
+    int shown = 0;
+    for (auto it = m_pythonFoldRanges.constBegin();
+         it != m_pythonFoldRanges.constEnd() && shown < 5;
+         ++it, ++shown) {
+        qDebug() << "  " << it.key() << "->" << it.value();
+    }
 }
 
 }

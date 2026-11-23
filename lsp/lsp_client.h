@@ -119,7 +119,8 @@ public:
      * @param line 行号（0-based）
      * @param column 列号（0-based）
      */
-    void requestCompletion(const QString& filePath, int line, int column);
+    void requestCompletion(const QString& filePath, int line, int column,
+                           const QString& triggerChar = QString());
 
     /**
      * @brief 设置自定义的 initializationOptions（用于 LSP 初始化）
@@ -196,6 +197,7 @@ private:
     QTimer* m_initTimer;
     QStringList m_customArguments;
     bool m_enableClangTidy;
+    QHash<QString, int> m_fileVersions;
 
     // v8.5：来自 LSPManager 的语言特定启动参数
     //   clangd / jdtls / 其他服务器的参数由 LSPManager 的 LSPConfig.arguments 提供，
